@@ -1,0 +1,596 @@
+// TelmanFit — логічна ER-модель (джерело структури таблиць і полів).
+// Enum-блоки нижче є логічними: у PostgreSQL відповідні поля реалізовані як text + CHECK.
+// DBML не виражає CHECK, часткові UNIQUE-індекси, EXCLUDE та тригери;
+// повний перелік PostgreSQL-only обмежень — у кінці файлу.
+Enum uom_kind {
+  mass
+  volume
+  count
+  serving
+  other
+}
+
+Enum food_type_enum {
+  ingredient
+  recipe_version
+}
+
+Enum version_status {
+  draft
+  published
+}
+
+Enum equipment_scaling_mode {
+  fixed
+  proportional
+}
+
+Table ingredient_categories [headercolor: #0F766E] {
+  id smallint [pk]
+  name text [not null, unique]
+}
+
+Table recipe_categories [headercolor: #7C3AED] {
+  id smallint [pk]
+  name text [not null, unique]
+}
+
+Table uoms [headercolor: #0F766E] {
+  id smallint [pk]
+  code text [not null, unique]
+  label text [not null]
+  kind uom_kind [not null]
+
+  Note: 'uoms.code is immutable after insert (trigger); codes g and serving have program semantics.'
+}
+
+Table foods [headercolor: #0F766E] {
+  id integer [pk]
+  food_type food_type_enum [not null]
+
+  indexes {
+    (id, food_type) [unique]
+  }
+
+  Note: 'Supertype for ingredients and published recipe_versions. Every food has exactly one typed child; (food_id, food_type) is enforced by composite FKs and a deferred constraint trigger.'
+}
+
+Table ingredients [headercolor: #0F766E] {
+  id integer [pk]
+  food_id integer [not null, unique]
+  food_type food_type_enum [not null, default: 'ingredient']
+  name text [not null]
+  ingredient_category_id smallint
+  kcal_per_100g numeric(7,2) [not null]
+  protein_per_100g numeric(7,2) [not null]
+  fat_per_100g numeric(7,2) [not null]
+  carbs_per_100g numeric(7,2) [not null]
+
+  Note: 'food_type must be ingredient. Gram is implicit base unit.'
+}
+
+Table ingredient_uoms [headercolor: #0F766E] {
+  ingredient_id integer [not null]
+  uom_id smallint [not null]
+  grams_per_uom numeric(7,2) [not null]
+  is_default boolean [not null, default: false]
+
+  indexes {
+    (ingredient_id, uom_id) [pk]
+  }
+
+  Note: 'Allowed units for a specific ingredient, with conversion to grams. Only one is_default per ingredient (partial unique index).'
+}
+
+Table recipes [headercolor: #7C3AED] {
+  id integer [pk]
+  title text [not null]
+  recipe_category_id smallint
+  parent_recipe_id integer
+  owner_client_id integer
+  created_at timestamptz [not null]
+
+  Note: 'Logical recipe card. Personal copies can point to parent_recipe_id.'
+}
+
+Table recipe_versions [headercolor: #7C3AED] {
+  id integer [pk]
+  recipe_id integer [not null]
+  version_number smallint
+  status version_status [not null, default: 'draft']
+  food_id integer [unique]
+  food_type food_type_enum [not null, default: 'recipe_version']
+  title text [not null]
+  servings_count numeric(7,2) [not null, default: 1]
+  kcal_per_serving numeric(7,2)
+  protein_per_serving numeric(7,2)
+  fat_per_serving numeric(7,2)
+  carbs_per_serving numeric(7,2)
+  published_at timestamptz
+  created_at timestamptz [not null]
+
+  indexes {
+    (recipe_id, version_number) [unique]
+    (id, recipe_id) [unique]
+  }
+
+  Note: 'Published versions are immutable. food_id exists only for published versions. Only one draft per recipe (partial unique index); children are immutable via triggers.'
+}
+
+Table recipe_components [headercolor: #7C3AED] {
+  id integer [pk]
+  recipe_version_id integer [not null]
+  title text [not null]
+  sort_order smallint [not null, default: 0]
+
+  indexes {
+    (id, recipe_version_id) [unique]
+  }
+
+  Note: 'Optional named groups like Sauce, Base, Filling.'
+}
+
+Table recipe_ingredients [headercolor: #7C3AED] {
+  id integer [pk]
+  recipe_version_id integer [not null]
+  ingredient_id integer [not null]
+  component_id integer
+  quantity numeric(7,2) [not null]
+  uom_id smallint [not null]
+  quantity_grams numeric(7,2) [not null]
+  sort_order smallint [not null, default: 0]
+
+  Note: 'All quantities are stored per 1 serving of the recipe version.'
+}
+
+Table recipe_directions [headercolor: #D97706] {
+  id integer [pk]
+  recipe_version_id integer [not null]
+  direction_number smallint [not null]
+  direction_text text [not null]
+  image_url text
+
+  indexes {
+    (recipe_version_id, direction_number) [unique]
+  }
+}
+
+Table kitchen_equipment_categories [headercolor: #D97706] {
+  id smallint [pk]
+  name text [not null, unique]
+}
+
+Table kitchen_equipment [headercolor: #D97706] {
+  id smallint [pk]
+  name text [not null, unique]
+  kitchen_equipment_category_id smallint
+}
+
+Table recipe_kitchen_equipment [headercolor: #D97706] {
+  id integer [pk]
+  recipe_version_id integer [not null]
+  kitchen_equipment_id smallint [not null]
+  min_value numeric(7,2)
+  uom_id smallint
+  scaling_mode equipment_scaling_mode [not null, default: 'fixed']
+  tip text
+
+  indexes {
+    (recipe_version_id, kitchen_equipment_id) [unique]
+  }
+}
+
+Table meal_plans [headercolor: #2563EB] {
+  id integer [pk]
+  title text [not null]
+  parent_meal_plan_id integer
+  owner_client_id integer
+  created_at timestamptz [not null]
+
+  Note: 'Logical meal plan card. Personal copies can point to parent_meal_plan_id.'
+}
+
+Table meal_plan_versions [headercolor: #2563EB] {
+  id integer [pk]
+  meal_plan_id integer [not null]
+  version_number smallint
+  status version_status [not null, default: 'draft']
+  published_at timestamptz
+  created_at timestamptz [not null]
+
+  indexes {
+    (meal_plan_id, version_number) [unique]
+  }
+
+  Note: 'Published versions are immutable. Only one draft per meal plan (partial unique index); children are immutable via triggers.'
+}
+
+Table meal_plan_days [headercolor: #2563EB] {
+  id integer [pk]
+  meal_plan_version_id integer [not null]
+  day_number smallint [not null]
+
+  indexes {
+    (meal_plan_version_id, day_number) [unique]
+  }
+}
+
+Table meal_types [headercolor: #2563EB] {
+  id smallint [pk]
+  code text [not null, unique]
+  title text [not null]
+  sort_order smallint [not null, default: 0]
+}
+
+Table meals [headercolor: #2563EB] {
+  id integer [pk]
+  meal_plan_day_id integer [not null]
+  meal_type_id smallint [not null]
+  title text
+  sort_order smallint [not null, default: 0]
+
+  indexes {
+    (meal_plan_day_id, meal_type_id) [unique]
+  }
+}
+
+Table meal_items [headercolor: #2563EB] {
+  id integer [pk]
+  meal_id integer [not null]
+  food_id integer [not null]
+  quantity numeric(7,2) [not null]
+  uom_id smallint [not null]
+  resolved_quantity_grams numeric(7,2)
+  sort_order smallint [not null, default: 0]
+
+  Note: 'Single food_id points either to an ingredient or to a published recipe version.'
+}
+
+Table client_meal_plan_assignments [headercolor: #2563EB] {
+  id integer [pk]
+  client_id integer [not null]
+  meal_plan_version_id integer [not null]
+  start_date date [not null]
+  end_date date
+  created_at timestamptz [not null]
+  created_by integer
+  replaced_by_assignment_id integer
+
+  Note: 'No overlapping date ranges for the same client (EXCLUDE in PostgreSQL DDL); end_date >= start_date; only published meal plan versions can be assigned (trigger).'
+}
+
+Ref: ingredients.ingredient_category_id > ingredient_categories.id
+Ref: ingredient_uoms.ingredient_id > ingredients.id
+Ref: ingredient_uoms.uom_id > uoms.id
+
+Ref: ingredients.(food_id, food_type) > foods.(id, food_type)
+Ref: recipe_versions.(food_id, food_type) > foods.(id, food_type)
+
+Ref: recipes.recipe_category_id > recipe_categories.id
+Ref: recipes.parent_recipe_id > recipes.id
+
+Ref: recipe_versions.recipe_id > recipes.id
+Ref: recipe_components.recipe_version_id > recipe_versions.id
+Ref: recipe_ingredients.recipe_version_id > recipe_versions.id
+Ref: recipe_ingredients.ingredient_id > ingredients.id
+Ref: recipe_ingredients.uom_id > uoms.id
+Ref: recipe_ingredients.(component_id, recipe_version_id) > recipe_components.(id, recipe_version_id)
+Ref: recipe_directions.recipe_version_id > recipe_versions.id
+
+Ref: kitchen_equipment.kitchen_equipment_category_id > kitchen_equipment_categories.id
+Ref: recipe_kitchen_equipment.recipe_version_id > recipe_versions.id
+Ref: recipe_kitchen_equipment.kitchen_equipment_id > kitchen_equipment.id
+Ref: recipe_kitchen_equipment.uom_id > uoms.id
+
+Ref: meal_plans.parent_meal_plan_id > meal_plans.id
+Ref: meal_plan_versions.meal_plan_id > meal_plans.id
+Ref: meal_plan_days.meal_plan_version_id > meal_plan_versions.id
+Ref: meals.meal_plan_day_id > meal_plan_days.id
+Ref: meals.meal_type_id > meal_types.id
+Ref: meal_items.meal_id > meals.id
+Ref: meal_items.food_id > foods.id
+Ref: meal_items.uom_id > uoms.id
+
+Ref: client_meal_plan_assignments.meal_plan_version_id > meal_plan_versions.id
+Ref: client_meal_plan_assignments.replaced_by_assignment_id > client_meal_plan_assignments.id
+
+// Logical groupings. Group colors and table header colors require dbdiagram Personal Pro.
+TableGroup "Food Catalog & Ingredients" [color: #0F766E] {
+  foods
+  ingredients
+  ingredient_categories
+  ingredient_uoms
+  uoms
+}
+
+TableGroup "Recipes & Versions" [color: #7C3AED] {
+  recipes
+  recipe_categories
+  recipe_versions
+  recipe_components
+  recipe_ingredients
+}
+
+TableGroup "Recipe Preparation" [color: #D97706] {
+  recipe_directions
+  kitchen_equipment
+  kitchen_equipment_categories
+  recipe_kitchen_equipment
+}
+
+TableGroup "Nutrition Planning" [color: #2563EB] {
+  meal_plans
+  meal_plan_versions
+  meal_plan_days
+  meal_types
+  meals
+  meal_items
+  client_meal_plan_assignments
+}
+
+
+
+// Users & Client Management (stage 2)
+Table users [headercolor: #64748B] {
+ id integer [pk]
+ name text [not null]
+ email text [unique]
+ password text
+ telegram_user_id bigint [unique]
+ role text [not null]
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+}
+Table clients [headercolor: #64748B] {
+ id integer [pk]
+ user_id integer [unique]
+ coach_user_id integer [not null]
+ status text [not null]
+ coaching_started_at timestamptz
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+}
+Table client_onboardings [headercolor: #64748B] {
+ id integer [pk]
+ client_id integer [not null, unique]
+ answers jsonb [not null]
+ completed_at timestamptz
+ updated_at timestamptz [not null]
+}
+Table client_nutrition_profiles [headercolor: #64748B] {
+ client_id integer [pk]
+ goal text
+ preferences text
+ restrictions text
+ updated_at timestamptz [not null]
+}
+Table client_activity_profiles [headercolor: #64748B] {
+ client_id integer [pk]
+ steps_target integer
+ physical_limitations text
+ preferred_training_days jsonb [not null]
+ updated_at timestamptz [not null]
+}
+Table client_settings [headercolor: #64748B] {
+ client_id integer [pk]
+ timezone text [not null]
+ reminder_settings jsonb [not null]
+ report_settings jsonb [not null]
+ updated_at timestamptz [not null]
+}
+Ref: clients.user_id > users.id
+Ref: clients.coach_user_id > users.id
+Ref: client_onboardings.client_id > clients.id
+Ref: client_nutrition_profiles.client_id > clients.id
+Ref: client_activity_profiles.client_id > clients.id
+Ref: client_settings.client_id > clients.id
+Ref: recipes.owner_client_id > clients.id
+Ref: meal_plans.owner_client_id > clients.id
+Ref: client_meal_plan_assignments.client_id > clients.id
+Ref: client_meal_plan_assignments.created_by > users.id
+TableGroup "Users & Client Management" [color: #64748B] {
+ users
+ clients
+ client_onboardings
+ client_nutrition_profiles
+ client_activity_profiles
+ client_settings
+}
+
+
+// Progress Tracking (stage 3)
+Table metrics [headercolor: #C2410C] {
+ id smallint [pk]
+ code varchar(60) [not null, unique]
+ name varchar(120) [not null]
+ unit_label varchar(20)
+ value_kind varchar(12) [not null, default: 'decimal']
+ min_value numeric(7,2)
+ max_value numeric(7,2)
+ sort_order smallint [not null, default: 0]
+ is_enabled boolean [not null, default: true]
+
+  Note: 'value_kind in (decimal, integer); min_value <= max_value; ranges are not enforced against client_metrics.value in PostgreSQL.'
+}
+Table client_metric_assignments [headercolor: #C2410C] {
+ id integer [pk]
+ client_id integer [not null]
+ metric_id smallint [not null]
+ assigned_at timestamptz [not null]
+ unassigned_at timestamptz
+ created_by integer
+ Note: 'One current (unassigned_at IS NULL) assignment per client and metric.'
+}
+Table client_weekly_reports [headercolor: #C2410C] {
+ id integer [pk]
+ client_id integer [not null]
+ week_start_date date [not null]
+ status varchar(12) [not null, default: 'draft']
+ answers jsonb [not null]
+ submitted_at timestamptz
+ created_at timestamptz [not null]
+ updated_at timestamptz [not null]
+ indexes {
+   (client_id, week_start_date) [unique]
+   (id, client_id) [unique]
+ }
+ Note: 'Monday to Sunday; raw questionnaire answers, not the canonical metric time series. week_start_date must be Monday; status submitted iff submitted_at is set.'
+}
+Table client_metrics [headercolor: #C2410C] {
+ id integer [pk]
+ client_id integer [not null]
+ metric_id smallint [not null]
+ value numeric(7,2) [not null]
+ measured_at timestamptz [not null]
+ recorded_at timestamptz [not null]
+ source varchar(16) [not null, default: 'manual']
+ weekly_report_id integer
+ note text
+ Note: 'Individual numeric measurements at any time; weekly_report_id optional. source in (manual, weekly_report, coach); source=weekly_report requires weekly_report_id.'
+}
+Table client_progress_photos [headercolor: #C2410C] {
+ id integer [pk]
+ client_id integer [not null]
+ taken_at timestamptz [not null]
+ storage_path text [not null]
+ view_label varchar(20)
+ note text
+ uploaded_at timestamptz [not null]
+ Note: 'Only storage path, no binary photo in PostgreSQL.'
+}
+Ref: client_metric_assignments.client_id > clients.id
+Ref: client_metric_assignments.metric_id > metrics.id
+Ref: client_metric_assignments.created_by > users.id
+Ref: client_weekly_reports.client_id > clients.id
+Ref: client_metrics.client_id > clients.id
+Ref: client_metrics.metric_id > metrics.id
+Ref: client_metrics.(weekly_report_id,client_id) > client_weekly_reports.(id,client_id)
+Ref: client_progress_photos.client_id > clients.id
+TableGroup "Progress Tracking" [color: #C2410C] {
+ metrics
+ client_metric_assignments
+ client_metrics
+ client_weekly_reports
+ client_progress_photos
+}
+
+
+// Fitness Equipment
+Table fitness_equipment [headercolor: #0D9488] {
+  id smallint [pk]
+  name varchar(120) [not null, unique]
+  description text
+  is_active boolean [not null, default: true]
+}
+Table client_fitness_equipment [headercolor: #0D9488] {
+  client_id integer [not null]
+  fitness_equipment_id smallint [not null]
+  quantity smallint [not null, default: 1]
+  note text
+  updated_at timestamptz [not null]
+  indexes {
+    (client_id, fitness_equipment_id) [pk]
+  }
+}
+Ref: client_fitness_equipment.client_id > clients.id
+Ref: client_fitness_equipment.fitness_equipment_id > fitness_equipment.id
+TableGroup "Fitness Equipment" [color: #0D9488] {
+  fitness_equipment
+  client_fitness_equipment
+}
+
+// Messaging & Automation
+Table message_templates [headercolor: #A21CAF] {
+  id smallint [pk]
+  code varchar(100) [not null, unique]
+  title varchar(150) [not null]
+  body text [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+Table outbound_messages [headercolor: #A21CAF] {
+  id integer [pk]
+  client_id integer [not null]
+  message_template_id smallint
+  rendered_text text [not null]
+  rendered_markup jsonb
+  status varchar(12) [not null, default: 'pending']
+  scheduled_at timestamptz [not null]
+  sent_at timestamptz
+  attempt_count smallint [not null, default: 0]
+  last_error text
+  provider_message_id varchar(120)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: 'Rendered message and inline keyboard are stored at enqueue time. status in (pending, sending, sent, failed, cancelled); sent_at agrees with status.'
+}
+Table client_events [headercolor: #A21CAF] {
+  id integer [pk]
+  client_id integer [not null]
+  event_type varchar(80) [not null]
+  event_data jsonb [not null]
+  actor_user_id integer
+  occurred_at timestamptz [not null]
+  created_at timestamptz [not null]
+}
+Ref: outbound_messages.client_id > clients.id
+Ref: outbound_messages.message_template_id > message_templates.id
+Ref: client_events.client_id > clients.id
+Ref: client_events.actor_user_id > users.id
+TableGroup "Messaging & Automation" [color: #A21CAF] {
+  message_templates
+  outbound_messages
+  client_events
+}
+
+// ============================================================
+// PostgreSQL-only constraints (not expressible in DBML)
+// ============================================================
+// Logical enums in this file are text + CHECK in PostgreSQL:
+//   uoms.kind, foods.food_type, recipe_versions.status,
+//   meal_plan_versions.status, recipe_kitchen_equipment.scaling_mode.
+//
+// CHECK constraints (01_nutrition_schema.sql):
+//   ingredients: kcal/protein/fat/carbs_per_100g >= 0
+//   ingredient_uoms: grams_per_uom > 0
+//   recipe_versions: published => food_id, version_number, published_at
+//     and all *_per_serving values are NOT NULL; servings_count > 0;
+//     per-serving values >= 0
+//   recipe_ingredients: quantity > 0, quantity_grams > 0
+//   recipe_directions: direction_number > 0
+//   meal_plan_days: day_number > 0
+//   meal_items: quantity > 0, resolved_quantity_grams > 0
+//   recipes / meal_plans: parent_*_id IS DISTINCT FROM id
+//   client_meal_plan_assignments: end_date >= start_date
+//   client_weekly_reports: week_start_date is Monday; status/submitted_at agree
+//   client_metrics: source != weekly_report OR weekly_report_id IS NOT NULL
+//   metrics: min_value <= max_value; value_kind in (decimal, integer)
+//   client_progress_photos: view_label in (front, side, back, other)
+//   outbound_messages: status/sent_at agree; rendered_markup is object/array
+//   client_events: event_data is object
+//
+// Partial UNIQUE indexes:
+//   ingredient_uoms_one_default: one is_default per ingredient
+//   recipe_one_draft: one draft per recipe
+//   meal_plan_one_draft: one draft per meal plan
+//   client_metric_one_current_assignment: one current assignment per client+metric
+//
+// Exclusion:
+//   no_overlapping_client_plan_dates on client_meal_plan_assignments
+//   (client_id =, daterange(start_date, end_date, []) &&), DEFERRABLE.
+//
+// Triggers:
+//   published recipe_versions / meal_plan_versions and their children are
+//   immutable; direct INSERT with status=published is rejected;
+//   foods must have exactly one typed child (deferred constraint trigger);
+//   typed child food_id cannot be detached; uoms.code is immutable;
+//   meal_items / recipe_ingredients units and resolved grams are validated
+//   at publication; only published meal_plan_versions can be assigned.
+//
+// Cross-module FKs (02_users_clients.sql):
+//   recipes.owner_client_id -> clients.id
+//   meal_plans.owner_client_id -> clients.id
+//   client_meal_plan_assignments.client_id -> clients.id
+//   client_meal_plan_assignments.created_by -> users.id
+// ============================================================
