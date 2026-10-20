@@ -1,3 +1,44 @@
+.health {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 15px;
+  background: var(--social-bg);
+}
+
+.health__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.health--ok .health__dot {
+  background: #22c55e;
+}
+
+.health--error .health__dot {
+  background: #ef4444;
+}
+
+.health--loading .health__dot {
+  background: var(--accent);
+  animation: health-pulse 1s ease-in-out infinite;
+}
+
+@keyframes health-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;
