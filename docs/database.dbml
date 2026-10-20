@@ -562,7 +562,8 @@ TableGroup "Messaging & Automation" [color: #A21CAF] {
 //   meal_plan_days: day_number > 0
 //   meal_items: quantity > 0, resolved_quantity_grams > 0
 //   recipes / meal_plans: parent_*_id IS DISTINCT FROM id
-//   client_meal_plan_assignments: end_date >= start_date
+//   client_meal_plan_assignments: end_date >= start_date;
+//     replaced_by_assignment_id IS DISTINCT FROM id (no self-replacement)
 //   client_weekly_reports: week_start_date is Monday; status/submitted_at agree
 //   client_metrics: source != weekly_report OR weekly_report_id IS NOT NULL
 //   metrics: min_value <= max_value; value_kind in (decimal, integer)

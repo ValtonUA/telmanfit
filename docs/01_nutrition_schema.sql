@@ -187,6 +187,8 @@ CREATE TABLE client_meal_plan_assignments (
  created_by integer,
  replaced_by_assignment_id integer REFERENCES client_meal_plan_assignments(id) ON DELETE RESTRICT,
  CHECK(end_date IS NULL OR end_date>=start_date),
+ -- A replacement link always points to another assignment; NULL (no replacement yet) stays allowed.
+ CONSTRAINT assignment_no_self_replacement CHECK(replaced_by_assignment_id IS DISTINCT FROM id),
  CONSTRAINT no_overlapping_client_plan_dates
  EXCLUDE USING gist (client_id WITH =, daterange(start_date,end_date,'[]') WITH &&)
  DEFERRABLE INITIALLY IMMEDIATE
