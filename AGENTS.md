@@ -1,47 +1,159 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# AGENTS.md — головні правила для ШІ-агентів у проєкті TelmanFit
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+> Цей файл — джерело правил роботи для будь-якого ШІ-агента (Cline, Claude Code, Cursor, Copilot, Codex) і для людини-розробника.
+> `CLAUDE.md` лише посилається сюди і не може містити власних правил.
+> **Мова:** уся документація — українською; технічні ідентифікатори (таблиці, поля, класи, маршрути, команди, назви файлів) — англійською.
+> **Оновлено:** 20.10.2026.
 
-## Prerequisites
+## 1. Що це за проєкт
 
-Verify that PHP and Composer are available:
+TelmanFit — застосунок онлайн-фітнес-супроводу. Тренер веде клієнтів (харчування, плани, метрики, комунікація) через адмін-панель; клієнт бачить свій кабінет у веб-інтерфейсі (згодом — Telegram Mini App).
 
-```sh
-php -v
-composer -V
-```
+Станом на 20.10.2026 у репозиторії реалізовано **лише технічний каркас**: Laravel-застосунок, панель Filament на `/admin`, React/TypeScript SPA на `/app`, ендпоінт `GET /api/health`. Жодного бізнес-модуля ще не реалізовано. Детальний стан — у [docs/architecture.md](docs/architecture.md).
 
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
+## 2. Обов'язкове читання перед задачею
 
-macOS:
+Перед будь-якою зміною прочитай:
 
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
+| Документ | Навіщо |
+|---|---|
+| [AGENTS.md](AGENTS.md) (цей файл) | Правила роботи |
+| [docs/architecture.md](docs/architecture.md) | Стек, шари, межі модулів, стан реалізації |
+| [docs/business-rules.md](docs/business-rules.md) | Підтверджені бізнес-правила з посиланнями на джерела |
+| [docs/roadmap.md](docs/roadmap.md) | Порядок реалізації MVP, у якому етапі ти працюєш |
+| [docs/entity-catalog.md](docs/entity-catalog.md) | Призначення сутностей |
+| [docs/database.dbml](docs/database.dbml) | Структура таблиць і полів |
+| `docs/01…04_*.sql` | PostgreSQL-обмеження, індекси, тригери (фактична поведінка) |
+| [docs/schema-audit.md](docs/schema-audit.md) | Результати аудиту та відкриті питання |
 
-Windows PowerShell:
+Якщо задача вимагає відхилення від цих документів — **зупинись і постав питання**, не ухвалюй рішення самостійно.
 
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
+## 3. Джерела істини
 
-Linux:
+1. **Призначення сутностей, зв'язки, затверджені рішення** — `docs/entity-catalog.md`.
+2. **Структура таблиць і полів (логічна модель)** — `docs/database.dbml`.
+3. **Фактичні PostgreSQL-обмеження й тригери** — SQL-модулі `docs/01_nutrition_schema.sql`, `docs/02_users_clients.sql`, `docs/03_progress_tracking.sql`, `docs/04_fitness_messaging.sql` (порядок застосування 01 → 02 → 03 → 04).
 
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
+Пріоритет у разі розбіжності: **SQL → DBML → Entity Catalog → Markdown-описи**. Розбіжність не виправляй «на льоту»: зафіксуй її у звіті як ризик і запитай рішення.
 
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
+## 4. Заборонено без прямого дозволу користувача
 
-## Agent Setup
+- **Не вигадувати** нові таблиці, поля, enum-значення, довідники, зв'язки та бізнес-правила. Нові сутності з'являються лише після явного погодження й оновлення Entity Catalog + DBML + SQL.
+- **Не змінювати погоджену архітектуру** (стек, шари, межі модулів, спосіб інтеграції з Telegram).
+- Не змінювати `docs/*.sql` і `docs/database.dbml`, код, міграції, залежності (`composer.json`, `package.json`), `config/*`, `.env` та `.env.example`.
+- Не запускати міграції (`php artisan migrate`, `migrate:fresh`, `db:wipe`) і не виконувати SQL-модулі 01–04 на жодній базі.
+- Не робити масових змін даних або схеми (UPDATE / DELETE / TRUNCATE / DROP / ALTER) без підтвердження.
+- Не використовувати production-БД, production-секрети, реальні Telegram-токени чи персональні дані клієнтів.
+- Не робити `git commit`, `git push`, `git rebase`, `git reset`, force-push або будь-яку зміну історії. Дозволені лише `git status`, `git diff`, `git log`.
+- Не виконувати руйнівні команди (видалення каталогів із даними, очищення `storage/`, масове видалення файлів).
+- **Не встановлювати Laravel Boost** (`composer require laravel/boost --dev`, `php artisan boost:install`) — у цьому проєкті Boost навмисно не використовується.
 
-Install Laravel Boost from the application root before making application changes:
+## 5. Технологічний стек і жорсткі межі
 
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
+- **Backend:** Laravel (PHP 8.3+), PHPUnit, Laravel Pint, Laravel Pail, Laravel PAO.
+- **Адмінка тренера:** Filament v5, панель `admin` (`app/Providers/Filament/AdminPanelProvider.php`, `/admin`).
+- **Клієнтський інтерфейс:** React + TypeScript + Vite у `client/`, збірка → `public/app`, роздача через Laravel-роут `/app/{any?}`.
+- **БД:** PostgreSQL (структура — SQL-модулі `docs/01`–`docs/04`).
+- **API:** stateless JSON-API під префіксом `/api` (`routes/api.php`).
+- **Inertia.js не використовується і не додається.** Blade — лише для службових/каркасних сторінок (`resources/views/welcome.blade.php`).
+- Клієнтський SPA спілкується з Laravel **виключно через `/api`**; у розробці запити проксює Vite (`client/vite.config.ts`).
+- Не додавати нові залежності, якщо задачу можна виконати наявним стеком; будь-яка нова залежність — лише з дозволу.
 
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+## 6. Запроєктоване vs реалізоване
+
+Це найчастіша причина помилок у цьому проєкті: **документація описує проєкт, який ще не написаний**.
+
+- У звітах, коментарях і документації явно розділяй: **запроєктовано** (погоджено в Entity Catalog/DBML/SQL, але не реалізовано) та **реалізовано** (є код, міграція, тест).
+- Не посилайся на запроєктовану таблицю як на наявну: у коді її може не бути, а `database/migrations` містить лише службові таблиці Laravel.
+- Перед використанням будь-чого перевір фактичний стан: `app/`, `routes/`, `database/migrations`, `client/src`, `docs/`.
+- Не «домайстровуй» відсутні частини схеми під час реалізації модуля — це окремий етап зі своїм погодженням (див. [docs/roadmap.md](docs/roadmap.md)).
+
+## 7. Незалежність бізнес-логіки від Telegram
+
+Telegram — це лише один із каналів доставки, а не ядро застосунку.
+
+- Доменні правила (публікація рецептів і планів, призначення, розрахунки КБЖВ, прогрес, нагадування) живуть у Laravel-сервісах/діях і не імпортують Telegram-SDK, не знають про `update_id`, `chat_id` та `initData`.
+- Telegram-специфіка ізолюється в окремому шарі (канал/адаптер + команда/джоба відправлення), який викликає доменний сервіс.
+- Усі повідомлення спершу формуються в доменній моделі (`message_templates`, `outbound_messages`) і лише потім передаються каналу.
+- Перевірка `initData`, ідемпотентність, повторні спроби, `SKIP LOCKED` і розкриття персональних даних — відповідальність інтеграційного шару.
+- Веб-кабінет клієнта має працювати без Telegram: будь-яка функція, що доступна в Telegram, має бути доступною через `/api` (або явно позначена як Telegram-only з поясненням).
+
+## 8. Робота зі схемою БД
+
+- Структура БД визначена в `docs/database.dbml` і SQL-модулях `docs/01`–`docs/04`. Laravel-міграції мають відтворювати **саме цю** схему, а не «схожу на неї».
+- PostgreSQL-специфіка, яку треба зберегти в міграціях: розширення `btree_gist`, `EXCLUDE`-обмеження `no_overlapping_client_plan_dates`, часткові UNIQUE-індекси (`recipe_one_draft`, `meal_plan_one_draft`, `ingredient_uoms_one_default`, `client_metric_one_current_assignment`), складені FK `(food_id, food_type)`, `DEFERRABLE` constraint trigger `food_has_child_after_insert`, тригери незмінності та валідації публікації.
+- SQL зберігає `text + CHECK` замість PostgreSQL-enum, а `DBML` використовує логічні enum — це узгоджене документаційне розходження, не помилка.
+- Міграції створюються **лише** як частина погодженого етапу [docs/roadmap.md](docs/roadmap.md) і **не запускаються** без прямого дозволу.
+- Існуюча міграція `0001_01_01_000000_create_users_table.php` не відповідає запроєктованій таблиці `users` (у проєкті є `telegram_user_id`, `role`, nullable `email`/`password`). Не «лагодь» це самостійно — питання винесено в [docs/architecture.md](docs/architecture.md) та [docs/roadmap.md](docs/roadmap.md).
+- Тестове середовище: `phpunit.xml` використовує SQLite in-memory, який **не підтримує** PG-специфіку. Для перевірки схеми потрібна окрема тестова PostgreSQL-БД — тільки з дозволу.
+
+## 9. Тести
+
+- Кожна реалізована функція/правило супроводжується автоматизованим тестом. Немає тесту — немає готової задачі.
+- Фреймворк — PHPUnit 12 (`tests/Unit`, `tests/Feature`, `Tests\TestCase`). Не додавати Pest чи інші фреймворки без дозволу.
+- Обов'язкові негативні тести для правил, які захищає БД: незмінність опублікованих версій, заборона прямого INSERT зі статусом `published`, заборона перекриття дат призначень, недопустимі одиниці, розбіжність грамів.
+- Після змін у backend запускай `php artisan test` (або `composer test`); після змін у SPA — `npm run lint` і `npm run build` у `client/`. Якщо тест неможливо запустити в середовищі — прямо про це повідом.
+- Розподіл тестів: `tests/Feature` — HTTP/API та інтеграція, `tests/Unit` — чисті обчислення (масштабування, округлення, генерація списку покупок).
+- Не вигадуй тестові дані, які порушують бізнес-правила (наприклад, рецепт без інгредієнтів у published-стані).
+
+## 10. Стиль і конвенції
+
+- PHP: PSR-12, форматування — Laravel Pint (`vendor/bin/pint`), типи в сигнатурах, `declare(strict_types=1)` не додається, якщо його немає в сусідніх файлах.
+- Структура Laravel: контролери — `app/Http/Controllers/Api/*`, API-роути — `routes/api.php`, Filament — `app/Filament/*` (resources/pages/widgets).
+- Eloquent-моделі в `app/Models`; назви таблиць/полів — рівно як у DBML. Не перейменовуй у БД заради «зручності Eloquent».
+- API: JSON, узгоджені імена полів у `snake_case`, помилки — стандартні Laravel-валідації; жодних HTML-відповідей для `/api`.
+- Frontend: React 19 function components + hooks; налаштування TS — `client/tsconfig.app.json` (увага: `strict` там **не** увімкнено, тому типізуй явно); ESLint — `client/eslint.config.js`; стилі — Tailwind там, де він уже підключений.
+- Коментарі та документація — українською; назви файлів, класів, методів, таблиць, полів — англійською.
+
+## 11. Open Questions
+
+- Перелік відкритих питань — [docs/schema-audit.md](docs/schema-audit.md) (розділ «Відкриті питання для погодження»), дубльований у `docs/entity-catalog.md`.
+- **Не ухвалюй рішення з Open Questions самостійно.** Не закладай тимчасові рішення «на майбутнє»: напиши, яке питання блокує задачу, і запропонуй варіанти.
+- Питання, які вже впливають на стартові задачі: стратегія міграцій для `users`, контракти JSON-полів (`client_onboardings.answers`, `client_settings.reminder_settings`, `client_settings.report_settings`), життєвий цикл призначень планів, авторизація тренера на рівні Laravel, категорії (одна vs M:N), представлення метрик.
+
+## 12. Git та службові команди
+
+- Дозволено: `git status`, `git diff`, `git log`, `git show`.
+- Заборонено без дозволу: `git add`, `git commit`, `git push`, `git checkout`/`restore` чужих змін, `git reset`, `git clean`, rebase, теги.
+- Локальний запуск (коли погоджено): `composer dev` / `php artisan dev` для Laravel, `npm run dev` у `client/` для SPA, `php artisan test` для тестів.
+- Ніколи не запускай `php artisan migrate*`, `db:wipe`, `db:seed` на реальній базі; сіди змінюються лише за окремою задачею.
+
+## 13. Звіт після задачі (обов'язковий)
+
+Кожна завершена задача супроводжується коротким звітом українською:
+
+1. **Що зроблено** — 1–3 речення.
+2. **Змінені / створені файли** — повний перелік шляхів.
+3. **Тести** — які тести додано/оновлено і які команди виконано з результатом (наприклад: `php artisan test` → 12 passed).
+4. **Ризики та обмеження** — що не перевірено, що залежить від PostgreSQL, де залишилися припущення.
+5. **Питання, що блокують далі** — посилання на конкретний пункт Open Questions.
+6. **Що НЕ зроблено свідомо** — наприклад, міграції не запускалися, коміт не робився.
+
+## 14. Definition of Done
+
+Задача вважається виконаною, якщо:
+
+- реалізація не виходить за межі погодженої схеми та [docs/business-rules.md](docs/business-rules.md);
+- кожне бізнес-правило, яке захищає БД, має ще й сервісну перевірку та тест — на тригери як на єдиний механізм не покладаємось;
+- код відповідає конвенціям розділу 10 і проходить Pint;
+- додані автоматизовані тести проходять локально (або чітко пояснено, чому їх не можна запустити);
+- оновлено документацію, якщо змінилася фактична поведінка (не сама схема — вона незмінна);
+- надано звіт за розділом 13.
+
+## 15. Карта документації
+
+| Файл | Роль |
+|---|---|
+| `AGENTS.md` | Правила для ШІ-агентів (цей файл) |
+| `CLAUDE.md` | Посилання на `AGENTS.md` для Claude Code |
+| `docs/architecture.md` | Технологічна архітектура, шари, стан реалізації |
+| `docs/business-rules.md` | Підтверджені бізнес-правила та їхні джерела |
+| `docs/roadmap.md` | Покроковий план реалізації MVP |
+| `docs/entity-catalog.md` | Entity Catalog v3 — призначення сутностей |
+| `docs/database.dbml` | Логічна структура таблиць і полів |
+| `docs/01…04_*.sql` | Фактичні PostgreSQL-обмеження, індекси, тригери |
+| `docs/schema-audit.md` | Аудит схеми, блокери, Open Questions |
+
+Повний перелік таблиць і зв'язків свідомо **не дублюється** в Markdown: за це відповідають DBML і SQL.
+
+

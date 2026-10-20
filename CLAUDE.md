@@ -1,47 +1,24 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# CLAUDE.md — вказівник для Claude Code
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+**Канонічне джерело правил — [AGENTS.md](AGENTS.md).** Цей файл не містить власних правил, не доповнює й не замінює `AGENTS.md`: у разі будь-якої розбіжності діє `AGENTS.md`.
 
-## Prerequisites
+Прочитай повністю перед роботою (у цьому порядку):
 
-Verify that PHP and Composer are available:
+1. [AGENTS.md](AGENTS.md) — правила, заборони, Definition of Done, формат звіту.
+2. [docs/architecture.md](docs/architecture.md) — стек, шари, стан реалізації (каркас, без бізнес-модулів).
+3. [docs/business-rules.md](docs/business-rules.md) — підтверджені бізнес-правила та їхні джерела.
+4. [docs/roadmap.md](docs/roadmap.md) — етапи MVP.
+5. [docs/entity-catalog.md](docs/entity-catalog.md), [docs/database.dbml](docs/database.dbml), `docs/01…04_*.sql`, [docs/schema-audit.md](docs/schema-audit.md) — джерела істини щодо сутностей, структури та PostgreSQL-обмежень.
 
-```sh
-php -v
-composer -V
-```
+Найважливіші заборони (деталі — в `AGENTS.md`, розділ 4):
 
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
+- не вигадувати нові таблиці, поля та бізнес-правила;
+- не змінювати погоджену архітектуру, код, міграції, `docs/*.sql`, `docs/database.dbml`, залежності, `config/*`, `.env`;
+- не запускати міграції та руйнівні команди, не використовувати production-БД і секрети;
+- не робити `git commit` без дозволу;
+- не встановлювати Laravel Boost;
+- не ухвалювати самостійно рішення з Open Questions ([docs/schema-audit.md](docs/schema-audit.md));
+- після кожної задачі — звіт українською: файли, тести, ризики (формат у `AGENTS.md`, розділ 13).
 
-macOS:
+Мова документації та комунікації — українська; технічні ідентифікатори — англійською.
 
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
-
-Windows PowerShell:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
-
-Linux:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
-
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
-
-## Agent Setup
-
-Install Laravel Boost from the application root before making application changes:
-
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
-
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
