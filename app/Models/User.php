@@ -9,6 +9,8 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -24,6 +26,18 @@ class User extends Authenticatable implements FilamentUser
      * і призначається лише явно (не через масове призначення).
      */
     public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_COACH = 'coach';
+
+    public function client(): HasOne
+    {
+        return $this->hasOne(Client::class);
+    }
+
+    public function coachedClients(): HasMany
+    {
+        return $this->hasMany(Client::class, 'coach_user_id');
+    }
 
     /**
      * Доступ до панелі Filament мають лише користувачі з роллю admin.
