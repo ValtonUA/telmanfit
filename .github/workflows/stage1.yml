@@ -27,7 +27,12 @@ jobs:
       - run: npm ci --prefix client
       - run: npm run lint --prefix client
       - run: npm run build --prefix client
-      - run: tests/pg/run-stage1.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright==1.62.0
+      - run: python -m playwright install --with-deps chromium
+      - run: AUTH3_BROWSER=1 tests/pg/run-stage1.sh
       - run: bash tests/pg/test-runner.sh
       - run: bash tests/pg/run-isolated-pg.sh
       - run: bash experiments/auth1/run.sh
@@ -35,4 +40,7 @@ jobs:
         if: always()
         with:
           name: stage1-pg-logs
-          path: tests/pg/out/*.out
+          path: |
+            tests/pg/out/*.out
+            docs/evidence/auth3/*.png
+            docs/evidence/auth3/results.json

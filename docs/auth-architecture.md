@@ -1,3 +1,8 @@
+> **AUTH-3, 22.10.2026:** реалізовано спільний durable MFA, recovery та server assurance
+> gate для контрольованого Filament. За замовчуванням вимкнено; production rollout
+> заблоковано P3/P5/P6. Точна поведінка, контракт і перевірки — [auth3.md](auth3.md).
+> Нижче збережено історичний стан попереднього етапу.
+
 > **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
 > штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
 > Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,

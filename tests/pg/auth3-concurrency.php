@@ -1,0 +1,84 @@
+<?php
+
+use App\Services\Auth\MfaDenied;
+use App\Services\Auth\MfaService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use PragmaRX\Google2FA\Google2FA;
+
+require __DIR__.'/auth2-bootstrap.php';
+set_exception_handler(function (Throwable $exception) {
+    fwrite(STDERR, 'AUTH3 concurrency invariant failed (details suppressed)'.PHP_EOL);
+    exit(1);
+});
+config(['mfa.enabled' => true, 'session.driver' => 'database', 'mfa.flow_seconds' => 600,
+    'mfa.session_seconds' => 3600, 'mfa.attempts' => 100, 'mfa.window' => 1,
+    'mfa.recovery_count' => 3, 'mfa.key_version' => 'test_v1']);
+$mfa = app(MfaService::class);
+if (($argv[1] ?? '') === 'worker') {
+    $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
+    DB::statement("SET application_name = 'auth3_race_worker'");
+    try {
+        $mfa->finishLogin($input['flow'], $input['binding'], $input['code'], $input['recovery']);
+        echo 'accepted';
+    } catch (MfaDenied) {
+        echo 'denied';
+    } catch (Throwable) {
+        echo 'error';
+        exit(2);
+    }
+    exit;
+}
+
+DB::table('users')->insert(['id' => 8310000000, 'name' => 'AUTH3 Race', 'role' => 'admin',
+    'email' => 'auth3-race@example.invalid', 'password' => Hash::make('synthetic-race')]);
+$bindings = [bin2hex(random_bytes(32)), bin2hex(random_bytes(32))];
+$flow = $mfa->beginPasswordLogin('auth3-race@example.invalid', 'synthetic-race', $bindings[0]);
+$secret = $mfa->beginEnrollment($flow, $bindings[0])->reveal();
+$totp = new Google2FA;
+if (time() % 30 >= 26) {
+    usleep((31 - time() % 30) * 1000000);
+}
+$codes = $mfa->confirmEnrollment($flow, $bindings[0], $totp->oathTotp($secret, intdiv(time(), 30) - 1))->reveal();
+foreach ([false, true] as $recovery) {
+    $flows = [];
+    foreach ($bindings as $binding) {
+        $flows[] = $mfa->beginPasswordLogin('auth3-race@example.invalid', 'synthetic-race', $binding);
+    }
+    $code = $recovery ? $codes[0] : $totp->oathTotp($secret, intdiv(time(), 30));
+    DB::beginTransaction();
+    DB::table('users')->where('id', 8310000000)->lockForUpdate()->first();
+    $workers = [];
+    foreach ($flows as $i => $flowId) {
+        $process = proc_open([PHP_BINARY, __FILE__, 'worker'], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
+        fwrite($pipes[0], json_encode(['flow' => $flowId, 'binding' => $bindings[$i], 'code' => $code, 'recovery' => $recovery]));
+        fclose($pipes[0]);
+        $workers[] = [$process, $pipes];
+    }
+    $waiting = false;
+    for ($n = 0; $n < 150; $n++) {
+        $count = DB::selectOne("SELECT count(DISTINCT pid) AS n FROM pg_stat_activity WHERE application_name='auth3_race_worker' AND wait_event_type='Lock'")->n;
+        if ($count === 2) {
+            $waiting = true;
+            break;
+        }
+        usleep(100000);
+        DB::select('SELECT pg_stat_clear_snapshot()');
+    }
+    DB::commit();
+    $results = [];
+    foreach ($workers as [$process, $pipes]) {
+        $results[] = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        if (proc_close($process) !== 0 || $stderr !== '') {
+            throw new RuntimeException('AUTH3 worker failed (details suppressed)');
+        }
+    }
+    sort($results);
+    if (! $waiting || $results !== ['accepted', 'denied']) {
+        throw new RuntimeException('AUTH3 race invariant failed');
+    }
+    echo ($recovery ? 'Recovery' : 'TOTP').": two service processes, two blocked PG PIDs, exactly one winner PASS\n";
+}

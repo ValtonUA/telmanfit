@@ -1,3 +1,8 @@
+> **AUTH-3, 22.10.2026:** прямою задачею дозволено shared MFA service, ізольовані
+> PostgreSQL 18/Playwright перевірки, код/тести/документацію та один Draft PR без merge.
+> Новий Filament login — лише controlled local/testing, default off; live activation,
+> чужий reset/last-admin recovery, P3/P5/P6 не погоджено. Деталі: [docs/auth3.md](docs/auth3.md).
+
 # AGENTS.md — головні правила для ШІ-агентів у проєкті TelmanFit
 
 > **Оновлення AUTH-2, 22.10.2026:** P1/P2/P4 затверджено прямою задачею користувача.

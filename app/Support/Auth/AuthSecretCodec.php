@@ -8,22 +8,22 @@ use Illuminate\Support\Facades\Hash;
 /** Лише codec сховища AUTH-2. Не перевіряє OTP/TOTP та не авторизує користувача. */
 final class AuthSecretCodec
 {
-    public function encryptTotp(string $secret): string
+    public function encryptTotp(#[\SensitiveParameter] string $secret): string
     {
         return Crypt::encryptString($secret);
     }
 
-    public function decryptTotp(string $ciphertext): string
+    public function decryptTotp(#[\SensitiveParameter] string $ciphertext): string
     {
         return Crypt::decryptString($ciphertext);
     }
 
-    public function hashRecoveryCode(string $code): string
+    public function hashRecoveryCode(#[\SensitiveParameter] string $code): string
     {
         return Hash::driver('argon2id')->make($code);
     }
 
-    public function hashInvitationToken(string $token): string
+    public function hashInvitationToken(#[\SensitiveParameter] string $token): string
     {
         // Викликач має генерувати 256+ випадкових бітів; це НЕ хеш короткого OTP.
         return hash('sha256', $token);

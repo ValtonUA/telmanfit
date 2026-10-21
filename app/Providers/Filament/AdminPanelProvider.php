@@ -3,7 +3,11 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\LocalAvatarProvider;
+use App\Http\Middleware\AdminMfaBoundary;
+use App\Http\Middleware\AdminSessionContext;
+use App\Http\Middleware\RequireAdminMfa;
 use App\Http\Middleware\UseUkrainianLocale;
+use Filament\Auth\Pages\Login;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,7 +34,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandName('TelmanFit')
-            ->login()
+            ->login(config('mfa.enabled') ? null : Login::class)
+            ->authGuard(config('mfa.enabled') ? 'admin' : 'web')
             ->defaultAvatarProvider(LocalAvatarProvider::class)
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
@@ -50,17 +55,20 @@ class AdminPanelProvider extends PanelProvider
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
+                AdminSessionContext::class,
                 StartSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
+                AdminMfaBoundary::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])
+                RequireAdminMfa::class,
+            ], isPersistent: true)
             ->middleware([UseUkrainianLocale::class], isPersistent: true);
     }
 }

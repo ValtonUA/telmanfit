@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AdminMfaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -24,3 +25,18 @@ Route::get('/app/{any?}', function () {
 
     return response()->file($index, ['Content-Type' => 'text/html']);
 })->where('any', '.*')->name('spa');
+
+// AUTH-3 не змінює поточний login, поки controlled mode вимкнений.
+if (config('mfa.enabled')) {
+    foreach ([
+        ['get', '/admin/login', 'login'],
+        ['post', '/admin/auth/primary', 'primary'],
+        ['get', '/admin/auth/challenge', 'challenge'],
+        ['post', '/admin/auth/enroll', 'enroll'],
+        ['post', '/admin/auth/confirm', 'confirm'],
+        ['post', '/admin/auth/verify', 'verify'],
+        ['post', '/admin/auth/logout', 'logout'],
+    ] as [$method, $uri, $name]) {
+        Route::$method($uri, AdminMfaController::class)->name('auth3.'.$name);
+    }
+}
