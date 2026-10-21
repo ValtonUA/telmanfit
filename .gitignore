@@ -31,3 +31,18 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Секрети, облікові дані, резервні копії та дампи (ніколи не комітити)
+pgpass.conf
+.pgpass
+.env.*
+!.env.example
+*.dump
+*.bak
+*.backup
+*.sql.gz
+*.pem
+*.key
+*.pfx
+id_rsa*
+/backups/
