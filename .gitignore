@@ -37,6 +37,7 @@ pgpass.conf
 .pgpass
 .env.*
 !.env.example
+!.env.testing
 *.dump
 *.bak
 *.backup
