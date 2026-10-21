@@ -1,3 +1,11 @@
+> **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
+> штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
+> Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,
+> один durable MFA-сервіс. Реалізовано лише сховище, read-only preflight, codec і PG-тести;
+> production auth/gates ще немає. P3/P5/P6 відкриті; normalized email/backfill заблоковано
+> до окремого рішення. Точний стан і межі: [auth-schema.md](auth-schema.md).
+> Подальші формулювання про непогоджені P1/P2/P4 — історичний дизайн AUTH-0/1.
+
 > **Auth-дизайн, 21.10.2026:** користувач затвердив закриті одноразові запрошення від admin у Filament (без прив’язки до email), passwordless email OTP для PWA, optional client TOTP/резервні коди в найближчому етапі, обов’язкову admin MFA, захищене адміністративне recovery та майбутні Telegram/Passkeys. Повний дизайн, межі й відкриті технічні пропозиції P1–P6 — [auth-architecture.md](auth-architecture.md). Реалізації auth ще немає; SQL/DBML і БД не змінено.
 
 > **Stage 2 (21.10.2026):** реалізовано картки клієнтів у Filament 5, доступ лише admin, явний coach/admin за рішенням G1, Eloquent-зв’язки та PostgreSQL/Livewire-тести. Деталі й межі — [stage-2.md](stage-2.md). Наведені нижче історичні описи відсутніх бізнес-ресурсів стосуються попередньої ревізії.

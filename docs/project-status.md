@@ -1,3 +1,11 @@
+> **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
+> штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
+> Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,
+> один durable MFA-сервіс. Реалізовано лише сховище, read-only preflight, codec і PG-тести;
+> production auth/gates ще немає. P3/P5/P6 відкриті; normalized email/backfill заблоковано
+> до окремого рішення. Точний стан і межі: [auth-schema.md](auth-schema.md).
+> Подальші формулювання про непогоджені P1/P2/P4 — історичний дизайн AUTH-0/1.
+
 > **AUTH-1, 21.10.2026 — ізольований runtime spike:** Laravel 13.38.0 / Filament 5.10.2, pinned Sanctum 4.3.3 і Fortify 1.41.0: Composer SAT snapshot успішний (132 runtime + 33 dev), 15 spike-тестів / 93 assertions. Перевірено passwordless OTP→MFA→session, replay/fixation/CSRF/version, shared TOTP adapter, native Filament Login/recovery та HTTP Livewire gate. Звичайний online Composer resolution заблокований proxy:8080 (curl 7); full install/Fortify pipeline, PG concurrency та dual-cookie browser E2E не підтверджено. Основний PHPUnit у review-копії: 17 passed, 2 skipped; Pint успішний. Рекомендація до погодження P2/P4 — штатний session guard без Sanctum/Fortify та спільний durable MFA service. Production auth/схему/залежності не змінено, P1–P6 не затверджено. [Докази, межі й AUTH-2](auth-compatibility-spike.md), [відтворення](../experiments/auth1/README.md).
 
 > **Auth-дизайн, 21.10.2026:** користувач затвердив закриті одноразові запрошення від admin у Filament (без прив’язки до email), passwordless email OTP для PWA, optional client TOTP/резервні коди в найближчому етапі, обов’язкову admin MFA, захищене адміністративне recovery та майбутні Telegram/Passkeys. Повний дизайн, межі й відкриті технічні пропозиції P1–P6 — [auth-architecture.md](auth-architecture.md). Реалізації auth ще немає; SQL/DBML і БД не змінено.

@@ -1,5 +1,17 @@
 # AGENTS.md — головні правила для ШІ-агентів у проєкті TelmanFit
 
+> **Оновлення AUTH-2, 22.10.2026:** P1/P2/P4 затверджено прямою задачею користувача.
+> Дозволено реалізацію additive auth-схеми та її SQL/DBML/Entity Catalog, нових міграцій,
+> тестів і Draft PR. Міграції/регресії — лише новий тимчасовий PostgreSQL 18 із cleanup.
+> Джерела auth-схеми: `docs/05_auth_schema.sql` → `docs/database.dbml` → Entity Catalog;
+> виконувані частини — `database/sql/auth2`, без змін SQL 01–04 та історичних міграцій.
+> Реалізовано сховище, preflight та транзакційні прототипи; не production login/MFA gate.
+> P3/P5/P6 та нормалізація/backfill лишаються відкритими. Поточні межі —
+> [docs/auth-schema.md](docs/auth-schema.md). Нижчі історичні згадки про непогоджені
+> P1/P2/P4 або незмінність SQL/DBML не скасовують цього прямо дозволеного scope.
+> Telmanfit_dev/production/реальні дані й секрети, нові auth API, зміна Filament login,
+> Sanctum/Fortify, Telegram/Passkeys і merge до AUTH-2 не входять.
+
 > Цей файл — джерело правил роботи для будь-якого ШІ-агента (Cline, Claude Code, Cursor, Copilot, Codex) і для людини-розробника.
 > `CLAUDE.md` лише посилається сюди і не може містити власних правил.
 > **Мова:** уся документація — українською; технічні ідентифікатори (таблиці, поля, класи, маршрути, команди, назви файлів) — англійською.

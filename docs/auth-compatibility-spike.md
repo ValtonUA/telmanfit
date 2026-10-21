@@ -1,3 +1,11 @@
+> **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
+> штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
+> Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,
+> один durable MFA-сервіс. Реалізовано лише сховище, read-only preflight, codec і PG-тести;
+> production auth/gates ще немає. P3/P5/P6 відкриті; normalized email/backfill заблоковано
+> до окремого рішення. Точний стан і межі: [auth-schema.md](auth-schema.md).
+> Подальші формулювання про непогоджені P1/P2/P4 — історичний дизайн AUTH-0/1.
+
 # AUTH-1 — практична сумісність passwordless OTP, sessions та Filament MFA
 
 **Дата:** 21.10.2026. **Статус:** ізольований spike виконано з наведеними нижче

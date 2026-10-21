@@ -27,7 +27,7 @@ abstract class PostgresTestCase extends TestCase
         $this->assertSame('off', DB::selectOne('SHOW is_superuser')->is_superuser);
         $this->assertFalse(DB::selectOne('SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls AS privileged FROM pg_roles WHERE rolname=current_user')->privileged);
         $this->assertSame(18, intdiv((int) DB::selectOne('SHOW server_version_num')->server_version_num, 10000));
-        $this->assertSame(0, Artisan::call('migrate', ['--force' => true]));
+        $this->assertSame(0, Artisan::call('migrate', ['--force' => true, '--path' => array_map(fn ($file) => str_replace(base_path().'/', '', $file), array_merge(glob(database_path('migrations/0001_*.php')), glob(database_path('migrations/2026_10_21_*.php'))))]));
         DB::beginTransaction();
     }
 
