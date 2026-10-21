@@ -28,6 +28,7 @@
 
 ## Змінені та створені файли
 
+- `AGENTS.md`
 - `app/Models/Client.php`
 - `app/Models/User.php`
 - `app/Policies/ClientPolicy.php`
