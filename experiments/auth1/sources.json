@@ -1,0 +1,134 @@
+[
+  {
+    "repo": "laravel/sanctum",
+    "ref": "v4.3.3",
+    "paths": [
+      {
+        "path": "LICENSE.md",
+        "sha": "79810c848f8bdbd8f1629f46079ad482f33fc371"
+      },
+      {
+        "path": "config/sanctum.php",
+        "sha": "cde73cff33251cbf1c8b643a16938eaebb66888b"
+      },
+      {
+        "path": "src/Console/Commands/PruneExpired.php",
+        "sha": "e08329923553b5ecbcdcbcb24b5f8981a5435d09"
+      },
+      {
+        "path": "src/Contracts/HasAbilities.php",
+        "sha": "6012e2e9814c8e6abfec606c7fc904d49800b1e2"
+      },
+      {
+        "path": "src/Contracts/HasApiTokens.php",
+        "sha": "e5dcd4af5f89e89da865430362311bef72937352"
+      },
+      {
+        "path": "src/Events/TokenAuthenticated.php",
+        "sha": "a4dbc61ee5f35929e0cf16b9350e0cf78f49e07f"
+      },
+      {
+        "path": "src/Exceptions/MissingAbilityException.php",
+        "sha": "f53773e4e7d7fba0c2abe0baa02f8e6e6b416269"
+      },
+      {
+        "path": "src/Exceptions/MissingScopeException.php",
+        "sha": "f96dc7bc0a0c668c79b9fd5985401ecaaf599e85"
+      },
+      {
+        "path": "src/Guard.php",
+        "sha": "6fa585d9624df544314ff2ec7a0321607571c259"
+      },
+      {
+        "path": "src/HasApiTokens.php",
+        "sha": "eb63c671eea084221ecc86b7c4047cd316e53129"
+      },
+      {
+        "path": "src/Http/Controllers/CsrfCookieController.php",
+        "sha": "1babc47386e644633029c7547b6942117d458ea9"
+      },
+      {
+        "path": "src/Http/Middleware/AuthenticateSession.php",
+        "sha": "78ea288499380349be064d4ff8cc9e1f4193f165"
+      },
+      {
+        "path": "src/Http/Middleware/CheckAbilities.php",
+        "sha": "2a4d1577aa5ed8f581ff90c5fb7a2c14f980708f"
+      },
+      {
+        "path": "src/Http/Middleware/CheckForAnyAbility.php",
+        "sha": "b7d7d317799888f9c1fcac5ec7c5066ba4a8a8ec"
+      },
+      {
+        "path": "src/Http/Middleware/CheckForAnyScope.php",
+        "sha": "5f4ec8f3af8ed5f57811433c10f4b76e8e8135fb"
+      },
+      {
+        "path": "src/Http/Middleware/CheckScopes.php",
+        "sha": "aa5786c44a4d156b46d654122f49a4f888fdb2bb"
+      },
+      {
+        "path": "src/Http/Middleware/EnsureFrontendRequestsAreStateful.php",
+        "sha": "18589cbdd13fbdb9979417f921d96380fe9a2053"
+      },
+      {
+        "path": "src/NewAccessToken.php",
+        "sha": "5ef44b552d62522c6546d8d4ebe83a997dadf142"
+      },
+      {
+        "path": "src/PersonalAccessToken.php",
+        "sha": "d048396e8b347166dfdcbeea1d3b3fad2a80ecd1"
+      },
+      {
+        "path": "src/Sanctum.php",
+        "sha": "f44e433909c49c5ea179d05215da66751033e63e"
+      },
+      {
+        "path": "src/SanctumServiceProvider.php",
+        "sha": "b0f6ecaf9e82512dcb362f2ff8e0d8aebdd7cad6"
+      },
+      {
+        "path": "src/TransientToken.php",
+        "sha": "6987b5d5517b16416ff30cd3724c612c15d03c56"
+      }
+    ]
+  },
+  {
+    "repo": "laravel/fortify",
+    "ref": "v1.41.0",
+    "paths": [
+      {
+        "path": "LICENSE.md",
+        "sha": "79810c848f8bdbd8f1629f46079ad482f33fc371"
+      },
+      {
+        "path": "routes/routes.php",
+        "sha": "2b19b1f612d53ce88cb6fa647cedca545f0cc843"
+      },
+      {
+        "path": "src/Actions/AttemptToAuthenticate.php",
+        "sha": "6b4c9eaca0ed369d9e71e633ead329bc003b3e9d"
+      },
+      {
+        "path": "src/Actions/RedirectIfTwoFactorAuthenticatable.php",
+        "sha": "c1fd45f22e6e1ccdb5c6ea69ea67333df3b443c2"
+      },
+      {
+        "path": "src/Features.php",
+        "sha": "74f640163b5c2476942a51e083c13e78f2269e4b"
+      },
+      {
+        "path": "src/Fortify.php",
+        "sha": "e46df5c727d573aa32360513f45045da118396ed"
+      },
+      {
+        "path": "src/Http/Controllers/AuthenticatedSessionController.php",
+        "sha": "04aeb3a5261487293ced5504c2d5a88ef13a6f87"
+      },
+      {
+        "path": "src/Http/Requests/LoginRequest.php",
+        "sha": "ff49d8db95a392d9e6d7d8f879e77a4ced40faad"
+      }
+    ]
+  }
+]
