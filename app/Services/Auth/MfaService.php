@@ -12,7 +12,25 @@ use PragmaRX\Google2FA\Google2FA;
 /** Спільний domain contract: жодних Filament, HTTP, guard або email OTP залежностей. */
 final class MfaService
 {
-    public function __construct(private AuthSecretCodec $codec, private MfaPolicy $policy) {}
+    /** @var \WeakMap<MfaProof, string> Лише proofs після успішної domain verification. */
+    private \WeakMap $loginProofs;
+
+    public function __construct(private AuthSecretCodec $codec, private MfaPolicy $policy)
+    {
+        $this->loginProofs = new \WeakMap;
+    }
+
+    public function claimLoginProof(MfaProof $proof): string
+    {
+        if (! isset($this->loginProofs[$proof])) {
+            throw new MfaDenied;
+        }
+        $id = $this->loginProofs[$proof];
+        unset($this->loginProofs[$proof]);
+        $proof->claim();
+
+        return $id;
+    }
 
     public function beginPasswordLogin(string $email, #[\SensitiveParameter] string $password, #[\SensitiveParameter] string $binding): string
     {
@@ -110,7 +128,7 @@ final class MfaService
     {
         $precheck = $recovery ? $this->recoveryPrecheck($code) : null;
 
-        return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $recovery, $precheck) {
+        $proof = $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $recovery, $precheck) {
             if ($flow->purpose !== 'login' || $flow->action !== null || ! $factor?->confirmed_at
                 || ! $this->consume($factor, $code, $recovery, $precheck)) {
                 return null;
@@ -125,6 +143,9 @@ final class MfaService
                 $flow->audience === 'admin' ? 'password' : 'email_otp',
                 $flow->primary_verified_at, $this->stamp(), $recovery ? 'recovery_code' : 'totp');
         });
+        $this->loginProofs[$proof] = $flowId;
+
+        return $proof;
     }
 
     /** Заміна/ротація: новий парольний primary flow + чинний другий фактор. */

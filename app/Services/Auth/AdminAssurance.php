@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 final class AdminAssurance
 {
-    public function __construct(private MfaPolicy $policy) {}
+    public function __construct(private MfaPolicy $policy, private MfaService $mfa) {}
 
     /** Викликається лише під user lock у транзакції бізнес-запиту. */
     public function assert(Request $request): void
@@ -38,13 +38,29 @@ final class AdminAssurance
     public function issue(Request $request, MfaProof $proof): void
     {
         $this->policy->assertControlled();
-        if ($proof->audience !== 'admin') {
+        if (! $request->hasSession() || $proof->audience !== 'admin' || $proof->primary_method !== 'password'
+            || ! in_array($proof->mfa_method, ['totp', 'recovery_code'], true)) {
             throw new MfaDenied;
         }
-        $proof->claim();
-        DB::transaction(function () use ($request, $proof) {
+        $flowId = $this->mfa->claimLoginProof($proof);
+        DB::transaction(function () use ($request, $proof, $flowId) {
             $user = DB::table('users')->where('id', $proof->user_id)->lockForUpdate()->first();
             if (! $user || $user->role !== 'admin' || $user->auth_version !== $proof->auth_version) {
+                throw new MfaDenied;
+            }
+            $flow = DB::table('auth_flows')->where('public_id', $flowId)->lockForUpdate()->first();
+            $factor = DB::table('user_totp_factors')->where('user_id', $user->id)->lockForUpdate()->first();
+            $now = CarbonImmutable::parse(DB::selectOne('SELECT clock_timestamp() AS t')->t);
+            if (! $flow || $flow->state !== 'completed' || $flow->purpose !== 'login'
+                || $flow->action !== null || $flow->audience !== 'admin' || $flow->user_id !== $user->id
+                || $flow->auth_version_at_start + ($proof->mfa_method === 'recovery_code' ? 1 : 0) !== $proof->auth_version
+                || ! is_string($request->session()->get('mfa_binding'))
+                || ! hash_equals($flow->browser_binding_hash, hash('sha256', $request->session()->get('mfa_binding')))
+                || $flow->primary_verified_at !== $proof->primary_verified_at
+                || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($now)
+                || ! $factor?->confirmed_at
+                || CarbonImmutable::parse($proof->mfa_verified_at)->lessThan(CarbonImmutable::parse($flow->consumed_at))
+                || CarbonImmutable::parse($proof->mfa_verified_at)->greaterThan($now)) {
                 throw new MfaDenied;
             }
             $request->session()->invalidate();

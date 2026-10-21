@@ -141,6 +141,35 @@ issuance/consume та email OTP із HMAC/key versions, rate/attempt budgets,
 acceptance. P5/P6 залишаються блокерами production, AUTH-5 додає optional client
 MFA management/UI без окремого секрету. Анкету, Telegram і Passkeys не додавати.
 
+## Фінальне виправлення PR #11
+
+Загальний catch у `RequireAdminMfa` більше не підміняє бізнес-винятки статусом
+503. Middleware запам'ятовує саме виняток із `$next` і після rollback повторно
+кидає його без зміни для штатного Laravel/Livewire handler: validation повертає
+HTTP 422 JSON / redirect з errors, Livewire — 200 з field errors; authorization
+лишається 403, відсутня модель — 404, звичайна помилка застосунку — 500.
+MFA-denial повертає 403, збій gate чи begin/commit/rollback — fail-closed 503.
+`$next` залишається всередині транзакції, user lock утримується до завершення
+бізнес-операції. Це підтверджує окремий race справжнього middleware з service
+logout-all: другий PG PID чекає lock, бізнес-запис комітиться до revoke,
+наступний запит зі старою assurance відхиляється 403.
+
+`AdminAssurance::issue` приймає тільки `MfaProof` від успішного `finishLogin`
+спільного singleton `MfaService`. Приватна WeakMap прив'язує конкретний об'єкт
+до login flow і дозволяє claim один раз; сконструйований стороннім кодом DTO
+навіть правильної форми не дає сесії. Це перевірка походження внутрішнього DTO,
+не cache replay protection: TOTP/recovery залишаються PostgreSQL durable.
+Перед ротацією session повторно перевіряються password/admin primary, дозволений
+MFA method, завершений чинний flow, browser binding, version, confirmed factor і часовий порядок.
+Proof із відкоченої перевірки, client/email-OTP контекст, невідомий MFA method,
+повторне використання та нетипізований payload відхиляються.
+
+Додані справжні HTTP signed-snapshot Livewire tests і browser acceptance для
+форми редагування картки: required та доменна validation залишають field errors,
+видалення синтетичного record між GET та update дає 404. Наявна Policy-заборона
+створення повертає 403, fault injection assurance дає HTTP/Livewire 503.
+Жодних production test routes: probe зареєстрований виключно PHPUnit-фікстурою.
+
 ## Підтверджений локальний результат
 
 | Перевірка | Результат |
@@ -150,8 +179,8 @@ MFA management/UI без окремого секрету. Анкету, Telegram
 | Базовий PHPUnit | 22 tests / 46 assertions |
 | AUTH-2 PostgreSQL PHPUnit | 12 tests / 130 assertions |
 | AUTH-2 upgrade/down і races | PASS, 14 конкурентних сценаріїв |
-| AUTH-3 PostgreSQL PHPUnit | 12 tests / 64 assertions |
-| AUTH-3 два service processes/PG PID | TOTP і recovery: рівно один успіх |
+| AUTH-3 PostgreSQL PHPUnit | 25 tests / 129 assertions |
+| AUTH-3 два service processes/PG PID | TOTP/recovery: один успіх; gate vs logout-all: lock до business commit |
 | Еталонні SQL 01–04 на іншому новому PG18 | 76 PASS, 0 FAIL, 0 GAP; cleanup PASS |
 | SQL runner fail-closed contracts | 10 очікуваних exit codes PASS |
 | AUTH-1 regression | 15 tests / 93 assertions |
@@ -160,6 +189,7 @@ MFA management/UI без окремого секрету. Анкету, Telegram
 
 GitHub Actions виконується після створення Draft PR; висновок належить конкретному
 head SHA, посилання й статус наведено в PR/фінальному звіті, не підмінено локальним прогоном.
+
 
 ## Змінені та створені файли
 
@@ -195,13 +225,17 @@ head SHA, посилання й статус наведено в PR/фіналь
 - `docs/evidence/auth3/05-filament.png`
 - `docs/evidence/auth3/06-clients.png`
 - `docs/evidence/auth3/07-revoked.png`
+- `docs/evidence/auth3/08-filament-validation.png`
 - `docs/evidence/auth3/results.json`
 - `docs/project-status.md`
 - `docs/roadmap.md`
 - `phpunit.auth3.xml`
 - `resources/views/auth/admin-mfa.blade.php`
 - `routes/web.php`
+- `tests/Auth3/AssuranceBoundaryTest.php`
+- `tests/Auth3/Fixtures/AssuranceProbe.php`
 - `tests/Auth3/MfaTest.php`
+- `tests/Auth3/MfaTestCase.php`
 - `tests/browser/auth3-fixture.php`
 - `tests/browser/auth3-in-context.sh`
 - `tests/browser/auth3.py`

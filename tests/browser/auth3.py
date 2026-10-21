@@ -28,6 +28,7 @@ def otp(secret, offset=0):
     generated_otps.append(code)
     return code
 
+stage = 'login-enrollment'
 try:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium'), args=['--no-sandbox'])
@@ -96,6 +97,30 @@ try:
         expect(page.get_by_text('Синтетичний клієнт AUTH-3', exact=True)).to_be_visible()
         checks.append('Authenticated real Filament Livewire update = 200')
         shot('06-clients')
+        stage = 'filament-validation'
+        edit_url = page.get_by_role('row').filter(has=page.get_by_text('Синтетичний клієнт AUTH-3', exact=True)).get_by_role('link', name='Змінити', exact=True).get_attribute('href')
+        page.goto(edit_url)
+        coach = page.get_by_role('button', name=re.compile('Відповідальний тренер'))
+        coach.locator('..').get_by_role('button', name='Очистити вибір', exact=True).click()
+        with page.expect_response(lambda r: '/admin/livewire/update' in r.url and r.request.method == 'POST') as invalid_form:
+            page.get_by_role('button', name='Зберегти', exact=True).click()
+        assert invalid_form.value.status == 200
+        expect(page.get_by_text(re.compile('Поле «.*тренер.*» обов’язкове', re.I))).to_be_visible()
+        shot('08-filament-validation')
+        checks.append('Real Filament edit form: invalid coach retains field validation via Livewire 200')
+        form_snapshot = next(raw for raw in [element.get_attribute('wire:snapshot') for element in page.locator('[wire\\:snapshot]').all()]
+                             if 'record' in json.loads(raw)['data'] and 'data' in json.loads(raw)['data'])
+        form_csrf = page.locator('meta[name=csrf-token]').get_attribute('content')
+        stage = 'filament-missing-record'
+        subprocess.run(['php', 'tests/browser/auth3-fixture.php', 'delete-card'], check=True, capture_output=True)
+        missing = context.request.post(base + '/admin/livewire/update', data={
+            '_token':form_csrf, 'components':[{'snapshot':form_snapshot, 'updates':{}, 'calls':[{'method':'save', 'params':[]}]}]},
+            headers={'X-Livewire':'true', 'Accept':'application/json'})
+        assert missing.status == 404
+        assert context.request.get(base + '/admin/clients/2147483647/edit').status == 404
+        assert context.request.get(base + '/admin/clients/create').status == 403
+        checks.append('Authorized HTTP/real Filament Livewire: missing record = 404; forbidden creation = 403')
+        page.goto(base + '/admin/clients')
         snapshot = page.locator('[wire\\:snapshot]').first.get_attribute('wire:snapshot')
         csrf = page.locator('meta[name=csrf-token]').get_attribute('content')
         subprocess.run(['php', 'tests/browser/auth3-fixture.php', 'revoke'], check=True, capture_output=True)
@@ -126,10 +151,17 @@ try:
         page.locator('[name=recovery]').check()
         page.get_by_role('button', name='Підтвердити вхід').click()
         page.wait_for_url('**/admin')
+        stage = 'assurance-outage'
+        outage_snapshot = page.locator('[wire\\:snapshot]').first.get_attribute('wire:snapshot')
+        outage_csrf = page.locator('meta[name=csrf-token]').get_attribute('content')
         subprocess.run(['php', 'tests/browser/auth3-fixture.php', 'gate-down'], check=True, capture_output=True)
         try:
             assert context.request.get(base + '/admin/clients').status == 503
-            checks.append('Real unavailable PostgreSQL assurance relation: business HTTP = 503, fail closed')
+            outage_update = context.request.post(base + '/admin/livewire/update', data={
+                '_token':outage_csrf, 'components':[{'snapshot':outage_snapshot, 'updates':{}, 'calls':[]}]},
+                headers={'X-Livewire':'true', 'Accept':'application/json'})
+            assert outage_update.status == 503
+            checks.append('Real unavailable PostgreSQL assurance relation: HTTP and signed Livewire = 503, fail closed')
         finally:
             subprocess.run(['php', 'tests/browser/auth3-fixture.php', 'gate-up'], check=True, capture_output=True)
         other = browser.new_context()
@@ -155,4 +187,4 @@ try:
         context.close()
         browser.close()
 except Exception:
-    raise SystemExit('AUTH-3 browser check failed; sensitive diagnostics suppressed') from None
+    raise SystemExit('AUTH-3 browser check failed at ' + stage + '; sensitive diagnostics suppressed') from None

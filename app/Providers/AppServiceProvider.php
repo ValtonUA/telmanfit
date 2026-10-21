@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\RequireAdminMfa;
 use App\Http\Responses\AdminLogoutResponse;
+use App\Services\Auth\MfaService;
 use Filament\Auth\Http\Responses\Contracts\LogoutResponse;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -16,7 +17,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(MfaService::class);
     }
 
     /**

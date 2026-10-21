@@ -7,7 +7,6 @@ use App\Services\Auth\MfaDenied;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class RequireAdminMfa
 {
@@ -16,19 +15,28 @@ final class RequireAdminMfa
         if (! config('mfa.enabled')) {
             return $next($request);
         }
+        $businessException = null;
         try {
             // Lock тримається до завершення дії: revoke не переганяє sensitive write.
-            return DB::transaction(function () use ($request, $next) {
+            return DB::transaction(function () use ($request, $next, &$businessException) {
                 app(AdminAssurance::class)->assert($request);
 
-                return $next($request);
+                try {
+                    return $next($request);
+                } catch (\Throwable $exception) {
+                    // Зберегти саме цей виняток для штатного Laravel/Livewire handler.
+                    $businessException = $exception;
+                    throw $exception;
+                }
             });
-        } catch (MfaDenied) {
-            abort(403, 'Потрібен повний вхід із MFA.');
-        } catch (HttpException $exception) {
-            throw $exception;
-        } catch (\Throwable) {
-            // Не логувати SQL bindings із секретами, не пропускати при outage.
+        } catch (\Throwable $exception) {
+            if ($exception instanceof MfaDenied) {
+                abort(403, 'Потрібен повний вхід із MFA.');
+            }
+            if ($exception === $businessException) {
+                throw $exception;
+            }
+            // Збій assurance, begin/commit/rollback: відмова без SQL bindings.
             abort(503, 'Перевірка доступу тимчасово недоступна.');
         }
     }

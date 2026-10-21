@@ -4,77 +4,13 @@ namespace Tests\Auth3;
 
 use App\Models\User;
 use App\Services\Auth\AdminAssurance;
-use App\Services\Auth\MfaDenied;
-use App\Services\Auth\MfaService;
 use App\Support\Auth\AuthSecretCodec;
 use Carbon\CarbonImmutable;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use PragmaRX\Google2FA\Google2FA;
-use Tests\TestCase;
 
-class MfaTest extends TestCase
+class MfaTest extends MfaTestCase
 {
-    private MfaService $mfa;
-
-    private string $binding;
-
-    private int $id = 8300000000;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        require __DIR__.'/../pg/auth2-guard.php';
-        DB::beginTransaction();
-        DB::table('users')->insert(['id' => $this->id, 'name' => 'AUTH3 Synthetic', 'role' => 'admin',
-            'email' => 'auth3@example.invalid', 'password' => Hash::make('synthetic-password')]);
-        $this->mfa = app(MfaService::class);
-        $this->binding = bin2hex(random_bytes(32));
-    }
-
-    protected function tearDown(): void
-    {
-        while (DB::transactionLevel() > 0) {
-            DB::rollBack();
-        }
-        parent::tearDown();
-    }
-
-    private function flow(): string
-    {
-        return $this->mfa->beginPasswordLogin('auth3@example.invalid', 'synthetic-password', $this->binding);
-    }
-
-    private function code(string $secret, int $offset = 0): string
-    {
-        if ($offset === -1 && time() % 30 >= 26) {
-            usleep((31 - time() % 30) * 1000000);
-        }
-
-        return (new Google2FA)->oathTotp($secret, intdiv(time(), 30) + $offset);
-    }
-
-    private function enrolled(): array
-    {
-        $flow = $this->flow();
-        $secret = $this->mfa->beginEnrollment($flow, $this->binding)->reveal();
-        $codes = $this->mfa->confirmEnrollment($flow, $this->binding, $this->code($secret, -1))->reveal();
-
-        return [$secret, $codes];
-    }
-
-    private function denied(callable $operation): void
-    {
-        try {
-            $operation();
-            $this->fail('Expected MFA denial');
-        } catch (MfaDenied) {
-            $this->addToAssertionCount(1);
-        }
-    }
-
     public function test_enrollment_confirmation_and_pending_browser_binding(): void
     {
         $flow = $this->flow();
@@ -147,16 +83,6 @@ class MfaTest extends TestCase
         $this->assertSame($pending, (new AuthSecretCodec)->decryptTotp(DB::table('user_totp_factors')->where('user_id', $this->id)->value('secret_ciphertext')));
         $this->denied(fn () => $this->mfa->disableFactor($this->id));
         $this->denied(fn () => $this->mfa->finishLogin($this->flow(), $this->binding, $codes[1], true));
-    }
-
-    private function request(): Request
-    {
-        $request = Request::create('/admin');
-        $request->setLaravelSession(app('session')->driver());
-        $request->session()->start();
-        app()->instance('request', $request);
-
-        return $request;
     }
 
     public function test_session_rotation_assurance_and_logout_all(): void
