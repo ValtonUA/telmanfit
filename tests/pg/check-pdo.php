@@ -1,15 +1,15 @@
 <?php
 
 // Перевірка драйвера, яким користується Laravel, без bootstrap/.env/міграцій.
-$port = getenv('PG_TEST_PORT');
+$socket = getenv('PG_TEST_SOCKET_DIR');
 $password = getenv('PGPASSWORD');
-if (! ctype_digit((string) $port) || ! $password) {
+if (! preg_match('~^/tmp/telmanfit-g4\.[a-zA-Z0-9]+/socket$~', (string) $socket) || ! $password) {
     fwrite(STDERR, "Missing isolated test connection parameters\n");
     exit(2);
 }
 try {
     $pdo = new PDO(
-        "pgsql:host=127.0.0.1;port={$port};dbname=telmanfit_test;connect_timeout=10",
+        "pgsql:host={$socket};port=5432;dbname=telmanfit_test;connect_timeout=10",
         'telmanfit_test_runner',
         $password,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
@@ -18,7 +18,11 @@ try {
     if ($identity !== ['telmanfit_test', 'telmanfit_test_runner', 'telmanfit_test_runner']) {
         throw new RuntimeException('Unexpected connection identity');
     }
-    echo "PDO connectivity: OK (telmanfit_test / telmanfit_test_runner)\n";
+    $privileged = $pdo->query('SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls FROM pg_roles WHERE rolname = current_user')->fetchColumn();
+    if ($privileged) {
+        throw new RuntimeException('Privileged test role');
+    }
+    echo "PDO connectivity: OK (private Unix socket; telmanfit_test / telmanfit_test_runner / telmanfit_test_runner)\n";
 } catch (Throwable $exception) {
     // Не друкуємо exception: у діагностиці можуть бути параметри підключення.
     fwrite(STDERR, "PDO connectivity: FAILED\n");
