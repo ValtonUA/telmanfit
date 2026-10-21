@@ -30,7 +30,11 @@ container=$(docker create --network none --tmpfs /var/lib/postgresql \
 docker start "$container" >/dev/null
 ready=0
 for ((i=0; i<60; i++)); do
-    if docker exec "$container" pg_isready -U postgres >/dev/null 2>&1; then ready=1; break; fi
+    # Тимчасовий сервер entrypoint теж відповідає на pg_isready, але ще зупиниться.
+    if [[ $(docker logs "$container" 2>&1) == *'PostgreSQL init process complete; ready for start up.'* ]] \
+        && docker exec "$container" pg_isready -h /run/telmanfit-pg -U postgres >/dev/null 2>&1; then
+        ready=1; break
+    fi
     sleep 0.5
 done
 [[ "$ready" == 1 ]]

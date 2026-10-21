@@ -14,6 +14,8 @@
 
 Повний повторний прогін у Linux Codex Cloud: `tests/pg/run-stage1.sh` → код **0**, **PASS=76 FAIL=0 GAP=0**, PG PHPUnit **12 tests / 260 assertions**, основний PHPUnit **19 passed / 26 assertions**, без warnings, Pint успішний. PostgreSQL 18.6 створено лише в новому контейнері без мережі й портів; контейнер і приватний socket прибрано раннером. `npm run lint --prefix client` та `npm run build --prefix client` → код **0**.
 
+Перший CI-прогін виправлення [39641827524](https://github.com/ValtonUA/telmanfit/actions/runs/39641827524) виявив гонку готовності контейнера до початку тестів: `pg_isready` прийняв тимчасовий init-сервер за остаточний, після чого `psql` не знайшов socket. Раннер тепер чекає повідомлення entrypoint про завершення ініціалізації, а тоді перевіряє готовність через `/run/telmanfit-pg`. Це зберігає pin образу й ізоляцію; бізнес-схема не змінюється.
+
 G5 затверджено користувачем: перший бізнес-модуль — **картки клієнтів у Filament (Stage 2)**. JSON-контракти, права тренера, автентифікація клієнта та інші G1-рішення залишаються відкритими; реалізація ClientResource не входить у це виправлення. T1.5 і перевірка цільового хостингу потребують окремих задач.
 
 Файли цього виправлення: `.env.testing`, `.gitignore`, `phpunit.xml`, `phpunit.pgsql.xml`, `tests/pg/run-stage1.sh`, `.github/workflows/stage1.yml`, `AGENTS.md`, `docs/architecture.md`, `docs/project-status.md`, `docs/roadmap.md`, `docs/stage-1.md`. Еталонні SQL/DBML, міграції, бізнес-правила, наявні БД та секрети збережено. Merge не виконується.
