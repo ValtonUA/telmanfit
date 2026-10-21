@@ -59,5 +59,5 @@ assert counts == {'PASS': 76, 'FAIL': 0, 'GAP': 0}, counts
 PY
 vendor/bin/phpunit -c phpunit.pgsql.xml --display-all-issues
 # Основний конфіг перемикає на SQLite; PostgreSQL-набір має окремий конфіг.
-DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test
+DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --display-all-issues
 vendor/bin/pint --test
