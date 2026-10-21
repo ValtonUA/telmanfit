@@ -103,7 +103,7 @@ Sanctum — кандидат для stateful SPA після погодження
 | Сутність | Поля та обмеження |
 |---|---|
 | `users` (розширення) | `email_normalized` nullable varchar(255) UNIQUE; `auth_version` bigint NOT NULL default 0 CHECK ≥0; `mfa_required` boolean default false; `mfa_recovery_required_at` nullable. Обов'язковість MFA для `role=admin` перевіряється незалежно від boolean. Не змінювати PK, role/default, password чи наявні ID. |
-| `client_invitations` | `id`; `token_hash` char(64) UNIQUE NOT NULL; `created_by_user_id`, `coach_user_id` NOT NULL FK RESTRICT; `target_client_id` nullable FK RESTRICT для явної міграції перехідної картки; `created_at`, `revoked_at`, `revoked_by_user_id`; `consumed_at`, `consumed_by_user_id` FK RESTRICT; **немає email**. CHECK парності consumed timestamp/user і неможливості одночасно consumed/revoked. Індекс coach та активних запрошень; UNIQUE(`target_client_id`) WHERE consumed_at IS NULL AND revoked_at IS NULL для цільових карток. |
+| `client_invitations` | `id`; `token_hash` char(64) UNIQUE NOT NULL; `created_by_user_id`, `coach_user_id` NOT NULL FK RESTRICT; `target_client_id` nullable FK RESTRICT для явної міграції перехідної картки; `expires_at` nullable (NULL без автостроку; заданий строк перевіряється при consume); `created_at`, `revoked_at`, `revoked_by_user_id`; `consumed_at`, `consumed_by_user_id` FK RESTRICT; **немає email**. CHECK парності consumed timestamp/user і неможливості одночасно consumed/revoked. Індекс coach та активних запрошень; UNIQUE(`target_client_id`) WHERE consumed_at IS NULL AND revoked_at IS NULL для цільових карток. |
 | `auth_challenges` | `id`, `public_id` UNIQUE; `purpose` text CHECK (register/login/reauth/email_change/link_email); `user_id` nullable FK; `invitation_id` nullable FK; `email_normalized`; `code_mac` char(64), `key_version`; `browser_binding_hash`; `flow_id`; `generation` int; `attempts` int default 0 CHECK 0..5; `created_at`, `expires_at`, `consumed_at`, `invalidated_at`; індекси expiry, user, email+purpose. UNIQUE(flow_id,generation); latest-generation контроль під lock. CHECK register вимагає invitation_id, login/reauth — user_id для реального challenge. Dummy challenge невідомого email зберігати окремим непривілейованим flow без OTP. |
 | `auth_flows` | Серверний стан первинної перевірки/step-up: `public_id` UNIQUE; binding hash; `user_id`/`invitation_id`; `purpose`; `state` CHECK; `primary_verified_at`; `auth_version_at_start`; `expires_at`; `consumed_at`; generation; nullable `capability_hash` UNIQUE для recovery/link grant; nullable `action` та session binding для reauth. Унікальний active slot для browser+purpose; зміна generation під row lock. Не зберігати auth state лише в React. |
 | `user_totp_factors` | `user_id` PK FK; `secret_ciphertext`, `key_version`; `pending_secret_ciphertext`, `pending_expires_at`; `confirmed_at`; `last_used_step` bigint; `created_at`, `updated_at`. Підтверджений секрет замінювати тільки атомарно після доказу старого і нового факторів. Ключі шифрування поза БД. |
@@ -157,9 +157,12 @@ Gmail-специфічні перетворення. `email` зберігає а
 
 ## 4. Запрошення та атомарна реєстрація
 
-Пропозиція для A1: **без автоматичного TTL запрошення**. Воно чинне до успішного
-використання або явного відкликання; expiry не додається як третя причина втрати
-чинності без окремого рішення. Огляд невикористаних через 7/30 днів — нагадування
+Уточнення AUTH-2, погоджене рев’ю 22.10.2026: **без автоматичного TTL запрошення**
+до затвердження P3. `client_invitations.expires_at` nullable: NULL залишає
+запрошення чинним до успішного використання або явного відкликання. Якщо строк
+заданий явно, consume перевіряє `expires_at > clock_timestamp()`; CHECK вимагає
+expiry після created_at та consume строго до expiry. Це можливість сховища,
+не затвердження автоматичної TTL-політики для майбутнього issuance. Огляд невикористаних через 7/30 днів — нагадування
 admin, без автоматичного відкликання. Інші короткі challenge мають TTL (§10).
 
 Filament дія створення перевіряє роль admin, завершену MFA та свіжий step-up;
@@ -625,3 +628,11 @@ master і межа лише документаційних файлів. Нов�
 а не виконана перевірка. PHPUnit, frontend build/lint та PG-раннери тут не запускалися:
 код не змінено, а чинний PG-раннер виконує міграції, заборонені обсягом цієї задачі.
 Поточні результати перевірок документації зазначаються в описі Draft PR.
+
+## Уточнення AUTH-2: фізичне видалення та блокування акаунта
+
+`ON DELETE RESTRICT` у реалізованій auth-схемі свідомо обмежує фізичне видалення
+users із залежними auth-даними/журналом. Блокування акаунта має стати окремою
+захищеною адміністративною дією з Policy, MFA/step-up, відкликанням сесій і
+незавершених auth flows та збереженням журналу безпеки. У AUTH-2 цю дію не
+реалізовано, FK не послаблено. Деталі й межі — [auth-schema.md](auth-schema.md).

@@ -608,7 +608,7 @@ Table client_invitations [headercolor: #B45309] {
  coach_user_id bigint [not null]
  target_client_id integer
  created_at timestamptz [not null, default: `now()`]
- expires_at timestamptz [not null]
+ expires_at timestamptz [note: 'NULL — без автоматичного строку; заданий expiry перевіряється під час consume']
  revoked_at timestamptz
  revoked_by_user_id bigint
  consumed_at timestamptz

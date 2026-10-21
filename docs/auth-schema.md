@@ -10,7 +10,7 @@ Laravel-міграціями `2026_10_22_*`. Історичні міграції
 
 | Таблиця | Призначення та ключові гарантії |
 |---|---|
-| `client_invitations` | Без email binding. UNIQUE SHA-256 hash випадкового bearer token; явні автор/coach; необов'язкова цільова NULL-картка. FK RESTRICT. Парні consumed/revoked actor+time; ці стани взаємовиключні й незворотні. Один незавершений slot на target card; expired slot звільняється явним revoke, а не `now()` у partial index. |
+| `client_invitations` | Без email binding. UNIQUE SHA-256 hash випадкового bearer token; явні автор/coach; необов'язкова цільова NULL-картка. FK RESTRICT. `expires_at=NULL` означає відсутність автоматичного строку завершення до рішення P3; якщо задано — consume можливий лише строго до expiry. Парні consumed/revoked actor+time; ці стани взаємовиключні й незворотні. Один незавершений slot на target card; expired slot звільняється явним revoke, а не `now()` у partial index. |
 | `auth_flows` | Випадковий public UUID, browser binding hash, audience, purpose, optional invitation, user/version snapshot, generation, restricted primary proof, capability hash, action/session binding для reauth. Один незавершений slot на browser+audience+purpose. Terminal-стан незворотний, generation не зменшується. |
 | `auth_challenges` | UUID, FK flow, UNIQUE(flow,generation), адресний ключ, HMAC короткого OTP та версія зовнішнього ключа, лічильники спроб, expiry/consume/invalidate. Контекст user/invitation/purpose/binding успадковується від flow, без дублювання й суперечливих FK. |
 | `user_totp_factors` | Один рядок на BIGINT user; один підтверджений та необов'язковий pending зашифровані секрети з key versions. Pending expiry; durable `last_used_step`, який не можна зменшити/очистити UPDATE. Активний recovery batch UUID. |
@@ -29,6 +29,14 @@ batch і часові/actor/subject/request запити аудиту. Точн�
 видалення user не має непомітно змінювати append-only журнал. Retention та
 анонімізація потребують окремої погодженої процедури P6. Це свідоме уточнення
 точного DDL у дозволеному AUTH-2, а не готова retention-політика.
+
+`ON DELETE RESTRICT` свідомо обмежує фізичне видалення користувача, на якого
+посилаються auth-дані чи журнал безпеки. Майбутня захищена адміністративна дія
+має блокувати акаунт, відкликати його сесії та незавершені auth flows і зберігати
+журнал безпеки. Їй потрібні Policy, належний MFA/step-up і аудит. Це окрема
+майбутня реалізація: AUTH-2 не додає такої дії чи account-status поля та не
+послаблює FK. Для блокування доступу потрібна окрема дія зі збереженням users
+та auth-історії.
 
 У `users` додаються тільки nullable UNIQUE `email_normalized` (bytewise COLLATE C)
 і BIGINT `auth_version NOT NULL DEFAULT 0 CHECK >=0` з забороною зменшення.
@@ -114,7 +122,13 @@ Preflight тут виконувався лише на синтетичних д�
    не стають активними повторно. Factor change/recovery піднімають auth_version.
 6. Consume invitation лише разом із успішним створенням/явним прив'язуванням
    users+clients, complete flow, server assurance та audit в **одному commit**.
-   Відкриття URL/OTP не споживає invitation. NULL-card policy ще відкрита.
+   Відкриття URL/OTP не споживає invitation. Consume використовує predicate
+   `consumed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR
+   expires_at > clock_timestamp())` під тим самим row lock. `NULL` дозволяє
+   безстрокове запрошення; задане expiry має бути пізнішим за created_at і
+   строго пізнішим за consumed_at. Після consume або revoke стан незворотний.
+   Це не послаблює обов'язковий TTL OTP, flows і recovery capabilities, які
+   зберігаються в короткоживучих flows. NULL-card policy ще відкрита.
 7. Logout-all/recovery: user lock → version bump → invalidation pending flows
    та revoke assurance → audit. Session version — snapshot, FK не робить її
    актуальною автоматично. На кожному HTTP/Livewire запиті gate звіряє current
@@ -175,10 +189,10 @@ Argon2id, audit append-only, session cleanup, блокування кожног�
 
 `auth2-concurrency.php`: два різні backend PID, B надсилає SQL асинхронно;
 тест спочатку доводить `pg_stat_activity.wait_event_type='Lock'`, і лише потім
-відпускає A. 12 сценаріїв: challenge/recovery з одноразовим тестовим grant,
+відпускає A. 14 сценаріїв: challenge/recovery з одноразовим тестовим grant,
 shared TOTP step, invitation consume, generation CAS, revoke до/після sensitive
 request, rollback TOTP acceptance, invitation revoke/consume, resend/old generation,
-recovery batch rotation/consume та rollback precheck/concurrent INSERT. Це реальна PG-конкурентність транзакційних
+recovery batch rotation/consume та rollback precheck/concurrent INSERT; invitation consume/consume й revoke/consume перевірені окремо з NULL та заданим expiry. Це реальна PG-конкурентність транзакційних
 примітивів; немає твердження про готовий production login або браузерний MFA.
 
 Конкретні результати локального прогону та GitHub CI — у Draft PR; фінальний
@@ -208,9 +222,9 @@ Telegram, Passkeys, production migrations і merge не виконувалися
 | PostgreSQL 18.6, SQL на Laravel Stage 1 | PASS=76 FAIL=0 GAP=0 |
 | Stage 1/2 PostgreSQL PHPUnit | 41 passed / 713 assertions |
 | Основний PHPUnit зі зібраним SPA | 22 passed / 46 assertions |
-| AUTH-2 PHPUnit | 10 passed / 114 assertions |
+| AUTH-2 PHPUnit | 12 passed / 130 assertions |
 | AUTH-2 empty/populated upgrade/down | PASS; усі старі рядки збігаються |
-| AUTH-2 дві PG connections | 12 concurrent scenarios PASS |
+| AUTH-2 дві PG connections | 14 concurrent scenarios PASS |
 | Еталонні SQL 01–04 в іншому новому PG18 контейнері | PASS=76 FAIL=0 GAP=0; PDO OK; cleanup OK |
 | Fail-closed SQL runner contracts | 10 очікуваних exit-кодів PASS |
 | AUTH-1 повторний isolated SAT/HTTP spike | 15 passed / 93 assertions; нові пакети не встановлювались |
@@ -260,3 +274,19 @@ Telegram, Passkeys, production migrations і merge не виконувалися
 - `tests/pg/auth2-guard.php`
 - `tests/pg/auth2-upgrade.php`
 - `tests/pg/run-stage1.sh`
+
+## Уточнення архітектурного рев’ю PR #10
+
+22.10.2026, після початкового head `f337a2b`: `client_invitations.expires_at`
+став nullable через SQL-джерело ще не об’єднаної міграції. Омітований expiry
+зберігається як NULL без DB default TTL. SQL snapshot, DBML та Entity Catalog
+синхронізовано. Перевірено одноразовий consume й revoke безстрокових запрошень,
+конкурентні consume/revoke для обох варіантів expiry, межі заданого строку та
+збереження NOT NULL TTL OTP/flows/recovery capabilities. Фізичне видалення
+користувачів і майбутня захищена дія блокування розмежовані вище; FK не змінено.
+
+Файли цього уточнення: `database/sql/auth2/01_client_invitations.sql`,
+`docs/05_auth_schema.sql`, `docs/database.dbml`, `docs/entity-catalog.md`,
+`docs/auth-architecture.md`, `docs/auth-schema.md`,
+`tests/AuthPostgres/AuthSchemaTest.php`, `tests/pg/auth2-concurrency.php`.
+Файл Laravel-міграції не змінювався: він виконує оновлене SQL-джерело.

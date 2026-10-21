@@ -320,7 +320,7 @@ DBML; фактичні обмеження — `05_auth_schema.sql`, контра
 
 | Таблиця | Призначення |
 |---|---|
-| `client_invitations` | Персональні відкличні одноразові запрошення від admin без email binding; consume тільки після реєстрації; необов'язкове явне посилання на перехідну картку, policy її прив'язки ще відкрита |
+| `client_invitations` | Персональні відкличні одноразові запрошення від admin без email binding; consume тільки після реєстрації; nullable `expires_at` без автоматичного TTL до рішення P3, заданий строк перевіряється під час consume; необов'язкове явне посилання на перехідну картку, policy її прив'язки ще відкрита |
 | `auth_flows` | Серверні pending/primary-verified/terminal стани, audience, binding, generation та version snapshot; не авторизована сесія |
 | `auth_challenges` | HMAC email OTP, expiry/attempts/одноразове consume; контекст успадковується від flow |
 | `user_totp_factors` | Єдине зашифроване MFA-сховище user для PWA/Filament; durable accepted step й recovery batch |
@@ -335,3 +335,10 @@ MFA required для admin визначає роль; client optional — під�
 Схема не додає незалежних Filament secrets. AUTH-3 реалізує спільний durable
 сервіс/adapter/gate без обходу другого фактора; PWA native session guards — P2.
 P3/P5/P6, normalization/backfill і реальний rollout потребують окремих рішень.
+
+Уточнення рев’ю AUTH-2 (22.10.2026): FK `ON DELETE RESTRICT` свідомо обмежують
+фізичне видалення користувача з auth-історією. Потрібна майбутня захищена
+адміністративна дія блокування акаунта з відкликанням сесій/незавершених flows і
+збереженням журналу безпеки. У AUTH-2 вона не реалізується; FK не послаблюються.
+Безстрокове запрошення (`expires_at=NULL`) лишається одноразовим і відкличним;
+TTL тимчасових OTP, flows та recovery capabilities залишається обов’язковим.

@@ -74,7 +74,6 @@ echo 'rollback precheck vs INSERT: PASS; ACCESS EXCLUSIVE lock перевіре�
 ';
 
 DB::table('users')->insert(['id' => 6000000000, 'name' => 'Синтетичний concurrency', 'role' => 'admin']);
-$invitation = DB::table('client_invitations')->insertGetId(['token_hash' => hash('sha256', random_bytes(32)), 'created_by_user_id' => 6000000000, 'coach_user_id' => 6000000000, 'expires_at' => now()->addHour()]);
 $flow = DB::table('auth_flows')->insertGetId(['public_id' => (string) Str::uuid(), 'browser_binding_hash' => str_repeat('a', 64), 'audience' => 'client', 'purpose' => 'login', 'user_id' => 6000000000, 'auth_version_at_start' => 0, 'expires_at' => now()->addHour()]);
 $challenge = DB::table('auth_challenges')->insertGetId(['public_id' => (string) Str::uuid(), 'flow_id' => $flow, 'generation' => 1, 'email_normalized' => 'synthetic@example.invalid', 'code_mac' => str_repeat('a', 64), 'key_version' => 'test', 'max_attempts' => 5, 'expires_at' => now()->addHour()]);
 $codec = new AuthSecretCodec;
@@ -94,7 +93,11 @@ race($a, $b, $pidB, 'recovery + session grant', "WITH accepted AS (
  AND used_at IS NULL AND revoked_at IS NULL AND batch_id=(SELECT recovery_batch_id FROM user_totp_factors WHERE user_id=6000000000) RETURNING id
 ) INSERT INTO sessions(id,user_id,payload,last_activity) SELECT 'recovery_' || id,6000000000,'prototype',0 FROM accepted");
 race($a, $b, $pidB, 'TOTP cross-context accepted step', 'UPDATE user_totp_factors SET last_used_step=10000000000 WHERE user_id=6000000000 AND (last_used_step IS NULL OR last_used_step<10000000000)');
-race($a, $b, $pidB, 'invitation consume vs consume', "UPDATE client_invitations SET consumed_at=clock_timestamp(),consumed_by_user_id=6000000000 WHERE id=$invitation AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at>clock_timestamp()");
+foreach ([null, now()->addHour()] as $expiry) {
+    $invitation = DB::table('client_invitations')->insertGetId(['token_hash' => hash('sha256', random_bytes(32)), 'created_by_user_id' => 6000000000, 'coach_user_id' => 6000000000, 'expires_at' => $expiry]);
+    $mode = $expiry === null ? 'indefinite' : 'expiring';
+    race($a, $b, $pidB, "invitation $mode consume vs consume", "UPDATE client_invitations SET consumed_at=clock_timestamp(),consumed_by_user_id=6000000000 WHERE id=$invitation AND consumed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>clock_timestamp())");
+}
 race($a, $b, $pidB, 'generation compare-and-swap', "UPDATE auth_flows SET generation=2 WHERE id=$flow AND generation=1 AND state='pending'");
 
 // Revocation перемагає request: B блокується на user, потім бачить нову версію.
@@ -132,18 +135,21 @@ echo "sensitive request before revoke: PASS; grant version=1 стає заста
 race($a, $b, $pidB, 'TOTP acceptance rollback', 'UPDATE user_totp_factors SET last_used_step=10000000001 WHERE user_id=6000000000 AND last_used_step<10000000001', true);
 
 // Запрошення revoke vs consume: різні операції, один lock та terminal predicate.
-$other = DB::table('client_invitations')->insertGetId(['token_hash' => hash('sha256', random_bytes(32)), 'created_by_user_id' => 6000000000, 'coach_user_id' => 6000000000, 'expires_at' => now()->addHour()]);
-pg_query($a, 'BEGIN');
-pg_query($a, "UPDATE client_invitations SET revoked_at=clock_timestamp(),revoked_by_user_id=6000000000 WHERE id=$other");
-pg_query($b, 'BEGIN');
-pg_send_query($b, "UPDATE client_invitations SET consumed_at=clock_timestamp(),consumed_by_user_id=6000000000 WHERE id=$other AND consumed_at IS NULL AND revoked_at IS NULL");
-waitForLock($a, $pidB);
-pg_query($a, 'COMMIT');
-must(pg_affected_rows(pg_get_result($b)) === 0, 'Відкликане запрошення використане');
-while (pg_get_result($b) !== false) {
+foreach ([null, now()->addHour()] as $expiry) {
+    $other = DB::table('client_invitations')->insertGetId(['token_hash' => hash('sha256', random_bytes(32)), 'created_by_user_id' => 6000000000, 'coach_user_id' => 6000000000, 'expires_at' => $expiry]);
+    pg_query($a, 'BEGIN');
+    pg_query($a, "UPDATE client_invitations SET revoked_at=clock_timestamp(),revoked_by_user_id=6000000000 WHERE id=$other");
+    pg_query($b, 'BEGIN');
+    pg_send_query($b, "UPDATE client_invitations SET consumed_at=clock_timestamp(),consumed_by_user_id=6000000000 WHERE id=$other AND consumed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>clock_timestamp())");
+    waitForLock($a, $pidB);
+    pg_query($a, 'COMMIT');
+    must(pg_affected_rows(pg_get_result($b)) === 0, 'Відкликане запрошення використане');
+    while (pg_get_result($b) !== false) {
+    }
+    pg_query($b, 'COMMIT');
+    echo 'invitation '.($expiry === null ? 'indefinite' : 'expiring')." revoke vs consume: PASS\n";
+
 }
-pg_query($b, 'COMMIT');
-echo "invitation revoke vs consume: PASS\n";
 
 // Resend збільшує generation під flow lock; verifier старого challenge перечитує її.
 pg_query($a, 'BEGIN');
@@ -176,4 +182,4 @@ echo 'recovery rotation vs consume: PASS; старий batch відхилено
 pg_close($a);
 pg_close($b);
 // Увесь контейнер і його tmpfs знищуються runner-ом навіть при помилці.
-echo "AUTH-2 concurrency: 12 scenarios PASS; це транзакційний прототип, не production auth service\n";
+echo "AUTH-2 concurrency: 14 scenarios PASS; це транзакційний прототип, не production auth service\n";

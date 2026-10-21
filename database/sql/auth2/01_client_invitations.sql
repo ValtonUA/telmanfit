@@ -5,15 +5,16 @@ CREATE TABLE client_invitations (
  coach_user_id bigint NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
  target_client_id integer REFERENCES clients(id) ON DELETE RESTRICT,
  created_at timestamptz NOT NULL DEFAULT now(),
- expires_at timestamptz NOT NULL,
+ -- NULL: без автоматичного завершення до окремого рішення P3.
+ expires_at timestamptz,
  revoked_at timestamptz,
  revoked_by_user_id bigint REFERENCES users(id) ON DELETE RESTRICT,
  consumed_at timestamptz,
  consumed_by_user_id bigint REFERENCES users(id) ON DELETE RESTRICT,
- CHECK(expires_at > created_at),
+ CHECK(expires_at IS NULL OR expires_at > created_at),
  CHECK((consumed_at IS NULL) = (consumed_by_user_id IS NULL)),
  CHECK((revoked_at IS NULL) = (revoked_by_user_id IS NULL)),
- CHECK(consumed_at IS NULL OR (revoked_at IS NULL AND consumed_at >= created_at AND consumed_at < expires_at)),
+ CHECK(consumed_at IS NULL OR (revoked_at IS NULL AND consumed_at >= created_at AND (expires_at IS NULL OR consumed_at < expires_at))),
  CHECK(revoked_at IS NULL OR revoked_at >= created_at)
 );
 CREATE UNIQUE INDEX auth2_invitation_target_slot ON client_invitations(target_client_id)

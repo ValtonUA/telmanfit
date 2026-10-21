@@ -133,6 +133,48 @@ class AuthSchemaTest extends TestCase
         $this->assertGreaterThan(0, $this->invitation(['target_client_id' => $card]));
     }
 
+    public function test_indefinite_invitations_can_be_consumed_once_or_revoked(): void
+    {
+        // Омітований expiry теж дає NULL; P3 не встановлює автоматичного TTL.
+        $id = DB::table('client_invitations')->insertGetId([
+            'token_hash' => hash('sha256', random_bytes(32)),
+            'created_by_user_id' => 5000000000, 'coach_user_id' => 5000000000,
+            'created_at' => now()->subYears(2),
+        ]);
+        $this->assertNull(DB::table('client_invitations')->where('id', $id)->value('expires_at'));
+        $consume = fn (int $id): int => DB::update('UPDATE client_invitations SET consumed_at=clock_timestamp(), consumed_by_user_id=5000000000
+            WHERE id=? AND consumed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>clock_timestamp())', [$id]);
+        $this->assertSame(1, $consume($id));
+        $this->assertSame(0, $consume($id));
+        $this->reject('23514', fn () => DB::table('client_invitations')->where('id', $id)->update(['consumed_at' => null, 'consumed_by_user_id' => null]));
+        $this->reject('23514', fn () => DB::table('client_invitations')->where('id', $id)->update(['revoked_at' => now(), 'revoked_by_user_id' => 5000000000]));
+        $revoked = $this->invitation(['expires_at' => null]);
+        DB::table('client_invitations')->where('id', $revoked)->update(['revoked_at' => now(), 'revoked_by_user_id' => 5000000000]);
+        $this->assertSame(0, $consume($revoked));
+        $this->reject('23514', fn () => DB::table('client_invitations')->where('id', $revoked)->update(['revoked_at' => null, 'revoked_by_user_id' => null]));
+    }
+
+    public function test_optional_invitation_expiry_and_mandatory_temporary_proof_ttls(): void
+    {
+        $created = '2026-01-01 00:00:00+00';
+        $expiry = '2026-01-02 00:00:00+00';
+        $this->reject('23514', fn () => $this->invitation(['created_at' => $created, 'expires_at' => $created]));
+        $this->reject('23514', fn () => $this->invitation(['created_at' => $expiry, 'expires_at' => $created]));
+        $id = $this->invitation(['created_at' => $created, 'expires_at' => $expiry]);
+        $this->assertSame(0, DB::update('UPDATE client_invitations SET consumed_at=clock_timestamp(), consumed_by_user_id=5000000000
+            WHERE id=? AND consumed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>clock_timestamp())', [$id]));
+        foreach ([$expiry, '2026-01-02 00:00:01+00'] as $time) {
+            $this->reject('23514', fn () => DB::table('client_invitations')->where('id', $id)->update(['consumed_at' => $time, 'consumed_by_user_id' => 5000000000]));
+        }
+        DB::table('client_invitations')->where('id', $id)->update(['consumed_at' => '2026-01-01 23:59:59+00', 'consumed_by_user_id' => 5000000000]);
+        $this->assertNotNull(DB::table('client_invitations')->where('id', $id)->value('consumed_at'));
+        $this->reject('23502', fn () => $this->flow(['expires_at' => null]));
+        $this->reject('23502', fn () => $this->flow(['purpose' => 'mfa_recovery', 'capability_hash' => str_repeat('b', 64), 'expires_at' => null]));
+        $flow = $this->flow();
+        $this->reject('23502', fn () => DB::table('auth_challenges')->insert(['public_id' => (string) Str::uuid(), 'flow_id' => $flow, 'generation' => 1,
+            'email_normalized' => 'test@example.invalid', 'code_mac' => str_repeat('a', 64), 'key_version' => 'test', 'max_attempts' => 5, 'expires_at' => null]));
+    }
+
     public function test_every_new_foreign_key_rejects_missing_parent_and_accepts_bigint(): void
     {
         $invitation = $this->invitation(['consumed_by_user_id' => 5000000000, 'consumed_at' => now()]);
