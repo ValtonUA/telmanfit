@@ -1,3 +1,8 @@
+> **AUTH-3, 22.10.2026:** реалізовано спільний durable MFA, recovery та server assurance
+> gate для контрольованого Filament. За замовчуванням вимкнено; production rollout
+> заблоковано P3/P5/P6. Точна поведінка, контракт і перевірки — [auth3.md](auth3.md).
+> Нижче збережено історичний стан попереднього етапу.
+
 > **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
 > штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
 > Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,
@@ -109,7 +114,7 @@ AUTH-0 — поточний документаційний дизайн, без 
 |---|---|---|
 | AUTH-1 | **Ізольований spike виконано з межами:** exact-version SAT snapshot; Laravel/Sanctum sessions, shared TOTP, Filament Login/recovery, HTTP Livewire gate | 15 tests / 93 assertions; online Composer заблокований proxy; full install/PG concurrency/dual-cookie E2E не доведено; [звіт](auth-compatibility-spike.md). P1–P6 — до погодження |
 | AUTH-2 | **Реалізовано storage за затвердженими P1/P2/P4:** 7 таблиць, additive users, preflight без backfill, SQL/DBML/EC | Fresh/populated PG18, FK/UNIQUE/CHECK/BIGINT, safe down, 12 concurrent transaction scenarios; [межі й докази](auth-schema.md). Normalization/backfill заблоковано до рішення, production auth відсутня |
-| AUTH-3 | Обов’язкова admin MFA, shared TOTP/recovery codes, reauth і захищений recovery | HTTP/Livewire, replay, session revoke, recovery drill |
+| AUTH-3 | **Реалізовано для controlled local/testing:** shared TOTP/recovery, server assurance і Filament gate; production rollout заблоковано P3/P5/P6 | PG service races, HTTP/Livewire, session revoke й Chromium; [докази та rollout](auth3.md) |
 | AUTH-4 | Invitation/revoke, атомарна реєстрація, OTP/session API | Конкурентний invitation/OTP, rollback, без автоактивації |
 | AUTH-5 | React auth/security, optional client TOTP, email change, sessions | Негативні security-тести, browser E2E, lint/build |
 | AUTH-6 | Operational hardening: mail/rate store/retention/rollout | Повний security acceptance найближчого релізу |

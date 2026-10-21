@@ -77,3 +77,9 @@ php tests/pg/auth2-upgrade.php
 vendor/bin/phpunit -c phpunit.auth2.xml --display-all-issues
 
 php tests/pg/auth2-concurrency.php
+
+vendor/bin/phpunit -c phpunit.auth3.xml --display-all-issues
+php tests/pg/auth3-concurrency.php
+if [[ ${AUTH3_BROWSER:-0} == 1 ]]; then
+    bash tests/browser/auth3-in-context.sh
+fi

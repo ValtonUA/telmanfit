@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\AdminMfaBoundary;
+use App\Http\Middleware\AdminSessionContext;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, AdminMfaBoundary::class);
+        $middleware->web(prepend: [AdminSessionContext::class], append: [AdminMfaBoundary::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['password', 'password_confirmation', 'code', 'secret', 'recovery']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

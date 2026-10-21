@@ -38,6 +38,8 @@ return [
     */
 
     'guards' => [
+        'admin' => ['driver' => 'session', 'provider' => 'users'],
+        'client' => ['driver' => 'session', 'provider' => 'users'],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
