@@ -14,7 +14,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, pdo_sqlite, intl, mbstring, dom
+          extensions: pdo_pgsql, pgsql, pdo_sqlite, intl, mbstring, dom
           coverage: none
       - uses: actions/setup-node@v4
         with:
@@ -28,6 +28,9 @@ jobs:
       - run: npm run lint --prefix client
       - run: npm run build --prefix client
       - run: tests/pg/run-stage1.sh
+      - run: bash tests/pg/test-runner.sh
+      - run: bash tests/pg/run-isolated-pg.sh
+      - run: bash experiments/auth1/run.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:

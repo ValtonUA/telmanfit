@@ -5,7 +5,7 @@
 > **Оновлено:** 20.10.2026 за результатами статичного аудиту v0.3.
 
 
-За поточними домовленостями маємо 37 бізнес-таблиць у 8 групах. Це не означає, що всі вони мають бути реалізовані одночасно: каталог описує узгоджену структуру першої повноцінної версії.
+За поточними домовленостями маємо 37 бізнес-таблиць у 8 групах та 7 окремих auth-таблиць AUTH-2 (нижче). Це не означає, що всі вони мають бути реалізовані одночасно: каталог описує узгоджену структуру першої повноцінної версії.
 
 ## 1. Users & Client Management
 
@@ -309,3 +309,29 @@
 - **v3 (20.10.2026):** таблицю конверсій перейменовано на `ingredient_uoms`; уточнено супертип `foods`; зафіксовано незмінність published-версій, Copy-on-Write, КБЖВ і кількості на 1 порцію; узгоджено зв'язки `foods` з `recipe_versions`; відкриті питання винесено окремо.
 - **21.10.2026 (після інтеграційного тестування):** синхронізовано з `tests/pg` (`PASS=76 FAIL=0 GAP=0`, PostgreSQL 18.6): самопосилання в `replaced_by_assignment_id` заборонено CHECK-ом `assignment_no_self_replacement`; питання про `metrics.min_value`/`max_value` закрито як правило рівня додатка (BR-T-02, GAP-3); грамування позицій плану підтверджено перевіркою при публікації (BR-P-06, GAP-1 знято).
 
+
+## 13. AUTH-2 — запрошення, passwordless OTP та MFA
+
+Затверджено 22.10.2026: P1/P2/P4, чинні A1–A8. Реалізовано PostgreSQL-сховище
+через additive-міграції; production авторизація ще відсутня. Точна структура —
+DBML; фактичні обмеження — `05_auth_schema.sql`, контракти й межі —
+[auth-schema.md](auth-schema.md). Історичні «auth-сутності ще не входять у схему»
+вище стосуються AUTH-0/1.
+
+| Таблиця | Призначення |
+|---|---|
+| `client_invitations` | Персональні відкличні одноразові запрошення від admin без email binding; consume тільки після реєстрації; необов'язкове явне посилання на перехідну картку, policy її прив'язки ще відкрита |
+| `auth_flows` | Серверні pending/primary-verified/terminal стани, audience, binding, generation та version snapshot; не авторизована сесія |
+| `auth_challenges` | HMAC email OTP, expiry/attempts/одноразове consume; контекст успадковується від flow |
+| `user_totp_factors` | Єдине зашифроване MFA-сховище user для PWA/Filament; durable accepted step й recovery batch |
+| `mfa_recovery_codes` | Argon2id hashes окремих одноразових резервних кодів, selector/batch і термінальні стани |
+| `auth_session_states` | Server assurance окремих client/admin session-контекстів, version/primary/MFA/expiry/revoke; CASCADE cleanup із Laravel sessions |
+| `auth_audit_events` | Незмінний typed журнал без секретів, довільного metadata чи копій документів; retention окремо за P6 |
+
+Users розширено nullable UNIQUE normalized-key та монотонною auth_version без
+перестворення. BIGINT users і всі user FK синхронізовано в DBML за чинним G3/R1;
+Laravel-службові поля збережено. NULL-картки/ролі/бізнес-дані не змінено.
+MFA required для admin визначає роль; client optional — підтверджений factor.
+Схема не додає незалежних Filament secrets. AUTH-3 реалізує спільний durable
+сервіс/adapter/gate без обходу другого фактора; PWA native session guards — P2.
+P3/P5/P6, normalization/backfill і реальний rollout потребують окремих рішень.

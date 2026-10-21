@@ -45,7 +45,13 @@ docker exec "$container" psql -X -U postgres -v ON_ERROR_STOP=1 \
 export DB_CONNECTION=pgsql DB_HOST="$work/socket" DB_PORT=5432
 export DB_DATABASE=telmanfit_stage1_test DB_USERNAME=telmanfit_test_runner DB_PASSWORD= DB_URL=
 export APP_ENV=testing TELMANFIT_PG_TEST=1
-php artisan migrate --force --no-interaction
+# Лише випадковий ключ цього прогону; жодного читання локальних/реальних секретів.
+export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+baseline_paths=()
+for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php; do
+    baseline_paths+=(--path="$file")
+done
+php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 mkdir -p tests/pg/out
 for file in tests/pg/t0*.sql; do
     docker exec -i "$container" psql -X -w -U "$DB_USERNAME" -d "$DB_DATABASE" \
@@ -65,3 +71,9 @@ vendor/bin/phpunit -c phpunit.pgsql.xml --display-all-issues
 # Основний конфіг перемикає на SQLite; PostgreSQL-набір має окремий конфіг.
 DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --display-all-issues
 vendor/bin/pint --test
+
+# AUTH-2 окремо після незмінених Stage 1/2 перевірок каталогу.
+php tests/pg/auth2-upgrade.php
+vendor/bin/phpunit -c phpunit.auth2.xml --display-all-issues
+
+php tests/pg/auth2-concurrency.php

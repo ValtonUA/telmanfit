@@ -1,3 +1,11 @@
+> **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
+> штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
+> Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,
+> один durable MFA-сервіс. Реалізовано лише сховище, read-only preflight, codec і PG-тести;
+> production auth/gates ще немає. P3/P5/P6 відкриті; normalized email/backfill заблоковано
+> до окремого рішення. Точний стан і межі: [auth-schema.md](auth-schema.md).
+> Подальші формулювання про непогоджені P1/P2/P4 — історичний дизайн AUTH-0/1.
+
 # Roadmap: реалізація MVP TelmanFit
 
 > **Оновлено:** 21.10.2026.
@@ -100,7 +108,7 @@ AUTH-0 — поточний документаційний дизайн, без 
 | Порядок | Зміна | Перевірка |
 |---|---|---|
 | AUTH-1 | **Ізольований spike виконано з межами:** exact-version SAT snapshot; Laravel/Sanctum sessions, shared TOTP, Filament Login/recovery, HTTP Livewire gate | 15 tests / 93 assertions; online Composer заблокований proxy; full install/PG concurrency/dual-cookie E2E не доведено; [звіт](auth-compatibility-spike.md). P1–P6 — до погодження |
-| AUTH-2 | Після погодження P1 і потрібних P2/P4: additive schema/preflight/backfill та синхронізація джерел | Fresh/populated synthetic PG18, collisions, BIGINT/FK, захищений down, concurrency consume/revoke; [точні вимоги](auth-compatibility-spike.md#7-точні-вимоги-до-наступного-auth-2), regression Stage 1/2 |
+| AUTH-2 | **Реалізовано storage за затвердженими P1/P2/P4:** 7 таблиць, additive users, preflight без backfill, SQL/DBML/EC | Fresh/populated PG18, FK/UNIQUE/CHECK/BIGINT, safe down, 12 concurrent transaction scenarios; [межі й докази](auth-schema.md). Normalization/backfill заблоковано до рішення, production auth відсутня |
 | AUTH-3 | Обов’язкова admin MFA, shared TOTP/recovery codes, reauth і захищений recovery | HTTP/Livewire, replay, session revoke, recovery drill |
 | AUTH-4 | Invitation/revoke, атомарна реєстрація, OTP/session API | Конкурентний invitation/OTP, rollback, без автоактивації |
 | AUTH-5 | React auth/security, optional client TOTP, email change, sessions | Негативні security-тести, browser E2E, lint/build |
