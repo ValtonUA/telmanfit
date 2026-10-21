@@ -47,7 +47,7 @@ class Client extends Model
                 'status' => ['required', Rule::in(array_keys(self::STATUSES))],
                 'coaching_started_at' => ['nullable', 'date', 'required_if:status,active'],
             ], [
-                'coach_user_id.exists' => 'Оберіть користувача з роллю coach або admin.',
+                'coach_user_id.exists' => 'Оберіть тренера або адміністратора.',
                 'coach_user_id.not_in' => 'Клієнт не може супроводжувати самого себе.',
                 'user_id.unique' => 'Цей акаунт уже має клієнтську картку.',
             ])->validate();

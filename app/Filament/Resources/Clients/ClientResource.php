@@ -28,6 +28,8 @@ class ClientResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Картки клієнтів';
 
+    protected static bool $hasTitleCaseModelLabel = false;
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -36,6 +38,7 @@ class ClientResource extends Resource
                 ->relationship('user', 'name')
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => self::userLabel($record))
                 ->searchable(['name', 'email'])
+                ->wrapOptionLabels()
                 ->unique(ignoreRecord: true)
                 ->helperText('Для наявної перехідної картки акаунт може бути відсутній; картка визначається її ID.'),
             Select::make('coach_user_id')
@@ -43,9 +46,10 @@ class ClientResource extends Resource
                 ->relationship('coach', 'name', modifyQueryUsing: fn (Builder $query) => $query->whereIn('role', [User::ROLE_COACH, User::ROLE_ADMIN]))
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => self::userLabel($record))
                 ->searchable(['name', 'email'])
+                ->wrapOptionLabels()
                 ->required()
                 ->rules([Rule::exists('users', 'id')->whereIn('role', [User::ROLE_COACH, User::ROLE_ADMIN])])
-                ->helperText('Оберіть явно користувача з роллю coach або admin.'),
+                ->helperText('Оберіть відповідального тренера або адміністратора.'),
             Select::make('status')->label('Статус супроводу')
                 ->options(Client::STATUSES)->default('pending')->required()
                 ->rules([Rule::in(array_keys(Client::STATUSES))])
@@ -58,9 +62,10 @@ class ClientResource extends Resource
         return $schema->components([
             TextEntry::make('id')->label('ID картки'),
             TextEntry::make('user.name')->label('Клієнт')->placeholder('Без акаунта'),
-            TextEntry::make('user.email')->label('Email')->placeholder('—'),
+            TextEntry::make('user.email')->label('Електронна пошта')->placeholder('—'),
             TextEntry::make('coach.name')->label('Відповідальний тренер'),
             TextEntry::make('status')->label('Статус супроводу')->badge()
+                ->color(fn (string $state): string => self::statusColor($state))
                 ->formatStateUsing(fn (string $state): string => Client::STATUSES[$state]),
             TextEntry::make('coaching_started_at')->label('Початок супроводу (UTC)')->dateTime()->timezone('UTC')->placeholder('Ще не розпочато'),
             TextEntry::make('created_at')->label('Створено (UTC)')->dateTime()->timezone('UTC'),
@@ -71,17 +76,36 @@ class ClientResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('id')->label('ID картки')->searchable()->sortable(),
-            TextColumn::make('user.name')->label('Клієнт')->searchable()->sortable()->placeholder('Без акаунта'),
-            TextColumn::make('user.email')->label('Email')->searchable()->placeholder('—'),
-            TextColumn::make('coach.name')->label('Тренер')->searchable()->sortable(),
+            TextColumn::make('id')->label('ID картки')->searchable()->sortable()->extraCellAttributes(['class' => 'client-id']),
+            TextColumn::make('user.name')->label('Клієнт')->searchable()->sortable()->wrap()->placeholder('Без акаунта')
+                ->extraCellAttributes(['class' => 'client-name']),
+            TextColumn::make('user.email')->label('Електронна пошта')->searchable()->wrap()->visibleFrom('sm')->placeholder('—')
+                ->extraCellAttributes(['class' => 'client-email']),
+            TextColumn::make('coach.name')->label('Тренер')->searchable()->sortable()->wrap()
+                ->extraCellAttributes(['class' => 'client-coach']),
             TextColumn::make('status')->label('Статус')->badge()
+                ->extraCellAttributes(['class' => 'client-status'])
+                ->color(fn (string $state): string => self::statusColor($state))
                 ->formatStateUsing(fn (string $state): string => Client::STATUSES[$state]),
-            TextColumn::make('coaching_started_at')->label('Початок (UTC)')->dateTime()->timezone('UTC')->sortable()->placeholder('—'),
+            TextColumn::make('coaching_started_at')->label('Початок (UTC)')->dateTime('d.m.Y H:i')->timezone('UTC')->sortable()->visibleFrom('sm')->placeholder('—'),
         ])->filters([
             SelectFilter::make('status')->label('Статус супроводу')->options(Client::STATUSES),
         ])->recordActions([ViewAction::make(), EditAction::make()])
+            ->emptyStateHeading('Клієнтів не знайдено')
+            ->emptyStateDescription('Змініть пошук або фільтри. Нові клієнти отримують доступ за запрошенням.')
+            ->stackedOnMobile()
+            ->extraAttributes(['class' => 'clients-table'])
             ->defaultSort('id', 'desc');
+    }
+
+    private static function statusColor(string $status): string
+    {
+        return match ($status) {
+            'active' => 'success',
+            'paused' => 'warning',
+            'finished' => 'info',
+            default => 'gray',
+        };
     }
 
     public static function getPages(): array

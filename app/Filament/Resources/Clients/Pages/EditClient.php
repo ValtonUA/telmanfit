@@ -14,6 +14,11 @@ class EditClient extends EditRecord
 
     protected static string $resource = ClientResource::class;
 
+    public function getTitle(): string
+    {
+        return 'Редагування картки клієнта #'.$this->getRecord()->getKey();
+    }
+
     protected function getHeaderActions(): array
     {
         return [ViewAction::make()];
