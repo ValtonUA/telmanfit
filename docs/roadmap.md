@@ -97,14 +97,16 @@ AUTH-0 — поточний документаційний дизайн, без 
 
 | Порядок | Зміна | Перевірка |
 |---|---|---|
-| AUTH-1 | Spike точних версій Sanctum/session, Filament MFA adapter, окремі guards | OTP→MFA без password і без bypass |
-| AUTH-2 | Additive auth schema й погоджена синхронізація джерел | PG колізії/відкат/BIGINT, регресія Stage 1/2 |
+| AUTH-1 | **Ізольований spike виконано з межами:** exact-version SAT snapshot; Laravel/Sanctum sessions, shared TOTP, Filament Login/recovery, HTTP Livewire gate | 15 tests / 93 assertions; online Composer заблокований proxy; full install/PG concurrency/dual-cookie E2E не доведено; [звіт](auth-compatibility-spike.md). P1–P6 — до погодження |
+| AUTH-2 | Після погодження P1 і потрібних P2/P4: additive schema/preflight/backfill та синхронізація джерел | Fresh/populated synthetic PG18, collisions, BIGINT/FK, захищений down, concurrency consume/revoke; [точні вимоги](auth-compatibility-spike.md#7-точні-вимоги-до-наступного-auth-2), regression Stage 1/2 |
 | AUTH-3 | Обов’язкова admin MFA, shared TOTP/recovery codes, reauth і захищений recovery | HTTP/Livewire, replay, session revoke, recovery drill |
 | AUTH-4 | Invitation/revoke, атомарна реєстрація, OTP/session API | Конкурентний invitation/OTP, rollback, без автоактивації |
 | AUTH-5 | React auth/security, optional client TOTP, email change, sessions | Негативні security-тести, browser E2E, lint/build |
 | AUTH-6 | Operational hardening: mail/rate store/retention/rollout | Повний security acceptance найближчого релізу |
 | AUTH-7 | Майбутній Telegram primary/linking того самого user | initData/replay/conflict/MFA |
 | AUTH-8 | Окремий майбутній Passkeys етап | До окремого погодження не реалізовувати |
+
+**Після AUTH-1:** запропоновано browser session guard без Sanctum/Fortify, один durable factor service та окремий admin session-контекст. Це рекомендації до погодження P1–P6, не затвердження й не production auth. Online install та повна browser/PG інтеграція залишаються окремими перевірками.
 
 AUTH-3–AUTH-5 входять у найближчий реліз разом: public реєстрація не вмикається до admin MFA та готової optional client TOTP. Telegram і контракт анкети не блокують мінімальний PWA-вхід; інші відкриті G1 не закриваються цим дизайном.
 

@@ -1,0 +1,347 @@
+[
+  {
+    "repository": "phpDocumentor/ReflectionDocBlock",
+    "ref": "5.6.3",
+    "manifest": {
+      "name": "phpdocumentor/reflection-docblock",
+      "license": "MIT",
+      "require": {
+        "php": "^7.4 || ^8.0",
+        "phpdocumentor/type-resolver": "^1.7",
+        "webmozart/assert": "^1.9.1",
+        "phpdocumentor/reflection-common": "^2.2",
+        "ext-filter": "*",
+        "phpstan/phpdoc-parser": "^1.7|^2.0",
+        "doctrine/deprecations": "^1.1"
+      }
+    }
+  },
+  {
+    "repository": "DASPRiD/Enum",
+    "ref": "1.0.6",
+    "manifest": {
+      "name": "dasprid/enum",
+      "license": "BSD-2-Clause",
+      "require": {
+        "php": ">=7.1 <9.0"
+      }
+    }
+  },
+  {
+    "repository": "symfony/property-info",
+    "ref": "v7.4.17",
+    "manifest": {
+      "name": "symfony/property-info",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.2",
+        "symfony/deprecation-contracts": "^2.5|^3",
+        "symfony/string": "^6.4|^7.0|^8.0",
+        "symfony/type-info": "^7.4.7|^8.0.7"
+      },
+      "conflict": {
+        "phpdocumentor/reflection-docblock": "<5.2|>=7",
+        "phpdocumentor/type-resolver": "<1.5.1",
+        "symfony/dependency-injection": "<6.4",
+        "symfony/cache": "<6.4",
+        "symfony/serializer": "<6.4"
+      }
+    }
+  },
+  {
+    "repository": "symfony/property-access",
+    "ref": "v7.4.8",
+    "manifest": {
+      "name": "symfony/property-access",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.2",
+        "symfony/property-info": "^6.4.32|~7.3.10|^7.4.4|^8.0.4"
+      }
+    }
+  },
+  {
+    "repository": "laravel/passkeys-server",
+    "ref": "v0.2.0",
+    "manifest": {
+      "name": "laravel/passkeys",
+      "license": "MIT",
+      "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/http": "^11.0|^12.0|^13.0",
+        "illuminate/routing": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "web-auth/webauthn-lib": "5.3.x"
+      }
+    }
+  },
+  {
+    "repository": "symfony/serializer",
+    "ref": "v7.4.17",
+    "manifest": {
+      "name": "symfony/serializer",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.2",
+        "symfony/deprecation-contracts": "^2.5|^3",
+        "symfony/polyfill-ctype": "~1.8",
+        "symfony/polyfill-php84": "^1.30"
+      },
+      "conflict": {
+        "phpdocumentor/reflection-docblock": "<5.2|>=7",
+        "phpdocumentor/type-resolver": "<1.5.1",
+        "symfony/dependency-injection": "<6.4",
+        "symfony/property-access": "<6.4.31|>=7.0,<7.4.2|>=8.0,<8.0.2",
+        "symfony/property-info": "<6.4.43",
+        "symfony/type-info": "<7.2.5",
+        "symfony/uid": "<6.4",
+        "symfony/validator": "<6.4",
+        "symfony/yaml": "<6.4"
+      }
+    }
+  },
+  {
+    "repository": "phpDocumentor/TypeResolver",
+    "ref": "1.12.0",
+    "manifest": {
+      "name": "phpdocumentor/type-resolver",
+      "license": "MIT",
+      "require": {
+        "php": "^7.3 || ^8.0",
+        "phpdocumentor/reflection-common": "^2.0",
+        "phpstan/phpdoc-parser": "^1.18|^2.0",
+        "doctrine/deprecations": "^1.0"
+      }
+    }
+  },
+  {
+    "repository": "phpDocumentor/ReflectionCommon",
+    "ref": "2.2.0",
+    "manifest": {
+      "name": "phpdocumentor/reflection-common",
+      "license": "MIT",
+      "require": {
+        "php": "^7.2 || ^8.0"
+      }
+    }
+  },
+  {
+    "repository": "webmozarts/assert",
+    "ref": "1.12.1",
+    "manifest": {
+      "name": "webmozart/assert",
+      "license": "MIT",
+      "require": {
+        "php": "^7.2 || ^8.0",
+        "ext-ctype": "*",
+        "ext-date": "*",
+        "ext-filter": "*"
+      },
+      "suggest": {
+        "ext-intl": "",
+        "ext-simplexml": "",
+        "ext-spl": ""
+      }
+    }
+  },
+  {
+    "repository": "phpstan/phpdoc-parser",
+    "ref": "2.3.2",
+    "manifest": {
+      "name": "phpstan/phpdoc-parser",
+      "license": "MIT",
+      "require": {
+        "php": "^7.4 || ^8.0"
+      }
+    }
+  },
+  {
+    "repository": "doctrine/deprecations",
+    "ref": "1.1.5",
+    "manifest": {
+      "name": "doctrine/deprecations",
+      "license": "MIT",
+      "require": {
+        "php": "^7.1 || ^8.0"
+      },
+      "conflict": {
+        "phpunit/phpunit": "<=7.5 || >=13"
+      },
+      "suggest": {
+        "psr/log": "Allows logging deprecations via PSR-3 logger implementation"
+      }
+    }
+  },
+  {
+    "repository": "symfony/type-info",
+    "ref": "v7.4.17",
+    "manifest": {
+      "name": "symfony/type-info",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.2",
+        "psr/container": "^1.1|^2.0",
+        "symfony/deprecation-contracts": "^2.5|^3"
+      },
+      "conflict": {
+        "phpstan/phpdoc-parser": "<1.30"
+      }
+    }
+  },
+  {
+    "repository": "spomky-labs/pki-framework",
+    "ref": "1.6.3",
+    "manifest": {
+      "name": "spomky-labs/pki-framework",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.1",
+        "ext-mbstring": "*",
+        "brick/math": "^0.10|^0.11|^0.12|^0.13|^0.14|^0.15|^0.16|^0.17|^0.18|^0.19|^0.20|^1.0"
+      },
+      "suggest": {
+        "ext-openssl": "For OpenSSL based cyphering",
+        "ext-sodium": "To verify Ed25519 signatures where the OpenSSL extension has no EdDSA",
+        "ext-gmp": "For better performance (or BCMath)",
+        "ext-bcmath": "For better performance (or GMP)"
+      }
+    }
+  },
+  {
+    "repository": "spomky-labs/cbor-php",
+    "ref": "3.4.2",
+    "manifest": {
+      "name": "spomky-labs/cbor-php",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.0",
+        "ext-mbstring": "*",
+        "brick/math": "^0.9|^0.10|^0.11|^0.12|^0.13|^0.14|^0.15|^0.16|^0.17|^0.18|^0.19|^0.20|^1.0",
+        "symfony/polyfill-php81": "^1.32"
+      },
+      "suggest": {
+        "ext-gmp": "Strongly recommended when decoding untrusted input: without it, converting the byte string of a Big Number Tag (2 and 3) is quadratic in its length. Also improves the library performance overall",
+        "ext-bcmath": "Improves the library performance when ext-gmp is missing, and is required to handle the Big Float and Decimal Fraction Tags (4 and 5)"
+      }
+    }
+  },
+  {
+    "repository": "web-auth/cose-lib",
+    "ref": "4.8.2",
+    "manifest": {
+      "name": "web-auth/cose-lib",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.1",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "brick/math": "^0.9 || ^0.10 || ^0.11 || ^0.12 || ^0.13 || ^0.14 || ^0.15 || ^0.16 || ^0.17 || ^0.18 || ^0.19 || ^0.20 || ^1.0",
+        "spomky-labs/pki-framework": "^1.0"
+      },
+      "conflict": {
+        "spomky-labs/cbor-php": "<3.4.0"
+      },
+      "suggest": {
+        "ext-bcmath": "Recommended: without GMP or BCMath, signing with RSASSA-PSS (PS256/PS384/PS512) blinds its private exponentiation in pure PHP",
+        "ext-gmp": "Recommended: without GMP or BCMath, signing with RSASSA-PSS (PS256/PS384/PS512) blinds its private exponentiation in pure PHP",
+        "ext-sodium": "Required by the EdDSA/Ed25519 signature algorithms (-8, -19, -260, -261) and to recompute an OKP public key from its private key",
+        "spomky-labs/cbor-php": "Required by the RFC 9052 header reader and cryptographic structures. 3.4.0 or later: it ships the six COSE message classes (CBOR\\Tag\\CoseSign1Tag and its siblings) that replace the deprecated Cose\\...Tag classes, and its decoder is what enforces the RFC 9052 label uniqueness and nesting bounds this library relies on"
+      }
+    }
+  },
+  {
+    "repository": "laravel/sanctum",
+    "ref": "v4.3.3",
+    "manifest": {
+      "name": "laravel/sanctum",
+      "license": "MIT",
+      "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "illuminate/console": "^11.0|^12.0|^13.0",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "symfony/console": "^7.0|^8.0"
+      }
+    }
+  },
+  {
+    "repository": "laravel/fortify",
+    "ref": "v1.41.0",
+    "manifest": {
+      "name": "laravel/fortify",
+      "license": "MIT",
+      "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "bacon/bacon-qr-code": "^3.0",
+        "illuminate/console": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "laravel/passkeys": "^0.2.0",
+        "pragmarx/google2fa": "^9.0"
+      }
+    }
+  },
+  {
+    "repository": "web-auth/webauthn-lib",
+    "ref": "5.3.0",
+    "manifest": {
+      "name": "web-auth/webauthn-lib",
+      "license": "MIT",
+      "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "paragonie/constant_time_encoding": "^2.6|^3.0",
+        "phpdocumentor/reflection-docblock": "^5.3|^6.0",
+        "psr/clock": "^1.0",
+        "psr/event-dispatcher": "^1.0",
+        "psr/log": "^1.0|^2.0|^3.0",
+        "spomky-labs/cbor-php": "^3.0",
+        "symfony/clock": "^6.4|^7.0|^8.0",
+        "symfony/uid": "^6.4|^7.0|^8.0",
+        "spomky-labs/pki-framework": "^1.0",
+        "symfony/property-info": "^6.4|^7.0|^8.0",
+        "symfony/property-access": "^6.4|^7.0|^8.0",
+        "symfony/serializer": "^6.4|^7.0|^8.0",
+        "symfony/deprecation-contracts": "^3.2",
+        "web-auth/cose-lib": "^4.2.3"
+      },
+      "suggest": {
+        "psr/log-implementation": "Recommended to receive logs from the library",
+        "symfony/event-dispatcher": "Recommended to use dispatched events",
+        "web-token/jwt-library": "Mandatory for fetching Metadata Statement from distant sources"
+      }
+    }
+  },
+  {
+    "repository": "Bacon/BaconQrCode",
+    "ref": "v3.0.1",
+    "manifest": {
+      "name": "bacon/bacon-qr-code",
+      "license": "BSD-2-Clause",
+      "require": {
+        "php": "^8.1",
+        "ext-iconv": "*",
+        "dasprid/enum": "^1.0.3"
+      },
+      "suggest": {
+        "ext-imagick": "to generate QR code images"
+      }
+    }
+  },
+  {
+    "repository": "symfony/polyfill-php81",
+    "ref": "v1.33.0",
+    "manifest": {
+      "name": "symfony/polyfill-php81",
+      "license": "MIT",
+      "require": {
+        "php": ">=7.2"
+      }
+    }
+  }
+]
