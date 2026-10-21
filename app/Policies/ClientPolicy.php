@@ -19,7 +19,8 @@ class ClientPolicy
 
     public function create(User $user): bool
     {
-        return $user->role === User::ROLE_ADMIN;
+        // Нові клієнти — лише через персональне запрошення тренера (ще не реалізовано).
+        return false;
     }
 
     public function update(User $user, Client $client): bool

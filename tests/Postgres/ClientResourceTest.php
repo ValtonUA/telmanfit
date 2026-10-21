@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ClientResourceTest extends PostgresTestCase
 {
@@ -39,37 +40,64 @@ class ClientResourceTest extends PostgresTestCase
     }
 
     #[DataProvider('statuses')]
-    public function test_admin_creates_without_account_in_each_status(string $status): void
+    public function test_existing_unlinked_cards_remain_editable_in_each_status(string $status): void
     {
+        // Фікстура перехідної картки; створення через UI заборонене.
+        $client = Client::create(['coach_user_id' => $this->coach->id]);
         $this->travelTo(now()->startOfSecond());
-        Livewire::test(CreateClient::class)
-            ->fillForm(['coach_user_id' => $this->coach->id, 'user_id' => null, 'status' => $status])
-            ->call('create')->assertHasNoFormErrors();
+        Livewire::test(EditClient::class, ['record' => $client->id])
+            ->fillForm(['coach_user_id' => $this->admin->id, 'status' => $status])
+            ->call('save')->assertHasNoFormErrors();
 
-        $client = Client::sole();
+        $client->refresh();
         $this->assertNull($client->user_id);
         $this->assertSame($status, $client->status);
-        $this->assertSame($this->coach->id, $client->coach->id);
-        $this->assertSame($client->id, $this->coach->coachedClients->sole()->id);
+        $this->assertSame($this->admin->id, $client->coach->id);
+        $this->assertSame($client->id, $this->admin->coachedClients->sole()->id);
         if ($status === 'active') {
             $this->assertTrue($client->coaching_started_at->equalTo(now()));
         } else {
             $this->assertNull($client->coaching_started_at);
         }
+    }
+
+    public function test_user_and_pending_profile_do_not_activate_paid_coaching(): void
+    {
+        $account = $this->user('client');
+        $this->assertNull($account->client);
+        $client = Client::create(['coach_user_id' => $this->coach->id, 'user_id' => $account->id]);
+        $this->assertSame('pending', $client->status);
+        $this->assertNull($client->coaching_started_at);
         foreach (['client_onboardings', 'client_nutrition_profiles', 'client_activity_profiles', 'client_settings'] as $table) {
             $this->assertSame(0, DB::table($table)->count());
         }
     }
 
-    public function test_explicit_admin_coach_and_pending_default_are_supported(): void
+    public function test_list_has_no_create_action_and_forged_action_does_not_create_card(): void
     {
-        Livewire::test(CreateClient::class)
-            ->assertFormSet(['status' => 'pending', 'coach_user_id' => null, 'user_id' => null])
-            ->fillForm(['coach_user_id' => $this->admin->id])
-            ->call('create')->assertHasNoFormErrors();
-        $this->assertSame($this->admin->id, Client::sole()->coach_user_id);
-        $this->assertSame('pending', Client::sole()->status);
-        $this->assertNull(Client::sole()->coaching_started_at);
+        Livewire::test(ListClients::class)
+            ->assertActionDoesNotExist('create')
+            ->call('mountAction', 'create')
+            ->call('callMountedAction');
+        $this->assertSame(0, Client::count());
+    }
+
+    #[DataProvider('roles')]
+    public function test_manual_creation_is_denied_through_http_policy_and_livewire(string $role, int $status): void
+    {
+        $this->actingAs($this->user($role));
+        $this->assertFalse(Gate::allows('create', Client::class));
+        $this->assertFalse(ClientResource::canCreate());
+        $this->get('/admin/clients/create')->assertForbidden();
+        Livewire::test(CreateClient::class)->assertForbidden();
+        // Прямий виклик create (зокрема зі старої форми) також не досягає запису.
+        try {
+            app(CreateClient::class)->create();
+            $this->fail('Ручне створення має бути заборонене.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+        $this->assertSame(0, Client::count());
     }
 
     public function test_admin_edits_links_account_and_coach_then_keeps_first_start_across_statuses(): void
@@ -129,11 +157,8 @@ class ClientResourceTest extends PostgresTestCase
     }
 
     #[DataProvider('invalidFields')]
-    public function test_invalid_create_and_edit_are_rejected(string $field, mixed $value): void
+    public function test_invalid_edits_are_rejected(string $field, mixed $value): void
     {
-        $data = ['coach_user_id' => $this->coach->id, $field => $value];
-        Livewire::test(CreateClient::class)->fillForm($data)->call('create')->assertHasFormErrors([$field]);
-        $this->assertSame(0, Client::count());
         $client = Client::create(['coach_user_id' => $this->coach->id]);
         $original = $client->refresh()->getAttributes();
         Livewire::test(EditClient::class, ['record' => $client->id])
@@ -144,8 +169,6 @@ class ClientResourceTest extends PostgresTestCase
     public function test_client_role_cannot_be_selected_as_coach_even_with_forged_id(): void
     {
         $account = $this->user('client', 'Ineligible');
-        Livewire::test(CreateClient::class)
-            ->fillForm(['coach_user_id' => $account->id])->call('create')->assertHasFormErrors(['coach_user_id']);
         $client = Client::create(['coach_user_id' => $this->coach->id]);
         Livewire::test(EditClient::class, ['record' => $client->id])
             ->fillForm(['coach_user_id' => $account->id])->call('save')->assertHasFormErrors(['coach_user_id']);
@@ -158,9 +181,6 @@ class ClientResourceTest extends PostgresTestCase
         $account = $this->user('client');
         $first = Client::create(['coach_user_id' => $this->coach->id, 'user_id' => $account->id]);
         Livewire::test(EditClient::class, ['record' => $first->id])->call('save')->assertHasNoFormErrors();
-        Livewire::test(CreateClient::class)
-            ->fillForm(['coach_user_id' => $this->coach->id, 'user_id' => $account->id])
-            ->call('create')->assertHasFormErrors(['user_id']);
         $second = Client::create(['coach_user_id' => $this->coach->id]);
         Client::create(['coach_user_id' => $this->coach->id]);
         Livewire::test(EditClient::class, ['record' => $second->id])
@@ -171,11 +191,13 @@ class ClientResourceTest extends PostgresTestCase
 
     public function test_self_coaching_is_rejected(): void
     {
-        Livewire::test(CreateClient::class)
+        $client = Client::create(['coach_user_id' => $this->coach->id]);
+        Livewire::test(EditClient::class, ['record' => $client->id])
             ->fillForm(['coach_user_id' => $this->admin->id, 'user_id' => $this->admin->id])
-            ->call('create')->assertHasFormErrors(['coach_user_id']);
+            ->call('save')->assertHasFormErrors(['coach_user_id']);
         $this->assertModelValidation(['coach_user_id' => $this->admin->id, 'user_id' => $this->admin->id], 'coach_user_id');
-        $this->assertSame(0, Client::count());
+        $this->assertSame($this->coach->id, $client->refresh()->coach_user_id);
+        $this->assertNull($client->user_id);
     }
 
     public function test_model_protects_status_and_required_coach_outside_filament(): void
@@ -199,11 +221,10 @@ class ClientResourceTest extends PostgresTestCase
         $client = Client::create(['coach_user_id' => $this->coach->id]);
         $actor = $this->user($role);
         $this->actingAs($actor);
-        foreach (['/admin/clients', '/admin/clients/create', '/admin/clients/'.$client->id, '/admin/clients/'.$client->id.'/edit'] as $url) {
+        foreach (['/admin/clients', '/admin/clients/'.$client->id, '/admin/clients/'.$client->id.'/edit'] as $url) {
             $this->get($url)->assertStatus($status);
         }
         $this->assertSame($role === 'admin', ClientResource::canViewAny());
-        $this->assertSame($role === 'admin', ClientResource::canCreate());
         $this->assertSame($role === 'admin', Gate::allows('view', $client));
         $this->assertSame($role === 'admin', Gate::allows('update', $client));
         $this->assertFalse(Gate::allows('delete', $client));

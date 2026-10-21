@@ -19,7 +19,19 @@ TelmanFit — застосунок онлайн-фітнес-супроводу 
 
 Обидва інтерфейси працюють з одним Laravel-застосунком і однією базою PostgreSQL. Telegram (Mini App, повідомлення) є **додатковим каналом**, а не основою архітектури: доменні правила не залежать від Telegram (див. [../AGENTS.md](../AGENTS.md), розділ 7).
 
-Схема компонентів нижче описує цільову архітектуру. Наразі є каркас інтерфейсів, публічний health-ендпоінт, модель `User`, доступ до Filament лише для `admin` та міграція узгодження `users`; доменні сервіси й бізнес-інтерфейси ще не реалізовані. Stage 0 залишається відкритим (G1); G5 затверджено користувачем: перший бізнес-модуль — картки клієнтів у Filament; G4 виконано для окремого SQL/Bash-прогону, Stage 1 виконаний частково; G3 вже затверджено (B + R1).
+Схема компонентів нижче описує цільову архітектуру. Реалізовано каркас Laravel/React, health-ендпоінт, бізнес-міграції Stage 1 та `ClientResource` для ведення наявних карток у Filament лише адміністратором. Ручне створення карток заблоковано. G3=B+R1, G4 і вибір першого модуля G5 затверджені; повний Stage 2, зокрема запрошення та клієнтська автентифікація, ще не завершений.
+
+### Реєстрація та оболонки клієнта — затверджено 21.10.2026
+
+Доступ нового клієнта — виключно за персональним запрошенням тренера. Одна людина має один `users` і максимум один `clients`; ім’я зберігається в `users.name`, без `clients.display_name`. Реєстрація не активує платний супровід.
+
+PWA і Telegram Mini App використовують максимально один React-застосунок у `client/`, один Laravel API і PostgreSQL. Клієнт може користуватися будь-якою оболонкою або обома зі спільними даними; можливості Mini App можуть бути обмежені. Це цільова архітектура: зараз є лише каркас SPA, без готової PWA чи Mini App.
+
+У PWA передбачено «Підключити Telegram» з підтвердженням володіння Telegram-акаунтом. Зворотний сценарій також має підключати PWA до того самого облікового запису. Автоматичне ототожнення людей за ім’ям, username чи email заборонене. Конкретний протокол підтвердження тут не визначається.
+
+Механізм запрошень, Telegram-автентифікація, прив’язка Telegram і PWA-автентифікація **ще не реалізовані**; до їх реалізації нових клієнтів через UI створювати неможливо. Спосіб браузерної автентифікації PWA, деталі токенів запрошень і повний онбординг **ще не погоджено**. Цей PR не обирає сесії/токени, строки дії чи спосіб доставки запрошення.
+
+`ClientPolicy::create()` повертає false для всіх ролей, у списку немає CreateAction, `CreateClient::authorizeAccess()` безумовно повертає 403 на mount, hydrate і create. Старий `/admin/clients/create` залишений як заблокована точка входу. Список, пошук, перегляд, редагування і статуси доступні лише `admin`; відповідальний тренер явно обирається серед `coach`/`admin`. Наявні NULL-картки залишаються перехідними записами; їх можна редагувати, схема nullable не змінюється. Подробиці — [stage-2.md](stage-2.md), правила BR-U-14…BR-U-18.
 
 ## 2. Компоненти
 
@@ -78,7 +90,7 @@ TelmanFit — застосунок онлайн-фітнес-супроводу 
 | `app/Http/Controllers/Api/` | JSON-контролери (наразі лише `HealthController`) |
 | `app/Providers/Filament/AdminPanelProvider.php` | Конфігурація панелі `admin` |
 | `client/` | Окремий Vite-проєкт React/TS; `npm run build` → `public/app` |
-| `database/migrations/` | Три стандартні міграції Laravel та міграція узгодження `users`; повних міграцій модулів 01–04 ще немає |
+| `database/migrations/` | Стандартні Laravel-міграції, узгодження `users`, `btree_gist` і модулі 01–04; див. stage-1.md |
 | `docs/` | Entity Catalog, DBML, SQL-модулі, аудит, цей документ, правила й план |
 | `routes/api.php`, `routes/web.php` | API та веб-маршрути (включно з SPA-фолбеком) |
 | `resources/js/app.js`, `resources/css/app.css` | Каркасні ресурси Laravel-конвеєра (Blade-сторінки) |
@@ -103,7 +115,7 @@ TelmanFit — застосунок онлайн-фітнес-супроводу 
 ## 7. Адмін-панель Filament
 
 - Панель `admin` (path `/admin`), `->login()`, primary-колір Amber; автентифікація — стандартна Laravel-модель `App\Models\User` зі сторінки логіну Filament.
-- Ресурси/сторінки/віджети виявляються автоматично з `app/Filament/{Resources,Pages,Widgets}` (`AdminPanelProvider`). Наразі каталоги не створені — реалізовано лише `Dashboard`, `AccountWidget`, `FilamentInfoWidget`.
+- Ресурси/сторінки/віджети виявляються автоматично з `app/Filament/{Resources,Pages,Widgets}` (`AdminPanelProvider`). Реалізовано `ClientResource` (список, перегляд, редагування, статуси; створення заблоковано), `Dashboard`, `AccountWidget`, `FilamentInfoWidget`.
 - Middleware панелі: `EncryptCookies`, `StartSession`, `AuthenticateSession`, `PreventRequestForgery`, `SubstituteBindings`, …; auth-middleware — `Filament\Http\Middleware\Authenticate`.
 - Реалізовано `User::canAccessPanel()`: лише `admin` має доступ; `coach`, `client`, відсутня або невідома роль відхиляються. `role` виключено з масового призначення. Це перевіряє ізольований `UserPanelAccessTest`, без БД та HTTP-входу.
 - Майбутнє (за [roadmap.md](roadmap.md)): бізнес-ресурси Filament, Policy/Gate для прав тренера та ізоляції клієнтських даних. Поточний доступ лише для `admin` не визначає майбутніх прав `coach` і не закриває G1.
@@ -191,15 +203,16 @@ cd client && npm run build       # збірка SPA у public/app
 | Область | Запроєктовано | Реалізовано | Доказ |
 |---|---|---|---|
 | Каркас Laravel | так | так | `bootstrap/app.php`, `routes/*`, `config/*` |
-| Адмін-панель Filament | так | частково (логін + dashboard, лише `admin`, без бізнес-ресурсів) | `AdminPanelProvider`, `User::canAccessPanel()`, `UserPanelAccessTest` |
+| Адмін-панель Filament | так | частково (логін, dashboard і наявні клієнтські картки, лише `admin`) | `AdminPanelProvider`, `User::canAccessPanel()`, `UserPanelAccessTest` |
 | SPA React/TS | так | частково (каркас + health-check) | `client/src/App.tsx`, `client/src/components/HealthStatus.tsx` |
 | API | так | лише `GET /api/health` | `routes/api.php`, `app/Http/Controllers/Api/HealthController.php` |
 | Бізнес-схема (37 таблиць) | так | SQL DDL попередньо перевірено в ізольованій БД | Аудит: `docs/01–04` виконано в `telmanfit_test`; `PASS=76 FAIL=0 GAP=0` |
 | Міграція узгодження `users` | G3: B + R1 | реалізована; застосування й призначення `admin` підтверджені локально користувачем | `2026_10_21_000000_align_users_with_business_schema.php`, [project-status.md](project-status.md) |
 | Повні міграції модулів 01–04 | G3 затверджено | реалізовано й перевірено в ізольованому PostgreSQL 18 | [stage-1.md](stage-1.md), `database/migrations`, `database/sql/stage1` |
-| Eloquent-моделі домену | так | ні | в `app/Models` лише `User` |
+| Eloquent-моделі домену | так | частково: `User`, `Client` і зв’язки | `app/Models`, [stage-2.md](stage-2.md) |
 | Сервіси публікації/призначення | так | ні | — |
-| Telegram-канал | так (пізній етап) | ні | — |
+| Запрошення, Telegram/PWA-автентифікація та прив’язка | так; деталі PWA, токенів і онбордингу відкриті | ні; UI-створення клієнтів заблоковане | [stage-2.md](stage-2.md) |
+| Telegram-канал повідомлень | так (пізній етап) | ні | — |
 | Тести схеми на PostgreSQL | так | так (окремий раннер) | `tests/pg/*.sql` + `run-pg-tests.ps1`; `phpunit.pgsql.xml`, `run-stage1.sh`, `.github/workflows/stage1.yml` |
 | Тестове середовище PG | так | підтверджено в Codex Cloud, G4 та Stage 1 | [G4.md](../tests/pg/G4.md), [stage-1.md](stage-1.md); нові ізольовані PostgreSQL 18.6 |
 

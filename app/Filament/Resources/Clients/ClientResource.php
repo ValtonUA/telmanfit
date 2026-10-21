@@ -37,7 +37,7 @@ class ClientResource extends Resource
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => self::userLabel($record))
                 ->searchable(['name', 'email'])
                 ->unique(ignoreRecord: true)
-                ->helperText('Необов’язково. До реєстрації клієнта залиште порожнім; картка визначається її ID.'),
+                ->helperText('Для наявної перехідної картки акаунт може бути відсутній; картка визначається її ID.'),
             Select::make('coach_user_id')
                 ->label('Відповідальний тренер')
                 ->relationship('coach', 'name', modifyQueryUsing: fn (Builder $query) => $query->whereIn('role', [User::ROLE_COACH, User::ROLE_ADMIN]))
