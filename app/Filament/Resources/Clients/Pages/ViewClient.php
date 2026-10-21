@@ -10,6 +10,11 @@ class ViewClient extends ViewRecord
 {
     protected static string $resource = ClientResource::class;
 
+    public function getTitle(): string
+    {
+        return 'Картка клієнта #'.$this->getRecord()->getKey();
+    }
+
     protected function getHeaderActions(): array
     {
         return [EditAction::make()];

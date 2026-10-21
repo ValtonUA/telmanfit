@@ -1,0 +1,306 @@
+[
+  {
+    "width": 320,
+    "layout": {
+      "document": 320,
+      "viewport": 320,
+      "table": [
+        {
+          "width": 288,
+          "scroll": 288
+        }
+      ],
+      "outsideActions": []
+    },
+    "measurements": {
+      "login": {
+        "document": 320,
+        "viewport": 320,
+        "table": [],
+        "outsideActions": []
+      },
+      "list": {
+        "document": 320,
+        "viewport": 320,
+        "table": [
+          {
+            "width": 288,
+            "scroll": 288
+          }
+        ],
+        "outsideActions": []
+      },
+      "empty": {
+        "document": 320,
+        "viewport": 320,
+        "table": [
+          {
+            "width": 288,
+            "scroll": 288
+          }
+        ],
+        "outsideActions": []
+      },
+      "filtered": {
+        "document": 320,
+        "viewport": 320,
+        "table": [
+          {
+            "width": 288,
+            "scroll": 288
+          }
+        ],
+        "outsideActions": []
+      },
+      "sorting": {
+        "document": 320,
+        "viewport": 320,
+        "table": [
+          {
+            "width": 288,
+            "scroll": 288
+          }
+        ],
+        "outsideActions": []
+      },
+      "pagination": {
+        "document": 320,
+        "viewport": 320,
+        "table": [
+          {
+            "width": 288,
+            "scroll": 288
+          }
+        ],
+        "outsideActions": []
+      },
+      "view": {
+        "document": 320,
+        "viewport": 320,
+        "table": [],
+        "outsideActions": []
+      },
+      "edit": {
+        "document": 320,
+        "viewport": 320,
+        "table": [],
+        "outsideActions": []
+      },
+      "validation": {
+        "document": 320,
+        "viewport": 320,
+        "table": [],
+        "outsideActions": []
+      },
+      "coach-search": {
+        "document": 320,
+        "viewport": 320,
+        "table": [],
+        "outsideActions": []
+      }
+    },
+    "chromium": "154.0.8037.57",
+    "checks": "passed",
+    "page_errors": [],
+    "external_avatar_requests": 0
+  },
+  {
+    "width": 390,
+    "layout": {
+      "document": 390,
+      "viewport": 390,
+      "table": [
+        {
+          "width": 358,
+          "scroll": 358
+        }
+      ],
+      "outsideActions": []
+    },
+    "measurements": {
+      "login": {
+        "document": 390,
+        "viewport": 390,
+        "table": [],
+        "outsideActions": []
+      },
+      "list": {
+        "document": 390,
+        "viewport": 390,
+        "table": [
+          {
+            "width": 358,
+            "scroll": 358
+          }
+        ],
+        "outsideActions": []
+      },
+      "empty": {
+        "document": 390,
+        "viewport": 390,
+        "table": [
+          {
+            "width": 358,
+            "scroll": 358
+          }
+        ],
+        "outsideActions": []
+      },
+      "filtered": {
+        "document": 390,
+        "viewport": 390,
+        "table": [
+          {
+            "width": 358,
+            "scroll": 358
+          }
+        ],
+        "outsideActions": []
+      },
+      "sorting": {
+        "document": 390,
+        "viewport": 390,
+        "table": [
+          {
+            "width": 358,
+            "scroll": 358
+          }
+        ],
+        "outsideActions": []
+      },
+      "pagination": {
+        "document": 390,
+        "viewport": 390,
+        "table": [
+          {
+            "width": 358,
+            "scroll": 358
+          }
+        ],
+        "outsideActions": []
+      },
+      "view": {
+        "document": 390,
+        "viewport": 390,
+        "table": [],
+        "outsideActions": []
+      },
+      "edit": {
+        "document": 390,
+        "viewport": 390,
+        "table": [],
+        "outsideActions": []
+      },
+      "validation": {
+        "document": 390,
+        "viewport": 390,
+        "table": [],
+        "outsideActions": []
+      },
+      "coach-search": {
+        "document": 390,
+        "viewport": 390,
+        "table": [],
+        "outsideActions": []
+      }
+    },
+    "chromium": "154.0.8037.57",
+    "checks": "passed",
+    "page_errors": [],
+    "external_avatar_requests": 0
+  },
+  {
+    "width": 1440,
+    "layout": {
+      "document": 1440,
+      "viewport": 1440,
+      "table": [
+        {
+          "width": 1056,
+          "scroll": 1056
+        }
+      ],
+      "outsideActions": []
+    },
+    "measurements": {
+      "login": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [],
+        "outsideActions": []
+      },
+      "list": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [
+          {
+            "width": 1056,
+            "scroll": 1056
+          }
+        ],
+        "outsideActions": []
+      },
+      "empty": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [
+          {
+            "width": 1056,
+            "scroll": 1056
+          }
+        ],
+        "outsideActions": []
+      },
+      "filtered": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [
+          {
+            "width": 1056,
+            "scroll": 1056
+          }
+        ],
+        "outsideActions": []
+      },
+      "pagination": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [
+          {
+            "width": 1056,
+            "scroll": 1056
+          }
+        ],
+        "outsideActions": []
+      },
+      "view": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [],
+        "outsideActions": []
+      },
+      "edit": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [],
+        "outsideActions": []
+      },
+      "validation": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [],
+        "outsideActions": []
+      },
+      "coach-search": {
+        "document": 1440,
+        "viewport": 1440,
+        "table": [],
+        "outsideActions": []
+      }
+    },
+    "chromium": "154.0.8037.57",
+    "checks": "passed",
+    "page_errors": [],
+    "external_avatar_requests": 0
+  }
+]

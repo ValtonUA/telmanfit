@@ -145,6 +145,23 @@ class ClientResourceTest extends PostgresTestCase
             ->assertSuccessful()->assertSee('Без акаунта');
     }
 
+    #[DataProvider('statuses')]
+    public function test_status_labels_and_semantic_colors_survive_search_and_sorting(string $status): void
+    {
+        $client = Client::create(['coach_user_id' => $this->coach->id, 'status' => $status]);
+        $color = ['pending' => 'gray', 'active' => 'success', 'paused' => 'warning', 'finished' => 'info'][$status];
+        $component = Livewire::test(ListClients::class)
+            ->searchTable((string) $client->id)->filterTable('status', $status)->sortTable('id', 'asc')
+            ->assertCanSeeTableRecords([$client])
+            ->assertTableColumnFormattedStateSet('status', Client::STATUSES[$status], $client)
+            ->assertSee($color === 'gray' ? 'fi-badge' : 'fi-color-'.$color)
+            ->assertSee('fi-ta-table-stacked-on-mobile');
+        $column = $component->instance()->getTable()->getColumn('status')->record($client);
+        $this->assertSame($color, $column->getColor($status));
+        Livewire::test(ViewClient::class, ['record' => $client->id])
+            ->assertSee(Client::STATUSES[$status])->assertSee($color === 'gray' ? 'fi-badge' : 'fi-color-'.$color);
+    }
+
     public static function invalidFields(): array
     {
         return [

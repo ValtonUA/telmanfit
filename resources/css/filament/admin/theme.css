@@ -1,0 +1,49 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/**/*';
+
+.clients-table .client-name .fi-ta-text,
+.clients-table .client-email .fi-ta-text {
+    max-inline-size: 11rem;
+    overflow-wrap: anywhere;
+}
+
+/* Штатні картки Filament: одна таблиця та спільний стан Livewire. */
+@media (width < 40rem) {
+    .clients-table .fi-ta-table-stacked-on-mobile > tbody > .fi-ta-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: 'name name' 'status id' 'coach coach' 'actions actions';
+        gap: 0.25rem 0;
+        padding-block: 0.75rem;
+    }
+
+    .clients-table .client-name { grid-area: name; font-weight: 600; }
+    .clients-table .client-status { grid-area: status; }
+    .clients-table .client-id { grid-area: id; }
+    .clients-table .client-coach { grid-area: coach; }
+    .clients-table .fi-ta-row > td:has(> .fi-ta-actions) { grid-area: actions; }
+
+    .clients-table .fi-ta-cell { min-width: 0; }
+    .clients-table .fi-ta-cell-content { overflow-wrap: anywhere; }
+    .clients-table .client-name .fi-ta-text { max-inline-size: none; }
+    .clients-table .client-name > .fi-ta-cell-label,
+    .clients-table .client-status > .fi-ta-cell-label { display: none; }
+
+    .clients-table .fi-ta-table .client-id,
+    .clients-table .fi-ta-table .client-coach {
+        display: flex;
+        align-items: baseline;
+        gap: 0.375rem;
+    }
+
+    .clients-table .client-id > .fi-ta-cell-label,
+    .clients-table .client-coach > .fi-ta-cell-label { padding-top: 0; flex-shrink: 0; }
+
+    .clients-table .fi-ta-table-stacked-sorting { flex-wrap: wrap; }
+    .clients-table .fi-ta-table-stacked-sorting > label { min-width: 0; max-width: 100%; }
+
+    /* Довгі обрані імена й адреси в деталях мають переноситися. */
+    .fi-in-text-item, .fi-select-input-value-label { overflow-wrap: anywhere; }
+}
