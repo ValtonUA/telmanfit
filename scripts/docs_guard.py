@@ -103,10 +103,12 @@ def is_implementation(path: str) -> bool:
 
 
 def is_canonical_document(path: str) -> bool:
+    # Merely editing an unrelated historical report must not silently bypass
+    # the requirement to reconcile current facts/status or architecture.
     if path in {"docs/roadmap.md", "docs/project-status.md", "docs/architecture.md",
                 "docs/business-rules.md", "docs/entity-catalog.md", "docs/database.dbml"}:
         return True
-    return path.startswith("docs/") and path.endswith((".md", ".sql"))
+    return path.startswith("docs/") and path.endswith(".sql")
 
 
 def validate_pr_impact(base: str) -> list[str]:
