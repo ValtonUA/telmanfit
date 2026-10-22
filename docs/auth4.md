@@ -197,7 +197,7 @@ backup/retention/NTP/rollout лишаються явними блокерами 
 - Stage 1/2: 41 tests / 713 assertions; основний PHPUnit: 22 / 46.
 - AUTH-2: 12 / 130, upgrade/down PASS, 14 SQL races PASS.
 - AUTH-3: 25 / 129; service/middleware races та Chromium regression PASS.
-- AUTH-4 фінальний targeted: 23 / 145; 5 service concurrency сценаріїв PASS.
+- AUTH-4 фінальний targeted: 24 / 152; 5 service concurrency сценаріїв PASS.
 - Chromium 154.0.8037.57: invitation create/revoke, OTP registration, MFA login,
   cookies/CSRF/rotation/logout/version та відсутність секретів у JSON/logs PASS.
 - AUTH-1: 15 / 93; runner fail-closed contracts 10 PASS.
@@ -267,7 +267,7 @@ backup/retention/NTP/rollout лишаються явними блокерами 
 Регресія enumeration порівнює всі шість невдалих verify для real/unknown login:
 ідентичні 422 invalid_challenge, із чинною 15-хвилинною account pause. Загальний
 IP throttle і далі повертає 429. Наявність email не розкривається статусом на
-шостій спробі. AUTH-4 фінально: 23 tests / 145 assertions.
+шостій спробі. AUTH-4 фінально: 24 tests / 152 assertions.
 
 Перший GitHub Actions run на 9bb0920 пройшов усі PG/SQL/AUTH-2/3/4/Chromium
 перевірки; завершився помилкою тільки на AUTH-1 regression. Локально AUTH-1
@@ -276,3 +276,10 @@ IP throttle і далі повертає 429. Наявність email не ро
 публікує bounded error annotation, щоб причина була доступна без raw log service.
 Це не змінює production auth, залежності або pinned upstream revisions. Остаточний
 CI результат перевіряється на новому head SHA PR.
+
+Повторний passwordless login без TOTP також перевірено service test і Chromium.
+Порівняння primary timestamp у proof та PG виконується за моментом часу,
+з урахуванням еквівалентності +00 і +00:00, а не за форматом рядка. Підроблений,
+повторний, expired чи version-stale proof і далі не видає сесію. GitHub Actions
+попереднього head ae7c269 пройшов повністю, включно з AUTH-1; остаточний head
+перевіряється окремим run, посилання доступне в PR Checks.

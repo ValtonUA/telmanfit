@@ -39,7 +39,7 @@ final class ClientSession
                 || $flow->audience !== 'client' || ! in_array($flow->purpose, ['register', 'login'], true)
                 || ($flow->user_id !== null && $flow->user_id !== $id)
                 || ($flow->user_id !== null && $flow->auth_version_at_start + ($method === 'recovery_code' ? 1 : 0) !== $version)
-                || $flow->primary_verified_at !== $stamp
+                || ! CarbonImmutable::parse($flow->primary_verified_at)->equalTo(CarbonImmutable::parse($stamp))
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', (string) $request->session()->get('client_binding')))
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->auth->now())
                 || CarbonImmutable::parse($stamp)->addSeconds(300)->lessThanOrEqualTo($this->auth->now())

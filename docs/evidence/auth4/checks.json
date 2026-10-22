@@ -57,10 +57,10 @@
       "run": "AUTH4 final targeted",
       "tool": "phpunit",
       "result": "passed",
-      "tests": 23,
-      "passed": 23,
-      "assertions": 145,
-      "duration_ms": 1908
+      "tests": 24,
+      "passed": 24,
+      "assertions": 152,
+      "duration_ms": 1766
     }
   ],
   "concurrency": [
@@ -95,5 +95,11 @@
   "real_smtp_used": false,
   "database_schema_changed": false,
   "github_actions": "Run on PR head; see PR checks for actual result.",
-  "enumeration_regression": "PASS: six invalid login verifications have identical status/code for real and unknown email; account-only pause remains enforced"
+  "enumeration_regression": "PASS: six invalid login verifications have identical status/code for real and unknown email; account-only pause remains enforced",
+  "passwordless_repeat_login": "PASS service and Chromium: client without TOTP, semantic PostgreSQL primary timestamp equality, session rotation and logout",
+  "github_actions_previous_head": {
+    "sha": "ae7c269e12fbe2f8c27df1c6190a308c403f626c",
+    "result": "PASS",
+    "url": "https://github.com/ValtonUA/telmanfit/actions/runs/39702638438"
+  }
 }

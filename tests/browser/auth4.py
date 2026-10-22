@@ -107,6 +107,14 @@ with sync_playwright() as p:
     click(page,'logout',204)
     click(page,'me',401)
     harness(page)
+    page.locator('#email').fill('browser-new@example.invalid')
+    click(page,'request',202)
+    page.locator('#code').fill(delivery('browser-new@example.invalid'))
+    click(page,'verify',200)
+    assert page.evaluate('state.next')=='authenticated'
+    click(page,'me',200)
+    click(page,'logout',204)
+    harness(page)
     page.locator('#email').fill('browser-mfa4@example.invalid')
     click(page,'request',202)
     page.locator('#code').fill(delivery('browser-mfa4@example.invalid'))
@@ -129,7 +137,7 @@ with sync_playwright() as p:
         logs += app_log.read_text()
     assert all(secret not in logs for secret in secrets)
     assert all(secret not in (OUT/'02-client-session.png').name for secret in secrets)
-    result = {'result':'PASS','chromium':browser.version,'scenarios':['Filament admin password+TOTP login','action fresh password+TOTP and one-time HTML invitation display','Filament revoke with fresh password and TOTP','invitation fragment exchange','encrypted database queue and synthetic mailbox','registration pending and session rotation','two independent cookies in one browser','CSRF 419','logout and guest 401','email OTP then restricted TOTP then full session','auth_version revocation','no OTP/token in logs'], 'production_enabled':False}
+    result = {'result':'PASS','chromium':browser.version,'scenarios':['Filament admin password+TOTP login','action fresh password+TOTP and one-time HTML invitation display','Filament revoke with fresh password and TOTP','invitation fragment exchange','encrypted database queue and synthetic mailbox','registration pending and session rotation','two independent cookies in one browser','CSRF 419','logout and guest 401','passwordless repeat login without TOTP','email OTP then restricted TOTP then full session','auth_version revocation','no OTP/token in logs'], 'production_enabled':False}
     (OUT/'results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(result,ensure_ascii=False))
     browser.close()

@@ -11,6 +11,7 @@
     "two independent cookies in one browser",
     "CSRF 419",
     "logout and guest 401",
+    "passwordless repeat login without TOTP",
     "email OTP then restricted TOTP then full session",
     "auth_version revocation",
     "no OTP/token in logs"

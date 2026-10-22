@@ -451,4 +451,22 @@ class Auth4Test extends TestCase
         }
         $this->assertSame($outcomes[0], $outcomes[1]);
     }
+
+    public function test_passwordless_login_without_totp_issues_rotated_client_session(): void
+    {
+        $id = DB::table('users')->insertGetId(['name' => 'Passwordless fixture', 'email' => 'plain-login@example.invalid', 'email_normalized' => 'plain-login@example.invalid', 'email_verified_at' => now()]);
+        DB::table('clients')->insert(['user_id' => $id, 'coach_user_id' => $this->coach]);
+        [$challenge, $code] = $this->requestCode('login', 'PLAIN-LOGIN@example.invalid');
+        $response = $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1');
+        $this->assertSame('authenticated', $response['next']);
+        $request = $this->requestSession();
+        $previous = $request->session()->getId();
+        app(ClientSession::class)->issue($request, $response['proof']);
+        $this->assertNotSame($previous, $request->session()->getId());
+        $this->assertSame($id, app(ClientSession::class)->user($request)->id);
+        $this->assertNull(DB::table('auth_session_states')->where('session_id', $request->session()->getId())->value('mfa_method'));
+        $this->denied(fn () => $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1'));
+        app(ClientSession::class)->logout($request);
+        $this->denied(fn () => app(ClientSession::class)->user($request), 'unauthenticated');
+    }
 }
