@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Unit-test documentation guard
+        run: python3 -m unittest discover -s tests/docs -p 'test_*.py' -v
       - name: Validate documentation links and roadmap status IDs
         run: python3 scripts/docs_guard.py
       - name: Require a documentation review for source changes
