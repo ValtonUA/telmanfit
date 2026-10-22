@@ -106,7 +106,7 @@ final class MfaService
                 'audience' => 'admin', 'purpose' => 'login', 'user_id' => $user->id,
                 'auth_version_at_start' => $user->auth_version, 'state' => 'primary_verified',
                 'primary_verified_at' => $now->format('Y-m-d H:i:s.uP'), 'created_at' => $now->format('Y-m-d H:i:s.uP'),
-                'expires_at' => $now->addSeconds((int) config('mfa.flow_seconds'))->format('Y-m-d H:i:s.uP'),
+                'expires_at' => $now->addSeconds(SyntheticBudgets::enabled() ? min(300, (int) config('mfa.flow_seconds')) : (int) config('mfa.flow_seconds'))->format('Y-m-d H:i:s.uP'),
             ]);
             $this->audit($user->id, 'mfa.primary_verified');
 

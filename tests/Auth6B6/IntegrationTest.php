@@ -4,6 +4,7 @@ namespace Tests\Auth6B6;
 
 use App\Mail\EmailOtp;
 use App\Services\Auth\Budgets\BudgetKey;
+use App\Services\Auth\Budgets\BudgetLimited;
 use App\Services\Auth\Budgets\BudgetScope;
 use App\Services\Auth\Budgets\PostgresBudgets;
 use App\Services\Auth\Client\AuthBudget;
@@ -14,6 +15,7 @@ use App\Services\Auth\MfaService;
 use App\Support\Auth\AuthSecretCodec;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
@@ -140,6 +142,35 @@ class IntegrationTest extends TestCase
         } catch (AuthDenied) {
             $this->assertNotNull(DB::table('auth_challenges')->where('public_id', $id)->value('consumed_at'));
         }
+    }
+
+    public function test_admin_password_budgets_and_flow_ttl_ceiling_preserve_stricter_policy(): void
+    {
+        $email = 'admin-'.$this->email;
+        $password = 'synthetic-admin-password';
+        $admin = DB::table('users')->insertGetId(['name' => 'B6 synthetic admin', 'role' => 'admin', 'email' => $email,
+            'password' => Hash::make($password)]);
+        $mfa = app(MfaService::class);
+        config(['mfa.flow_seconds' => 600]);
+        $flow = $mfa->beginPasswordLogin($email, $password, bin2hex(random_bytes(32)), $this->ip);
+        $this->assertSame('300.000000', DB::selectOne('SELECT extract(epoch FROM expires_at-created_at)::text ttl FROM auth_flows WHERE public_id=?', [$flow])->ttl);
+        config(['mfa.flow_seconds' => 120]);
+        $flow = $mfa->beginPasswordLogin($email, $password, bin2hex(random_bytes(32)), $this->ip);
+        $this->assertSame('120.000000', DB::selectOne('SELECT extract(epoch FROM expires_at-created_at)::text ttl FROM auth_flows WHERE public_id=?', [$flow])->ttl);
+        for ($i = 0; $i < 3; $i++) {
+            $mfa->beginPasswordLogin($email, $password, bin2hex(random_bytes(32)), $this->ip);
+        }
+        try {
+            $mfa->beginPasswordLogin($email, $password, bin2hex(random_bytes(32)), $this->ip);
+            $this->fail('Admin password budget bypass');
+        } catch (BudgetLimited $e) {
+            $this->assertFalse($e->decision->allowed);
+            $this->assertGreaterThan(0, $e->decision->retryAfter);
+            $this->assertLessThanOrEqual(900, $e->decision->retryAfter);
+        }
+        $this->assertSame(5, $this->budgetCount(BudgetScope::AdminEmail, $email));
+        $this->assertSame(6, $this->budgetCount(BudgetScope::AdminIp, $this->ip));
+        $this->assertSame(5, DB::table('auth_flows')->where('user_id', $admin)->count());
     }
 
     private function flow(): string

@@ -74,7 +74,7 @@ additive artifact зі своєї історичної projection, не посл
 | Invitation exchange | IP10/60s→token5/900s | Ті самі scopes/order | Незалежні committed admissions |
 | Registration complete | IP10/60s→flow5/900s | Ті самі scopes/order | Domain rollback не повертає quotas |
 | Client MFA | Audit flow5/300s,user10/900s; cache pause900(+TTL1)s; IP20/900s в HTTP/security | Typed shared flow5/300s,user10/900s,pause900s; той самий IP20/900s | Audit залишається, failure timestamps+pause атомарні; denied не подовжує pause |
-| Admin MFA | Configurable user audit `mfa.attempts/flow_seconds`, HTTP fixed-window RateLimiter | Додано shared flow5/300s,user10/900s,pause900s і HTTP IP20/900s | Чинні configurable audit cap/flow TTL і HTTP throttle збережено як додаткові barriers; раніше parity не було |
+| Admin MFA | Configurable user audit `mfa.attempts/flow_seconds`, HTTP fixed-window RateLimiter | Додано shared flow5/300s,user10/900s,pause900s і HTTP IP20/900s | Чинні configurable audit cap і HTTP throttle збережено; новий flow TTL=min(config,300s), суворіше значення не подовжується; раніше parity не було |
 | Admin password | Exact email lookup; configurable HTTP IP throttle, без окремого email5/900s | IP20/900s→exact email5/900s, pause900s | Додано погоджені D7 budgets; legacy throttle збережено. Argon/bcrypt після commit; cap→429 |
 | Invitation step-up | IP20/900s→user5/900s | Ті самі scopes, плюс shared password verification policy | Domain 403 збережено; infrastructure budget fault→503 |
 | Assisted exchange | IP10/60s та case5/900s; цикл рахує всі scopes навіть за попередньої відмови | Ті самі межі й accounting order | Не підмінено client short-circuit |
@@ -85,7 +85,7 @@ additive artifact зі своєї історичної projection, не посл
 policies на однакових synthetic histories L−1→L→denied; global1000 перевірено
 окремо під concurrency. Відмінності representation/pause TTL, durability,
 recovery partial charging та відсутніх admin budgets наведено в таблиці,
-а не оголошено безумовною старою parity. Exact boundaries усіх25 policies,
+а не оголошено безумовною старою parity. Admin flow TTL≤300s і суворіше120s, password email5/IP20 та pauses перевірено окремо. Exact boundaries усіх25 policies,
 mixed purposes, unknown/decoy, resend/new flow та pauses мають окремі тести.
 
 ## Admission, failures та lock order
@@ -135,7 +135,7 @@ Cleanup≤500, sorted row locks `FOR UPDATE SKIP LOCKED`, fresh clock і пов�
 runtime, жодних наявних БД. B6 додано обов'язковим Stage1 кроком і до обох
 PHP runtime matrix8.4.27/8.5.12, без continue-on-error.
 
-- B6 PHPUnit: **44 tests / 1689 assertions**; усі25 scopes, HMAC/invalid policy,
+- B6 PHPUnit: **45 tests / 1698 assertions**; усі25 scopes, HMAC/invalid policy,
   malformed/future rows, clock rollback, catalog/ACL, group fault, pauses,
   committed admission проти outer rollback, real independent commit + lost result,
   unavailable socket, real statement timeout, failure audit rollback, MFA/OTP parity.
@@ -164,14 +164,14 @@ memory — cgroup sample цілого PG container; це різні показн
 
 | Synthetic показник | Зафіксований результат |
 |---|---|
-| Throughput4 workers /1200 requests | 132.31 requests/s;1000 allowed,200 denied |
-| Latency p95 /p99 | 48.33 /56.92 ms |
-| Lock acquisition p95 /p99 | 22.27 /30.72 ms, включно INSERT overhead |
-| PG connections / sampled lock waits | max9;507 waiter samples у641 polls |
-| PHP worker RSS / сумарний user CPU | max132.15 MiB /2.00s |
-| PostgreSQL CPU / cgroup memory | max sampled187.34% /142.40 MiB за весь B6 run |
-| WAL delta / budgets relation із indexes/TOAST/bloat | 3845493 bytes /2539520 bytes |
-| Cluster IO reads / writes /extends | 973 /4767 /1285 operations |
+| Throughput4 workers /1200 requests | 130.10 requests/s;1000 allowed,200 denied |
+| Latency p95 /p99 | 50.00 /57.31 ms |
+| Lock acquisition p95 /p99 | 22.78 /31.43 ms, включно INSERT overhead |
+| PG connections / sampled lock waits | max9;462 waiter samples у647 polls |
+| PHP worker RSS / сумарний user CPU | max132.20 MiB /1.84s |
+| PostgreSQL CPU / cgroup memory | max sampled183.67% /138.30 MiB за весь B6 run |
+| WAL delta / budgets relation із indexes/TOAST/bloat | 3803269 bytes /2678784 bytes |
+| Cluster IO reads / writes /extends | 973 /4785 /1302 operations |
 | Incidental deadlocks / benchmark timeouts /503 | 0 /0 /0 |
 
 Реальний postmaster restart із тим самим synthetic data directory зберігає
