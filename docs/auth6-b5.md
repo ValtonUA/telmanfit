@@ -55,6 +55,15 @@ private-socket containers; Windows guard не послаблювався і на
 не використовувалися. Legacy AUTH-2/5 upgrade/down projection явно виключає
 B5 forward migration; populated B5 upgrade перевіряється окремо.
 
+Новий B5 behavior suite — **41 tests / 392 assertions PASS**; незалежні
+hold create/GC/HTTP follower, save/GC, pending/confirmation races, вісім SIGTERM
+restore stages і synthetic pg_dump/pg_restore також PASS у
+[прогоні коду 31d0c22](https://github.com/ValtonUA/telmanfit/actions/runs/39829999842).
+Сам workflow того проміжного прогону завершився failure через відсутній каталог
+для `tee` після перенесення B5 на початок. Каталог тепер створюється перед pipeline;
+це не оголошується успішним загальним CI. Попередні невдалі спроби також виявили
+конфлікт тестового helper з Laravel і некоректні timestamp fixture; виправлено.
+
 Точні SHA/run URLs і фінальні CI-результати фіксуються в описі PR після CI.
 Наведені нижче 23/208 і старі timings стосуються попереднього HEAD, а не цього fix.
 PR залишається Draft для повторного незалежного review; merge/auto-merge,

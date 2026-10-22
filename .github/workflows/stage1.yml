@@ -36,7 +36,9 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - name: AUTH-6B B5 retention, archive ACL, restore faults and concurrency
         shell: bash
-        run: AUTH6B5_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b5.out
+        run: |
+          mkdir -p tests/pg/out
+          AUTH6B5_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b5.out
       - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh
       - name: AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency
         shell: bash
