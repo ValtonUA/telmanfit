@@ -4,7 +4,6 @@ use App\Services\Auth\Restore\ExternalEpoch;
 use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Restore\SyntheticRestore;
 use App\Support\Session\ContextDatabaseSessionHandler;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -174,7 +173,7 @@ if (finishB5(spawnB5(['action' => 'gc'])) !== '0' || ! DB::table('sessions')->wh
 }
 echo "B5 session save/GC PASS: B1 advisory lock skip and TTL recheck after refresh\n";
 
-Artisan::call('down');
+app()->maintenanceMode()->activate([]);
 try {
     $proofs = array_fill_keys(['backup', 'wal', 'keys', 'registry', 'holds', 'revocations', 'audit'], true) + ['hold_rows' => [], 'principal_revocations' => [], 'key_revocations' => []];
     foreach (['preflight', 'manifests', 'versions', 'capabilities', 'factors', 'delivery', 'reconciled', 'committed'] as $stage) {
@@ -203,7 +202,7 @@ try {
         }
     }
 } finally {
-    Artisan::call('up');
+    app()->maintenanceMode()->deactivate();
     DB::table('auth_security_runtime')->where('id', 1)->update(['restore_epoch' => SyntheticEpoch::INITIAL, 'state' => 'ready', 'issuance_not_before' => DB::raw('clock_timestamp()')]);
 }
 echo "B5 restore SIGTERM drill PASS: eight crash stages, transactional rollback/durable closed fence, fresh-process idempotent retry\n";

@@ -68,8 +68,8 @@
     },
     {
       "group": "B5",
-      "tests": 21,
-      "assertions": 196,
+      "tests": 23,
+      "assertions": 208,
       "result": "passed"
     },
     {
@@ -107,5 +107,11 @@
     "filament_build": "passed",
     "sql_runner_negative_contracts": "passed"
   },
-  "ci": "Exact final HEAD results are recorded in Draft PR #20; local checks do not imply GitHub CI success."
+  "ci": "Exact final HEAD results are recorded in Draft PR #20; local checks do not imply GitHub CI success.",
+  "retention_safety": {
+    "apply_isolation": "read committed only",
+    "preview": "read-only definer, no secret-table SELECT for executor",
+    "invitation_holds": "creator/coach/consumer/revoker/target client user/case",
+    "maintenance": "private per-cluster file; no workspace artisan down/up"
+  }
 }

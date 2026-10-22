@@ -12,7 +12,6 @@ use App\Services\Auth\Restore\RestoreFence;
 use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Restore\SyntheticRestore;
 use App\Services\Auth\Retention\RetentionService;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Auth6B\FixtureBoundary;
@@ -31,7 +30,7 @@ final class RestoreTest extends TestCase
 
     protected function tearDown(): void
     {
-        Artisan::call('up');
+        app()->maintenanceMode()->deactivate();
         DB::table('auth_security_runtime')->where('id', 1)->update(['restore_epoch' => SyntheticEpoch::INITIAL, 'state' => 'ready', 'issuance_not_before' => DB::raw('clock_timestamp()')]);
         parent::tearDown();
     }
@@ -96,7 +95,7 @@ final class RestoreTest extends TestCase
     {
         $f = $this->fixture();
         $external = $this->epoch();
-        Artisan::call('down');
+        app()->maintenanceMode()->activate([]);
         $started = hrtime(true);
         app(SyntheticRestore::class)->reconcile($external, $this->proofs);
         $this->assertGreaterThan(0, hrtime(true) - $started);
@@ -127,7 +126,7 @@ final class RestoreTest extends TestCase
 
     public function test_every_reconciliation_fault_leaves_closed_and_retry_does_not_reanimate_snapshot(): void
     {
-        Artisan::call('down');
+        app()->maintenanceMode()->activate([]);
         foreach (['preflight', 'manifests', 'versions', 'capabilities', 'factors', 'delivery', 'reconciled', 'committed'] as $stage) {
             DB::table('auth_security_runtime')->where('id', 1)->update(['state' => 'ready']);
             $external = $this->epoch();
@@ -150,7 +149,7 @@ final class RestoreTest extends TestCase
     {
         $external = $this->epoch();
         $this->denied(fn () => app(SyntheticRestore::class)->reconcile($external, $this->proofs));
-        Artisan::call('down');
+        app()->maintenanceMode()->activate([]);
         foreach (array_keys($this->proofs) as $missing) {
             $proofs = $this->proofs;
             unset($proofs[$missing]);
@@ -164,7 +163,7 @@ final class RestoreTest extends TestCase
     public function test_external_rotation_during_reconciliation_rolls_back_and_workers_are_fenced(): void
     {
         $external = $this->epoch();
-        Artisan::call('down');
+        app()->maintenanceMode()->activate([]);
         $version = DB::table('users')->max('auth_version');
         $this->denied(fn () => app(SyntheticRestore::class)->reconcile($external, $this->proofs,
             function ($stage) use ($external) {

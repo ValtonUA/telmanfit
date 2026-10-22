@@ -2,6 +2,7 @@
 
 namespace Tests\Auth6B5;
 
+use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Retention\ArchiveVerification;
 use App\Services\Auth\Retention\RetentionService;
 use App\Support\Session\ContextDatabaseSessionHandler;
@@ -88,7 +89,9 @@ final class RetentionTest extends TestCase
         $old = $this->rows();
         $young = $this->rows(age: '179 days');
         $before = DB::selectOne('SELECT (SELECT count(*) FROM auth_audit_events) a,(SELECT count(*) FROM auth_retention_runs) r,(SELECT count(*) FROM auth_retention_batches) b');
+        DB::statement('SET LOCAL ROLE telmanfit_retention_executor');
         $ids = array_column(app(RetentionService::class)->dryRun(), 'id');
+        DB::statement('RESET ROLE');
         $this->assertContains($old[0], $ids);
         $this->assertNotContains($young[0], $ids);
         $this->assertEquals($before, DB::selectOne('SELECT (SELECT count(*) FROM auth_audit_events) a,(SELECT count(*) FROM auth_retention_runs) r,(SELECT count(*) FROM auth_retention_batches) b'));
@@ -234,6 +237,13 @@ final class RetentionTest extends TestCase
         $current = DB::table('mfa_recovery_codes')->insertGetId(['user_id' => $user, 'selector' => (string) Str::uuid(), 'batch_id' => $batch,
             'code_hash' => password_hash('synthetic', PASSWORD_ARGON2ID), 'created_at' => DB::raw("clock_timestamp()-interval '400 days'"),
             'used_at' => DB::raw("clock_timestamp()-interval '366 days'")]);
+        DB::statement('SET LOCAL ROLE telmanfit_retention_executor');
+        $before = DB::table('auth_retention_runs')->count();
+        $preview = array_column(app(RetentionService::class)->dryRun('invitations'), 'id');
+        $this->assertContains((string) $terminal, $preview);
+        $this->assertNotContains((string) $active, $preview);
+        $this->assertSame($before, DB::table('auth_retention_runs')->count());
+        DB::statement('RESET ROLE');
         $run = $this->createRun();
         $this->assertSame(1, $this->cleanup($run, 'invitations'));
         $this->assertTrue(DB::table('client_invitations')->where('id', $active)->exists());
@@ -333,5 +343,33 @@ final class RetentionTest extends TestCase
                 DB::statement('ALTER TABLE b5_gc_registry_outage RENAME TO '.$table);
             }
         }
+    }
+
+    public function test_target_client_user_and_case_holds_protect_terminal_invitation(): void
+    {
+        $coach = DB::table('users')->insertGetId(['name' => 'Synthetic hold coach', 'role' => 'admin']);
+        $user = DB::table('users')->insertGetId(['name' => 'Synthetic held target', 'role' => 'client']);
+        $client = DB::table('clients')->insertGetId(['user_id' => $user, 'coach_user_id' => $coach]);
+        $invite = DB::table('client_invitations')->insertGetId(['token_hash' => hash('sha256', 'held-target'), 'created_by_user_id' => $coach, 'coach_user_id' => $coach, 'target_client_id' => $client,
+            'created_at' => DB::raw("clock_timestamp()-interval '400 days'"), 'revoked_at' => DB::raw("clock_timestamp()-interval '366 days'"), 'revoked_by_user_id' => $coach]);
+        $principals = [];
+        foreach (['target', 'initiator'] as $slot) {
+            $principals[$slot] = (string) Str::uuid();
+            DB::table('auth_recovery_principals')->insert(['id' => $principals[$slot], 'linked_user_id' => $slot === 'target' ? $user : null, 'authority' => 'operator', 'identity_record_digest' => hash('sha256', $slot), 'created_at' => DB::raw('clock_timestamp()')]);
+        }
+        $case = (string) Str::uuid();
+        DB::table('auth_recovery_cases')->insert(['id' => $case, 'target_user_id' => $user, 'target_principal_id' => $principals['target'], 'initiator_principal_id' => $principals['initiator'],
+            'target_role' => 'client', 'action' => 'replace_mfa', 'expected_auth_version' => 0, 'registry_version' => 1, 'policy_version' => 1, 'deployment_id' => 'synthetic',
+            'restore_epoch' => SyntheticEpoch::INITIAL, 'intent_nonce' => (string) Str::uuid(), 'intent_digest' => hash('sha256', $case),
+            'created_at' => DB::raw('clock_timestamp()'), 'expires_at' => DB::raw("clock_timestamp()+interval '24 hours'"), 'reason_code' => 'lost_mfa']);
+        $run = $this->createRun();
+        foreach ([['subject_user_id' => $user], ['case_id' => $case]] as $i => $selector) {
+            $hold = (string) Str::uuid();
+            DB::table('auth_retention_holds')->insert($selector + ['id' => $hold, 'reason_code' => 'legal', 'created_by_principal_id' => $principals['initiator']]);
+            $this->assertSame(0, $this->cleanup($run, 'invitations', $i + 1));
+            $this->assertTrue(DB::table('client_invitations')->where('id', $invite)->exists());
+            DB::table('auth_retention_holds')->where('id', $hold)->update(['released_at' => DB::raw('clock_timestamp()'), 'released_by_principal_id' => $principals['target']]);
+        }
+        $this->assertSame(1, $this->cleanup($run, 'invitations', 3));
     }
 }

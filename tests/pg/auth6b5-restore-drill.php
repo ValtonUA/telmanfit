@@ -8,13 +8,12 @@ use App\Services\Auth\Restore\RestoreFence;
 use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Restore\SyntheticRestore;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 require __DIR__.'/auth2-bootstrap.php';
 set_exception_handler(function (Throwable $e) {
-    Artisan::call('up');
+    app()->maintenanceMode()->deactivate();
     fwrite(STDERR, 'B5 snapshot drill failed: '.get_class($e).' line '.$e->getLine()."\n");
     exit(1);
 });
@@ -79,7 +78,7 @@ DB::table('auth_retention_holds')->insert(['id' => $holdId, 'subject_user_id' =>
 $currentHold = (array) DB::table('auth_retention_holds')->where('id', $holdId)->first();
 DB::table('auth_recovery_principals')->where('id', $holdPrincipal)->update(['revoked_at' => DB::raw('clock_timestamp()')]);
 $currentRevocation = DB::table('auth_recovery_principals')->where('id', $holdPrincipal)->value('revoked_at');
-Artisan::call('down');
+app()->maintenanceMode()->activate([]);
 DB::table('auth_security_runtime')->where('id', 1)->update(['state' => 'maintenance']);
 $external->epoch = (string) Str::uuid();
 if ($digest !== hash_file('sha256', $dump)) {
@@ -126,7 +125,7 @@ $result = ['synthetic_only' => true, 'pg_major' => 18, 'snapshot_age_seconds' =>
     'access_state' => 'recovery_required', 'rpo_target_seconds' => 900, 'production_sla' => false];
 file_put_contents(base_path('docs/evidence/auth6b-b5/restore.json'), json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
 unlink($dump);
-Artisan::call('up');
+app()->maintenanceMode()->deactivate();
 // Повертаємо лише test fence для наступних тестів, capabilities лишаються revoked.
 DB::table('auth_security_runtime')->where('id', 1)->update(['restore_epoch' => SyntheticEpoch::INITIAL, 'state' => 'ready', 'issuance_not_before' => DB::raw('clock_timestamp()')]);
 echo "B5 real synthetic pg_dump/pg_restore snapshot drill PASS: spent OTP/code and rotated factor restored as bytes, access denied, old session/outbox eliminated; business access remains closed\n";

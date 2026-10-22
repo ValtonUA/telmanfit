@@ -50,7 +50,9 @@ metadata online, але не подовжують secret payload TTL. Operationa
 Holds мають рівно один user/case/half-open time selector, whitelist reason,
 FK principal, paired release іншим principal. History не DELETE/TRUNCATE;
 після release selector/creator незмінні. Exclusive policy advisory xact lock на
-create/release проти shared physical batches визначає commit ordering. User/case
+create/release проти shared physical batches визначає commit ordering. Apply/GC відмовляють при ізоляції, відмінній від
+READ COMMITTED: старий REPEATABLE READ snapshot не може пропустити новий hold
+після очікування policy lock. Dry-run залишається read-only. User/case
 scope захищає пов'язані audit records; ephemeral flows із grant refs defer цілком.
 Недоступна hold table/SELECT privilege відкочує purge, немає fallback на empty.
 
@@ -86,7 +88,8 @@ Production adapter не bind-иться; testing adapter автоматично 
 production activation flags лишаються OFF.
 
 `SyntheticRestore` виконується лише testing + guard нової private-socket PG18 +
-maintenance. Спершу durable `maintenance`, потім перевірка synthetic evidence
+maintenance. Test marker ізольований у приватному каталозі cluster, без
+`artisan down/up` та без впливу на workspace/runtime maintenance files. Спершу durable `maintenance`, потім перевірка synthetic evidence
 ports та **окрема** rotation зовнішнього epoch в orchestrator. Чинні hold rows і
 principal/key revocations беруться з manifests поза DB snapshot; missing reference
 або суперечність hold лишають closed. Потім атомарно: усі users version++, flows/
@@ -160,7 +163,7 @@ users не гарантується. Немає production SLA за резуль
 | Stage1/2 / основний PHPUnit | 41/713 + 38/62 tests/assertions |
 | AUTH-1 / AUTH-2 / AUTH-3 | 15/93 + 12/131 + 25/129 |
 | AUTH-4 / AUTH-5 / AUTH-6 | 24/152 + 19/131 + 5/359 |
-| B3 / B4 / B5 | 22/213 + 16/128 + **21/196** |
+| B3 / B4 / B5 | 22/213 + 16/128 + **23/208** |
 | Process / HTTP / browser | AUTH2–5/B3/B4/B5 concurrency, 25 B1 HTTP scenarios, Chromium AUTH3/4/5 PASS |
 | Pint / frontend | Pint, client ESLint/build, root Filament build PASS |
 
@@ -174,8 +177,8 @@ B3/B4/B5/HTTP повтори успішні. B3 historical downgrade fixture в�
 projection тільки видаленням порожньої нової holds table всередині transaction;
 rollback повертає її FK. Production downgrade не дозволяється.
 
-Synthetic snapshot drill: observed snapshot age **1.061s**, infrastructure restore
-**0.680s**, closed reconciliation **0.034s**. Restricted service/business access
+Synthetic snapshot drill: observed snapshot age **1.379s**, infrastructure restore
+**0.774s**, closed reconciliation **0.036s**. Restricted service/business access
 не відновлювалися; це не production SLA і не WAL/PITR acceptance.
 
 [Draft PR #20](https://github.com/ValtonUA/telmanfit/pull/20). GitHub checks для
@@ -196,6 +199,7 @@ Recovery history purge, verified archive lifecycle та production failed-payloa
 ізольовані. Один Draft PR; без merge, auto-merge або переписування історії.
 
 
+
 ## Повний перелік змінених / створених файлів
 
 ```text
@@ -212,6 +216,7 @@ app/Services/Auth/Recovery/RecoveryService.php
 app/Services/Auth/Restore/ExternalEpoch.php
 app/Services/Auth/Restore/RestoreFence.php
 app/Services/Auth/Restore/SyntheticEpoch.php
+app/Services/Auth/Restore/SyntheticMaintenanceMode.php
 app/Services/Auth/Restore/SyntheticRestore.php
 app/Services/Auth/Retention/ArchiveVerification.php
 app/Services/Auth/Retention/RetentionService.php

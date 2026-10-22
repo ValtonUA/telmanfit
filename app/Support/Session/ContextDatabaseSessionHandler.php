@@ -19,6 +19,9 @@ final class ContextDatabaseSessionHandler extends DatabaseSessionHandler
             $ids = $this->connection->transaction(function () use ($lifetime) {
                 $this->connection->statement("SET LOCAL lock_timeout='2s'");
                 $this->connection->statement("SET LOCAL statement_timeout='5s'");
+                if ($this->connection->selectOne("SELECT current_setting('transaction_isolation') level")->level !== 'read committed') {
+                    throw new \RuntimeException('retention_snapshot_unavailable');
+                }
                 app(RestoreFence::class)->assert();
 
                 return $this->eligible($lifetime)->orderBy('id')->limit(500)->pluck('id');

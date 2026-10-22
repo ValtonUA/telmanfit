@@ -32,3 +32,7 @@ ALTER FUNCTION auth_retention_finish(uuid,boolean) OWNER TO telmanfit_retention_
 GRANT EXECUTE ON FUNCTION auth_retention_finish(uuid,boolean) TO telmanfit_retention_executor;
 
 GRANT UPDATE ON failed_jobs TO telmanfit_retention_owner;
+
+GRANT SELECT ON clients TO telmanfit_retention_owner;
+ALTER FUNCTION auth_retention_preview(text) OWNER TO telmanfit_retention_owner;
+GRANT EXECUTE ON FUNCTION auth_retention_preview(text) TO telmanfit_retention_executor;

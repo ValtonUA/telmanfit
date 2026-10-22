@@ -13,17 +13,14 @@ final class RetentionService
     public function dryRun(string $entity = 'audit'): array
     {
         app(RestoreFence::class)->assert();
-
-        if ($entity !== 'audit') {
-            return DB::select('SELECT id FROM auth_retention_candidates(?,clock_timestamp()) ORDER BY id LIMIT 500', [$entity]);
+        $rows = DB::select('SELECT id FROM auth_retention_preview(?)', [$entity]);
+        if ($entity === 'audit') {
+            foreach ($rows as $row) {
+                $row->id = (int) $row->id;
+            }
         }
 
-        return DB::select("SELECT id FROM auth_audit_events a WHERE occurred_at<=clock_timestamp()-interval '180 days'
-            AND NOT EXISTS(SELECT FROM auth_retention_holds h WHERE h.released_at IS NULL AND
-                (h.subject_user_id IN (a.actor_user_id,a.subject_user_id) OR h.case_id=a.case_reference OR
-                 (a.occurred_at>=h.audit_from AND a.occurred_at<h.audit_to) OR
-                 EXISTS(SELECT FROM auth_recovery_cases c WHERE c.id=h.case_id AND c.target_user_id IN (a.actor_user_id,a.subject_user_id))))
-            ORDER BY occurred_at,id LIMIT 500");
+        return $rows;
     }
 
     public function start(): string

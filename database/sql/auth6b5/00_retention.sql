@@ -95,11 +95,12 @@ CREATE FUNCTION auth_retention_purge_audit(rid uuid, batch integer, mid uuid, id
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET lock_timeout='2s' SET statement_timeout='5s' AS $$
 DECLARE m public.auth_archive_manifests; r public.auth_retention_runs; n integer; d text; old public.auth_retention_batches;
 BEGIN
+ IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'Read committed retention required'; END IF;
  IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
  IF current_user<>'telmanfit_retention_owner' OR batch IS NULL OR batch<1 OR ids IS NULL OR
   cardinality(ids) NOT BETWEEN 1 AND 500 OR array_position(ids,NULL) IS NOT NULL OR
   cardinality(ids)<>(SELECT count(DISTINCT x) FROM unnest(ids) x) THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
- IF NOT EXISTS(SELECT FROM public.auth_security_runtime WHERE id=1 AND state='ready') THEN RAISE EXCEPTION 'Restore fence closed'; END IF;
+ IF NOT EXISTS(SELECT FROM public.auth_security_runtime sr WHERE sr.id=1 AND sr.state='ready') THEN RAISE EXCEPTION 'Restore fence closed'; END IF;
  PERFORM pg_advisory_xact_lock_shared(6060505);
  SELECT * INTO STRICT r FROM public.auth_retention_runs WHERE id=rid FOR UPDATE;
  SELECT * INTO old FROM public.auth_retention_batches WHERE run_id=rid AND batch_no=batch;
@@ -186,7 +187,12 @@ RETURNS TABLE(id text,subject bigint,case_ref uuid,occurred timestamptz) LANGUAG
  SELECT i.id::text,coalesce(i.consumed_by_user_id,i.revoked_by_user_id),NULL::uuid,coalesce(i.consumed_at,i.revoked_at) FROM public.client_invitations i
  WHERE kind='invitations' AND coalesce(i.consumed_at,i.revoked_at)<=cutoff-interval '365 days'
  AND NOT EXISTS(SELECT FROM public.auth_flows f WHERE f.invitation_id=i.id)
- AND NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND h.subject_user_id IN (i.created_by_user_id,i.coach_user_id,i.consumed_by_user_id,i.revoked_by_user_id))
+ AND NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
+  (h.subject_user_id IN (i.created_by_user_id,i.coach_user_id,i.consumed_by_user_id,i.revoked_by_user_id)
+   OR EXISTS(SELECT FROM public.clients cl WHERE cl.id=i.target_client_id AND cl.user_id=h.subject_user_id)
+   OR EXISTS(SELECT FROM public.auth_recovery_cases rc WHERE rc.id=h.case_id AND
+    (rc.target_user_id IN (i.created_by_user_id,i.coach_user_id,i.consumed_by_user_id,i.revoked_by_user_id)
+     OR EXISTS(SELECT FROM public.clients cl WHERE cl.id=i.target_client_id AND cl.user_id=rc.target_user_id)))))
  UNION ALL
  SELECT f.user_id::text,f.user_id,NULL::uuid,f.pending_expires_at FROM public.user_totp_factors f
  WHERE kind='pending_totp' AND f.pending_expires_at<=cutoff AND
@@ -205,9 +211,10 @@ CREATE FUNCTION auth_retention_cleanup(rid uuid,batch integer,kind text) RETURNS
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET lock_timeout='2s' SET statement_timeout='10s' AS $$
 DECLARE r public.auth_retention_runs; prior public.auth_retention_batches; row record; chosen text[]:=ARRAY[]::text[]; n integer:=0; k integer;
 BEGIN
+ IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'Read committed retention required'; END IF;
  IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
  IF current_user<>'telmanfit_retention_owner' OR kind IS NULL OR kind NOT IN ('challenges','flows','codes','invitations','pending_totp','outbox','failed_jobs') OR batch IS NULL OR batch<1 THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
- IF NOT EXISTS(SELECT FROM public.auth_security_runtime WHERE id=1 AND state='ready') THEN RAISE EXCEPTION 'Restore fence closed'; END IF;
+ IF NOT EXISTS(SELECT FROM public.auth_security_runtime sr WHERE sr.id=1 AND sr.state='ready') THEN RAISE EXCEPTION 'Restore fence closed'; END IF;
  PERFORM pg_advisory_xact_lock_shared(6060505);
  PERFORM pg_advisory_xact_lock(4040404);
  SELECT * INTO STRICT r FROM public.auth_retention_runs WHERE id=rid FOR UPDATE;
@@ -269,6 +276,7 @@ REVOKE ALL ON FUNCTION auth_retention_candidates(text,timestamptz),auth_retentio
 CREATE FUNCTION auth_retention_finish(rid uuid,failed boolean) RETURNS void LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET lock_timeout='2s' AS $$
 BEGIN
+ IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'Read committed retention required'; END IF;
  IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
  IF current_user<>'telmanfit_retention_owner' OR failed IS NULL THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
  UPDATE public.auth_retention_runs SET state=CASE WHEN failed THEN 'failed' ELSE 'completed' END,
@@ -285,3 +293,27 @@ REVOKE ALL ON FUNCTION auth_retention_run_audit() FROM PUBLIC;
 CREATE TRIGGER auth_retention_run_audit AFTER INSERT OR UPDATE ON auth_retention_runs FOR EACH ROW EXECUTE FUNCTION auth_retention_run_audit();
 CREATE INDEX auth_retention_hold_creator ON auth_retention_holds(created_by_principal_id);
 CREATE INDEX auth_retention_hold_releaser ON auth_retention_holds(released_by_principal_id);
+-- Read-only preview не надає executor SELECT на secret-bearing auth tables.
+CREATE FUNCTION auth_retention_preview(kind text) RETURNS TABLE(id text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET statement_timeout='5s' AS $$
+BEGIN
+ IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' OR current_user<>'telmanfit_retention_owner'
+  OR kind IS NULL OR kind NOT IN ('audit','challenges','flows','codes','invitations','pending_totp','outbox','failed_jobs') THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
+ IF NOT EXISTS(SELECT FROM public.auth_security_runtime sr WHERE sr.id=1 AND sr.state='ready') THEN RAISE EXCEPTION 'Restore fence closed'; END IF;
+ IF kind='audit' THEN
+  RETURN QUERY SELECT a.id::text FROM public.auth_audit_events a WHERE a.occurred_at<=statement_timestamp()-interval '180 days'
+  AND NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
+   (h.subject_user_id IN (a.actor_user_id,a.subject_user_id) OR h.case_id=a.case_reference OR
+    (a.occurred_at>=h.audit_from AND a.occurred_at<h.audit_to) OR
+    EXISTS(SELECT FROM public.auth_recovery_cases rc WHERE rc.id=h.case_id AND rc.target_user_id IN (a.actor_user_id,a.subject_user_id))))
+  ORDER BY a.occurred_at,a.id LIMIT 500;
+  RETURN;
+ END IF;
+ RETURN QUERY SELECT c.id FROM public.auth_retention_candidates(kind,statement_timestamp()) c
+ WHERE NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
+  (c.subject IS NULL OR h.subject_user_id=c.subject OR h.case_id=c.case_ref OR
+   (c.occurred>=h.audit_from AND c.occurred<h.audit_to) OR
+   EXISTS(SELECT FROM public.auth_recovery_cases rc WHERE rc.id=h.case_id AND rc.target_user_id=c.subject)))
+ ORDER BY c.id LIMIT 500;
+END $$;
+REVOKE ALL ON FUNCTION auth_retention_preview(text) FROM PUBLIC;

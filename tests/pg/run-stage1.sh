@@ -13,7 +13,7 @@ cleanup() {
     code=$?; trap - EXIT
     if [[ -n "$container" ]]; then docker rm -f "$container" >/dev/null || code=1; fi
     rm -f -- "$work/socket/.s.PGSQL.5432" "$work/socket/.s.PGSQL.5432.lock"
-    rm -f -- "$work/snapshot.dump"
+    rm -f -- "$work/snapshot.dump" "$work/maintenance.json"
     rmdir -- "$work/socket" "$work" || code=1
     exit "$code"
 }

@@ -16,6 +16,9 @@ final class SyntheticRestore
         require base_path('tests/pg/auth2-guard.php');
         // Спершу durable fence; crash на наступних етапах лишає closed.
         DB::table('auth_security_runtime')->where('id', 1)->update(['state' => 'maintenance']);
+        if (DB::selectOne("SELECT current_setting('transaction_isolation') level")->level !== 'read committed') {
+            throw new \RuntimeException('restore_snapshot_unavailable');
+        }
         foreach (['backup', 'wal', 'keys', 'registry', 'holds', 'revocations', 'audit'] as $proof) {
             if (($proofs[$proof] ?? null) !== true) {
                 throw new \RuntimeException('restore_proof_unavailable');
