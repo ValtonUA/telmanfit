@@ -41,10 +41,39 @@ registry outage, confirmed/pending-only factors, idempotency, migration OID/ACL,
 реальні policy/session lock waits і B1 HTTP follower після GC, factor confirmation race.
 Наявні archive-unavailable/digest/ACL/history/recovery/restore tests лишаються обов'язковими.
 
-Перевірки нового коду та точні SHA/run URLs фіксуються в описі PR після CI.
+Локальний fix-прогін у Windows/Herd PHP 8.5.12: `php artisan test` —
+**38 tests / 62 assertions PASS** після збірки assets; Pint, client ESLint/build
+і root Filament build — PASS. Перша спроба PHPUnit до збірки assets виявила
+відсутній Vite manifest; після build повтор успішний. PostgreSQL/HTTP/browser/
+SIGTERM/restore проганяє чинний guarded Linux GitHub Actions harness із новими
+private-socket containers; Windows guard не послаблювався і наявні локальні БД
+не використовувалися. Legacy AUTH-2/5 upgrade/down projection явно виключає
+B5 forward migration; populated B5 upgrade перевіряється окремо.
+
+Точні SHA/run URLs і фінальні CI-результати фіксуються в описі PR після CI.
 Наведені нижче 23/208 і старі timings стосуються попереднього HEAD, а не цього fix.
 PR залишається Draft для повторного незалежного review; merge/auto-merge,
 production/deployment/реальні БД не входять до задачі.
+
+### Файли P2 fix відносно b879668
+
+```text
+app/Support/Session/ContextDatabaseSessionHandler.php
+database/migrations/2026_10_22_005000_fix_auth_retention_hold_scrub.php
+database/sql/auth6b5/00_retention.sql
+database/sql/auth6b5/02_hold_scrub.sql
+docs/08_auth_retention_restore.sql
+docs/auth6-b5.md
+docs/database.dbml
+docs/entity-catalog.md
+tests/Auth6B5/HoldScrubTest.php
+tests/Auth6B5/MigrationTest.php
+tests/Auth6B5/pre_hold_scrub.sql
+tests/AuthPostgres/AuthSchemaTest.php
+tests/pg/auth2-upgrade.php
+tests/pg/auth6b5-hold-concurrency.php
+tests/pg/run-stage1.sh
+```
 
 ## Реалізовано
 

@@ -3,6 +3,7 @@
 namespace Tests\Auth6B5;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class MigrationTest extends TestCase
@@ -13,6 +14,12 @@ final class MigrationTest extends TestCase
         DB::beginTransaction();
         try {
             $user = DB::table('users')->insertGetId(['name' => 'Synthetic upgrade survivor', 'role' => 'client']);
+            DB::table('user_totp_factors')->insert(['user_id' => $user, 'secret_ciphertext' => str_repeat('s', 100),
+                'key_version' => 'test_v1', 'confirmed_at' => DB::raw('clock_timestamp()'), 'last_used_step' => 780]);
+            $factor = DB::table('public.user_totp_factors')->where('user_id', $user)->first();
+            $audit = DB::table('auth_audit_events')->insertGetId(['subject_user_id' => $user, 'event_type' => 'test.upgrade_history',
+                'outcome' => 'success', 'request_id' => (string) Str::uuid()]);
+            $history = DB::table('public.auth_audit_events')->where('id', $audit)->first();
             DB::unprepared('CREATE SCHEMA b5_upgrade; SET LOCAL search_path=b5_upgrade,public;');
             DB::unprepared(file_get_contents(__DIR__.'/pre_hold_scrub.sql'));
             DB::statement('REVOKE ALL ON FUNCTION b5_upgrade.auth_retention_cleanup(uuid,integer,text) FROM PUBLIC');
@@ -28,6 +35,8 @@ final class MigrationTest extends TestCase
             $this->assertNotSame($before->prosrc, $after->prosrc);
             $this->assertSame(DB::selectOne("SELECT prosrc FROM pg_proc WHERE oid='public.auth_retention_cleanup(uuid,integer,text)'::regprocedure")->prosrc, $after->prosrc);
             $this->assertSame($user, DB::table('public.users')->where('id', $user)->value('id'));
+            $this->assertEquals($factor, DB::table('public.user_totp_factors')->where('user_id', $user)->first());
+            $this->assertEquals($history, DB::table('public.auth_audit_events')->where('id', $audit)->first());
             $migration->up();
             $this->assertEquals($after, DB::selectOne($query));
             $this->expectException(\RuntimeException::class);
