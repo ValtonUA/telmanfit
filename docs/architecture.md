@@ -49,7 +49,7 @@
 
 # Технологічна архітектура TelmanFit
 
-> **Поточний зріз архітектури — 23.10.2026 (master до цього docs PR `bb0816d`):** Stage 1 бізнес-схема реалізована; Stage 2 client cards у Filament і AUTH-3/4/5 (Filament MFA, invitation/email OTP і React security) реалізовані **тільки controlled/default OFF**. Основних бізнес-модулів продуктів, рецептів, раціонів, прогресу, тренувань і Telegram **немає**. **Stage 3 — наступний продуктовий пріоритет**; хостинг/D8/last-admin after B5 restore/B7 — перед production. RPO до 24h погоджено; Hyperhost/SendPulse обрані, не розгорнуті. Датовані секції нижче можуть описувати попередні ревізії: [актуальний roadmap](roadmap.md#актуальний-стан-і-наступний-крок--23102026), [project-status.md](project-status.md).
+> **Поточний зріз архітектури — 23.10.2026 (master до цього docs PR `bb0816d`):** Stage 1 бізнес-схема реалізована; Stage 2 client cards у Filament і AUTH-3/4/5 (Filament MFA, invitation/email OTP і React security) реалізовані **тільки controlled/default OFF**. Основних бізнес-модулів продуктів, рецептів, раціонів, прогресу, тренувань і Telegram **немає**. **Stage 3 — наступний продуктовий пріоритет**; хостинг/D8/last-admin after B5 restore/B7 — перед production. RPO до 24h погоджено; Hyperhost/SendPulse обрані, не розгорнуті. Датовані секції нижче можуть описувати попередні ревізії: [актуальний roadmap](roadmap.md#поточний-зріз), [project-status.md](project-status.md).
 
 
 
