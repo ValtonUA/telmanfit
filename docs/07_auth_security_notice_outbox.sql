@@ -91,7 +91,7 @@ CREATE FUNCTION auth_notice_claim(batch_size integer) RETURNS SETOF auth_securit
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE r public.auth_security_notice_outbox; t timestamptz;
 BEGIN
- IF batch_size NOT BETWEEN 1 AND 50 THEN RAISE EXCEPTION 'Invalid notice batch'; END IF;
+ IF batch_size IS NULL OR batch_size NOT BETWEEN 1 AND 50 THEN RAISE EXCEPTION 'Invalid notice batch'; END IF;
  FOR r IN SELECT * FROM public.auth_security_notice_outbox
   WHERE (state='pending' AND (next_attempt_at<=clock_timestamp() OR expires_at<=clock_timestamp())) OR (state='leased' AND lease_until<=clock_timestamp())
   ORDER BY next_attempt_at,id LIMIT batch_size FOR UPDATE SKIP LOCKED LOOP
@@ -113,10 +113,10 @@ CREATE FUNCTION auth_notice_ack(notice_id uuid, token uuid, result text) RETURNS
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE r public.auth_security_notice_outbox; t timestamptz; delay_seconds integer; target text;
 BEGIN
- IF result NOT IN ('sent','transport','timeout','key','policy','permanent') THEN RAISE EXCEPTION 'Invalid notice result'; END IF;
+ IF result IS NULL OR result NOT IN ('sent','transport','timeout','key','policy','permanent') THEN RAISE EXCEPTION 'Invalid notice result'; END IF;
  SELECT * INTO r FROM public.auth_security_notice_outbox WHERE id=notice_id FOR UPDATE;
  t:=clock_timestamp();
- IF NOT FOUND OR r.state<>'leased' OR r.lease_token<>token OR r.lease_until<=t THEN RETURN false; END IF;
+ IF NOT FOUND OR token IS NULL OR r.state<>'leased' OR r.lease_token IS DISTINCT FROM token OR r.lease_until<=t THEN RETURN false; END IF;
  target:=CASE WHEN r.expires_at<=t THEN 'expired' WHEN result='sent' THEN 'sent'
   WHEN result IN ('key','policy','permanent') OR r.attempts>=20 THEN 'dead' ELSE 'pending' END;
  delay_seconds:=CASE r.attempts WHEN 1 THEN 30 WHEN 2 THEN 120 WHEN 3 THEN 600 WHEN 4 THEN 1800 ELSE 3600 END;

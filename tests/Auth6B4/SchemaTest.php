@@ -87,6 +87,15 @@ class SchemaTest extends TestCase
             $dispatcher = app(NoticeDispatcher::class);
             $claim = collect($dispatcher->claim(50))->firstWhere('id', $id);
             $this->assertNotNull($claim);
+            $this->assertFalse(DB::selectOne("SELECT auth_notice_ack(?::uuid,NULL,'sent') ok", [$id])->ok);
+            foreach ([['SELECT auth_notice_claim(NULL)', []], ['SELECT auth_notice_ack(?::uuid,?::uuid,NULL)', [$id, $claim->lease_token]]] as [$sql, $bindings]) {
+                try {
+                    DB::transaction(fn () => DB::select($sql, $bindings));
+                    $this->fail('NULL function argument accepted');
+                } catch (QueryException $e) {
+                    $this->assertSame('P0001', $e->errorInfo[0]);
+                }
+            }
             $this->assertTrue($dispatcher->acknowledge($id, $claim->lease_token, 'sent'));
             $this->assertNull(DB::table('auth_security_notice_outbox')->where('id', $id)->value('recipient_ciphertext'));
         } finally {

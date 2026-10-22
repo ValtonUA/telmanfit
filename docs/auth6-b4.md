@@ -63,7 +63,7 @@ retry_after піднято до 120 секунд; override нижче 120 не �
 Future SMTP adapter зобов'язаний мати реальний connect/read/total timeout ≤10s;
 B4 має лише fake, тому реальних SMTP sockets/timeouts не випробовує.
 
-Retry: 30s/120s/600s/1800s/3600s плюс додатний jitter <10%, максимум 20/24h.
+Retry: 30s/120s/600s/1800s/3600s плюс невід'ємний jitter <10%, максимум 20/24h.
 Key/policy/permanent error → dead; transient/timeout → pending до ліміту.
 Recipient key version зберігає доступ до старого key під час ротації; нема ключа
 → dead+key alarm. Ключі не пишуться до DB/queue; default використовує APP_KEY
@@ -122,7 +122,7 @@ Unix socket, непривілейований runner) з успішним cleanu
 
 | Перевірка | Результат |
 |---|---|
-| `AUTH6B4_ONLY=1 tests/pg/run-stage1.sh` | 16 tests / 122 assertions; concurrency і справжні process crashes PASS |
+| `AUTH6B4_ONLY=1 tests/pg/run-stage1.sh` | 16 tests / 125 assertions; concurrency і справжні process crashes PASS |
 | `AUTH6B_ONLY=1 tests/pg/run-stage1.sh` | AUTH-2 12/131, B3 22/212, B4 та AUTH-3–6 PASS; B3 races і 22 parallel HTTP scenarios PASS |
 | `AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh` | SQL 76/76; Stage 1/2 41/713; основний PHPUnit 38/62; AUTH-2 12/131, AUTH-3 25/129, AUTH-4 24/152, AUTH-5 19/131, AUTH-6 5/359; усі races/browser/HTTP PASS |
 | `experiments/auth1/run.sh` | 15 tests / 93 assertions PASS |
@@ -148,7 +148,7 @@ quarantine та finalize; mutation/version/gate/factor/codes/audit не комі
 
 Додатково: всі retry stages/jitter, 20 claims, expiry під час in-flight synthetic
 send, transient/permanent/timeout/key errors, duplicate signal, payload/slot
-mismatch, immutable snapshots/terminal, позитивні й негативні ACL, populated down,
+mismatch, immutable snapshots/terminal, позитивні й негативні ACL, NULL batch/token/result guards, populated down,
 канарки у audit/metrics/queue/failed_jobs/errors, відсутність logger calls із
 provider exceptions. Реального SMTP/APM provider тут немає: їхній timeout,
 redaction/quotas/TLS/DPA/retention acceptance не заявляється виконаним.
