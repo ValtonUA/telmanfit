@@ -1,3 +1,10 @@
+> **AUTH-6A, 22.10.2026:** виконано статичний аудит master `7b38445` після PR #13.
+> Підготовлено [readiness і пакет рішень P5/P6](auth6-readiness.md): рекомендовані
+> recovery/operations, дефекти enumeration через login flow_id і спільного session
+> GC, план перевірюваних частин AUTH-6B та критерії go/no-go. P5/P6 **не затверджено
+> й не реалізовано**; production заблоковано. Нові runtime/PG тести не запускалися,
+> код, схема, дані, секрети та gates не змінювалися.
+
 > **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
 > reauth, optional MFA management, sessions та email change; default OFF. Користувач
 > окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
