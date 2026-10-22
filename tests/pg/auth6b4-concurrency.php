@@ -114,6 +114,7 @@ foreach (['crash-before', 'crash-after'] as $stage) {
     proc_close($process);
     $expected = $stage === 'crash-before' ? 0 : 1;
     if (DB::table('auth_security_notice_outbox')->where('request_id', $request)->count() !== $expected
+        || DB::table('auth_audit_events')->where('request_id', $request)->where('event_type', 'notice.queued')->count() !== $expected
         || DB::table('users')->where('id', $subject)->value('auth_version') !== $before + $expected) {
         throw new RuntimeException('Process crash atomicity failed');
     }

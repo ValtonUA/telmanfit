@@ -122,7 +122,7 @@ Unix socket, непривілейований runner) з успішним cleanu
 
 | Перевірка | Результат |
 |---|---|
-| `AUTH6B4_ONLY=1 tests/pg/run-stage1.sh` | 16 tests / 125 assertions; concurrency і справжні process crashes PASS |
+| `AUTH6B4_ONLY=1 tests/pg/run-stage1.sh` | 16 tests / 128 assertions; concurrency і справжні process crashes PASS |
 | `AUTH6B_ONLY=1 tests/pg/run-stage1.sh` | AUTH-2 12/131, B3 22/212, B4 та AUTH-3–6 PASS; B3 races і 22 parallel HTTP scenarios PASS |
 | `AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh` | SQL 76/76; Stage 1/2 41/713; основний PHPUnit 38/62; AUTH-2 12/131, AUTH-3 25/129, AUTH-4 24/152, AUTH-5 19/131, AUTH-6 5/359; усі races/browser/HTTP PASS |
 | `experiments/auth1/run.sh` | 15 tests / 93 assertions PASS |
@@ -147,7 +147,7 @@ quarantine та finalize; mutation/version/gate/factor/codes/audit не комі
 одержують disjoint claims; два observed advisory lock waits дають один intent.
 
 Додатково: всі retry stages/jitter, 20 claims, expiry під час in-flight synthetic
-send, transient/permanent/timeout/key errors, duplicate signal, payload/slot
+send, transient/permanent/timeout errors, пошкоджений ciphertext і відсутній key, duplicate signal, payload/slot
 mismatch, immutable snapshots/terminal, позитивні й негативні ACL, NULL batch/token/result guards, populated down,
 канарки у audit/metrics/queue/failed_jobs/errors, відсутність logger calls із
 provider exceptions. Реального SMTP/APM provider тут немає: їхній timeout,

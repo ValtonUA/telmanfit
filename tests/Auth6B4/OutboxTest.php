@@ -200,6 +200,18 @@ class OutboxTest extends TestCase
                 $this->assertLessThan(34, (float) $delay);
             }
         }
+        // Окремий decrypt fault із чинним key: ciphertext пошкоджений, адреси тут немає.
+        $broken = (array) $this->write();
+        $broken['id'] = (string) Str::uuid();
+        $broken['request_id'] = (string) Str::uuid();
+        $broken['recipient_ciphertext'] = 'synthetic-corrupted-ciphertext';
+        DB::table('auth_security_notice_outbox')->insert($broken);
+        $claim = collect($this->dispatcher->claim(50))->firstWhere('id', $broken['id']);
+        $sent = count($this->fake->messages);
+        $this->dispatcher->deliver($claim);
+        $this->assertSame('key', DB::table('auth_security_notice_outbox')->where('id', $broken['id'])->value('last_error_code'));
+        $this->assertNull(DB::table('auth_security_notice_outbox')->where('id', $broken['id'])->value('recipient_ciphertext'));
+        $this->assertCount($sent, $this->fake->messages);
         $row = $this->write();
         $claim = collect($this->dispatcher->claim(50))->firstWhere('id', $row->id);
         config(['auth_notices.keys.app_v1' => null]);
