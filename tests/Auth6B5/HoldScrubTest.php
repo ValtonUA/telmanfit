@@ -236,6 +236,7 @@ final class HoldScrubTest extends TestCase
     {
         $user = $this->user();
         DB::table('user_totp_factors')->insert(['user_id' => $user, 'secret_ciphertext' => str_repeat('s', 100), 'key_version' => 'test_v1',
+            'created_at' => DB::raw("clock_timestamp()-interval '2 hours'"),
             'confirmed_at' => DB::raw("clock_timestamp()-interval '1 hour'"), 'last_used_step' => 778,
             'pending_secret_ciphertext' => str_repeat('p', 100), 'pending_key_version' => 'test_v1',
             'pending_expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
@@ -261,6 +262,7 @@ final class HoldScrubTest extends TestCase
     {
         $user = $this->user();
         DB::table('user_totp_factors')->insert(['user_id' => $user, 'secret_ciphertext' => str_repeat('s', 100), 'key_version' => 'test_v1',
+            'created_at' => DB::raw("clock_timestamp()-interval '2 hours'"),
             'confirmed_at' => DB::raw("clock_timestamp()-interval '1 hour'"), 'last_used_step' => 779,
             'pending_secret_ciphertext' => str_repeat('p', 100), 'pending_key_version' => 'test_v1',
             'pending_expires_at' => DB::raw("clock_timestamp()-interval '1 second'")]);
