@@ -1,3 +1,8 @@
+> **AUTH-6B/B4, 22.10.2026:** D4 затверджено; реалізовано transactional security
+> notice outbox, encrypted snapshot, lease/fencing, bounded retry і terminal scrub.
+> Лише synthetic/local/testing adapters; production delivery/recovery OFF.
+> D3/D5–D8/P5/P6 відкриті; [контракт і докази](auth6-b4.md).
+
 > **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
 > reauth, optional MFA management, sessions та email change; default OFF. Користувач
 > окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,

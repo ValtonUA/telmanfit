@@ -76,7 +76,7 @@ class AuthSchemaTest extends TestCase
         foreach ($parts as $part) {
             $this->assertStringContainsString(file_get_contents($part), $snapshot);
         }
-        $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass) AND c.conrelid::regclass::text NOT LIKE 'auth_recovery_%'");
+        $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass) AND c.conrelid::regclass::text NOT LIKE 'auth_recovery_%' AND c.conrelid::regclass::text<>'auth_security_notice_outbox'");
         $this->assertCount(15, $keys);
         foreach ($keys as $key) {
             $this->assertSame('bigint', $key->type);
@@ -333,8 +333,8 @@ class AuthSchemaTest extends TestCase
         DB::table('auth_audit_events')->insert(['event_type' => 'test', 'outcome' => 'success', 'request_id' => (string) Str::uuid()]);
         DB::table('users')->where('id', 5000000000)->update(['auth_version' => 1]);
         foreach (glob(database_path('migrations/2026_10_22_*.php')) as $file) {
-            // Цей fixture містить AUTH-2/5 rows; populated B3 down перевіряє RecoveryTest.
-            if (basename($file) === '2026_10_22_002000_create_auth_recovery.php') {
+            // Цей fixture містить AUTH-2/5 rows; populated B3/B4 down перевіряють RecoveryTest/SchemaTest.
+            if (in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php'], true)) {
                 continue;
             }
             try {

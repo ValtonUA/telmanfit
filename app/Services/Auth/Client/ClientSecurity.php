@@ -2,8 +2,9 @@
 
 namespace App\Services\Auth\Client;
 
-use App\Jobs\DeliverSecurityNotice;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\Notices\NoticeType;
+use App\Services\Auth\Notices\NoticeWriter;
 use App\Services\Auth\SecretValue;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -217,7 +218,7 @@ final class ClientSecurity
         $this->checkChallenge($request, $challenge, 'email_change');
         $result = $this->auth->verify($challenge, $code, $this->binding($request), $request->ip());
         $correlation = (string) Str::uuid();
-        [$oldEmail, $subject] = $this->policy->transaction(function () use ($request, $result, $correlation) {
+        $this->policy->transaction(function () use ($request, $result, $correlation) {
             $user = $this->sessions->user($request);
             $flow = $this->flow($request, $result['flow_id'], $user, 'email_change', 'primary_verified');
             $email = (string) $request->session()->get('auth5_email.'.$flow->public_id);
@@ -238,16 +239,8 @@ final class ClientSecurity
             $this->policy->audit('client.email_changed', $user->id, correlation: $correlation);
             $this->sessions->logout($request);
 
-            return [$user->email, $user->id];
+            app(NoticeWriter::class)->write($user->id, NoticeType::EmailChanged, ['old' => $user->email], request: $correlation);
         });
-        // Після identity commit; збій повідомлення не відкочує захисне відкликання.
-        try {
-            dispatch(new DeliverSecurityNotice($oldEmail, $subject, $correlation));
-        } catch (NoticeDeliveryFailed) {
-            // Job уже записав sanitized failure; identity commit залишається чинним.
-        } catch (\Throwable) {
-            app(NoticeFailure::class)->record($subject, $correlation);
-        }
     }
 
     private function consume(Request $request, string $id, string $action, bool $consume = true): array

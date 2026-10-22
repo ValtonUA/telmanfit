@@ -2,6 +2,8 @@
 
 namespace App\Services\Auth;
 
+use App\Services\Auth\Notices\NoticeType;
+use App\Services\Auth\Notices\NoticeWriter;
 use App\Services\Auth\Recovery\RecoveryGate;
 use App\Services\Auth\Recovery\RecoveryService;
 use App\Support\Auth\AuthSecretCodec;
@@ -549,8 +551,17 @@ final class MfaService
 
     private function audit(int $id, string $event, string $outcome = 'success', ?string $flow = null): void
     {
+        $request = (string) Str::uuid();
         DB::table('auth_audit_events')->insert(['actor_user_id' => $id, 'subject_user_id' => $id,
-            'event_type' => $event, 'outcome' => $outcome, 'case_reference' => $flow, 'request_id' => (string) Str::uuid()]);
+            'event_type' => $event, 'outcome' => $outcome, 'case_reference' => $flow, 'request_id' => $request]);
+        $type = match ($event) {
+            'mfa.factor_activated', 'mfa.recovery_rotated', 'client.mfa_disabled' => NoticeType::MfaChanged,
+            'mfa.logout_all' => NoticeType::CredentialsRevoked,
+            default => null,
+        };
+        if ($type !== null) {
+            app(NoticeWriter::class)->write($id, $type, ['current' => DB::table('users')->where('id', $id)->value('email')], request: $request);
+        }
         if (config('auth4.enabled') && $event === 'mfa.denied'
             && DB::table('auth_audit_events')->where('subject_user_id', $id)->where('event_type', 'mfa.denied')
                 ->where('occurred_at', '>', $this->now()->subMinutes(15))->count() >= 10) {

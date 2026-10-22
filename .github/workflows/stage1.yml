@@ -35,7 +35,7 @@ jobs:
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
       - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh
-      - name: AUTH-6B B3 migration, privileges, security and concurrency
+      - name: AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency
         shell: bash
         run: AUTH6B_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b.out
       - run: bash tests/pg/test-runner.sh

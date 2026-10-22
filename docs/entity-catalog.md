@@ -375,3 +375,22 @@ Shared MFA зберігає pending/confirmed secrets, watermark та codes у �
 Restricted recovery не видає login proof/session; потрібен окремий повний вхід.
 D3 transports/verifier/custody та B4 durable notices відкриті; default boundary відсутня,
 production env і mutation grants закриті. Production/P5/P6 не затверджено.
+
+## AUTH-6B/B4 — transactional security notice outbox
+
+D4 затверджено прямою задачею 22.10.2026. Реалізована additive
+`auth_security_notice_outbox` відокремлена від business `outbound_messages`.
+Authoritative контракт — [SQL 07](07_auth_security_notice_outbox.sql), проєкція —
+[DBML](database.dbml), поведінка й перевірки — [B4](auth6-b4.md).
+
+Один UUID row на subject/type/recipient slot і server request UUID; correlation
+із case без FK, щоб B5 не створював невиправданої залежності notice metadata від
+case retention. Єдиний recipient snapshot зашифрований versioned application key;
+довільного JSON/body/evidence немає. Security mutation, typed audit і INSERT
+атомарні на default PostgreSQL connection. Retry використовує той самий snapshot.
+
+`pending/leased → sent/expired/dead`, максимум 20 claims і 24 години; terminal
+незворотний, адреса/key очищуються в тій самій транзакції з audit. Metadata має
+30-денний retention contract; фізичне видалення/restore/holds та keys custody —
+B5/D5–D6, purge у B4 відсутній. Production adapters, SMTP, trustees і grants не
+активовано; незалежний канал має окремий port без default provider.

@@ -1,3 +1,8 @@
+> **AUTH-6B/B4, 22.10.2026:** D4 затверджено; реалізовано transactional security
+> notice outbox, encrypted snapshot, lease/fencing, bounded retry і terminal scrub.
+> Лише synthetic/local/testing adapters; production delivery/recovery OFF.
+> D3/D5–D8/P5/P6 відкриті; [контракт і докази](auth6-b4.md).
+
 > **AUTH-6B/B3 CI, 22.10.2026:** master після PR #17 інтегровано без переписування історії;
 > B3 migration/privileges/security/concurrency та Ed25519 vector додано як обов’язковий CI-крок.
 > [Інтеграція, повторні перевірки й обмеження](auth6-b3-ci.md). Незалежне review та D3/B4 залишаються обов’язковими.

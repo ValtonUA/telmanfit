@@ -12,6 +12,8 @@ use App\Services\Auth\Client\ClientSession;
 use App\Services\Auth\Client\ControlledAuth;
 use App\Services\Auth\MfaDenied;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\Notices\NoticeUnavailable;
+use App\Services\Auth\Notices\RecipientCodec;
 use App\Support\Auth\AuthSecretCodec;
 use App\Support\Session\ContextDatabaseSessionHandler;
 use Illuminate\Database\QueryException;
@@ -20,7 +22,6 @@ use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
@@ -336,7 +337,10 @@ class ClientSecurityTest extends TestCase
         $user = DB::table('users')->where('id', $this->id)->first();
         $this->assertSame('new.auth5@example.invalid', $user->email_normalized);
         $this->assertSame('client', $user->role);
-        Mail::assertSent(SecurityNotice::class, fn ($mail) => $mail->hasTo('auth5@example.invalid'));
+        $notice = DB::table('auth_security_notice_outbox')->where('subject_user_id', $this->id)->where('notice_type', 'email_changed')->first();
+        $this->assertSame('old', $notice->recipient_slot);
+        $this->assertSame('auth5@example.invalid', app(RecipientCodec::class)->decrypt($notice->recipient_ciphertext, $notice->recipient_key_version));
+        Mail::assertNotSent(SecurityNotice::class);
         $this->assertEquals($client, DB::table('clients')->where('user_id', $this->id)->first());
         $this->denied(fn () => app(ClientSession::class)->user($this->request), 'unauthenticated');
     }
@@ -413,30 +417,31 @@ class ClientSecurityTest extends TestCase
         $this->postJson('/api/auth/email-otp/request', ['purpose' => 'login', 'email' => 'auth5@example.invalid'])->assertStatus(503);
     }
 
-    public function test_notice_dispatch_failure_is_correlated_error_without_rolling_back_email(): void
+    public function test_email_notice_is_durable_without_queue_dispatch(): void
     {
         $result = $this->security->requestEmail($this->request, $this->grant('email_change'), 'notice6@example.invalid');
-        Bus::shouldReceive('dispatch')->once()->andThrow(new \RuntimeException('CANARY-email-OTP-secret'));
-        Log::shouldReceive('error')->once()->with('client.notice_failed', \Mockery::on(fn ($context) => $context['subject_user_id'] === $this->id && $context['audit'] === 'recorded' && isset($context['request_id'])));
+        Bus::shouldReceive('dispatch')->never();
         $this->security->confirmEmail($this->request, $result['challenge_id'], $this->otp());
         $changed = DB::table('auth_audit_events')->where('subject_user_id', $this->id)->where('event_type', 'client.email_changed')->first();
-        $failed = DB::table('auth_audit_events')->where('subject_user_id', $this->id)->where('event_type', 'client.notice_failed')->first();
-        $this->assertSame('error', $failed->outcome);
-        $this->assertSame($changed->request_id, $failed->request_id);
+        $notice = DB::table('auth_security_notice_outbox')->where('request_id', $changed->request_id)->first();
+        $this->assertSame('pending', $notice->state);
         $this->assertSame('notice6@example.invalid', DB::table('users')->where('id', $this->id)->value('email_normalized'));
-        $this->assertSame(0, DB::table('auth_session_states')->where('user_id', $this->id)->whereNull('revoked_at')->count());
     }
 
-    public function test_notice_audit_outage_has_independent_sanitized_observation(): void
+    public function test_notice_audit_failure_rolls_back_email_and_revocation(): void
     {
         $result = $this->security->requestEmail($this->request, $this->grant('email_change'), 'notice-outage6@example.invalid');
-        DB::unprepared("CREATE FUNCTION auth6_notice_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='client.notice_failed' THEN RAISE EXCEPTION 'CANARY-secret'; END IF; RETURN NEW; END $$;
+        DB::unprepared("CREATE FUNCTION auth6_notice_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='notice.queued' THEN RAISE EXCEPTION 'CANARY-secret'; END IF; RETURN NEW; END $$;
             CREATE TRIGGER auth6_notice_fault BEFORE INSERT ON auth_audit_events FOR EACH ROW EXECUTE FUNCTION auth6_notice_fault();");
-        Bus::shouldReceive('dispatch')->once()->andThrow(new \RuntimeException('CANARY-email-OTP-secret'));
-        Log::shouldReceive('error')->once()->with('client.notice_failed', \Mockery::on(fn ($context) => $context['audit'] === 'failed' && $context['subject_user_id'] === $this->id && count($context) === 3));
-        $this->security->confirmEmail($this->request, $result['challenge_id'], $this->otp());
-        $this->assertSame('notice-outage6@example.invalid', DB::table('users')->where('id', $this->id)->value('email_normalized'));
-        $this->assertSame(1, DB::table('users')->where('id', $this->id)->value('auth_version'));
+        try {
+            $this->security->confirmEmail($this->request, $result['challenge_id'], $this->otp());
+            $this->fail('Mandatory notice failure ignored');
+        } catch (NoticeUnavailable $e) {
+            $this->assertNull($e->getPrevious());
+            $this->assertStringNotContainsString('CANARY', (string) $e);
+        }
+        $this->assertSame('auth5@example.invalid', DB::table('users')->where('id', $this->id)->value('email_normalized'));
+        $this->assertSame(0, DB::table('users')->where('id', $this->id)->value('auth_version'));
     }
 
     public function test_admin_gc_keeps_real_client_assurance_past_admin_idle_then_expires_at_client_idle(): void
