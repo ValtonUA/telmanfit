@@ -1,3 +1,8 @@
+> **AUTH-6A, 22.10.2026:** підготовлено [аудит готовності та пакет P5/P6](auth6-readiness.md)
+> на master `7b38445` після PR #13. Власнику запропоновано Q1–Q6 для одного review;
+> AUTH-6B розділено на B1–B7 із незалежними критеріями перевірки. P5/P6 залишаються
+> відкритими; implementation та production activation не виконано.
+
 > **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
 > reauth, optional MFA management, sessions та email change; default OFF. Користувач
 > окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
@@ -129,7 +134,7 @@ AUTH-0 — поточний документаційний дизайн, без 
 | AUTH-3 | **Реалізовано для controlled local/testing:** shared TOTP/recovery, server assurance і Filament gate; production rollout заблоковано P3/P5/P6 | PG service races, HTTP/Livewire, session revoke й Chromium; [докази та rollout](auth3.md) |
 | AUTH-4 | Invitation/revoke, атомарна реєстрація, OTP/session API | Конкурентний invitation/OTP, rollback, без автоактивації |
 | AUTH-5 | **Реалізовано controlled/default OFF:** React PWA auth/security, fresh reauth, optional TOTP із disabled history, email change та sessions | PostgreSQL races, Chromium, lint/build; [факти й межі](auth5.md) |
-| AUTH-6 | Operational hardening: mail/rate store/retention/rollout | Повний security acceptance найближчого релізу |
+| AUTH-6 | **AUTH-6A: аналіз підготовлено**, P5/P6 відкриті; AUTH-6B: recovery, mail/keys/backup/rate/retention/rollout після погодження | [Readiness, Q1–Q6, B1–B7 і go/no-go](auth6-readiness.md); production acceptance ще не виконано |
 | AUTH-7 | Майбутній Telegram primary/linking того самого user | initData/replay/conflict/MFA |
 | AUTH-8 | Окремий майбутній Passkeys етап | До окремого погодження не реалізовувати |
 
