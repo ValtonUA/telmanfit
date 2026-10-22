@@ -33,11 +33,11 @@ if command -v nproc >/dev/null 2>&1; then
 fi
 if command -v free >/dev/null 2>&1; then
   printf 'Memory: '
-  free -m | awk '/^Mem:/ {printf "total=%s MiB available=%s MiB\\n", $2,$7}'
+  free -m | awk '/^Mem:/ {printf "total=%s MiB available=%s MiB\n", $2,$7}'
 fi
 if command -v df >/dev/null 2>&1; then
   printf 'Root filesystem: '
-  df -hP / | awk 'NR==2 {printf "size=%s available=%s use=%s\\n",$2,$4,$5}'
+  df -hP / | awk 'NR==2 {printf "size=%s available=%s use=%s\n",$2,$4,$5}'
 fi
 check PHP php
 check PostgreSQL-client psql
@@ -51,7 +51,7 @@ if command -v php >/dev/null 2>&1; then
   printf 'PHP version: '
   php -r 'echo PHP_VERSION, PHP_EOL;' 2>/dev/null || printf 'unavailable\n'
   printf 'PDO_PGSQL extension: '
-  php -r 'echo extension_loaded("pdo_pgsql") ? "yes\\n" : "no\\n";' 2>/dev/null || printf 'unknown\n'
+  php -r 'echo extension_loaded("pdo_pgsql") ? "yes\n" : "no\n";' 2>/dev/null || printf 'unknown\n'
 fi
 if command -v psql >/dev/null 2>&1; then
   printf 'psql version: '
