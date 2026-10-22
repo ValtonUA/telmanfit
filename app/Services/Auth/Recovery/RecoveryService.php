@@ -3,6 +3,10 @@
 namespace App\Services\Auth\Recovery;
 
 use App\Jobs\DeliverEmailOtp;
+use App\Services\Auth\Budgets\BudgetKey;
+use App\Services\Auth\Budgets\BudgetScope;
+use App\Services\Auth\Budgets\PostgresBudgets;
+use App\Services\Auth\Budgets\SyntheticBudgets;
 use App\Services\Auth\Client\AuthBudget;
 use App\Services\Auth\Client\ControlledAuth;
 use App\Services\Auth\Client\EmailNormalizer;
@@ -146,10 +150,17 @@ final class RecoveryService
             }
             $email = $this->primaryEmail($case, $user);
             $normalized = $this->emails->normalize($email);
-            foreach ([['cooldown:recovery:'.$normalized, 1, 60], ['issue:15:recovery:'.$normalized, 3, 900],
-                ['issue:day:recovery:'.$normalized, 10, 86400], ['issue:all:'.$normalized, 15, 86400]] as [$key, $limit, $seconds]) {
-                if (! $this->budget->take($key, $limit, $seconds) || $this->budget->blocked($normalized)) {
+            $limits = [['cooldown:recovery:'.$normalized, 1, 60], ['issue:15:recovery:'.$normalized, 3, 900],
+                ['issue:day:recovery:'.$normalized, 10, 86400], ['issue:all:'.$normalized, 15, 86400]];
+            if (SyntheticBudgets::enabled()) {
+                if (! $this->budget->emailGroup($limits, $normalized)) {
                     return null;
+                }
+            } else {
+                foreach ($limits as [$key, $limit, $seconds]) {
+                    if (! $this->budget->take($key, $limit, $seconds) || $this->budget->blocked($normalized)) {
+                        return null;
+                    }
                 }
             }
             $old = DB::table('auth_challenges')->where('flow_id', $flow->id)->orderBy('id')->lockForUpdate()->get();
@@ -253,6 +264,13 @@ final class RecoveryService
     /** Виклик лише під withEnrollment locks; рахуються failures, не успішні finalize. */
     public function totpAllowed(object $user, object $flow, string $ip, bool $failure = false): bool
     {
+        if (SyntheticBudgets::enabled()) {
+            return app(PostgresBudgets::class)->failures([
+                new BudgetKey(BudgetScope::RecoveryTotpFlow, $flow->public_id),
+                new BudgetKey(BudgetScope::RecoveryTotpUser, (string) $user->id),
+                new BudgetKey(BudgetScope::RecoveryTotpIp, $ip),
+            ], $failure)->allowed;
+        }
         $allowed = true;
         foreach ([['recovery.totp:flow:'.$flow->public_id, 5, 900], ['recovery.totp:user:'.$user->id, 10, 900], ['recovery.totp:ip:'.$ip, 20, 900]] as [$key, $limit, $seconds]) {
             $allowed = ($failure ? $this->budget->take($key, $limit, $seconds) : $this->budget->allows($key, $limit, $seconds)) && $allowed;

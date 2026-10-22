@@ -1,0 +1,31 @@
+{
+    "synthetic_only": true,
+    "php": "8.4.27",
+    "pg_major": 18,
+    "workers": 4,
+    "requests": 1200,
+    "allowed": 1000,
+    "denied": 200,
+    "errors_503": 0,
+    "seconds": 8.607218603,
+    "requests_per_second": 139.41786021116582,
+    "latency_p95_ms": 47.458989,
+    "latency_p99_ms": 54.533279,
+    "lock_acquisition_p95_ms": 21.884,
+    "lock_acquisition_p99_ms": 30.744,
+    "max_pg_connections_sampled": 9,
+    "lock_wait_samples": 494,
+    "activity_samples_10ms": 616,
+    "worker_max_rss_kb": 135236,
+    "worker_cpu_user_seconds": 1.860706,
+    "wal_bytes_delta": 3821261,
+    "budgets_total_bytes": 2711552,
+    "deadlocks_delta": 0,
+    "io": {
+        "reads": "973",
+        "writes": "4743",
+        "extends": "1306"
+    },
+    "production_peak_approved": false,
+    "d8_acceptance": false
+}

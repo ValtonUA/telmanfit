@@ -338,7 +338,7 @@ class AuthSchemaTest extends TestCase
         DB::table('users')->where('id', 5000000000)->update(['auth_version' => 1]);
         foreach (glob(database_path('migrations/2026_10_22_*.php')) as $file) {
             // Цей fixture містить AUTH-2/5 rows; populated B3/B4 down перевіряють RecoveryTest/SchemaTest.
-            if (in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php', '2026_10_22_004000_create_auth_retention_restore.php', '2026_10_22_005000_fix_auth_retention_hold_scrub.php'], true)) {
+            if (in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php', '2026_10_22_004000_create_auth_retention_restore.php', '2026_10_22_005000_fix_auth_retention_hold_scrub.php', '2026_10_22_006000_create_auth_rate_budgets.php'], true)) {
                 continue;
             }
             try {

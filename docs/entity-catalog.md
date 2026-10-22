@@ -415,3 +415,22 @@ B5 P2 forward fix (005000): held expired sessions зберігають лише 
 metadata перед payload/assurance GC; невідомий guest subject захищений будь-яким
 active hold. Confirmed-factor pending secret scrub не видаляє MFA history чи
 watermark; held pending-only row не purge. Нових сутностей/полів немає.
+
+## AUTH-6B/B6 — атомарні PostgreSQL rate budgets
+
+D7 затверджено прямою задачею. `auth_rate_budgets` — один durable row на
+`(scope,key_hash)`, спільний для workers/hosts; HMAC без сирих email/IP/токенів.
+Authoritative [SQL 09](09_auth_rate_budgets.sql) → [DBML](database.dbml) →
+нова міграція 006000; SQL01–08 та історичні міграції незмінні.
+
+Whitelist 25 immutable policies, bounded sorted timestamps≤scope cap≤1000,
+`blocked_until`, monotonic `last_clock_at`, `gc_after` після найдовшого window/pause.
+Exact sliding boundary `t>now-window`. Row locks у `(scope,key_hash)` C-порядку,
+ON CONFLICT для absent keys, group all-or-none append; denied не додає attempt.
+Admission commit — окремий connection; failure budget/state/audit — одна domain
+transaction. Cleanup≤500 під row lock/recheck, без reset активних protections.
+
+PUBLIC/runtime direct DML не надається; grants існують тільки в isolated harness.
+Новий adapter доступний лише guarded synthetic testing, production/cutover
+закрито; `4040404` збережено. D6-A epoch/fence чинний, бюджети після restore не є
+доказом невикористаного ліміту. [Контракт, parity та докази B6](auth6-b6.md).

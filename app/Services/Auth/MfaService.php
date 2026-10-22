@@ -2,6 +2,11 @@
 
 namespace App\Services\Auth;
 
+use App\Services\Auth\Budgets\BudgetKey;
+use App\Services\Auth\Budgets\BudgetLimited;
+use App\Services\Auth\Budgets\BudgetScope;
+use App\Services\Auth\Budgets\PostgresBudgets;
+use App\Services\Auth\Budgets\SyntheticBudgets;
 use App\Services\Auth\Notices\NoticeType;
 use App\Services\Auth\Notices\NoticeWriter;
 use App\Services\Auth\Recovery\RecoveryGate;
@@ -43,15 +48,23 @@ final class MfaService
         return $id;
     }
 
-    public function beginPasswordLogin(string $email, #[\SensitiveParameter] string $password, #[\SensitiveParameter] string $binding): string
+    public function beginPasswordLogin(string $email, #[\SensitiveParameter] string $password, #[\SensitiveParameter] string $binding, string $ip = 'internal'): string
     {
-        return $this->beginVerifiedPasswordLogin($this->verifyPassword($email, $password), $binding);
+        return $this->beginVerifiedPasswordLogin($this->verifyPassword($email, $password, $ip), $binding);
     }
 
     /** Password hashing до business gate locks; opaque proof лише в request memory. */
-    public function verifyPassword(string $email, #[\SensitiveParameter] string $password): SecretValue
+    public function verifyPassword(string $email, #[\SensitiveParameter] string $password, string $ip = 'internal'): SecretValue
     {
         $this->policy->assertControlled();
+        if (SyntheticBudgets::enabled()) {
+            foreach ([new BudgetKey(BudgetScope::AdminIp, $ip), new BudgetKey(BudgetScope::AdminEmail, $email)] as $key) {
+                $decision = app(PostgresBudgets::class)->admit([$key]);
+                if (! $decision->allowed) {
+                    throw new BudgetLimited($decision);
+                }
+            }
+        }
         // Exact delivery email чинного Filament; normalized-key/backfill не запроваджується.
         $candidate = DB::table('users')->where('email', $email)->first();
         $hash = $candidate?->password ?? '$2y$04$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
@@ -377,7 +390,19 @@ final class MfaService
         $result = DB::transaction(function () use ($id, $binding, $operation, $userId) {
             $user = $this->user($userId);
             $flow = DB::table('auth_flows')->where('public_id', $id)->lockForUpdate()->first();
-            $this->budget($userId, $flow);
+            if (! SyntheticBudgets::enabled()) {
+                $this->budget($userId, $flow);
+            }
+            $factor = DB::table('user_totp_factors')->where('user_id', $userId)->lockForUpdate()->first();
+            if (SyntheticBudgets::enabled() && $flow) {
+                if (! app(PostgresBudgets::class)->failures($this->failureKeys($userId, $flow->public_id))->allowed) {
+                    return null;
+                }
+                // Чинний configurable admin audit cap залишається додатковим захистом.
+                if ($flow->audience === 'admin') {
+                    $this->budget($userId, $flow);
+                }
+            }
             if (! $flow || $flow->action === 'assisted_recovery' || $flow->user_id !== $user->id || $flow->state !== 'primary_verified'
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', $binding))
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->now())
@@ -389,7 +414,7 @@ final class MfaService
 
                 return null;
             }
-            $factor = DB::table('user_totp_factors')->where('user_id', $userId)->lockForUpdate()->first();
+
             if ($flow->audience === 'client' && $flow->session_binding_hash !== null) {
                 $session = DB::table('auth_session_states as a')->join('sessions as s', 's.id', '=', 'a.session_id')
                     ->where('a.user_id', $userId)->where('a.audience', 'client')->where('a.auth_version', $user->auth_version)
@@ -562,13 +587,21 @@ final class MfaService
         if ($type !== null) {
             app(NoticeWriter::class)->write($id, $type, ['current' => DB::table('users')->where('id', $id)->value('email')], request: $request);
         }
-        if (config('auth4.enabled') && $event === 'mfa.denied'
+        if (SyntheticBudgets::enabled() && $event === 'mfa.denied' && $flow !== null) {
+            app(PostgresBudgets::class)->failures($this->failureKeys($id, $flow), true);
+        }
+        if (! SyntheticBudgets::enabled() && config('auth4.enabled') && $event === 'mfa.denied'
             && DB::table('auth_audit_events')->where('subject_user_id', $id)->where('event_type', 'mfa.denied')
                 ->where('occurred_at', '>', $this->now()->subMinutes(15))->count() >= 10) {
             if (! Cache::store('database')->put('auth4:mfa-pause:'.$id, true, 901)) {
                 throw new MfaDenied;
             }
         }
+    }
+
+    private function failureKeys(int $id, string $flow): array
+    {
+        return [new BudgetKey(BudgetScope::MfaFlow, $flow), new BudgetKey(BudgetScope::MfaUser, (string) $id)];
     }
 
     private function stamp(): string

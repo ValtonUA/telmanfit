@@ -3,8 +3,10 @@
 namespace App\Services\Auth\Client;
 
 use App\Jobs\DeliverEmailOtp;
+use App\Services\Auth\Budgets\SyntheticBudgets;
 use App\Services\Auth\Recovery\RecoveryGate;
 use App\Services\Auth\SecretValue;
+use App\Support\Auth\AuditOutcome;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -55,17 +57,10 @@ final class ClientAuth
             $response = ['challenge_id' => (string) Str::uuid(), 'expires_in' => 300, 'resend_after' => 60];
             $delivery = new DeliverEmailOtp($response['challenge_id'], trim($email), sprintf('%08d', random_int(0, 99999999)));
             // Усі budgets спільні для нових flows та resends.
-            $allowed = true;
             $limits = [['cooldown:'.$purpose.':'.$normalized, 1, 60], ['issue:15:'.$purpose.':'.$normalized, 3, 900],
                 ['issue:day:'.$purpose.':'.$normalized, 10, 86400], ['issue:all:'.$normalized, 15, 86400]];
-            foreach ($limits as [$key, $limit, $seconds]) {
-                $allowed = $this->budget->allows($key, $limit, $seconds) && $allowed;
-            }
-            if (! $allowed || $this->budget->blocked($normalized)) {
+            if (! $this->budget->emailGroup($limits, $normalized)) {
                 return $response;
-            }
-            foreach ($limits as [$key, $limit, $seconds]) {
-                $this->budget->take($key, $limit, $seconds);
             }
             if ($context) {
                 $user = DB::table('users')->where('id', $context['user_id'])->lockForUpdate()->first();
@@ -184,6 +179,9 @@ final class ClientAuth
             if (! preg_match('/^[0-9]{8}$/D', $code) || ! hash_equals($challenge->code_mac, $mac)) {
                 DB::table('auth_challenges')->where('id', $challenge->id)->increment('attempts');
                 $this->budget->failure($challenge->email_normalized);
+                if (SyntheticBudgets::enabled()) {
+                    $this->auth->audit('client.otp_denied', $flow->user_id, AuditOutcome::Denied);
+                }
 
                 return new AuthDenied;
             }

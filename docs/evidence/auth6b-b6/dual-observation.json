@@ -1,0 +1,230 @@
+[
+    {
+        "scope": "otp_cooldown",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 0
+    },
+    {
+        "scope": "otp_email_short",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 2
+    },
+    {
+        "scope": "otp_email_day",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 9
+    },
+    {
+        "scope": "otp_email_all",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 14
+    },
+    {
+        "scope": "otp_ip_short",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 19
+    },
+    {
+        "scope": "otp_ip_day",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 99
+    },
+    {
+        "scope": "otp_verify_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 9
+    },
+    {
+        "scope": "invitation_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 9
+    },
+    {
+        "scope": "invitation_token",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 4
+    },
+    {
+        "scope": "registration_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 9
+    },
+    {
+        "scope": "registration_flow",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 4
+    },
+    {
+        "scope": "mfa_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 19
+    },
+    {
+        "scope": "stepup_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 19
+    },
+    {
+        "scope": "stepup_user",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 4
+    },
+    {
+        "scope": "recovery_exchange_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 9
+    },
+    {
+        "scope": "recovery_exchange_case",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 4
+    },
+    {
+        "scope": "recovery_totp_flow",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 4
+    },
+    {
+        "scope": "recovery_totp_user",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 9
+    },
+    {
+        "scope": "recovery_totp_ip",
+        "old": [
+            true,
+            false
+        ],
+        "new": [
+            true,
+            false
+        ],
+        "seed_events": 19
+    }
+]

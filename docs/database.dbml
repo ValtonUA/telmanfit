@@ -990,3 +990,18 @@ Table auth_retention_batches {
 // B5 P2/005000: held session payload GC exports typed auth_audit_events metadata;
 // unknown guest subject stays protected under any active hold. Confirmed-factor
 // expired pending scrub preserves factor/watermark; held pending-only is not deleted.
+
+// AUTH-6B/B6 D7; authoritative SQL 09, server-only exact sliding windows.
+Table auth_rate_budgets {
+  scope text [not null, note: 'Закрита whitelist 25 policies SQL09; immutable server cap/window/pause']
+  key_hash text [not null, note: 'HMAC-SHA256(scope + canonical input), 64 lowercase hex; без raw email/IP/token']
+  events "timestamptz[]" [not null, default: '{}', note: 'Sorted finite non-NULL timestamps <=last_clock_at; <=scope cap<=1000']
+  blocked_until timestamptz [note: 'Pause не подовжується від denied request']
+  last_clock_at timestamptz [not null, note: 'PG clock після locks; rollback clock → closed']
+  gc_after timestamptz [not null, note: '>=max(last_event+longest scope window,blocked_until)+1s']
+  indexes {
+    (scope, key_hash) [pk]
+    gc_after [name: 'auth_rate_gc']
+  }
+  Note: 'Лише typed SQL API; sorted row locks; admission separate committed connection; failure state/audit same domain transaction. Production cutover відсутній.'
+}

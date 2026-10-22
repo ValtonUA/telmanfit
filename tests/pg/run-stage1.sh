@@ -9,11 +9,13 @@ endpoint=$(docker context inspect --format '{{.Endpoints.docker.Host}}')
 [[ -z ${DOCKER_HOST:-} && -z ${DOCKER_CONTEXT:-} && $endpoint == unix://* ]]
 work=$(mktemp -d /tmp/telmanfit-stage1.XXXXXXXX)
 container=''
+b6_monitor=''
 cleanup() {
     code=$?; trap - EXIT
+    if [[ -n "$b6_monitor" ]]; then kill "$b6_monitor" 2>/dev/null || true; wait "$b6_monitor" 2>/dev/null || true; fi
     if [[ -n "$container" ]]; then docker rm -f "$container" >/dev/null || code=1; fi
     rm -f -- "$work/socket/.s.PGSQL.5432" "$work/socket/.s.PGSQL.5432.lock"
-    rm -f -- "$work/snapshot.dump" "$work/maintenance.json"
+    rm -f -- "$work/snapshot.dump" "$work/maintenance.json" "$work/b6-resources.jsonl" "$work/restart.json"
     rmdir -- "$work/socket" "$work" || code=1
     exit "$code"
 }
@@ -25,10 +27,15 @@ chmod 777 "$work/socket"
 # Той самий офіційний pin, що й у погодженому G4; жодних мереж чи портів.
 image='postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc'
 docker pull "$image"
+pg_command=(-c 'unix_socket_directories=/var/run/postgresql,/run/telmanfit-pg')
+if [[ ${AUTH6B6_ONLY:-0} == 1 ]]; then
+    # PID1 лишається живим під час реального postmaster restart; tmpfs не unmount.
+    pg_command=(bash -c 'docker-entrypoint.sh postgres -c "unix_socket_directories=/var/run/postgresql,/run/telmanfit-pg" & wait "$!"; exec sleep infinity')
+fi
 container=$(docker create --network none --tmpfs /var/lib/postgresql \
     --mount "type=bind,src=$work/socket,dst=/run/telmanfit-pg" \
     -e POSTGRES_HOST_AUTH_METHOD=trust "$image" \
-    -c 'unix_socket_directories=/var/run/postgresql,/run/telmanfit-pg')
+    "${pg_command[@]}")
 docker start "$container" >/dev/null
 ready=0
 for ((i=0; i<60; i++)); do
@@ -54,6 +61,25 @@ docker exec "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=
     -c 'CREATE ROLE telmanfit_notice_writer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
     -c 'CREATE ROLE telmanfit_notice_dispatcher NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
     -c 'GRANT telmanfit_notice_writer, telmanfit_notice_dispatcher TO telmanfit_test_runner;'
+if [[ ${AUTH6B6_ONLY:-0} == 1 ]]; then
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    docker exec -i "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=1 < database/sql/auth6b6/01_test_acl.sql
+    export TELMANFIT_B6_TEST=1
+    docker stats --format '{{json .}}' "$container" > "$work/b6-resources.jsonl" &
+    b6_monitor=$!
+    vendor/bin/phpunit -c phpunit.auth6b6.xml --display-all-issues
+    php tests/pg/auth6b6-concurrency.php
+    bash tests/http/auth6b6-in-context.sh
+    php tests/pg/auth6b6-restart.php before > "$work/restart.json"
+    docker exec -u postgres "$container" sh -c 'pg_ctl -D "$PGDATA" -m fast -w restart' > /dev/null
+    php tests/pg/auth6b6-restart.php after "$work/restart.json"
+    kill "$b6_monitor"
+    wait "$b6_monitor" 2>/dev/null || true
+    b6_monitor=''
+    python3 tests/pg/auth6b6-resources.py "$work/b6-resources.jsonl"
+    exit
+fi
 if [[ ${AUTH6B5_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
     php tests/pg/auth6b5-bootstrap.php

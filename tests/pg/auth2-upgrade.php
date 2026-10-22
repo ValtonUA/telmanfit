@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 require __DIR__.'/auth2-bootstrap.php';
-$files = array_values(array_filter(glob(database_path('migrations/2026_10_22_*.php')), fn ($file) => ! in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php', '2026_10_22_004000_create_auth_retention_restore.php', '2026_10_22_005000_fix_auth_retention_hold_scrub.php'], true)));
+$files = array_values(array_filter(glob(database_path('migrations/2026_10_22_*.php')), fn ($file) => ! in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php', '2026_10_22_004000_create_auth_retention_restore.php', '2026_10_22_005000_fix_auth_retention_hold_scrub.php', '2026_10_22_006000_create_auth_rate_budgets.php'], true)));
 // AUTH-2/5 upgrade projection; B3 має окремий MigrationTest із public-qualified procedures.
 assert(count($files) === 9);
 
