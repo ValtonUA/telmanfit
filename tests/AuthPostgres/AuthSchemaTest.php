@@ -76,7 +76,7 @@ class AuthSchemaTest extends TestCase
         foreach ($parts as $part) {
             $this->assertStringContainsString(file_get_contents($part), $snapshot);
         }
-        $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass) AND c.conrelid::regclass::text NOT LIKE 'auth_recovery_%' AND c.conrelid::regclass::text<>'auth_security_notice_outbox'");
+        $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass) AND c.conrelid::regclass::text NOT LIKE 'auth_recovery_%' AND c.conrelid::regclass::text NOT IN ('auth_security_notice_outbox','auth_retention_holds')");
         $this->assertCount(15, $keys);
         foreach ($keys as $key) {
             $this->assertSame('bigint', $key->type);
@@ -91,6 +91,10 @@ class AuthSchemaTest extends TestCase
             CREATE TABLE clients(id integer PRIMARY KEY);
             CREATE TABLE sessions(id varchar(255) PRIMARY KEY);');
         DB::unprepared(file_get_contents(base_path('docs/05_auth_schema.sql')));
+        // B5 — єдина погоджена заміна AUTH-2 audit guard, перевіряємо точний новий source.
+        $b5 = file_get_contents(base_path('docs/08_auth_retention_restore.sql'));
+        preg_match('/CREATE OR REPLACE FUNCTION auth2_guard_audit\(\).*?END \$\$;/s', $b5, $guard);
+        DB::unprepared($guard[0]);
         DB::statement('SET LOCAL search_path TO public');
         $queries = [
             'columns' => "SELECT c.relname || '.' || a.attname AS name, format_type(a.atttypid,a.atttypmod) || '|' || a.attnotnull || '|' || a.attidentity::text || '|' || coalesce(pg_get_expr(d.adbin,d.adrelid),'') AS definition FROM pg_class c JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=c.oid AND d.adnum=a.attnum WHERE c.relnamespace=?::regnamespace AND c.relkind='r' AND a.attnum>0 AND NOT a.attisdropped",
@@ -334,7 +338,7 @@ class AuthSchemaTest extends TestCase
         DB::table('users')->where('id', 5000000000)->update(['auth_version' => 1]);
         foreach (glob(database_path('migrations/2026_10_22_*.php')) as $file) {
             // Цей fixture містить AUTH-2/5 rows; populated B3/B4 down перевіряють RecoveryTest/SchemaTest.
-            if (in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php'], true)) {
+            if (in_array(basename($file), ['2026_10_22_002000_create_auth_recovery.php', '2026_10_22_003000_create_auth_security_notice_outbox.php', '2026_10_22_004000_create_auth_retention_restore.php'], true)) {
                 continue;
             }
             try {

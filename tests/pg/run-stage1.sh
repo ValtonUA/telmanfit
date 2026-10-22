@@ -13,6 +13,7 @@ cleanup() {
     code=$?; trap - EXIT
     if [[ -n "$container" ]]; then docker rm -f "$container" >/dev/null || code=1; fi
     rm -f -- "$work/socket/.s.PGSQL.5432" "$work/socket/.s.PGSQL.5432.lock"
+    rm -f -- "$work/snapshot.dump"
     rmdir -- "$work/socket" "$work" || code=1
     exit "$code"
 }
@@ -53,8 +54,18 @@ docker exec "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=
     -c 'CREATE ROLE telmanfit_notice_writer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
     -c 'CREATE ROLE telmanfit_notice_dispatcher NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
     -c 'GRANT telmanfit_notice_writer, telmanfit_notice_dispatcher TO telmanfit_test_runner;'
+if [[ ${AUTH6B5_ONLY:-0} == 1 ]]; then
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    docker exec -i "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=1 < database/sql/auth6b5/01_test_acl.sql
+    vendor/bin/phpunit -c phpunit.auth6b5.xml --display-all-issues
+    php tests/pg/auth6b5-concurrency.php
+    B5_SYNTHETIC_CONTAINER="$container" B5_SYNTHETIC_DUMP="$work/snapshot.dump" php tests/pg/auth6b5-restore-drill.php
+    exit
+fi
 if [[ ${AUTH6B4_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit -c phpunit.auth6b4.xml --display-all-issues
     php tests/pg/auth6b4-concurrency.php
     exit
@@ -65,6 +76,7 @@ if [[ ${AUTH6B_ONLY:-0} == 1 ]]; then
         -c 'CREATE ROLE telmanfit_recovery_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
         -c 'GRANT telmanfit_recovery_runtime TO telmanfit_test_runner;'
     php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit -c phpunit.auth2.xml --display-all-issues
     vendor/bin/phpunit -c phpunit.auth6b.xml --display-all-issues
     vendor/bin/phpunit -c phpunit.auth6b4.xml --display-all-issues
@@ -80,6 +92,7 @@ if [[ ${AUTH6B_ONLY:-0} == 1 ]]; then
 fi
 if [[ ${AUTH6_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit -c phpunit.auth6.xml --display-all-issues
     bash tests/http/auth6-in-context.sh
     exit
@@ -87,6 +100,7 @@ fi
 # AUTH-5 завжди на новій ізольованій БД із тим самим fail-closed guard.
 if [[ ${AUTH5_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit -c phpunit.auth5.xml --display-all-issues
     php tests/pg/auth5-concurrency.php
     if [[ ${AUTH5_BROWSER:-0} == 1 ]]; then bash tests/browser/auth5-in-context.sh; fi
@@ -95,6 +109,7 @@ fi
 # Цільовий повтор AUTH-4: та сама нова ізольована БД, без повтору вже пройдених регресій.
 if [[ ${AUTH4_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit -c phpunit.auth4.xml --display-all-issues
     php tests/pg/auth4-concurrency.php
     if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then bash tests/browser/auth4-in-context.sh; fi
@@ -127,6 +142,7 @@ vendor/bin/pint --test
 
 # AUTH-2 окремо після незмінених Stage 1/2 перевірок каталогу.
 php tests/pg/auth2-upgrade.php
+php tests/pg/auth6b5-bootstrap.php
 vendor/bin/phpunit -c phpunit.auth2.xml --display-all-issues
 
 php tests/pg/auth2-concurrency.php

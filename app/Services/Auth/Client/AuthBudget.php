@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth\Client;
 
+use App\Services\Auth\Restore\RestoreFence;
 use Illuminate\Support\Facades\Cache;
 
 /** Виклик лише під ControlledAuth PG lock; database cache — та сама транзакція. */
@@ -11,6 +12,7 @@ final class AuthBudget
 
     public function take(string $key, int $limit, int $seconds): bool
     {
+        app(RestoreFence::class)->assert(issuance: true);
         $key = 'auth4:'.$this->auth->fingerprint($key);
         $now = (float) $this->auth->now()->format('U.u');
         $events = array_values(array_filter(Cache::store('database')->get($key, []), fn ($t) => $t > $now - $seconds));

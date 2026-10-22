@@ -115,7 +115,7 @@ function caseB3(bool $held = true): array
     $case = (object) ['id' => (string) Str::uuid(), 'target_user_id' => $user, 'target_principal_id' => $principals[0], 'initiator_principal_id' => $principals[1],
         'operator_principal_id' => null, 'target_role' => 'admin', 'action' => 'replace_mfa', 'replace_admin_password' => false,
         'expected_auth_version' => 0, 'registry_version' => 1, 'policy_version' => 1, 'deployment_id' => 'synthetic',
-        'restore_epoch' => '00000000-0000-4000-8000-000000000001', 'intent_nonce' => (string) Str::uuid(),
+        'restore_epoch' => '60605050-0000-4000-8000-000000000001', 'intent_nonce' => (string) Str::uuid(),
         'replacement_email_mac' => null, 'created_at' => $clock->copy()->subHours(25)->format('Y-m-d H:i:s.uP'),
         'expires_at' => $clock->copy()->addHours(47)->format('Y-m-d H:i:s.uP'), 'reason_code' => 'lost_mfa'];
     $signatures = app(RecoverySignatures::class);

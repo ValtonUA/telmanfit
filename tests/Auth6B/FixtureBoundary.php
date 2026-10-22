@@ -11,7 +11,7 @@ final class FixtureBoundary implements RecoveryBoundary
 
     public bool $acceptReceipt = true;
 
-    public array $current = ['deployment_id' => 'synthetic', 'restore_epoch' => '00000000-0000-4000-8000-000000000001', 'registry_version' => 1];
+    public array $current = ['deployment_id' => 'synthetic', 'restore_epoch' => '60605050-0000-4000-8000-000000000001', 'registry_version' => 1];
 
     public function context(): array
     {
