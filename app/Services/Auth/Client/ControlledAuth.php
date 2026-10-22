@@ -16,11 +16,7 @@ final class ControlledAuth
 {
     public function assert(): void
     {
-        try {
-            app(RestoreFence::class)->assert();
-        } catch (\Throwable) {
-            throw new AuthDenied('auth_unavailable', 503);
-        }
+        app(RestoreFence::class)->assert();
         if (! in_array(config('auth4.enabled'), [true, 'true', '1'], true) || ! app()->environment(['local', 'testing'])
             || config('database.default') !== 'pgsql' || config('session.driver') !== 'database'
             || config('cache.default') !== 'database'
