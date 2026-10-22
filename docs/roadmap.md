@@ -1,3 +1,5 @@
+> **AUTH-6B / B2, 22.10.2026:** підготовлено [технічний проєкт recovery, outbox, budgets та retention](auth6-b2-design.md) для окремого архітектурного погодження. Це документаційний етап: B3–B6, схема й код не реалізовані; P5/P6 та production залишаються відкритими.
+
 > **AUTH-6B / B1, 22.10.2026:** виправлено D1/D2/D3, підтверджену HTTP cookie race,
 > додано очищення сесій за контекстом та шифрування admin payload. [Зміни, докази й межі](auth6-b1.md).
 > Controlled local/testing, default OFF; P5/P6 і production залишаються відкритими.
