@@ -55,7 +55,7 @@ final class HoldScrubTest extends TestCase
         DB::table('auth_retention_holds')->insert($selector + ['id' => (string) Str::uuid(), 'reason_code' => 'legal', 'created_by_principal_id' => $creator]);
     }
 
-    private function session(int $user, string $audience, int $at, bool $absolute = false): string
+    private function sessionFixture(int $user, string $audience, int $at, bool $absolute = false): string
     {
         $id = (string) Str::uuid();
         DB::table('sessions')->insert(['id' => $id, 'user_id' => $audience === 'guest' ? null : $user,
@@ -100,7 +100,7 @@ final class HoldScrubTest extends TestCase
     {
         $user = $this->user();
         $at = time() - 181 * 86400;
-        $id = $this->session($user, $audience, $at);
+        $id = $this->sessionFixture($user, $audience, $at);
         $this->hold($user, $scope, $at);
         $this->gc();
         $this->assertFalse(DB::table('sessions')->where('id', $id)->exists());
@@ -139,11 +139,11 @@ final class HoldScrubTest extends TestCase
     {
         $user = $this->user();
         $this->hold($user, 'user', time());
-        $adminLive = $this->session($user, 'admin', time() - 300);
-        $adminOld = $this->session($user, 'admin', time() - 901);
-        $clientLive = $this->session($user, 'client', time() - 901);
-        $clientOld = $this->session($user, 'client', time() - 43201);
-        $absolute = $this->session($user, 'client', time(), true);
+        $adminLive = $this->sessionFixture($user, 'admin', time() - 300);
+        $adminOld = $this->sessionFixture($user, 'admin', time() - 901);
+        $clientLive = $this->sessionFixture($user, 'client', time() - 901);
+        $clientOld = $this->sessionFixture($user, 'client', time() - 43201);
+        $absolute = $this->sessionFixture($user, 'client', time(), true);
         $this->gc();
         foreach ([$adminLive, $clientLive] as $id) {
             $this->assertTrue(DB::table('sessions')->where('id', $id)->exists());
@@ -155,11 +155,29 @@ final class HoldScrubTest extends TestCase
         }
     }
 
+    public function test_assurance_identifies_subject_and_ambiguous_owner_preserves_evidence(): void
+    {
+        $user = $this->user();
+        $this->hold($user, 'user', time());
+        $known = $this->sessionFixture($user, 'client', time() - 50000);
+        DB::table('sessions')->where('id', $known)->update(['user_id' => null]);
+        $ambiguous = $this->sessionFixture($user, 'client', time() - 50000);
+        DB::table('sessions')->where('id', $ambiguous)->update(['user_id' => $this->user()]);
+        $this->gc();
+        // GC може зупинити весь pass на conflict: безпечний повтор окремо.
+        $this->assertTrue(DB::table('sessions')->where('id', $ambiguous)->exists());
+        $this->assertSame(0, $this->metadata($ambiguous)->count());
+        DB::table('sessions')->where('id', $ambiguous)->update(['user_id' => $user]);
+        $this->gc();
+        $this->assertFalse(DB::table('sessions')->where('id', $known)->exists());
+        $this->assertSame($user, $this->metadata($known)->value('subject_user_id'));
+    }
+
     public function test_session_audit_failure_and_delete_failure_roll_back_the_whole_item(): void
     {
         $user = $this->user();
         $this->hold($user, 'user', time());
-        $id = $this->session($user, 'client', time() - 50000);
+        $id = $this->sessionFixture($user, 'client', time() - 50000);
         foreach (['auth_audit_events' => 'INSERT', 'sessions' => 'DELETE'] as $table => $operation) {
             DB::unprepared("CREATE FUNCTION b5_gc_fault() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEGIN RAISE EXCEPTION 'synthetic fault'; END \$\$;
                 CREATE TRIGGER b5_gc_fault BEFORE $operation ON $table FOR EACH ROW EXECUTE FUNCTION b5_gc_fault();");

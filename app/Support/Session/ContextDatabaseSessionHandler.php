@@ -39,30 +39,34 @@ final class ContextDatabaseSessionHandler extends DatabaseSessionHandler
                     if (! $session) {
                         return 0;
                     }
-                    if ($session->user_id !== null) {
-                        $this->connection->table('users')->where('id', $session->user_id)->lockForUpdate()->first();
+                    $state = $this->connection->table('auth_session_states')->where('session_id', $id)->first();
+                    if ($state && $session->user_id !== null && $state->user_id !== $session->user_id) {
+                        throw new \RuntimeException('session_metadata_conflict');
+                    }
+                    $subject = $state?->user_id ?? $session->user_id;
+                    if ($subject !== null) {
+                        $this->connection->table('users')->where('id', $subject)->lockForUpdate()->first();
                     }
                     // Save міг оновити TTL після початкового відбору IDs.
                     if (! $this->eligible($lifetime)->where('id', $id)->exists()) {
                         return 0;
                     }
                     // Недоступний registry дає exception/rollback; TTL не змінюється.
-                    $held = $session->user_id === null
+                    $held = $subject === null
                         ? $this->connection->table('auth_retention_holds')->whereNull('released_at')->exists()
                         : $this->connection->table('auth_retention_holds as h')->whereNull('released_at')
-                            ->where(function ($query) use ($session) {
-                                $query->where('subject_user_id', $session->user_id)
+                            ->where(function ($query) use ($session, $subject) {
+                                $query->where('subject_user_id', $subject)
                                     ->orWhereRaw('?::timestamptz>=audit_from AND ?::timestamptz<audit_to', [date('c', $session->last_activity), date('c', $session->last_activity)])
                                     ->orWhereExists(fn ($case) => $case->selectRaw('1')->from('auth_recovery_cases as c')
-                                        ->whereColumn('c.id', 'h.case_id')->where('c.target_user_id', $session->user_id));
+                                        ->whereColumn('c.id', 'h.case_id')->where('c.target_user_id', $subject));
                             })->exists();
                     if ($held) {
-                        $state = $this->connection->table('auth_session_states')->where('session_id', $id)->first();
                         // Тільки typed metadata, без ID/cookie/payload/IP/UA. Час події
                         // зберігає scope time hold; INSERT і DELETE атомарні.
                         $this->connection->table('auth_audit_events')->insert([
                             'occurred_at' => date('c', $session->last_activity),
-                            'subject_user_id' => $state?->user_id ?? $session->user_id,
+                            'subject_user_id' => $subject,
                             'event_type' => 'retention.session_scrubbed',
                             'outcome' => 'success',
                             'request_id' => (string) Str::uuid(),
