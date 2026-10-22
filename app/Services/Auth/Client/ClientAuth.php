@@ -98,9 +98,18 @@ final class ClientAuth
                     return $response;
                 }
                 if ($flowId) {
-                    $flow = $this->lockedFlow($flowId, $binding, 'pending');
+                    try {
+                        $flow = $this->lockedFlow($flowId, $binding, 'pending');
+                    } catch (AuthDenied $e) {
+                        // Невалідний login resend має той самий decoy/enqueue contract.
+                        if ($e->status !== 422) {
+                            throw $e;
+                        }
+
+                        return $response;
+                    }
                     if ($flow->purpose !== 'login' || $flow->user_id !== $user->id) {
-                        return new AuthDenied;
+                        return $response;
                     }
                 } else {
                     $this->invalidate($binding, 'login');

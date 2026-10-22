@@ -216,7 +216,8 @@ final class ClientSecurity
     {
         $this->checkChallenge($request, $challenge, 'email_change');
         $result = $this->auth->verify($challenge, $code, $this->binding($request), $request->ip());
-        $oldEmail = $this->policy->transaction(function () use ($request, $result) {
+        $correlation = (string) Str::uuid();
+        [$oldEmail, $subject] = $this->policy->transaction(function () use ($request, $result, $correlation) {
             $user = $this->sessions->user($request);
             $flow = $this->flow($request, $result['flow_id'], $user, 'email_change', 'primary_verified');
             $email = (string) $request->session()->get('auth5_email.'.$flow->public_id);
@@ -234,16 +235,18 @@ final class ClientSecurity
             }
             DB::table('users')->where('id', $user->id)->update(['email' => $email, 'email_normalized' => $normalized, 'email_verified_at' => $this->policy->stamp()]);
             $this->revokeAll($user->id);
-            $this->policy->audit('client.email_changed', $user->id);
+            $this->policy->audit('client.email_changed', $user->id, correlation: $correlation);
             $this->sessions->logout($request);
 
-            return $user->email;
+            return [$user->email, $user->id];
         });
         // Після identity commit; збій повідомлення не відкочує захисне відкликання.
         try {
-            dispatch(new DeliverSecurityNotice($oldEmail));
+            dispatch(new DeliverSecurityNotice($oldEmail, $subject, $correlation));
+        } catch (NoticeDeliveryFailed) {
+            // Job уже записав sanitized failure; identity commit залишається чинним.
         } catch (\Throwable) {
-            $this->policy->transaction(fn () => $this->policy->audit('client.notice_failed'));
+            app(NoticeFailure::class)->record($subject, $correlation);
         }
     }
 

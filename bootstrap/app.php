@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminMfaBoundary;
 use App\Http\Middleware\AdminSessionContext;
 use App\Http\Middleware\ClientAuthBoundary;
+use App\Http\Middleware\SerializedAuthSession;
 use App\Services\Auth\Client\AuthDenied;
 use App\Services\Auth\MfaDenied;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -10,6 +11,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -23,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(ClientAuthBoundary::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, AdminMfaBoundary::class);
-        $middleware->web(prepend: [AdminSessionContext::class], append: [AdminMfaBoundary::class]);
+        $middleware->web(prepend: [AdminSessionContext::class], append: [AdminMfaBoundary::class], replace: [StartSession::class => SerializedAuthSession::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontReportWhen(fn (Throwable $e) => request()->is('api/auth/*', 'api/me'));

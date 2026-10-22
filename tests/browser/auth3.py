@@ -186,5 +186,7 @@ try:
         print(json.dumps(report, ensure_ascii=False))
         context.close()
         browser.close()
-except Exception:
-    raise SystemExit('AUTH-3 browser check failed at ' + stage + '; sensitive diagnostics suppressed') from None
+except Exception as error:
+    import traceback
+    line = traceback.extract_tb(error.__traceback__)[-1].lineno
+    raise SystemExit('AUTH-3 browser check failed at ' + stage + ', line ' + str(line) + '; sensitive diagnostics suppressed') from None
