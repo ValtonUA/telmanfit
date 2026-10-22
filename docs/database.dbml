@@ -986,3 +986,7 @@ Table auth_retention_batches {
   indexes { (run_id, batch_no) [unique] }
   Note: 'Append-only; 0<=deleted<=candidate<=500; exact identity retry'
 }
+
+// B5 P2/005000: held session payload GC exports typed auth_audit_events metadata;
+// unknown guest subject stays protected under any active hold. Confirmed-factor
+// expired pending scrub preserves factor/watermark; held pending-only is not deleted.

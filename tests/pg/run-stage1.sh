@@ -60,6 +60,7 @@ if [[ ${AUTH6B5_ONLY:-0} == 1 ]]; then
     docker exec -i "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=1 < database/sql/auth6b5/01_test_acl.sql
     vendor/bin/phpunit -c phpunit.auth6b5.xml --display-all-issues
     php tests/pg/auth6b5-concurrency.php
+    php tests/pg/auth6b5-hold-concurrency.php
     B5_SYNTHETIC_CONTAINER="$container" B5_SYNTHETIC_DUMP="$work/snapshot.dump" php tests/pg/auth6b5-restore-drill.php
     exit
 fi

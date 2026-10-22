@@ -5,6 +5,7 @@ namespace App\Support\Session;
 use App\Services\Auth\Restore\RestoreFence;
 use Illuminate\Session\DatabaseSessionHandler;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class ContextDatabaseSessionHandler extends DatabaseSessionHandler
 {
@@ -41,6 +42,10 @@ final class ContextDatabaseSessionHandler extends DatabaseSessionHandler
                     if ($session->user_id !== null) {
                         $this->connection->table('users')->where('id', $session->user_id)->lockForUpdate()->first();
                     }
+                    // Save міг оновити TTL після початкового відбору IDs.
+                    if (! $this->eligible($lifetime)->where('id', $id)->exists()) {
+                        return 0;
+                    }
                     // Недоступний registry дає exception/rollback; TTL не змінюється.
                     $held = $session->user_id === null
                         ? $this->connection->table('auth_retention_holds')->whereNull('released_at')->exists()
@@ -52,7 +57,22 @@ final class ContextDatabaseSessionHandler extends DatabaseSessionHandler
                                         ->whereColumn('c.id', 'h.case_id')->where('c.target_user_id', $session->user_id));
                             })->exists();
                     if ($held) {
-                        return 0;
+                        $state = $this->connection->table('auth_session_states')->where('session_id', $id)->first();
+                        // Тільки typed metadata, без ID/cookie/payload/IP/UA. Час події
+                        // зберігає scope time hold; INSERT і DELETE атомарні.
+                        $this->connection->table('auth_audit_events')->insert([
+                            'occurred_at' => date('c', $session->last_activity),
+                            'subject_user_id' => $state?->user_id ?? $session->user_id,
+                            'event_type' => 'retention.session_scrubbed',
+                            'outcome' => 'success',
+                            'request_id' => (string) Str::uuid(),
+                            'session_fingerprint' => hash('sha256', $id),
+                            'reason_code' => match ($state?->audience) {
+                                'admin' => 'session_admin_metadata',
+                                'client' => 'session_client_metadata',
+                                default => 'session_unknown_metadata',
+                            },
+                        ]);
                     }
 
                     return $this->eligible($lifetime)->where('id', $id)->delete();

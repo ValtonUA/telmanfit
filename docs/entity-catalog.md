@@ -410,3 +410,8 @@ D5 та D6-A затверджено. Additive [SQL 08](08_auth_retention_restore
 
 Production provider/provisioning відсутні. Synthetic adapters не є D3/D8 доказами;
 повний статус реалізованого ядра й відкладених cleanup paths — [B5](auth6-b5.md).
+
+B5 P2 forward fix (005000): held expired sessions зберігають лише typed audit
+metadata перед payload/assurance GC; невідомий guest subject захищений будь-яким
+active hold. Confirmed-factor pending secret scrub не видаляє MFA history чи
+watermark; held pending-only row не purge. Нових сутностей/полів немає.

@@ -121,7 +121,7 @@ BEGIN
   (SELECT max(occurred_at) FROM public.auth_audit_events WHERE id=ANY(ids))<>m.last_occurred_at OR
   EXISTS(SELECT FROM public.auth_audit_events WHERE id=ANY(ids) AND occurred_at>r.cutoff-interval '180 days') THEN RAISE EXCEPTION 'Archive content or age mismatch'; END IF;
  IF EXISTS(SELECT FROM public.auth_retention_holds h JOIN public.auth_audit_events a ON a.id=ANY(ids)
-  WHERE h.released_at IS NULL AND (h.subject_user_id IN (a.subject_user_id,a.actor_user_id) OR
+  WHERE h.released_at IS NULL AND ((a.event_type='retention.session_scrubbed' AND a.subject_user_id IS NULL) OR h.subject_user_id IN (a.subject_user_id,a.actor_user_id) OR
    h.case_id=a.case_reference OR (a.occurred_at>=h.audit_from AND a.occurred_at<h.audit_to) OR
    EXISTS(SELECT FROM public.auth_recovery_cases c WHERE c.id=h.case_id AND c.target_user_id IN (a.subject_user_id,a.actor_user_id)))) THEN RAISE EXCEPTION 'Legal hold'; END IF;
  DELETE FROM public.auth_audit_events WHERE id=ANY(ids);
@@ -209,7 +209,7 @@ RETURNS TABLE(id text,subject bigint,case_ref uuid,occurred timestamptz) LANGUAG
 $$;
 CREATE FUNCTION auth_retention_cleanup(rid uuid,batch integer,kind text) RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET lock_timeout='2s' SET statement_timeout='10s' AS $$
-DECLARE r public.auth_retention_runs; prior public.auth_retention_batches; row record; chosen text[]:=ARRAY[]::text[]; n integer:=0; k integer;
+DECLARE r public.auth_retention_runs; prior public.auth_retention_batches; row record; chosen text[]:=ARRAY[]::text[]; n integer:=0; k integer; held boolean;
 BEGIN
  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'Read committed retention required'; END IF;
  IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
@@ -225,17 +225,18 @@ BEGIN
  END IF;
  IF r.mode<>'apply' OR r.state<>'running' OR r.cutoff>clock_timestamp() THEN RAISE EXCEPTION 'Invalid retention run'; END IF;
  FOR row IN SELECT * FROM public.auth_retention_candidates(kind,r.cutoff) candidate
-  WHERE (kind='failed_jobs' OR NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
+  WHERE (kind='failed_jobs' OR (kind='pending_totp' AND EXISTS(SELECT FROM public.user_totp_factors f WHERE f.user_id=candidate.subject AND f.confirmed_at IS NOT NULL)) OR NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
    (candidate.subject IS NULL OR h.subject_user_id=candidate.subject OR h.case_id=candidate.case_ref OR
     (candidate.occurred>=h.audit_from AND candidate.occurred<h.audit_to) OR
     EXISTS(SELECT FROM public.auth_recovery_cases c WHERE c.id=h.case_id AND c.target_user_id=candidate.subject))))
   ORDER BY subject NULLS FIRST,id LIMIT 500 LOOP
   chosen:=array_append(chosen,row.id);
   -- Невідомий owner ciphertext failure → будь-який active hold зупиняє purge.
-  IF EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
+  SELECT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
     (row.subject IS NULL OR h.subject_user_id=row.subject OR h.case_id=row.case_ref OR
      (row.occurred>=h.audit_from AND row.occurred<h.audit_to) OR
-     EXISTS(SELECT FROM public.auth_recovery_cases c WHERE c.id=h.case_id AND c.target_user_id=row.subject))) THEN
+     EXISTS(SELECT FROM public.auth_recovery_cases c WHERE c.id=h.case_id AND c.target_user_id=row.subject))) INTO held;
+  IF held AND NOT (kind='pending_totp' AND EXISTS(SELECT FROM public.user_totp_factors f WHERE f.user_id=row.subject AND f.confirmed_at IS NOT NULL)) THEN
    IF kind='failed_jobs' THEN
     UPDATE public.failed_jobs SET payload='[redacted]',exception='[redacted]',connection='redacted',queue='redacted' WHERE id=row.id::bigint;
     GET DIAGNOSTICS k=ROW_COUNT; n:=n+k;
@@ -246,7 +247,11 @@ BEGIN
    PERFORM 1 FROM public.users WHERE id=row.subject FOR UPDATE SKIP LOCKED;
    IF NOT FOUND THEN CONTINUE; END IF;
   END IF;
-  -- Recheck під user lock; FK conflict відкочує лише цей item, жодного CASCADE.
+  IF kind='pending_totp' THEN
+   PERFORM 1 FROM public.user_totp_factors WHERE user_id=row.subject FOR UPDATE SKIP LOCKED;
+   IF NOT FOUND THEN CONTINUE; END IF;
+  END IF;
+  -- Recheck під user/factor locks; FK conflict відкочує лише цей item, жодного CASCADE.
   IF NOT EXISTS(SELECT FROM public.auth_retention_candidates(kind,r.cutoff) c WHERE c.id=row.id) THEN CONTINUE; END IF;
   BEGIN
    CASE kind
@@ -256,8 +261,9 @@ BEGIN
     WHEN 'invitations' THEN DELETE FROM public.client_invitations WHERE id=row.id::bigint;
     WHEN 'pending_totp' THEN
      IF EXISTS(SELECT FROM public.user_totp_factors WHERE user_id=row.subject AND confirmed_at IS NOT NULL) THEN
-      UPDATE public.user_totp_factors SET pending_secret_ciphertext=NULL,pending_key_version=NULL,pending_expires_at=NULL,updated_at=clock_timestamp() WHERE user_id=row.subject;
-     ELSE DELETE FROM public.user_totp_factors WHERE user_id=row.subject AND confirmed_at IS NULL AND last_used_step IS NULL; END IF;
+      UPDATE public.user_totp_factors SET pending_secret_ciphertext=NULL,pending_key_version=NULL,pending_expires_at=NULL,updated_at=clock_timestamp() WHERE user_id=row.subject AND confirmed_at IS NOT NULL AND pending_expires_at<=r.cutoff;
+     ELSIF NOT held THEN DELETE FROM public.user_totp_factors WHERE user_id=row.subject AND confirmed_at IS NULL AND last_used_step IS NULL;
+     ELSE CONTINUE; END IF;
     WHEN 'outbox' THEN DELETE FROM public.auth_security_notice_outbox WHERE id=row.id::uuid;
     WHEN 'failed_jobs' THEN DELETE FROM public.failed_jobs WHERE id=row.id::bigint;
    END CASE;
@@ -303,17 +309,17 @@ BEGIN
  IF kind='audit' THEN
   RETURN QUERY SELECT a.id::text FROM public.auth_audit_events a WHERE a.occurred_at<=statement_timestamp()-interval '180 days'
   AND NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
-   (h.subject_user_id IN (a.actor_user_id,a.subject_user_id) OR h.case_id=a.case_reference OR
+   ((a.event_type='retention.session_scrubbed' AND a.subject_user_id IS NULL) OR h.subject_user_id IN (a.actor_user_id,a.subject_user_id) OR h.case_id=a.case_reference OR
     (a.occurred_at>=h.audit_from AND a.occurred_at<h.audit_to) OR
     EXISTS(SELECT FROM public.auth_recovery_cases rc WHERE rc.id=h.case_id AND rc.target_user_id IN (a.actor_user_id,a.subject_user_id))))
   ORDER BY a.occurred_at,a.id LIMIT 500;
   RETURN;
  END IF;
  RETURN QUERY SELECT c.id FROM public.auth_retention_candidates(kind,statement_timestamp()) c
- WHERE NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
+ WHERE ((kind='pending_totp' AND EXISTS(SELECT FROM public.user_totp_factors f WHERE f.user_id=c.subject AND f.confirmed_at IS NOT NULL)) OR NOT EXISTS(SELECT FROM public.auth_retention_holds h WHERE h.released_at IS NULL AND
   (c.subject IS NULL OR h.subject_user_id=c.subject OR h.case_id=c.case_ref OR
    (c.occurred>=h.audit_from AND c.occurred<h.audit_to) OR
-   EXISTS(SELECT FROM public.auth_recovery_cases rc WHERE rc.id=h.case_id AND rc.target_user_id=c.subject)))
+   EXISTS(SELECT FROM public.auth_recovery_cases rc WHERE rc.id=h.case_id AND rc.target_user_id=c.subject))))
  ORDER BY c.id LIMIT 500;
 END $$;
 REVOKE ALL ON FUNCTION auth_retention_preview(text) FROM PUBLIC;

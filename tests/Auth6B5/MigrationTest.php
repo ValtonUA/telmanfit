@@ -7,6 +7,36 @@ use Tests\TestCase;
 
 final class MigrationTest extends TestCase
 {
+    public function test_forward_fix_preserves_existing_function_oid_acl_owner_and_populated_history(): void
+    {
+        require __DIR__.'/../pg/auth2-guard.php';
+        DB::beginTransaction();
+        try {
+            $user = DB::table('users')->insertGetId(['name' => 'Synthetic upgrade survivor', 'role' => 'client']);
+            DB::unprepared('CREATE SCHEMA b5_upgrade; SET LOCAL search_path=b5_upgrade,public;');
+            DB::unprepared(file_get_contents(__DIR__.'/pre_hold_scrub.sql'));
+            DB::statement('REVOKE ALL ON FUNCTION b5_upgrade.auth_retention_cleanup(uuid,integer,text) FROM PUBLIC');
+            DB::statement('GRANT EXECUTE ON FUNCTION b5_upgrade.auth_retention_cleanup(uuid,integer,text) TO telmanfit_retention_executor');
+            $query = "SELECT oid,proowner,proacl::text acl,prosrc FROM pg_proc WHERE oid='b5_upgrade.auth_retention_cleanup(uuid,integer,text)'::regprocedure";
+            $before = DB::selectOne($query);
+            $migration = require database_path('migrations/2026_10_22_005000_fix_auth_retention_hold_scrub.php');
+            $migration->up();
+            $after = DB::selectOne($query);
+            foreach (['oid', 'proowner', 'acl'] as $field) {
+                $this->assertSame($before->$field, $after->$field);
+            }
+            $this->assertNotSame($before->prosrc, $after->prosrc);
+            $this->assertSame(DB::selectOne("SELECT prosrc FROM pg_proc WHERE oid='public.auth_retention_cleanup(uuid,integer,text)'::regprocedure")->prosrc, $after->prosrc);
+            $this->assertSame($user, DB::table('public.users')->where('id', $user)->value('id'));
+            $migration->up();
+            $this->assertEquals($after, DB::selectOne($query));
+            $this->expectException(\RuntimeException::class);
+            $migration->down();
+        } finally {
+            DB::rollBack();
+        }
+    }
+
     public function test_additive_empty_and_populated_projection_preserves_rows_and_refuses_down(): void
     {
         require __DIR__.'/../pg/auth2-guard.php';

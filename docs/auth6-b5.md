@@ -7,6 +7,45 @@
 Післямерджевий master CI: [Stage 1](https://github.com/ValtonUA/telmanfit/actions/runs/39806897993)
 та [PHP runtime](https://github.com/ValtonUA/telmanfit/actions/runs/39806897983) — success.
 
+## Виправлення незалежного review P2-1/P2-2
+
+Продовження наявного Draft PR #20 від `b879668a46cf7bdb147fbf0a4235656eeb103957`.
+Історичні PHP-міграції не змінено; нова `005000` застосовує forward fix із
+`database/sql/auth6b5/02_hold_scrub.sql`. CREATE OR REPLACE зберігає OID,
+owner та ACL наявних функцій; migration identity потребує права змінювати їх,
+нових grants чи production provisioning немає. SQL08 і виконуваний SQL00
+синхронізовано. Нових таблиць/полів немає.
+
+- **P2-1:** GC після B1 session lock → shared hold-policy lock → user lock
+  повторно перевіряє TTL. За active hold перед DELETE записує append-only
+  `retention.session_scrubbed`: timestamp останньої активності, subject user,
+  SHA256 fingerprint ID, typed audience reason та випадковий request UUID.
+  Cookie/ID/payload/IP/UA не копіюються. Audit INSERT і session DELETE/assurance
+  CASCADE — одна transaction/ID. Audit/registry/delete failure відкочує item;
+  за outage payload та докази лишаються до безпечного повтору, GC не відкриває auth.
+  Admin15m/client12h/absolute TTL не змінено. Save перед GC подовжує тільки
+  штатний last_activity; GC перед follower не дозволяє старому HTTP save
+  воскресити ID або віддати Set-Cookie. Для guest sanitized event із невідомим
+  subject будь-який active hold консервативно блокує audit purge.
+- **P2-2:** hold exception дозволяє тільки confirmed-factor expired pending
+  scrub; user → factor locks і повторний cutoff/confirmation recheck збережено.
+  Очищуються pending ciphertext/key/expiry, оновлюється службовий updated_at.
+  Confirmed ciphertext/key/confirmed_at, disabled state, current recovery batch
+  і last_used_step не змінюються. Pending-only під hold не DELETE. Preview
+  показує доступний confirmed scrub; інші hold-protected cleanup paths не послаблено.
+
+Нові `HoldScrubTest`, upgrade fixture у `MigrationTest` і незалежний процесний
+`auth6b5-hold-concurrency.php` перевіряють user/case/time holds, admin/client/guest,
+TTL, sanitized metadata та її hold-protected archive purge, audit/delete rollback,
+registry outage, confirmed/pending-only factors, idempotency, migration OID/ACL,
+реальні policy/session lock waits і B1 HTTP follower після GC, factor confirmation race.
+Наявні archive-unavailable/digest/ACL/history/recovery/restore tests лишаються обов'язковими.
+
+Перевірки нового коду та точні SHA/run URLs фіксуються в описі PR після CI.
+Наведені нижче 23/208 і старі timings стосуються попереднього HEAD, а не цього fix.
+PR залишається Draft для повторного незалежного review; merge/auto-merge,
+production/deployment/реальні БД не входять до задачі.
+
 ## Реалізовано
 
 Authoritative [SQL 08](08_auth_retention_restore.sql) byte-identical
@@ -30,7 +69,7 @@ bounded lock/statement timeouts. Run transitions та batches додають typ
 |---|---|
 | Challenges / flows | ≥24h після max(expiry,terminal), challenge тільки коли parent теж старий; children перед parent; будь-який recovery-grant FK залишає row online |
 | Pending TOTP | Expiry recheck під user lock; clear pending у confirmed history; pending-only delete лише без watermark/codes; confirmed factor і watermark зберігаються |
-| Sessions / assurance | B1 idle admin15m/client12h, absolute assurance expiry; максимум500 IDs; одна transaction/ID, B1 session advisory lock → hold-policy → user → TTL recheck; busy session skip, assurance CASCADE; GC outage rollback/savepoint і skip без зміни auth failure contract |
+| Sessions / assurance | B1 idle admin15m/client12h, absolute assurance expiry; максимум500 IDs; одна transaction/ID, B1 session advisory lock → hold-policy → user → TTL recheck; за hold sanitized metadata → payload DELETE/assurance CASCADE; busy session skip; GC outage rollback/savepoint і skip без зміни auth failure contract |
 | Invitations | Активні не expire; terminal ≥365d і без child flow; holds пов'язаних users захищають row |
 | Recovery codes | Used/revoked ≥365d; current factor batch не purge; hashes не змінюються |
 | Recovery cases/events/approvals/grants, principals/keys/gates | **Залишаються online.** Фізичний purge не реалізований без окремого verified archive contract; чинні append-only/RESTRICT guards не послаблено |
