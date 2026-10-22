@@ -34,6 +34,11 @@ owner та ACL наявних функцій; migration identity потребу�
   і last_used_step не змінюються. Pending-only під hold не DELETE. Preview
   показує доступний confirmed scrub; інші hold-protected cleanup paths не послаблено.
 
+B5 CI-крок виконується перед довгими HTTP/browser регресіями для швидкого
+виявлення помилок; усі обов'язкові кроки збережені. Subject для GC береться
+із assurance за його наявності; суперечність із session owner дає безпечний skip
+без видалення payload/історії.
+
 Нові `HoldScrubTest`, upgrade fixture у `MigrationTest` і незалежний процесний
 `auth6b5-hold-concurrency.php` перевіряють user/case/time holds, admin/client/guest,
 TTL, sanitized metadata та її hold-protected archive purge, audit/delete rollback,
@@ -58,6 +63,7 @@ production/deployment/реальні БД не входять до задачі.
 ### Файли P2 fix відносно b879668
 
 ```text
+.github/workflows/stage1.yml
 app/Support/Session/ContextDatabaseSessionHandler.php
 database/migrations/2026_10_22_005000_fix_auth_retention_hold_scrub.php
 database/sql/auth6b5/00_retention.sql
