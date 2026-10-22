@@ -4,22 +4,29 @@ namespace App\Http\Middleware;
 
 use App\Services\Auth\AdminAssurance;
 use App\Services\Auth\MfaDenied;
+use App\Services\Auth\Recovery\RecoveryGate;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 final class RequireAdminMfa
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        if (! config('mfa.enabled')) {
-            return $next($request);
-        }
         $businessException = null;
         try {
             // Lock тримається до завершення дії: revoke не переганяє sensitive write.
             return DB::transaction(function () use ($request, $next, &$businessException) {
-                app(AdminAssurance::class)->assert($request);
+                if (config('mfa.enabled')) {
+                    app(AdminAssurance::class)->assert($request);
+                } elseif ($id = Auth::guard('web')->id()) {
+                    DB::table('users')->where('id', $id)->lockForUpdate()->first();
+                    // Legacy password-only sessions ніколи не стають authority після recovery.
+                    if (RecoveryGate::hasHistory($id)) {
+                        throw new MfaDenied;
+                    }
+                }
 
                 try {
                     return $next($request);

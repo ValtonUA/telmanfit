@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use App\Services\Auth\Recovery\RecoveryGate;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +32,7 @@ final class AdminAssurance
             ->whereRaw('s.absolute_expires_at > clock_timestamp()')
             ->where('s.browser_binding_hash', hash('sha256', $request->session()->get('mfa_binding')))
             ->select('s.auth_version')->first();
-        if (! $user || $user->role !== 'admin' || ! $state || $state->auth_version !== $user->auth_version) {
+        if (! $user || RecoveryGate::blocked($user->id) || $user->role !== 'admin' || ! $state || $state->auth_version !== $user->auth_version) {
             throw new MfaDenied;
         }
     }
@@ -47,7 +48,7 @@ final class AdminAssurance
         $flowId = $this->mfa->claimLoginProof($proof);
         DB::transaction(function () use ($request, $proof, $flowId) {
             $user = DB::table('users')->where('id', $proof->user_id)->lockForUpdate()->first();
-            if (! $user || $user->role !== 'admin' || $user->auth_version !== $proof->auth_version) {
+            if (! $user || RecoveryGate::blocked($user->id) || $user->role !== 'admin' || $user->auth_version !== $proof->auth_version) {
                 throw new MfaDenied;
             }
             $flow = DB::table('auth_flows')->where('public_id', $flowId)->lockForUpdate()->first();

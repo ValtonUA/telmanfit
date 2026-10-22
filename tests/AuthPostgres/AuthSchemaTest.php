@@ -76,7 +76,7 @@ class AuthSchemaTest extends TestCase
         foreach ($parts as $part) {
             $this->assertStringContainsString(file_get_contents($part), $snapshot);
         }
-        $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass)");
+        $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass) AND c.conrelid::regclass::text NOT LIKE 'auth_recovery_%'");
         $this->assertCount(15, $keys);
         foreach ($keys as $key) {
             $this->assertSame('bigint', $key->type);
@@ -104,6 +104,10 @@ class AuthSchemaTest extends TestCase
             foreach (['public', 'auth2_reference'] as $schema) {
                 $catalog = [];
                 foreach (DB::select($sql, [$schema]) as $row) {
+                    // AUTH-2/5 projection лишається точним; additive B3 guards перевіряє MigrationTest.
+                    if ($kind === 'triggers' && str_contains($row->name, '.auth6b_')) {
+                        continue;
+                    }
                     $table = explode('.', $row->name)[0];
                     if ($kind !== 'functions' && ! in_array($table, ['client_invitations', 'auth_flows', 'auth_challenges', 'user_totp_factors', 'mfa_recovery_codes', 'auth_session_states', 'auth_audit_events'], true)) {
                         continue;
@@ -329,6 +333,10 @@ class AuthSchemaTest extends TestCase
         DB::table('auth_audit_events')->insert(['event_type' => 'test', 'outcome' => 'success', 'request_id' => (string) Str::uuid()]);
         DB::table('users')->where('id', 5000000000)->update(['auth_version' => 1]);
         foreach (glob(database_path('migrations/2026_10_22_*.php')) as $file) {
+            // Цей fixture містить AUTH-2/5 rows; populated B3 down перевіряє RecoveryTest.
+            if (basename($file) === '2026_10_22_002000_create_auth_recovery.php') {
+                continue;
+            }
             try {
                 DB::transaction(fn () => (require $file)->down());
                 $this->fail('Відкат мав зупинитися');

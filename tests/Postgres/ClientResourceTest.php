@@ -27,6 +27,7 @@ class ClientResourceTest extends PostgresTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->installAuthSchema();
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Filament::bootCurrentPanel();
         $this->admin = $this->user('admin', 'Administrator');
