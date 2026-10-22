@@ -353,3 +353,25 @@ last_used_step та аудиту. Повторне підключення — н
 прийнятий step; старий фактор не відновлюється. Ролі та бізнес-сутності незмінні.
 Виконуваний additive DDL — `database/sql/auth5/00_disabled_factor.sql`; актуальний
 SQL snapshot — `docs/05_auth_schema.sql`. Історичні міграції AUTH-2 не змінено.
+
+## AUTH-6B/B3 — захищений recovery (22.10.2026)
+
+D1/D2 затверджено прямою задачею; D3 лише принцип незалежності. Нові сутності
+реалізовано additive міграцією, без production identities або backfill.
+Джерело точних constraints/functions/ACL — [06_auth_recovery_schema.sql](06_auth_recovery_schema.sql),
+логічна проєкція — [database.dbml](database.dbml), стан і blockers — [auth6-b3.md](auth6-b3.md).
+
+| Сутність | Призначення та інваріанти |
+|---|---|
+| `auth_recovery_principals` | Один незалежний human principal; nullable UNIQUE linked user, authority та digest зовнішнього identity record. Identity immutable, revoke незворотний. Жодних production rows. |
+| `auth_recovery_keys` | Ed25519 public keys (32 bytes), fingerprint, revision, validity; rotation новим row, не другою identity. Private keys не зберігаються. |
+| `auth_recovery_cases` | Immutable exact intent, роль/version, exclusions, TTL72h, hold24h, active slot; explicit signed `replace_admin_password` лише admin. Deployment/epoch — signed context від зовнішнього port, не реалізація D6 restore. |
+| `auth_recovery_approvals` | Два незалежні підписані approvals на intent, evidence digest/receipt UUID, TTL48h; одна identity рахується один раз, self/initiator/operator виключені; append-only. Verifier є окремою довіреною межею D3. |
+| `auth_recovery_grants` | Один grant/intent, TTL15m; single exchange з browser binding та shared `auth_flows` enrollment, hash token; повторна видача потребує нового case. |
+| `auth_recovery_gates` | Quarantine client/admin незалежно від flags. Terminal cancel/expiry не release; лише успішний новий primary+TOTP і version bump. Legacy password-only context після recovery заборонено. |
+| `auth_recovery_events` | Append-only типізована історія case без секретів, паралельно з наявним security audit. Відмова mandatory notice/audit відкочує mutation. Retention не реалізовано. |
+
+Shared MFA зберігає pending/confirmed secrets, watermark та codes у чинних таблицях.
+Restricted recovery не видає login proof/session; потрібен окремий повний вхід.
+D3 transports/verifier/custody та B4 durable notices відкриті; default boundary відсутня,
+production env і mutation grants закриті. Production/P5/P6 не затверджено.

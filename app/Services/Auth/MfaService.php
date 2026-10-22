@@ -2,6 +2,8 @@
 
 namespace App\Services\Auth;
 
+use App\Services\Auth\Recovery\RecoveryGate;
+use App\Services\Auth\Recovery\RecoveryService;
 use App\Support\Auth\AuthSecretCodec;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -50,7 +52,12 @@ final class MfaService
         $this->policy->assertControlled();
         // Exact delivery email чинного Filament; normalized-key/backfill не запроваджується.
         $candidate = DB::table('users')->where('email', $email)->first();
-        $valid = Hash::check($password, $candidate?->password ?? '$2y$04$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi');
+        $hash = $candidate?->password ?? '$2y$04$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
+        try {
+            $valid = is_string($hash) && Hash::driver(str_starts_with($hash, '$argon2id$') ? 'argon2id' : 'bcrypt')->check($password, $hash);
+        } catch (\RuntimeException) {
+            throw new MfaDenied;
+        }
         if (! $candidate || ! $valid || $candidate->role !== 'admin') {
             throw new MfaDenied;
         }
@@ -102,19 +109,8 @@ final class MfaService
             if (! in_array($flow->action, [null, 'replace_factor'], true)) {
                 return null;
             }
-            $secret = (new Google2FA)->generateSecretKey(32);
-            $data = ['pending_secret_ciphertext' => $this->codec->encryptTotp($secret),
-                'pending_key_version' => config('mfa.key_version'), 'pending_expires_at' => $flow->expires_at,
-                'updated_at' => $this->stamp()];
-            if ($factor) {
-                DB::table('user_totp_factors')->where('user_id', $user->id)->update($data);
-            } else {
-                DB::table('user_totp_factors')->insert($data + ['user_id' => $user->id, 'created_at' => $data['updated_at']]);
-            }
-            DB::table('auth_flows')->where('id', $flow->id)->update(['capability_hash' => hash('sha256', $data['pending_secret_ciphertext'])]);
-            $this->audit($user->id, 'mfa.enrollment_started');
 
-            return new SecretValue($secret);
+            return $this->startEnrollment($user, $flow, $factor);
         });
     }
 
@@ -125,29 +121,7 @@ final class MfaService
         [$batch, $codes, $rows] = $this->newRecoveryBatch();
 
         return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $batch, $codes, $rows) {
-            if (! $factor?->pending_secret_ciphertext || ! $flow->capability_hash
-                || ! hash_equals($flow->capability_hash, hash('sha256', $factor->pending_secret_ciphertext)) || CarbonImmutable::parse($factor->pending_expires_at)->lessThanOrEqualTo($this->now())
-                || (self::active($factor) && $flow->action !== 'replace_factor')
-                || $factor->pending_key_version !== config('mfa.key_version')) {
-                return null;
-            }
-            $step = $this->step($this->codec->decryptTotp($factor->pending_secret_ciphertext), $code);
-            // AUTH-2 watermark незменшуваний навіть при заміні фактора.
-            if ($step === null || ($factor->last_used_step !== null && $step <= $factor->last_used_step)) {
-                return null;
-            }
-            DB::table('user_totp_factors')->where('user_id', $user->id)->update([
-                'secret_ciphertext' => $factor->pending_secret_ciphertext, 'key_version' => $factor->pending_key_version,
-                'confirmed_at' => $this->stamp(), 'last_used_step' => $step, 'disabled_at' => null,
-                'pending_secret_ciphertext' => null, 'pending_key_version' => null, 'pending_expires_at' => null,
-                'updated_at' => $this->stamp(),
-            ]);
-            $this->installBatch($user->id, $batch, $rows);
-            $this->complete($flow);
-            $this->revoke($user->id);
-            $this->audit($user->id, 'mfa.factor_activated');
-
-            return new SecretValue($codes);
+            return $this->installEnrollment($user, $flow, $factor, $code, $batch, $codes, $rows);
         });
     }
 
@@ -307,6 +281,86 @@ final class MfaService
         });
     }
 
+    private function startEnrollment(object $user, object $flow, ?object $factor): SecretValue
+    {
+        $secret = (new Google2FA)->generateSecretKey(32);
+        $data = ['pending_secret_ciphertext' => $this->codec->encryptTotp($secret),
+            'pending_key_version' => config('mfa.key_version'), 'pending_expires_at' => $flow->expires_at,
+            'updated_at' => $this->stamp()];
+        if ($factor) {
+            DB::table('user_totp_factors')->where('user_id', $user->id)->update($data);
+        } else {
+            DB::table('user_totp_factors')->insert($data + ['user_id' => $user->id, 'created_at' => $data['updated_at']]);
+        }
+        DB::table('auth_flows')->where('id', $flow->id)->update(['capability_hash' => hash('sha256', $data['pending_secret_ciphertext'])]);
+        $this->audit($user->id, 'mfa.enrollment_started');
+
+        return new SecretValue($secret);
+    }
+
+    private function installEnrollment(object $user, object $flow, ?object $factor, string $code, string $batch, array $codes, array $rows): ?SecretValue
+    {
+        if (! $factor?->pending_secret_ciphertext || ! $flow->capability_hash
+            || ! hash_equals($flow->capability_hash, hash('sha256', $factor->pending_secret_ciphertext)) || CarbonImmutable::parse($factor->pending_expires_at)->lessThanOrEqualTo($this->now())
+            || (self::active($factor) && ! in_array($flow->action, ['replace_factor', 'assisted_recovery'], true))
+            || $factor->pending_key_version !== config('mfa.key_version')) {
+            return null;
+        }
+        $step = $this->step($this->codec->decryptTotp($factor->pending_secret_ciphertext), $code);
+        // AUTH-2 watermark незменшуваний навіть при заміні фактора.
+        if ($step === null || ($factor->last_used_step !== null && $step <= $factor->last_used_step)) {
+            return null;
+        }
+        DB::table('user_totp_factors')->where('user_id', $user->id)->update([
+            'secret_ciphertext' => $factor->pending_secret_ciphertext, 'key_version' => $factor->pending_key_version,
+            'confirmed_at' => $this->stamp(), 'last_used_step' => $step, 'disabled_at' => null,
+            'pending_secret_ciphertext' => null, 'pending_key_version' => null, 'pending_expires_at' => null,
+            'updated_at' => $this->stamp(),
+        ]);
+        $this->installBatch($user->id, $batch, $rows);
+        $this->complete($flow);
+        $this->revoke($user->id);
+        $this->audit($user->id, 'mfa.factor_activated');
+
+        return new SecretValue($codes);
+    }
+
+    /** Restricted adapter: жодних login proofs; authority перевіряється RecoveryService. */
+    public function beginRecoveryEnrollment(string $case, #[\SensitiveParameter] string $binding): SecretValue
+    {
+        return app(RecoveryService::class)->withEnrollment($case, $binding, function ($user, $flow, $factor, $intent) {
+            if ($flow->capability_hash !== null || $factor?->pending_secret_ciphertext !== null || self::active($factor)) {
+                return null;
+            }
+            $secret = $this->startEnrollment($user, $flow, $factor);
+            app(RecoveryService::class)->event($intent, 'enrollment_started');
+
+            return $secret;
+        });
+    }
+
+    public function confirmRecoveryEnrollment(string $case, #[\SensitiveParameter] string $binding, #[\SensitiveParameter] string $code, string $ip, #[\SensitiveParameter] ?string $password = null): SecretValue
+    {
+        $recovery = app(RecoveryService::class);
+        $recovery->admitTotp($case, $ip);
+        $passwordHash = $recovery->hashPassword($password);
+        [$batch, $codes, $rows] = $this->newRecoveryBatch();
+
+        return $recovery->withEnrollment($case, $binding, function ($user, $flow, $factor, $intent) use ($recovery, $code, $passwordHash, $batch, $codes, $rows, $ip) {
+            if (! $recovery->totpAllowed($user, $flow, $ip)) {
+                return null;
+            }
+            $result = $this->installEnrollment($user, $flow, $factor, $code, $batch, $codes, $rows);
+            if ($result !== null) {
+                $recovery->complete($intent, $user, $passwordHash);
+            } else {
+                $recovery->totpAllowed($user, $flow, $ip, true);
+            }
+
+            return $result;
+        });
+    }
+
     private function withFlow(string $id, string $binding, callable $operation): mixed
     {
         $this->policy->assertControlled();
@@ -322,7 +376,7 @@ final class MfaService
             $user = $this->user($userId);
             $flow = DB::table('auth_flows')->where('public_id', $id)->lockForUpdate()->first();
             $this->budget($userId, $flow);
-            if (! $flow || $flow->user_id !== $user->id || $flow->state !== 'primary_verified'
+            if (! $flow || $flow->action === 'assisted_recovery' || $flow->user_id !== $user->id || $flow->state !== 'primary_verified'
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', $binding))
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->now())
                 || $flow->auth_version_at_start !== $user->auth_version
@@ -451,7 +505,12 @@ final class MfaService
 
     private function user(int $id): object
     {
-        return DB::table('users')->where('id', $id)->lockForUpdate()->first() ?? throw new MfaDenied;
+        $user = DB::table('users')->where('id', $id)->lockForUpdate()->first() ?? throw new MfaDenied;
+        if (RecoveryGate::blocked($id)) {
+            throw new MfaDenied;
+        }
+
+        return $user;
     }
 
     private function invalidateFlows(int $userId, ?string $binding = null): void

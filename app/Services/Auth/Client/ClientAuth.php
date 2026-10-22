@@ -3,6 +3,7 @@
 namespace App\Services\Auth\Client;
 
 use App\Jobs\DeliverEmailOtp;
+use App\Services\Auth\Recovery\RecoveryGate;
 use App\Services\Auth\SecretValue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -303,7 +304,7 @@ final class ClientAuth
         if ($flow->audience !== 'client' || ! in_array($flow->purpose, ['register', 'login', 'reauth', 'email_change'], true) || $flow->state !== $state
             || ! hash_equals($flow->browser_binding_hash, hash('sha256', $binding))
             || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->auth->now())
-            || ($user && ($user->role !== 'client' || $user->auth_version !== $flow->auth_version_at_start
+            || ($user && (RecoveryGate::blocked($user->id) || $user->role !== 'client' || $user->auth_version !== $flow->auth_version_at_start
                 || ! $user->email_verified_at || ! DB::table('clients')->where('user_id', $user->id)->exists()))) {
             throw new AuthDenied;
         }
@@ -314,7 +315,7 @@ final class ClientAuth
     private function eligible(?object $user, string $normalized): bool
     {
         try {
-            if (! $user || $user->role !== 'client' || ! $user->email_verified_at
+            if (! $user || RecoveryGate::blocked($user->id) || $user->role !== 'client' || ! $user->email_verified_at
                 || $user->email_normalized !== $normalized || $this->emails->normalize($user->email) !== $normalized
                 || ! DB::table('clients')->where('user_id', $user->id)->exists()) {
                 return false;

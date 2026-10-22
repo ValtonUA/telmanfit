@@ -47,6 +47,22 @@ export DB_DATABASE=telmanfit_stage1_test DB_USERNAME=telmanfit_test_runner DB_PA
 export APP_ENV=testing TELMANFIT_PG_TEST=1
 # Лише випадковий ключ цього прогону; жодного читання локальних/реальних секретів.
 export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+if [[ ${AUTH6B_ONLY:-0} == 1 ]]; then
+    docker exec "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=1 \
+        -c 'CREATE ROLE telmanfit_recovery_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
+        -c 'GRANT telmanfit_recovery_runtime TO telmanfit_test_runner;'
+    php artisan migrate --force --no-interaction
+    vendor/bin/phpunit -c phpunit.auth2.xml --display-all-issues
+    vendor/bin/phpunit -c phpunit.auth6b.xml --display-all-issues
+    if [[ ${AUTH6B_CASES_ONLY:-0} == 1 ]]; then exit; fi
+    vendor/bin/phpunit -c phpunit.auth3.xml --display-all-issues
+    vendor/bin/phpunit -c phpunit.auth4.xml --display-all-issues
+    vendor/bin/phpunit -c phpunit.auth5.xml --display-all-issues
+    vendor/bin/phpunit -c phpunit.auth6.xml --display-all-issues
+    php tests/pg/auth6b-concurrency.php
+    bash tests/http/auth6-in-context.sh
+    exit
+fi
 if [[ ${AUTH6_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
     vendor/bin/phpunit -c phpunit.auth6.xml --display-all-issues

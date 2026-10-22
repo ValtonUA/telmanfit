@@ -192,6 +192,7 @@ class BusinessSchemaTest extends PostgresTestCase
 
     public function test_real_admin_login_and_panel_role_access(): void
     {
+        $this->installAuthSchema();
         $this->get('/admin')->assertRedirect('/admin/login');
         $this->get('/admin/login')->assertOk();
         foreach (['admin' => 200, 'coach' => 403, 'client' => 403] as $role => $status) {

@@ -766,3 +766,130 @@ Ref: auth_audit_events.subject_user_id > users.id [delete: restrict]
 // TOTP watermark monotonic trigger; audit UPDATE/DELETE/TRUNCATE forbidden.
 // Усі точні CHECK/імена FK/індекси/функції та nullable-парність — docs/05_auth_schema.sql.
 // PostgreSQL типи text+CHECK лишаються text у цій auth-проєкції без непогоджених enum.
+
+// AUTH-6B/B3: D1/D2 затверджено 22.10.2026; D3/B4/production закриті.
+Table auth_recovery_principals [headercolor: #7C3AED] {
+ id uuid [pk]
+ linked_user_id bigint [unique]
+ authority text [not null]
+ identity_record_digest text [not null]
+ created_at timestamptz [not null]
+ revoked_at timestamptz
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_principals.linked_user_id > users.id [delete: restrict]
+Table auth_recovery_keys [headercolor: #7C3AED] {
+ id uuid [pk]
+ principal_id uuid [not null]
+ public_key bytea [not null]
+ fingerprint text [not null, unique]
+ registry_version bigint [not null]
+ valid_from timestamptz [not null]
+ valid_until timestamptz [not null]
+ revoked_at timestamptz
+ indexes {
+  (id,principal_id) [unique]
+  (principal_id) [name: 'auth6b_key_principal']
+ }
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_keys.principal_id > auth_recovery_principals.id [delete: restrict]
+Table auth_recovery_cases [headercolor: #7C3AED] {
+ id uuid [pk]
+ target_user_id bigint [not null]
+ target_principal_id uuid [not null]
+ initiator_principal_id uuid [not null]
+ operator_principal_id uuid
+ target_role text [not null]
+ action text [not null]
+ replace_admin_password boolean [not null]
+ expected_auth_version bigint [not null]
+ registry_version bigint [not null]
+ policy_version integer [not null]
+ deployment_id text [not null]
+ restore_epoch uuid [not null]
+ intent_nonce uuid [not null, unique]
+ intent_digest text [not null, unique]
+ replacement_email_ciphertext text
+ replacement_email_mac text
+ email_key_version text
+ created_at timestamptz [not null]
+ expires_at timestamptz [not null]
+ state text [not null]
+ hold_until timestamptz
+ closed_at timestamptz
+ reason_code text [not null]
+ indexes {
+  (target_user_id) [name: 'auth6b_case_user']
+  (state,expires_at) [name: 'auth6b_case_expiry']
+  (target_principal_id)
+  (initiator_principal_id)
+  (operator_principal_id)
+ }
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_cases.target_user_id > users.id [delete: restrict]
+Ref: auth_recovery_cases.target_principal_id > auth_recovery_principals.id [delete: restrict]
+Ref: auth_recovery_cases.initiator_principal_id > auth_recovery_principals.id [delete: restrict]
+Ref: auth_recovery_cases.operator_principal_id > auth_recovery_principals.id [delete: restrict]
+Table auth_recovery_approvals [headercolor: #7C3AED] {
+ case_id uuid [not null]
+ principal_id uuid [not null]
+ key_id uuid [not null]
+ intent_digest text [not null]
+ signature bytea [not null]
+ evidence_digest text [not null]
+ verification_receipt_id uuid [not null, unique]
+ verified_at timestamptz [not null]
+ expires_at timestamptz [not null]
+ indexes {
+  (case_id,principal_id) [pk]
+  (key_id,principal_id) [name: 'auth6b_approval_key']
+ }
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_approvals.case_id > auth_recovery_cases.id [delete: restrict]
+Ref: auth_recovery_approvals.principal_id > auth_recovery_principals.id [delete: restrict]
+Table auth_recovery_grants [headercolor: #7C3AED] {
+ id uuid [pk]
+ case_id uuid [not null, unique]
+ generation integer [not null]
+ token_hash text [not null, unique]
+ auth_version bigint [not null]
+ issued_at timestamptz [not null]
+ expires_at timestamptz [not null]
+ exchanged_at timestamptz
+ revoked_at timestamptz
+ binding_hash text
+ enrollment_flow_id bigint [unique]
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_grants.case_id > auth_recovery_cases.id [delete: restrict]
+Ref: auth_recovery_grants.enrollment_flow_id > auth_flows.id [delete: restrict]
+Table auth_recovery_gates [headercolor: #7C3AED] {
+ user_id bigint [pk]
+ case_id uuid [not null, unique]
+ blocked_at timestamptz [not null]
+ released_at timestamptz
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_gates.user_id > users.id [delete: restrict]
+Ref: auth_recovery_gates.case_id > auth_recovery_cases.id [delete: restrict]
+Table auth_recovery_events [headercolor: #7C3AED] {
+ id bigint [pk, increment]
+ case_id uuid [not null]
+ event_type text [not null]
+ actor_principal_id uuid
+ request_id uuid [not null]
+ occurred_at timestamptz [not null]
+ reason_code text
+ indexes {
+  (case_id,request_id,event_type) [unique]
+  (case_id,occurred_at,id) [name: 'auth6b_event_case']
+  (actor_principal_id) [name: 'auth6b_event_actor']
+ }
+ Note: 'Точні CHECK, partial active-case UNIQUE, TTL, ACL та guards: docs/06_auth_recovery_schema.sql. Runtime mutation EXECUTE не надано до B4. Registry без production identities.'
+}
+Ref: auth_recovery_events.case_id > auth_recovery_cases.id [delete: restrict]
+Ref: auth_recovery_events.actor_principal_id > auth_recovery_principals.id [delete: restrict]
+Ref: auth_recovery_approvals.(key_id,principal_id) > auth_recovery_keys.(id,principal_id) [delete: restrict]

@@ -18,7 +18,8 @@ final class AdminMfaBoundary
     public function handle(Request $request, Closure $next): mixed
     {
         if (! config('mfa.enabled')) {
-            return $next($request);
+            return $request->is('admin', 'admin/*', 'livewire*', 'livewire*/*')
+                ? app(RequireAdminMfa::class)->handle($request, $next) : $next($request);
         }
         if ($request->is('admin', 'admin/*') || $request->is('livewire*', 'livewire*/*')) {
             try {

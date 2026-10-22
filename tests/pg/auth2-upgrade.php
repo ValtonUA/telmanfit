@@ -4,7 +4,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 require __DIR__.'/auth2-bootstrap.php';
-$files = glob(database_path('migrations/2026_10_22_*.php'));
+$files = array_values(array_filter(glob(database_path('migrations/2026_10_22_*.php')), fn ($file) => basename($file) !== '2026_10_22_002000_create_auth_recovery.php'));
+// AUTH-2/5 upgrade projection; B3 має окремий MigrationTest із public-qualified procedures.
 assert(count($files) === 9);
 
 // Реальні up/down на порожній та заповненій Stage 1 схемі, без постійних фікстур.

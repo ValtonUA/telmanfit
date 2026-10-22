@@ -1,3 +1,8 @@
+> **AUTH-6B/B3, 22.10.2026:** реалізовано additive recovery ядро, dual approvals/Ed25519,
+> quarantine/gates і shared restricted TOTP/password replacement. [Звіт, перевірки та точні blockers](auth6-b3.md).
+> Production закрито; D3 operational adapters і B4 transactional notices відсутні.
+> D4–D8, P5/P6 та activation відкриті; старі записи B2 нижче історичні.
+
 > **AUTH-6B / B2, 22.10.2026:** підготовлено [технічний проєкт recovery, outbox, budgets та retention](auth6-b2-design.md) для окремого архітектурного погодження. Це документаційний етап: B3–B6, схема й код не реалізовані; P5/P6 та production залишаються відкритими.
 
 > **AUTH-6B / B1, 22.10.2026:** виправлено D1/D2/D3, підтверджену HTTP cookie race,

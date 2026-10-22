@@ -1,0 +1,318 @@
+{
+  "date": "2026-10-22",
+  "master_sha": "d9ff62f8fddae20ecbe666d600c132496d10f75b",
+  "postgres": {
+    "version": "18.6",
+    "image": "postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+    "network": "none",
+    "published_ports": [],
+    "data": "synthetic only",
+    "cleanup": "own containers and sockets removed by successful runner traps"
+  },
+  "focused": {
+    "command": "AUTH6B_ONLY=1 bash tests/pg/run-stage1.sh",
+    "exit_code": 0,
+    "suites": [
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 12,
+        "passed": 12,
+        "assertions": 131,
+        "duration_ms": 2360
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 21,
+        "passed": 21,
+        "assertions": 202,
+        "duration_ms": 16606
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 25,
+        "passed": 25,
+        "assertions": 129,
+        "duration_ms": 34044
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 24,
+        "passed": 24,
+        "assertions": 152,
+        "duration_ms": 3129
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 19,
+        "passed": 19,
+        "assertions": 132,
+        "duration_ms": 27623
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 5,
+        "passed": 5,
+        "assertions": 359,
+        "duration_ms": 2893
+      }
+    ],
+    "concurrency": [
+      "B3 duplicate approval: two blocked PIDs, one immutable row PASS",
+      "B3 finalize: two blocked PIDs, one terminal winner, no partial grant/factor PASS",
+      "B3 close: two blocked PIDs, one terminal winner, no partial grant/factor PASS",
+      "B3 mixed: two blocked PIDs, one terminal winner, no partial grant/factor PASS",
+      "B3 registry revoke vs finalize: two blocked PIDs, serialized commit order PASS"
+    ],
+    "http": [
+      {
+        "result": "PASS",
+        "parallel_http": [
+          "rotate/read-first",
+          "rotate/mutation-first",
+          "logout/read-first",
+          "logout/mutation-first",
+          "revoke/read-first",
+          "revoke/mutation-first",
+          "logout_all/read-first",
+          "logout_all/mutation-first",
+          "email/read-first",
+          "email/mutation-first",
+          "reauth/read-first",
+          "reauth/mutation-first",
+          "rotate-logout-action-first",
+          "rotate-logout-logout-first",
+          "reauth-logout-action-first",
+          "reauth-logout-logout-first",
+          "email-logout-action-first",
+          "email-logout-logout-first",
+          "revoke-logout-action-first",
+          "revoke-logout-logout-first",
+          "admin-read-first",
+          "admin-mutation-first",
+          "bounded lock timeout",
+          "lock released after CSRF exception",
+          "parallel session save preserves both writes"
+        ],
+        "transport": "two independent HTTP servers and PG PIDs; same encrypted cookie; CSRF enabled",
+        "lock_wait": "pg_stat_activity wait_event_type=Lock before barrier release",
+        "response_order": "both application orders for Set-Cookie",
+        "production_enabled": false
+      }
+    ]
+  },
+  "latest_b3_fixture_recheck": {
+    "command": "AUTH6B_ONLY=1 AUTH6B_CASES_ONLY=1 bash tests/pg/run-stage1.sh",
+    "exit_code": 0,
+    "suites": [
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 12,
+        "passed": 12,
+        "assertions": 131,
+        "duration_ms": 2441
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 21,
+        "passed": 21,
+        "assertions": 203,
+        "duration_ms": 14945
+      }
+    ],
+    "single_admin_assertion": true
+  },
+  "full_regressions": {
+    "command": "bash tests/pg/run-stage1.sh",
+    "exit_code": 0,
+    "sql": {
+      "PASS": 76,
+      "FAIL": 0,
+      "GAP": 0
+    },
+    "suites": [
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 41,
+        "passed": 41,
+        "assertions": 713,
+        "duration_ms": 7127
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 22,
+        "passed": 22,
+        "assertions": 46,
+        "duration_ms": 451
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 12,
+        "passed": 12,
+        "assertions": 131,
+        "duration_ms": 1827
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 25,
+        "passed": 25,
+        "assertions": 129,
+        "duration_ms": 28183
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 24,
+        "passed": 24,
+        "assertions": 152,
+        "duration_ms": 2147
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 19,
+        "passed": 19,
+        "assertions": 132,
+        "duration_ms": 22766
+      },
+      {
+        "tool": "phpunit",
+        "result": "passed",
+        "tests": 5,
+        "passed": 5,
+        "assertions": 359,
+        "duration_ms": 2106
+      }
+    ],
+    "concurrency": [
+      "AUTH-2 populated upgrade/down: PASS; усі старі рядки збережені",
+      "AUTH-2 Laravel migrate: PASS",
+      "rollback precheck vs INSERT: PASS; ACCESS EXCLUSIVE lock перевірено",
+      "challenge + session grant: PASS; B очікував PG row lock; рівно один переможець",
+      "recovery + session grant: PASS; B очікував PG row lock; рівно один переможець",
+      "TOTP cross-context accepted step: PASS; B очікував PG row lock; рівно один переможець",
+      "invitation indefinite consume vs consume: PASS; B очікував PG row lock; рівно один переможець",
+      "invitation expiring consume vs consume: PASS; B очікував PG row lock; рівно один переможець",
+      "generation compare-and-swap: PASS; B очікував PG row lock; рівно один переможець",
+      "revoke before sensitive request: PASS; застаріла version=0 відхиляється",
+      "sensitive request before revoke: PASS; grant version=1 стає застарілим після bump=2",
+      "TOTP acceptance rollback: PASS; B очікував PG row lock; rollback A дозволив B",
+      "invitation indefinite revoke vs consume: PASS",
+      "invitation expiring revoke vs consume: PASS",
+      "resend vs old challenge: PASS; generation=1 відхилено після lock",
+      "recovery rotation vs consume: PASS; старий batch відхилено",
+      "AUTH-2 concurrency: 14 scenarios PASS; це транзакційний прототип, не production auth service",
+      "TOTP: two service processes, two blocked PG PIDs, exactly one winner PASS",
+      "Recovery: two service processes, two blocked PG PIDs, exactly one winner PASS",
+      "Gate business transaction vs logout-all: PG revoke waited for business write/commit; subsequent request 403 PASS",
+      "AUTH4 OTP consume: two blocked PG PIDs, exactly one service winner PASS",
+      "AUTH4 same invitation/flow complete: two blocked PG PIDs, one user/client/consume PASS",
+      "AUTH4 same invitation/different flows: exactly one registration PASS",
+      "AUTH4 two invitations/same normalized email: one user, loser invitation unconsumed PASS",
+      "AUTH4 concurrent issuance/different flows and IPs: two neutral responses, exactly one delivery PASS",
+      "AUTH5 action proof / enrollment: two blocked PG PIDs, exactly one service winner PASS",
+      "AUTH5 action proof / logout-all: exactly one version bump PASS",
+      "AUTH5 new email OTP: exactly one confirmation, identity commit and audit PASS",
+      "AUTH5 disable: exactly one version bump, ciphertext cleared, watermark preserved PASS",
+      "AUTH5 reenrollment: exactly one new factor activation, watermark advanced PASS"
+    ],
+    "http": {
+      "result": "PASS",
+      "parallel_http": [
+        "rotate/read-first",
+        "rotate/mutation-first",
+        "logout/read-first",
+        "logout/mutation-first",
+        "revoke/read-first",
+        "revoke/mutation-first",
+        "logout_all/read-first",
+        "logout_all/mutation-first",
+        "email/read-first",
+        "email/mutation-first",
+        "reauth/read-first",
+        "reauth/mutation-first",
+        "rotate-logout-action-first",
+        "rotate-logout-logout-first",
+        "reauth-logout-action-first",
+        "reauth-logout-logout-first",
+        "email-logout-action-first",
+        "email-logout-logout-first",
+        "revoke-logout-action-first",
+        "revoke-logout-logout-first",
+        "admin-read-first",
+        "admin-mutation-first",
+        "bounded lock timeout",
+        "lock released after CSRF exception",
+        "parallel session save preserves both writes"
+      ],
+      "transport": "two independent HTTP servers and PG PIDs; same encrypted cookie; CSRF enabled",
+      "lock_wait": "pg_stat_activity wait_event_type=Lock before barrier release",
+      "response_order": "both application orders for Set-Cookie",
+      "production_enabled": false
+    }
+  },
+  "other_checks": [
+    {
+      "command": "php artisan test",
+      "exit_code": 0
+    },
+    {
+      "command": "php vendor/bin/pint --test",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run lint (client)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build (client)",
+      "exit_code": 0
+    },
+    {
+      "command": "NODE_USE_ENV_PROXY=1 npm run build (root)",
+      "exit_code": 0
+    },
+    {
+      "command": "node tests/Auth6B/verify-vector.mjs",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "command": "changed Markdown local file links",
+      "exit_code": 0
+    },
+    {
+      "command": "authoritative SQL byte equality",
+      "exit_code": 0
+    }
+  ],
+  "resolved_test_setup_failures": [
+    "Root build without proxy: fonts.bunny.net EAI_AGAIN; proxy build passed with TLS verification",
+    "Missing Vite manifest before local root build",
+    "Historical timestamp and browser binding fixtures corrected",
+    "Direct migration down now locks inside transaction",
+    "Legacy HTTP fixtures now install gate schema in synthetic transaction; AUTH-2 projection scoped before B3 histories",
+    "Parallel harness HTTP port conflict: serial full repeat passed"
+  ],
+  "limits": [
+    "RecoveryBoundary production binding absent; fixture receipt/notice is synthetic only",
+    "No real trustee/verifier/custody/registry enrollment or operational recovery transport",
+    "No B4 durable outbox, B5 retention/restore or B6 rate cutover/load implementation",
+    "No production data/config/secrets/provider changes",
+    "No production activation, merge, auto-merge or force-push"
+  ]
+}

@@ -4,6 +4,7 @@ namespace Tests\Postgres;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 abstract class PostgresTestCase extends TestCase
@@ -29,6 +30,16 @@ abstract class PostgresTestCase extends TestCase
         $this->assertSame(18, intdiv((int) DB::selectOne('SHOW server_version_num')->server_version_num, 10000));
         $this->assertSame(0, Artisan::call('migrate', ['--force' => true, '--path' => array_map(fn ($file) => str_replace(base_path().'/', '', $file), array_merge(glob(database_path('migrations/0001_*.php')), glob(database_path('migrations/2026_10_21_*.php'))))]));
         DB::beginTransaction();
+    }
+
+    protected function installAuthSchema(): void
+    {
+        // Gate-aware HTTP/Filament fixture; DDL відкочується outer synthetic transaction.
+        if (! Schema::hasTable('auth_recovery_gates')) {
+            foreach (glob(database_path('migrations/2026_10_22_*.php')) as $file) {
+                (require $file)->up();
+            }
+        }
     }
 
     protected function tearDown(): void

@@ -4,6 +4,7 @@ namespace App\Services\Auth\Client;
 
 use App\Services\Auth\MfaProof;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\Recovery\RecoveryGate;
 use App\Services\Auth\SecretValue;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ final class ClientSession
             $user = DB::table('users')->where('id', $id)->lockForUpdate()->first();
             $flow = DB::table('auth_flows')->where('public_id', $flowId)->lockForUpdate()->first();
             $factor = DB::table('user_totp_factors')->where('user_id', $id)->lockForUpdate()->first();
-            if (! $user || $user->role !== 'client' || $user->auth_version !== $version || ! $user->email_verified_at
+            if (! $user || RecoveryGate::blocked($user->id) || $user->role !== 'client' || $user->auth_version !== $version || ! $user->email_verified_at
                 || ! DB::table('clients')->where('user_id', $id)->exists() || ! $flow || $flow->state !== 'completed'
                 || $flow->audience !== 'client' || ! in_array($flow->purpose, ['register', 'login'], true)
                 || ($flow->user_id !== null && $flow->user_id !== $id)
@@ -71,7 +72,7 @@ final class ClientSession
             ->where('s.last_activity', '>', $this->auth->now()->timestamp - 43200)
             ->where('a.browser_binding_hash', hash('sha256', (string) $request->session()->get('client_binding')))->select('a.*')->first();
         $factor = $id ? DB::table('user_totp_factors')->where('user_id', $id)->whereNotNull('confirmed_at')->whereNull('disabled_at')->exists() : false;
-        if (! $user || $user->role !== 'client' || ! $state || $state->auth_version !== $user->auth_version
+        if (! $user || RecoveryGate::blocked($user->id) || $user->role !== 'client' || ! $state || $state->auth_version !== $user->auth_version
             || ! $user->email_verified_at
             || ($factor && (! $state->mfa_verified_at || ! in_array($state->mfa_method, ['totp', 'recovery_code'], true)))) {
             throw new AuthDenied('unauthenticated', 401);
