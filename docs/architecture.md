@@ -49,6 +49,10 @@
 
 # Технологічна архітектура TelmanFit
 
+> **Поточний зріз архітектури — 23.10.2026 (master до цього docs PR `bb0816d`):** Stage 1 бізнес-схема реалізована; Stage 2 client cards у Filament і AUTH-3/4/5 (Filament MFA, invitation/email OTP і React security) реалізовані **тільки controlled/default OFF**. Основних бізнес-модулів продуктів, рецептів, раціонів, прогресу, тренувань і Telegram **немає**. **Stage 3 — наступний продуктовий пріоритет**; хостинг/D8/last-admin after B5 restore/B7 — перед production. RPO до 24h погоджено; Hyperhost/SendPulse обрані, не розгорнуті. Датовані секції нижче можуть описувати попередні ревізії: [актуальний roadmap](roadmap.md#актуальний-стан-і-наступний-крок--23102026), [project-status.md](project-status.md).
+
+
+
 > **Оновлено:** 21.10.2026.
 > **Призначення:** описати технологічний стек, шари застосунку, межі модулів і **поточний стан реалізації**.
 > **Технічний стан і походження перевірок:** [project-status.md](project-status.md). Його перелік розбіжностей і наступних задач — знімок до цієї синхронізації; актуальні формулювання архітектури та етапів наведено тут і в [roadmap.md](roadmap.md).
@@ -249,14 +253,14 @@ cd client && npm run build       # збірка SPA у public/app
 |---|---|---|---|
 | Каркас Laravel | так | так | `bootstrap/app.php`, `routes/*`, `config/*` |
 | Адмін-панель Filament | так | частково (логін, dashboard і наявні клієнтські картки, лише `admin`) | `AdminPanelProvider`, `User::canAccessPanel()`, `UserPanelAccessTest` |
-| SPA React/TS | так | частково (каркас + health-check) | `client/src/App.tsx`, `client/src/components/HealthStatus.tsx` |
-| API | так | лише `GET /api/health` | `routes/api.php`, `app/Http/Controllers/Api/HealthController.php` |
+| SPA React/TS | так | **частково: реєстрація, email OTP/login та client security/MFA UI** у controlled/default OFF; раціонів і прогресу немає | [auth5.md](auth5.md), `client/src/App.tsx` |
+| API | так | health **і** controlled invitation/email OTP/client security API; бізнес-ендпоінтів рецептів/раціонів/прогресу немає, production OFF | [auth4.md](auth4.md), [auth5.md](auth5.md), `routes/api.php` |
 | Бізнес-схема (37 таблиць) | так | SQL DDL попередньо перевірено в ізольованій БД | Аудит: `docs/01–04` виконано в `telmanfit_test`; `PASS=76 FAIL=0 GAP=0` |
 | Міграція узгодження `users` | G3: B + R1 | реалізована; застосування й призначення `admin` підтверджені локально користувачем | `2026_10_21_000000_align_users_with_business_schema.php`, [project-status.md](project-status.md) |
 | Повні міграції модулів 01–04 | G3 затверджено | реалізовано й перевірено в ізольованому PostgreSQL 18 | [stage-1.md](stage-1.md), `database/migrations`, `database/sql/stage1` |
 | Eloquent-моделі домену | так | частково: `User`, `Client` і зв’язки | `app/Models`, [stage-2.md](stage-2.md) |
-| Сервіси публікації/призначення | так | ні | — |
-| Запрошення, Telegram/PWA-автентифікація та прив’язка | так; деталі PWA, токенів і онбордингу відкриті | ні; UI-створення клієнтів заблоковане | [stage-2.md](stage-2.md) |
+| Сервіси публікації/призначення | так | **немає**; наступний Stage 3 — продукти/рецепти, далі Stage 4 — раціони | [roadmap.md](roadmap.md) |
+| Запрошення, Telegram/PWA-автентифікація та прив’язка | так | invitation і email OTP PWA backend/UI **реалізовані controlled/default OFF**; Telegram primary/linking немає; ручне створення клієнтів заблоковано | [auth4.md](auth4.md), [auth5.md](auth5.md), [stage-2.md](stage-2.md) |
 | Telegram-канал повідомлень | так (пізній етап) | ні | — |
 | Тести схеми на PostgreSQL | так | так (окремий раннер) | `tests/pg/*.sql` + `run-pg-tests.ps1`; `phpunit.pgsql.xml`, `run-stage1.sh`, `.github/workflows/stage1.yml` |
 | Тестове середовище PG | так | підтверджено в Codex Cloud, G4 та Stage 1 | [G4.md](../tests/pg/G4.md), [stage-1.md](stage-1.md); нові ізольовані PostgreSQL 18.6 |
@@ -265,10 +269,10 @@ cd client && npm run build       # збірка SPA у public/app
 
 1. **Схема перевірена на PostgreSQL 18.6** (21.10.2026): 37 таблиць, 19 тригерів, 1 `EXCLUDE`, 4 міжмодульні FK; `tests/pg` → `PASS=76 FAIL=0 GAP=0` ([schema-audit.md](schema-audit.md), §1–2, §6). **Не** перевірено на цільовому хостингу — див. пункт 4.
 2. **Інтеграція `users` за G3/R1:** стратегія вже затверджена, міграція реалізована й застосована локально за підтвердженням користувача. Потрібні перевірки сумісності майбутніх FK з BIGINT PK, відтворюваності, захищеного відкату та HTTP-доступу в погодженому ізольованому PG-середовищі. Вимоги входу адміністратора й права тренера (G1) залишаються відкритими.
-3. **PHPUnit працює на SQLite** і не здатен перевірити PG-специфіку; схема перевіряється окремим раннером `tests/pg` (ручний запуск). G4 виконано окремим Docker/Bash-прогоном із тимчасовими креденшелами. Майбутня інтеграція PHPUnit/CI і регресія Laravel-міграцій залишаються окремими задачами.
+3. **Основний PHPUnit за замовчуванням використовує SQLite**, але `phpunit.pgsql.xml`, `tests/pg/run-stage1.sh` і GitHub Actions уже покривають ізольовані PostgreSQL-міграції та регресії. Не планувати G4 чи інтеграцію PG/CI вдруге. [stage-1.md](stage-1.md).
 4. **`btree_gist` на cPanel/shared hosting** може бути недоступним — блокер розгортання.
 5. **Черги й cron** на shared hosting — потрібна перевірка перед реалізацією відправки повідомлень.
-6. **Відсутня автентифікація API**: `/api` наразі повністю публічний; контракт авторизації клієнта (сесія, токен, Telegram `initData`) не зафіксований.
+6. **Клієнтська auth API реалізована частково для controlled local/testing** (AUTH-4/5: invitation, email OTP, MFA, окремі сесії). Production OFF; Telegram `initData`/linking ще немає. [auth4.md](auth4.md), [auth5.md](auth5.md).
 7. **`NUMERIC(7,2)`** обмежує точність: правило округлення при масштабуванні потрібно документувати й тестувати (ризик `0.00` для дуже малих кількостей) — частково закрито: грамування перевіряється при публікації (`tests/pg`, `T3.20`/`T3.21`).
 8. **Відкриті питання:** 11 пунктів у [schema-audit.md](schema-audit.md), розділ 7; №9 (метрики) закрито 21.10.2026 рішенням `BR-T-02`, №6 — частково (самопосилання заборонено CHECK-ом `assignment_no_self_replacement`); решта не вирішується агентом самостійно.
 9. **Історичні формулювання в інших документах:** перелік розбіжностей у [project-status.md](project-status.md) передує цій синхронізації; стара таблиця GAP у [README PG-тестів](../tests/pg/README.md) суперечить його ж опису закриття GAP. Поточний задокументований результат — `PASS=76 FAIL=0 GAP=0`, з обмеженнями §14. Згадка стратегії `users` серед блокерів адмінського входу в [business-rules.md](business-rules.md), §12, не відкриває G3 повторно: відкритими залишаються вимоги входу, а B + R1 уже затверджено. Ці джерела не змінювалися в межах синхронізації трьох файлів.
