@@ -24,13 +24,17 @@ final class RetentionTest extends TestCase
         parent::tearDown();
     }
 
-    private function reject(callable $call): void
+    private function reject(callable $call, ?string $sqlState = null): void
     {
         try {
             DB::transaction($call);
             $this->fail('Unsafe operation accepted');
         } catch (QueryException|\RuntimeException $e) {
-            $this->assertNotEmpty($e->getMessage());
+            if ($sqlState !== null) {
+                $this->assertSame($sqlState, $e->errorInfo[0] ?? null);
+            } else {
+                $this->assertNotEmpty($e->getMessage());
+            }
         }
     }
 
@@ -155,7 +159,7 @@ final class RetentionTest extends TestCase
                 $this->reject(function () use ($role, $sql) {
                     DB::statement('SET LOCAL ROLE '.$role);
                     DB::statement($sql);
-                });
+                }, sqlState: '42501');
             }
         }
         $this->assertSame(0, DB::selectOne("SELECT count(*) n FROM pg_proc p CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a WHERE p.proname='auth_retention_purge_audit' AND a.grantee=0 AND a.privilege_type='EXECUTE'")->n);

@@ -109,6 +109,7 @@ if (DB::table('auth_recovery_grants')->where('id', $grantId)->value('revoked_at'
     || DB::table('auth_recovery_principals')->where('id', $holdPrincipal)->value('revoked_at') === null
     || DB::table('mfa_recovery_codes')->where('selector', $selector)->value('revoked_at') === null
     || DB::table('auth_challenges')->where('id', $challenge)->value('invalidated_at') === null
+    || ! DB::table('auth_audit_events')->where('event_type', 'restore.session_scrubbed')->where('subject_user_id', $user)->where('session_fingerprint', hash('sha256', $session))->exists()
     || DB::table('sessions')->where('id', $session)->exists()
     || MfaService::active(DB::table('user_totp_factors')->where('user_id', $user)->first())
     || DB::table('auth_security_notice_outbox')->where('request_id', $notice)->value('recipient_ciphertext') !== null) {

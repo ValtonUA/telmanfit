@@ -90,9 +90,11 @@ maintenance. Спершу durable `maintenance`, потім перевірка s
 ports та **окрема** rotation зовнішнього epoch в orchestrator. Чинні hold rows і
 principal/key revocations беруться з manifests поза DB snapshot; missing reference
 або суперечність hold лишають closed. Потім атомарно: усі users version++, flows/
-challenges invalidate, sessions/assurance delete, unused codes/grants revoke,
+challenges invalidate, sessions/assurance delete після secret-free metadata audit
+під чинними holds, unused codes/grants revoke,
 незавершені cases cancel, pending clear, confirmed factors disable із secret scrub
-і незменшеним restored watermark. Старі jobs/failed jobs видаляються без replay;
+і незменшеним restored watermark. Старі jobs видаляються без replay; failed payloads scrubbed зі збереженням
+мінімальних metadata під holds;
 старі pending/leased outbox terminal dead із B4 scrub/audit. Budgets не змінюються.
 
 Epoch перевіряється повторно до commit. DB epoch записується лише разом із
@@ -158,7 +160,7 @@ users не гарантується. Немає production SLA за резуль
 | Stage1/2 / основний PHPUnit | 41/713 + 38/62 tests/assertions |
 | AUTH-1 / AUTH-2 / AUTH-3 | 15/93 + 12/131 + 25/129 |
 | AUTH-4 / AUTH-5 / AUTH-6 | 24/152 + 19/131 + 5/359 |
-| B3 / B4 / B5 | 22/213 + 16/128 + **20/188** |
+| B3 / B4 / B5 | 22/213 + 16/128 + **20/190** |
 | Process / HTTP / browser | AUTH2–5/B3/B4/B5 concurrency, 25 B1 HTTP scenarios, Chromium AUTH3/4/5 PASS |
 | Pint / frontend | Pint, client ESLint/build, root Filament build PASS |
 
@@ -169,14 +171,13 @@ B3/B4/B5/HTTP повтори успішні. B3 historical downgrade fixture в�
 projection тільки видаленням порожньої нової holds table всередині transaction;
 rollback повертає її FK. Production downgrade не дозволяється.
 
-Synthetic snapshot drill: observed snapshot age **1.108s**, infrastructure restore
-**0.738s**, closed reconciliation **0.023s**. Restricted service/business access
+Synthetic snapshot drill: observed snapshot age **0.990s**, infrastructure restore
+**0.634s**, closed reconciliation **0.029s**. Restricted service/business access
 не відновлювалися; це не production SLA і не WAL/PITR acceptance.
 
 [Draft PR #20](https://github.com/ValtonUA/telmanfit/pull/20). GitHub checks для
-остаточного HEAD перевіряються окремо у PR; під час підготовки звіту вони стояли
-у `queued`, без steps/results. **Green CI не заявляється.** Base master CI та
-локальні результати не підміняють CI поточного HEAD.
+остаточного HEAD та точні run URLs фіксуються в описі PR після завершення.
+Base master CI та локальні результати не підміняють CI поточного HEAD.
 
 ## Відкриті блокери
 

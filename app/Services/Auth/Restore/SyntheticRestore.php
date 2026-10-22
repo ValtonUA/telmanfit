@@ -77,6 +77,10 @@ final class SyntheticRestore
             $fault?->__invoke('versions');
             DB::statement('UPDATE auth_challenges SET invalidated_at=clock_timestamp() WHERE consumed_at IS NULL AND invalidated_at IS NULL');
             DB::statement("UPDATE auth_flows SET state='invalidated',invalidated_at=clock_timestamp() WHERE state IN ('pending','primary_verified')");
+            // B1/D5: secret-free metadata лишається під чинними user/case/time holds.
+            DB::insert("INSERT INTO auth_audit_events(occurred_at,subject_user_id,event_type,outcome,request_id,session_fingerprint,reason_code)
+                SELECT to_timestamp(s.last_activity),coalesce(a.user_id,s.user_id),'restore.session_scrubbed','success',?::uuid,
+                encode(sha256(convert_to(s.id,'UTF8')),'hex'),'session_metadata' FROM sessions s LEFT JOIN auth_session_states a ON a.session_id=s.id", [$epoch]);
             DB::table('sessions')->delete();
             DB::statement('UPDATE mfa_recovery_codes SET revoked_at=clock_timestamp() WHERE used_at IS NULL AND revoked_at IS NULL');
             DB::statement('UPDATE auth_recovery_grants SET revoked_at=clock_timestamp() WHERE exchanged_at IS NULL AND revoked_at IS NULL');
@@ -84,12 +88,15 @@ final class SyntheticRestore
             DB::statement("UPDATE auth_recovery_cases SET state='cancelled',closed_at=clock_timestamp() WHERE closed_at IS NULL");
             $fault?->__invoke('capabilities');
             // Pending-only row може видалятися лише без replay history та children.
+            DB::insert("INSERT INTO auth_audit_events(occurred_at,subject_user_id,event_type,outcome,request_id,reason_code)
+                SELECT created_at,user_id,'restore.pending_scrubbed','success',?::uuid,'pending_metadata' FROM user_totp_factors
+                WHERE confirmed_at IS NULL AND last_used_step IS NULL AND NOT EXISTS(SELECT FROM mfa_recovery_codes c WHERE c.user_id=user_totp_factors.user_id)", [$epoch]);
             DB::statement('DELETE FROM user_totp_factors f WHERE confirmed_at IS NULL AND last_used_step IS NULL AND NOT EXISTS(SELECT FROM mfa_recovery_codes c WHERE c.user_id=f.user_id)');
             DB::statement('UPDATE user_totp_factors SET pending_secret_ciphertext=NULL,pending_key_version=NULL,pending_expires_at=NULL,secret_ciphertext=NULL,key_version=NULL,recovery_batch_id=NULL,disabled_at=coalesce(disabled_at,statement_timestamp()),updated_at=statement_timestamp() WHERE confirmed_at IS NOT NULL');
             $fault?->__invoke('factors');
             // Усі snapshot jobs quarantined видаленням; жодної десеріалізації чи replay.
             DB::table('jobs')->delete();
-            DB::table('failed_jobs')->delete();
+            DB::table('failed_jobs')->update(['payload' => '[redacted]', 'exception' => '[redacted]', 'connection' => 'redacted', 'queue' => 'redacted']);
             DB::statement("UPDATE auth_security_notice_outbox SET state='dead',finished_at=clock_timestamp(),lease_token=NULL,lease_until=NULL,recipient_ciphertext=NULL,recipient_key_version=NULL,last_error_code='policy' WHERE state IN ('pending','leased')");
             $fault?->__invoke('delivery');
             if (! hash_equals($epoch, $external->current())) {

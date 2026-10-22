@@ -72,7 +72,9 @@ final class RestoreTest extends TestCase
             'auth_version' => 0, 'primary_method' => 'email_otp', 'primary_verified_at' => DB::raw('clock_timestamp()'), 'absolute_expires_at' => DB::raw("clock_timestamp()+interval '7 days'")]);
         DB::table('jobs')->insert(['queue' => 'default', 'payload' => 'synthetic-encrypted-snapshot', 'attempts' => 0, 'available_at' => time(), 'created_at' => time()]);
 
-        return compact('user', 'code', 'flow', 'challenge', 'session');
+        $failed = DB::table('failed_jobs')->insertGetId(['uuid' => (string) Str::uuid(), 'connection' => 'synthetic', 'queue' => 'auth', 'payload' => 'synthetic encrypted failure', 'exception' => 'synthetic transport', 'failed_at' => DB::raw('clock_timestamp()')]);
+
+        return compact('user', 'code', 'flow', 'challenge', 'session', 'failed');
     }
 
     public function test_missing_stale_mismatched_and_unavailable_external_authority_close_operations(): void
@@ -108,6 +110,8 @@ final class RestoreTest extends TestCase
         $this->assertFalse(MfaService::active($factor));
         $this->assertFalse(DB::table('sessions')->where('id', $f['session'])->exists());
         $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame('[redacted]', DB::table('failed_jobs')->where('id', $f['failed'])->value('payload'));
+        $this->assertSame('[redacted]', DB::table('failed_jobs')->where('id', $f['failed'])->value('exception'));
         $this->assertSame(0, DB::table('auth_security_notice_outbox')->whereIn('state', ['pending', 'leased'])->count());
         $this->assertTrue(DB::selectOne("SELECT issuance_not_before>=last_reconciled_at+interval '24 hours' b FROM auth_security_runtime")->b);
         $this->assertSame('recovery_required', DB::table('auth_security_runtime')->value('state'));

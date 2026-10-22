@@ -1,9 +1,9 @@
 {
     "synthetic_only": true,
     "pg_major": 18,
-    "snapshot_age_seconds": 1.1080799102783203,
-    "infrastructure_restore_seconds": 0.737520414,
-    "closed_reconciliation_seconds": 0.02295648,
+    "snapshot_age_seconds": 0.9896950721740723,
+    "infrastructure_restore_seconds": 0.633689462,
+    "closed_reconciliation_seconds": 0.029114546,
     "restricted_security_service_seconds": null,
     "business_access_seconds": null,
     "access_state": "recovery_required",

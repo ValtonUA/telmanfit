@@ -69,7 +69,7 @@
     {
       "group": "B5",
       "tests": 20,
-      "assertions": 188,
+      "assertions": 190,
       "result": "passed"
     },
     {
@@ -106,5 +106,5 @@
     "filament_build": "passed",
     "sql_runner_negative_contracts": "passed"
   },
-  "ci": "See PR #20 exact HEAD checks; queued at report preparation, no success claimed."
+  "ci": "Exact final HEAD results are recorded in Draft PR #20; local checks do not imply GitHub CI success."
 }
