@@ -13,7 +13,7 @@
 > | Власник погодив | Допустимий простій і до **24 годин останніх змін, втрачених після disaster** (RPO-ціль), для масштабу 5–10 клієнтів; потрібні щоденний PostgreSQL-aware backup, encrypted offsite і restore drill перед production |
 > | Recovery | Звичайний пароль + TOTP recovery code (план зберігання у 1Password); **D3 через 1–2 друзів відкладено**, [PR #22](https://github.com/ValtonUA/telmanfit/pull/22) залишено Draft. Після B5 restore старі recovery codes можуть бути відкликані: **безпечний повторний MFA enrollment останнього admin залишається pre-production blocker** |
 >
-> **Наступна робота: Stage 3, не VPS.** Інфраструктурні D8.2/last-admin after-restore/B7 виконуються перед пілотним production-запуском, а не замість продуктового MVP. Позначення й порядок — [roadmap.md](roadmap.md#актуальний-стан-і-наступний-крок--23102026).
+> **Наступна робота: Stage 3, не VPS.** Інфраструктурні D8.2/last-admin after-restore/B7 виконуються перед пілотним production-запуском, а не замість продуктового MVP. Позначення й порядок — [roadmap.md](roadmap.md#поточний-зріз).
 
 > **D8: вибір інфраструктури (22.10.2026):** власник затвердив **Hyperhost VPS Старт (2 CPU/3 ГБ/45 ГБ NVMe)**, один VPS для Laravel+PostgreSQL18, **SendPulse SMTP** та **Hyperhost зовнішні резервні копії** для **5–10 клієнтів**. Простої допустимі, HA/Redis/другий VPS не потрібні. D3 assisted recovery із друзями **відкладено**; звичайний пароль + recovery code в 1Password. [D8 перевірки та відкриті ризики](auth6-d8-infrastructure.md): backup consistency/RPO, незалежні секрети/epoch, відновлення останнього admin після B5/PITR та production activation **не перевірені**.
 
