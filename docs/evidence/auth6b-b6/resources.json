@@ -1,8 +1,8 @@
 {
   "synthetic_only": true,
   "measurement": "Docker stats samples during entire B6 suite/concurrency/HTTP, not production sizing",
-  "samples": 89,
-  "postgres_cpu_percent_max_sampled": 187.67,
-  "postgres_cgroup_memory_bytes_max_sampled": 147639500.8,
-  "block_io_last_sample": "0B / 53.2kB"
+  "samples": 88,
+  "postgres_cpu_percent_max_sampled": 187.34,
+  "postgres_cgroup_memory_bytes_max_sampled": 149317222.4,
+  "block_io_last_sample": "0B / 57.3kB"
 }

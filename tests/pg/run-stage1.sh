@@ -12,7 +12,7 @@ container=''
 b6_monitor=''
 cleanup() {
     code=$?; trap - EXIT
-    if [[ -n "$b6_monitor" ]]; then kill "$b6_monitor" 2>/dev/null || true; wait "$b6_monitor" 2>/dev/null || true; fi
+    if [[ -n "$b6_monitor" ]]; then kill -KILL "$b6_monitor" 2>/dev/null || true; wait "$b6_monitor" 2>/dev/null || true; fi
     if [[ -n "$container" ]]; then docker rm -f "$container" >/dev/null || code=1; fi
     rm -f -- "$work/socket/.s.PGSQL.5432" "$work/socket/.s.PGSQL.5432.lock"
     rm -f -- "$work/snapshot.dump" "$work/maintenance.json" "$work/b6-resources.jsonl" "$work/restart.json"
@@ -74,10 +74,11 @@ if [[ ${AUTH6B6_ONLY:-0} == 1 ]]; then
     php tests/pg/auth6b6-restart.php before > "$work/restart.json"
     docker exec -u postgres "$container" sh -c 'pg_ctl -D "$PGDATA" -m fast -w restart' > /dev/null
     php tests/pg/auth6b6-restart.php after "$work/restart.json"
-    kill "$b6_monitor"
+    kill -KILL "$b6_monitor"
     wait "$b6_monitor" 2>/dev/null || true
     b6_monitor=''
     python3 tests/pg/auth6b6-resources.py "$work/b6-resources.jsonl"
+    echo "B6 PostgreSQL telemetry and bounded monitor shutdown PASS"
     exit
 fi
 if [[ ${AUTH6B5_ONLY:-0} == 1 ]]; then

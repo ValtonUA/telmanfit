@@ -162,11 +162,28 @@ PG activity додатково sampling10ms. WAL stats cumulative можуть �
 IO totals — cluster totals, не per-query. RSS — max окремого PHP worker, Docker
 memory — cgroup sample цілого PG container; це різні показники.
 
+| Synthetic показник | Зафіксований результат |
+|---|---|
+| Throughput4 workers /1200 requests | 132.31 requests/s;1000 allowed,200 denied |
+| Latency p95 /p99 | 48.33 /56.92 ms |
+| Lock acquisition p95 /p99 | 22.27 /30.72 ms, включно INSERT overhead |
+| PG connections / sampled lock waits | max9;507 waiter samples у641 polls |
+| PHP worker RSS / сумарний user CPU | max132.15 MiB /2.00s |
+| PostgreSQL CPU / cgroup memory | max sampled187.34% /142.40 MiB за весь B6 run |
+| WAL delta / budgets relation із indexes/TOAST/bloat | 3845493 bytes /2539520 bytes |
+| Cluster IO reads / writes /extends | 973 /4767 /1285 operations |
+| Incidental deadlocks / benchmark timeouts /503 | 0 /0 /0 |
+
 Реальний postmaster restart із тим самим synthetic data directory зберігає
 committed sentinel і відмовляє наступному запиту; це не power-loss/PITR drill.
 Перші прогони виявили synthetic fixture method-name collision, active-flow
 uniqueness fixture, історичний B3 LIKE wildcard та ANSI escape Docker stats;
-виправлено. Їх не зараховано як успішний загальний acceptance.
+виправлено. Перший CI HEAD також підтвердив PASS усіх B6 tests/races/HTTP/restart,
+але завис на очікуванні завершення Docker stats після SIGTERM; загальний run
+скасовано. Read-only monitor тепер завершується SIGKILL із bounded step timeout.
+Benchmark додатково drain-ить stdout під час роботи й перевіряє payload>pipe buffer,
+має120s deadline; це окреме hardening, не підтверджена причина CI зависання.
+Проміжні/скасовані runs не зараховано як успішний загальний acceptance.
 
 ## Cutover, ризики та відкриті рішення
 

@@ -106,6 +106,8 @@ if (($argv[1] ?? '') === 'worker') {
         $times[] = (hrtime(true) - $start) / 1e6;
     }
     echo json_encode(['allowed' => $allowed, 'denied' => $denied, 'errors' => $errors, 'ms' => $times, 'lock_ms' => $lockTimes,
+        // Більше за типовий pipe buffer: orchestrator мусить drain-ити live output.
+        'pipe_padding' => ($input['count'] ?? 1) > 1 ? str_repeat('x', 65536) : '',
         'rss_kb' => getrusage()['ru_maxrss'], 'cpu_user_seconds' => getrusage()['ru_utime.tv_sec'] + getrusage()['ru_utime.tv_usec'] / 1e6])."\n";
     exit;
 }
@@ -355,10 +357,22 @@ foreach ($workers as $worker) {
     b6go($worker);
 }
 $maxConnections = $lockSamples = $samples = 0;
+$buffers = array_fill(0, count($workers), '');
+foreach ($workers as $worker) {
+    stream_set_blocking($worker[1][1], false);
+}
+$deadline = microtime(true) + 120;
 do {
     $running = false;
-    foreach ($workers as $worker) {
+    foreach ($workers as $index => $worker) {
+        $buffers[$index] .= stream_get_contents($worker[1][1]);
         $running = proc_get_status($worker[0])['running'] || $running;
+    }
+    if (microtime(true) > $deadline) {
+        foreach ($workers as $worker) {
+            proc_terminate($worker[0], 9);
+        }
+        throw new RuntimeException('benchmark_deadline_exceeded');
     }
     DB::select('SELECT pg_stat_clear_snapshot()');
     $activity = DB::selectOne("SELECT count(*) n,count(*) FILTER(WHERE wait_event_type='Lock') waits FROM pg_stat_activity WHERE datname=current_database()");
@@ -369,9 +383,10 @@ do {
 } while ($running);
 $duration = (hrtime(true) - $start) / 1e9;
 $out = [];
-foreach ($workers as $worker) {
+foreach ($workers as $index => $worker) {
+    stream_set_blocking($worker[1][1], true);
     // proc_get_status може забрати exit status; pipe payload є окремим доказом.
-    $out[] = json_decode(b6finish($worker, true), true, flags: JSON_THROW_ON_ERROR);
+    $out[] = json_decode($buffers[$index].b6finish($worker, true), true, flags: JSON_THROW_ON_ERROR);
 }
 $times = array_merge(...array_column($out, 'ms'));
 $lockTimes = array_merge(...array_column($out, 'lock_ms'));

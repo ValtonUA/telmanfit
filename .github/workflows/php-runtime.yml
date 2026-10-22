@@ -43,6 +43,7 @@ jobs:
       - run: npm ci --prefix client --ignore-scripts
       - run: npm run build --prefix client
       - name: AUTH-6B B6 PostgreSQL budgets on this PHP runtime
+        timeout-minutes: 10
         run: AUTH6B6_ONLY=1 tests/pg/run-stage1.sh
       - run: php artisan test --display-all-issues
       - run: php vendor/bin/pint --test
