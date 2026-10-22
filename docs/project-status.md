@@ -1,3 +1,7 @@
+> **AUTH-6B/B3 CI, 22.10.2026:** master після PR #17 інтегровано без переписування історії;
+> B3 migration/privileges/security/concurrency та Ed25519 vector додано як обов’язковий CI-крок.
+> [Інтеграція, повторні перевірки й обмеження](auth6-b3-ci.md). Незалежне review та D3/B4 залишаються обов’язковими.
+
 > **AUTH-6B/B3, 22.10.2026:** реалізовано additive recovery ядро, dual approvals/Ed25519,
 > quarantine/gates і shared restricted TOTP/password replacement. [Звіт, перевірки та точні blockers](auth6-b3.md).
 > Production закрито; D3 operational adapters і B4 transactional notices відсутні.

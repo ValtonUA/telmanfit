@@ -3,6 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 for tool in docker php python3; do command -v "$tool" >/dev/null; done
+php scripts/check-php-runtime.php
 umask 077
 endpoint=$(docker context inspect --format '{{.Endpoints.docker.Host}}')
 [[ -z ${DOCKER_HOST:-} && -z ${DOCKER_CONTEXT:-} && $endpoint == unix://* ]]
@@ -48,6 +49,7 @@ export APP_ENV=testing TELMANFIT_PG_TEST=1
 # Лише випадковий ключ цього прогону; жодного читання локальних/реальних секретів.
 export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
 if [[ ${AUTH6B_ONLY:-0} == 1 ]]; then
+    node tests/Auth6B/verify-vector.mjs
     docker exec "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=1 \
         -c 'CREATE ROLE telmanfit_recovery_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
         -c 'GRANT telmanfit_recovery_runtime TO telmanfit_test_runner;'
