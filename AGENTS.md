@@ -1,3 +1,5 @@
+> **Поточний пріоритет — 23.10.2026 (master до документаційного PR `bb0816d`):** **Stage 3 — каталог продуктів і рецептів**, після обмежених рішень T1.5 і BR-F-11. Stage 1 (PG18/schema) реалізований; Stage 2 client cards + AUTH-3/4/5 мають код для controlled local/testing, **production OFF**. AUTH-6B B1–B6 — guarded/synthetic implementations, B7 не завершено. D8.1 — docs preflight; D8.2 — Draft PR #25 зі staging-kit **без VPS**; «D8.3» — лише робоча назва майбутнього recovery після B5 restore; RPO до 24h погоджено. D3 friend-trustees відкладено (Draft PR #22). **Весь авторитетний поточний стан**: [roadmap.md](docs/roadmap.md#поточний-зріз), [project-status.md](docs/project-status.md). Датовані нижче pre-AUTH-6 статуси — історичні, не відновлювати їх як відкриті задачі.
+
 > **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
 > reauth, optional MFA management, sessions та email change; default OFF. Користувач
 > окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
@@ -55,12 +57,12 @@ TelmanFit — застосунок онлайн-фітнес-супроводу.
 |---|---|
 | [AGENTS.md](AGENTS.md) (цей файл) | Правила роботи |
 | [docs/project-status.md](docs/project-status.md) | Поточний технічний стан, затверджені рішення та межі перевірок |
-| [docs/architecture.md](docs/architecture.md) | Стек, шари, межі модулів, стан реалізації |
+| [docs/architecture.md](docs/architecture.md) | Стек, шари, [карта SQL/XML/evidence](docs/architecture.md#31-карта-технічних-файлів), стан реалізації |
 | [docs/business-rules.md](docs/business-rules.md) | Підтверджені бізнес-правила з посиланнями на джерела |
 | [docs/roadmap.md](docs/roadmap.md) | Порядок реалізації MVP, у якому етапі ти працюєш |
 | [docs/entity-catalog.md](docs/entity-catalog.md) | Призначення сутностей |
 | [docs/database.dbml](docs/database.dbml) | Структура таблиць і полів |
-| `docs/01…04_*.sql` | PostgreSQL-обмеження, індекси, тригери (фактична поведінка) |
+| `docs/01–04_*.sql`, `docs/05–09_*.sql` | Бізнес-схема та додаткові auth/security SQL; [групи й порядок](docs/architecture.md#31-карта-технічних-файлів) |
 | [docs/schema-audit.md](docs/schema-audit.md) | Результати аудиту та відкриті питання |
 
 Якщо задача вимагає відхилення від цих документів — **зупинись і постав питання**, не ухвалюй рішення самостійно.
@@ -69,7 +71,7 @@ TelmanFit — застосунок онлайн-фітнес-супроводу.
 
 1. **Призначення сутностей, зв'язки, затверджені рішення** — `docs/entity-catalog.md`.
 2. **Структура таблиць і полів (логічна модель)** — `docs/database.dbml`.
-3. **Фактичні PostgreSQL-обмеження й тригери** — SQL-модулі `docs/01_nutrition_schema.sql`, `docs/02_users_clients.sql`, `docs/03_progress_tracking.sql`, `docs/04_fitness_messaging.sql` (порядок застосування 01 → 02 → 03 → 04).
+3. **Фактичні PostgreSQL-обмеження й тригери бізнес-схеми** — `docs/01_nutrition_schema.sql`–`docs/04_fitness_messaging.sql` (логічний порядок 01 → 02 → 03 → 04). **Auth/security schema:** `docs/05_auth_schema.sql`–`docs/09_auth_rate_budgets.sql` із виконуваними міграціями/SQL у `database/`. Не запускати довільно всі 9 файлів проти наявної БД. [Карта призначення файлів](docs/architecture.md#31-карта-технічних-файлів).
 
 Пріоритет щодо схеми: **SQL → DBML → Entity Catalog → Markdown-описи**. Поточний стан реалізації й підтверджені рішення звіряй із [docs/project-status.md](docs/project-status.md). Уже затверджені винятки G3/R1 для `users` (BIGINT PK, Laravel-службові поля та часові колонки) не є приводом перестворювати таблицю чи повторно погоджувати G3. Нову, неузгоджену розбіжність не виправляй «на льоту»: зафіксуй ризик і запитай рішення.
 
@@ -189,18 +191,21 @@ Telegram — це лише один із каналів доставки, а н�
 
 ## 15. Карта документації
 
+**Основний вхід для людини і Codex — [README.md](README.md)**. Детальна карта незрозумілих технічних файлів (`docs/01–09`, `phpunit*.xml`, `docs/evidence`, `docs/screenshots`) — [архітектура §3.1](docs/architecture.md#31-карта-технічних-файлів). Тести і QA-файли не є частиною runtime і не потребують читання в кожній продуктовій задачі; обов'язкові джерела розділу 2 залишаються чинними.
+
+
 | Файл | Роль |
 |---|---|
 | `AGENTS.md` | Правила для ШІ-агентів (цей файл) |
 | `CLAUDE.md` | Посилання на `AGENTS.md` для Claude Code |
 | [docs/project-status.md](docs/project-status.md) | Знімок технічного стану, підтверджені рішення та результати перевірок |
 | `docs/architecture.md` | Технологічна архітектура, шари, стан реалізації |
-| `docs/auth-architecture.md` | Затверджені auth-рішення, технічний дизайн і етапи; реалізації ще немає |
+| `docs/auth-architecture.md` | Погоджені рішення й історичний auth-дизайн; актуальна реалізація AUTH-3/4/5 — у `docs/auth3.md`, `auth4.md`, `auth5.md`; production OFF |
 | `docs/business-rules.md` | Підтверджені бізнес-правила та їхні джерела |
 | `docs/roadmap.md` | Покроковий план реалізації MVP |
 | `docs/entity-catalog.md` | Entity Catalog v3 — призначення сутностей |
 | `docs/database.dbml` | Логічна структура таблиць і полів |
-| `docs/01…04_*.sql` | Фактичні PostgreSQL-обмеження, індекси, тригери |
+| `docs/01–04_*.sql`, `docs/05–09_*.sql` | Бізнес-DDL та додаткові auth/security проєкції; [архітектура §3.1](docs/architecture.md#31-карта-технічних-файлів) |
 | `docs/schema-audit.md` | Аудит схеми, блокери, Open Questions |
 
 Повний перелік таблиць і зв'язків свідомо **не дублюється** в Markdown: за це відповідають DBML і SQL.
