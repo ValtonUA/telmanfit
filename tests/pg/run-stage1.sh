@@ -65,6 +65,9 @@ if [[ ${AUTH6B6_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
     php tests/pg/auth6b5-bootstrap.php
     docker exec -i "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=1 < database/sql/auth6b6/01_test_acl.sql
+    # Runtime matrix має process-level array defaults; controlled PG fixtures потребують
+    # database adapters уже на старті PHP ($_SERVER має пріоритет над PHPUnit <env>).
+    export SESSION_DRIVER=database CACHE_STORE=database QUEUE_CONNECTION=sync MAIL_MAILER=array
     export TELMANFIT_B6_TEST=1
     docker stats --format '{{json .}}' "$container" > "$work/b6-resources.jsonl" &
     b6_monitor=$!

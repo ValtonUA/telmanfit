@@ -183,6 +183,10 @@ uniqueness fixture, історичний B3 LIKE wildcard та ANSI escape Docke
 скасовано. Read-only monitor тепер завершується SIGKILL із bounded step timeout.
 Benchmark додатково drain-ить stdout під час роботи й перевіряє payload>pipe buffer,
 має120s deadline; це окреме hardening, не підтверджена причина CI зависання.
+Runtime matrix додатково виявила успадковані process-level array defaults:
+controlled gates правильно відмовили, бо PHPUnit env не замінював початковий
+$_SERVER. Isolated B6 runner тепер явно export-ить database session/cache і
+synthetic queue/mail до старту PHP; production assertions не послаблено.
 Проміжні/скасовані runs не зараховано як успішний загальний acceptance.
 
 ## Cutover, ризики та відкриті рішення
