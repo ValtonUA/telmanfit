@@ -32,7 +32,7 @@ jobs:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
-      - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 tests/pg/run-stage1.sh
+      - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh
       - run: bash tests/pg/test-runner.sh
       - run: bash tests/pg/run-isolated-pg.sh
       - name: AUTH-1 regression
@@ -59,3 +59,5 @@ jobs:
             docs/evidence/auth3/results.json
             docs/evidence/auth4/*.png
             docs/evidence/auth4/results.json
+            docs/evidence/auth5/*.png
+            docs/evidence/auth5/results.json

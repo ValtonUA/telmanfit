@@ -1,3 +1,9 @@
+> **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
+> reauth, optional MFA management, sessions та email change; default OFF. Користувач
+> окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
+> очищенням ciphertext і watermark protection; історичні міграції незмінні.
+> P5/P6/production rollout залишаються відкритими. [Факти й перевірки](auth5.md).
+
 > **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
 > invitation/registration/email OTP backend, окремий client session context і shared
 > MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.
@@ -122,7 +128,7 @@ AUTH-0 — поточний документаційний дизайн, без 
 | AUTH-2 | **Реалізовано storage за затвердженими P1/P2/P4:** 7 таблиць, additive users, preflight без backfill, SQL/DBML/EC | Fresh/populated PG18, FK/UNIQUE/CHECK/BIGINT, safe down, 12 concurrent transaction scenarios; [межі й докази](auth-schema.md). Normalization/backfill заблоковано до рішення, production auth відсутня |
 | AUTH-3 | **Реалізовано для controlled local/testing:** shared TOTP/recovery, server assurance і Filament gate; production rollout заблоковано P3/P5/P6 | PG service races, HTTP/Livewire, session revoke й Chromium; [докази та rollout](auth3.md) |
 | AUTH-4 | Invitation/revoke, атомарна реєстрація, OTP/session API | Конкурентний invitation/OTP, rollback, без автоактивації |
-| AUTH-5 | React auth/security, optional client TOTP, email change, sessions | Негативні security-тести, browser E2E, lint/build |
+| AUTH-5 | **Реалізовано controlled/default OFF:** React PWA auth/security, fresh reauth, optional TOTP із disabled history, email change та sessions | PostgreSQL races, Chromium, lint/build; [факти й межі](auth5.md) |
 | AUTH-6 | Operational hardening: mail/rate store/retention/rollout | Повний security acceptance найближчого релізу |
 | AUTH-7 | Майбутній Telegram primary/linking того самого user | initData/replay/conflict/MFA |
 | AUTH-8 | Окремий майбутній Passkeys етап | До окремого погодження не реалізовувати |

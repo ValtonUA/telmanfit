@@ -4,6 +4,7 @@ namespace App\Services\Auth\Client;
 
 use App\Services\Auth\MfaPolicy;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -11,7 +12,7 @@ final class ControlledAuth
 {
     public function assert(): void
     {
-        if (! config('auth4.enabled') || ! app()->environment(['local', 'testing'])
+        if (! in_array(config('auth4.enabled'), [true, 'true', '1'], true) || ! app()->environment(['local', 'testing'])
             || config('database.default') !== 'pgsql' || config('session.driver') !== 'database'
             || config('cache.default') !== 'database'
             || config('cache.stores.database.connection') !== null
@@ -28,6 +29,8 @@ final class ControlledAuth
         if (! is_string(config('auth4.rate_key')) || strlen(config('auth4.rate_key')) < 32) {
             throw new AuthDenied('auth_unavailable', 503);
         }
+        // Недоступність central rate store закриває також чинні protected sessions.
+        Cache::store('database')->get('auth4:availability-probe');
     }
 
     public function key(string $version): string

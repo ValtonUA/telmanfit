@@ -43,7 +43,7 @@ final class ClientSession
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', (string) $request->session()->get('client_binding')))
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->auth->now())
                 || CarbonImmutable::parse($stamp)->addSeconds(300)->lessThanOrEqualTo($this->auth->now())
-                || ($factor?->confirmed_at && ! $mfaAt) || ($mfaAt && ! $factor?->confirmed_at)) {
+                || (MfaService::active($factor) && ! $mfaAt) || ($mfaAt && ! MfaService::active($factor))) {
                 throw new AuthDenied;
             }
             $request->session()->invalidate();
@@ -70,9 +70,10 @@ final class ClientSession
             ->where('a.primary_method', 'email_otp')->whereNull('a.revoked_at')->whereRaw('a.absolute_expires_at > clock_timestamp()')
             ->where('s.last_activity', '>', $this->auth->now()->timestamp - 43200)
             ->where('a.browser_binding_hash', hash('sha256', (string) $request->session()->get('client_binding')))->select('a.*')->first();
-        $factor = $id ? DB::table('user_totp_factors')->where('user_id', $id)->whereNotNull('confirmed_at')->exists() : false;
+        $factor = $id ? DB::table('user_totp_factors')->where('user_id', $id)->whereNotNull('confirmed_at')->whereNull('disabled_at')->exists() : false;
         if (! $user || $user->role !== 'client' || ! $state || $state->auth_version !== $user->auth_version
-            || ! $user->email_verified_at || ($factor && (! $state->mfa_verified_at || ! in_array($state->mfa_method, ['totp', 'recovery_code'], true)))) {
+            || ! $user->email_verified_at
+            || ($factor && (! $state->mfa_verified_at || ! in_array($state->mfa_method, ['totp', 'recovery_code'], true)))) {
             throw new AuthDenied('unauthenticated', 401);
         }
 
@@ -91,5 +92,25 @@ final class ClientSession
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         });
+    }
+
+    /** Ротація step-up зі збереженням початкової absolute expiry. Виклик під user lock. */
+    public function rotate(Request $request, bool $recovery = false): void
+    {
+        $this->user($request);
+        $state = (array) DB::table('auth_session_states')->where('session_id', $request->session()->getId())->first();
+        $request->session()->migrate(true);
+        $request->session()->regenerateToken();
+        $request->session()->save();
+        $state['session_id'] = $request->session()->getId();
+        $state['reauthenticated_at'] = $this->auth->stamp();
+        if ($recovery) {
+            DB::table('users')->where('id', $state['user_id'])->increment('auth_version');
+            DB::table('auth_session_states')->where('user_id', $state['user_id'])->whereNull('revoked_at')->update(['revoked_at' => $this->auth->stamp()]);
+            $state['auth_version']++;
+            $state['mfa_verified_at'] = $this->auth->stamp();
+            $state['mfa_method'] = 'recovery_code';
+        }
+        DB::table('auth_session_states')->insert($state);
     }
 }

@@ -671,6 +671,7 @@ Table user_totp_factors [headercolor: #B45309] {
  secret_ciphertext text
  key_version text
  confirmed_at timestamptz
+ disabled_at timestamptz [note: 'Активний фактор: confirmed_at NOT NULL AND disabled_at IS NULL; вимкнення очищає ciphertext і batch, зберігає watermark/історію']
  pending_secret_ciphertext text
  pending_key_version text
  pending_expires_at timestamptz

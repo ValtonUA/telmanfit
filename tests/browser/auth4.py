@@ -38,7 +38,10 @@ def harness(page, token=None):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or '/usr/bin/chromium', args=['--no-sandbox']) if Path('/usr/bin/chromium').exists() else p.chromium.launch()
-    context = browser.new_context(accept_downloads=True)
+    # Legacy inline harness є тестовою ін'єкцією. AUTH-5 перевіряє справжню SPA з CSP.
+    context = browser.new_context(accept_downloads=True, bypass_csp=True)
+    # HTTP harness із AUTH-4 запускається окремо від нової React state machine.
+    context.route('**/app/assets/*.js', lambda route: route.abort())
     admin = context.new_page()
     for _ in range(40):
         try:

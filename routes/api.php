@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ClientAuthController;
+use App\Http\Controllers\Api\ClientSecurityController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Middleware\ClientCsrf;
 use Illuminate\Support\Facades\Route;
@@ -31,5 +32,21 @@ Route::middleware(['web', ClientCsrf::class])->group(function () {
         ['post', '/auth/logout', 'logout'],
     ] as [$method, $uri, $name]) {
         Route::$method($uri, ClientAuthController::class)->name('auth4.'.$name);
+    }
+    foreach ([
+        ['post', 'reauth/request', 'reauth.request'],
+        ['post', 'reauth/verify', 'reauth.verify'],
+        ['post', 'reauth/mfa', 'reauth.mfa'],
+        ['post', 'mfa/enroll', 'mfa.enroll'],
+        ['post', 'mfa/confirm', 'mfa.confirm'],
+        ['post', 'mfa/recovery', 'mfa.recovery'],
+        ['post', 'mfa/disable', 'mfa.disable'],
+        ['get', 'sessions', 'sessions'],
+        ['post', 'sessions/revoke', 'sessions.revoke'],
+        ['post', 'logout-all', 'logout_all'],
+        ['post', 'email/request', 'email.request'],
+        ['post', 'email/confirm', 'email.confirm'],
+    ] as [$method, $uri, $name]) {
+        Route::$method('/auth/security/'.$uri, ClientSecurityController::class)->name('auth5.'.$name);
     }
 });

@@ -25,13 +25,14 @@ $uri = urldecode(
 );
 
 // Serve existing static files (assets, favicons, ...) with the built-in server.
-if ($uri !== '/' && is_file($publicPath.$uri)) {
+$spaEntry = in_array($uri, ['/app', '/app/', '/app/index.html'], true);
+if (! $spaEntry && $uri !== '/' && is_file($publicPath.$uri)) {
     return false;
 }
 
 $resolved = realpath($publicPath.$uri);
 
-if ($uri !== '/' && $resolved !== false && str_starts_with($resolved, realpath($publicPath))) {
+if (! $spaEntry && $uri !== '/' && $resolved !== false && str_starts_with($resolved, realpath($publicPath))) {
     return false;
 }
 

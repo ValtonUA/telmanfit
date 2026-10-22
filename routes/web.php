@@ -24,7 +24,9 @@ Route::get('/app/{any?}', function () {
 
     abort_unless(is_file($index), 404, 'SPA build not found. Run `npm run build` inside the client directory.');
 
-    return response()->file($index, ['Content-Type' => 'text/html']);
+    return response()->file($index, ['Content-Type' => 'text/html', 'Cache-Control' => 'no-store',
+        'Referrer-Policy' => 'no-referrer',
+        'Content-Security-Policy' => "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"]);
 })->where('any', '.*')->name('spa');
 
 // AUTH-3 не змінює поточний login, поки controlled mode вимкнений.

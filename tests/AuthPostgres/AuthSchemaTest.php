@@ -97,7 +97,7 @@ class AuthSchemaTest extends TestCase
             'constraints' => "SELECT t.relname || '.' || c.conname AS name, pg_get_constraintdef(c.oid) AS definition FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid WHERE c.connamespace=?::regnamespace",
             'indexes' => 'SELECT tablename || \'.\' || indexname AS name, indexdef AS definition FROM pg_indexes WHERE schemaname=?',
             'triggers' => "SELECT c.relname || '.' || t.tgname AS name, pg_get_triggerdef(t.oid) AS definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relnamespace=?::regnamespace AND NOT t.tgisinternal",
-            'functions' => "SELECT proname AS name, pg_get_functiondef(oid) AS definition FROM pg_proc WHERE pronamespace=?::regnamespace AND proname LIKE 'auth2_%'",
+            'functions' => "SELECT proname AS name, pg_get_functiondef(oid) AS definition FROM pg_proc WHERE pronamespace=?::regnamespace AND (proname LIKE 'auth2_%' OR proname LIKE 'auth5_%')",
         ];
         foreach ($queries as $kind => $sql) {
             $catalogs = [];

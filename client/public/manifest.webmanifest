@@ -1,0 +1,11 @@
+{
+  "name": "TelmanFit — особистий кабінет",
+  "short_name": "TelmanFit",
+  "lang": "uk",
+  "start_url": "/app",
+  "scope": "/app",
+  "display": "standalone",
+  "background_color": "#f4f6f1",
+  "theme_color": "#24563e",
+  "icons": [{ "src": "/app/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

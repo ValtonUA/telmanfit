@@ -6,7 +6,7 @@ final class MfaPolicy
 {
     public function assertControlled(): void
     {
-        if (! config('mfa.enabled') || ! app()->environment(['local', 'testing'])
+        if (! in_array(config('mfa.enabled'), [true, 'true', '1'], true) || ! app()->environment(['local', 'testing'])
             || config('database.default') !== 'pgsql' || config('session.driver') !== 'database') {
             throw new MfaDenied;
         }

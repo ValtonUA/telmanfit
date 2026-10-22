@@ -18,10 +18,13 @@ final class MfaService
 
     private \WeakMap $passwordProofs;
 
+    private \WeakMap $recoveryBatches;
+
     public function __construct(private AuthSecretCodec $codec, private MfaPolicy $policy)
     {
         $this->loginProofs = new \WeakMap;
         $this->passwordProofs = new \WeakMap;
+        $this->recoveryBatches = new \WeakMap;
     }
 
     public function claimLoginProof(MfaProof $proof): string
@@ -93,7 +96,7 @@ final class MfaService
     public function beginEnrollment(string $flowId, #[\SensitiveParameter] string $binding): SecretValue
     {
         return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) {
-            if ($factor?->confirmed_at && $flow->action !== 'replace_factor') {
+            if (self::active($factor) && $flow->action !== 'replace_factor') {
                 return null;
             }
             if (! in_array($flow->action, [null, 'replace_factor'], true)) {
@@ -124,7 +127,7 @@ final class MfaService
         return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $batch, $codes, $rows) {
             if (! $factor?->pending_secret_ciphertext || ! $flow->capability_hash
                 || ! hash_equals($flow->capability_hash, hash('sha256', $factor->pending_secret_ciphertext)) || CarbonImmutable::parse($factor->pending_expires_at)->lessThanOrEqualTo($this->now())
-                || ($factor->confirmed_at && $flow->action !== 'replace_factor')
+                || (self::active($factor) && $flow->action !== 'replace_factor')
                 || $factor->pending_key_version !== config('mfa.key_version')) {
                 return null;
             }
@@ -135,7 +138,7 @@ final class MfaService
             }
             DB::table('user_totp_factors')->where('user_id', $user->id)->update([
                 'secret_ciphertext' => $factor->pending_secret_ciphertext, 'key_version' => $factor->pending_key_version,
-                'confirmed_at' => $this->stamp(), 'last_used_step' => $step,
+                'confirmed_at' => $this->stamp(), 'last_used_step' => $step, 'disabled_at' => null,
                 'pending_secret_ciphertext' => null, 'pending_key_version' => null, 'pending_expires_at' => null,
                 'updated_at' => $this->stamp(),
             ]);
@@ -154,7 +157,7 @@ final class MfaService
         $precheck = $recovery ? $this->recoveryPrecheck($code) : null;
 
         $proof = $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $recovery, $precheck) {
-            if ($flow->purpose !== 'login' || $flow->action !== null || ! $factor?->confirmed_at
+            if ($flow->purpose !== 'login' || $flow->action !== null || ! self::active($factor)
                 || ! $this->consume($factor, $code, $recovery, $precheck)) {
                 return null;
             }
@@ -180,7 +183,7 @@ final class MfaService
 
         return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $recovery, $precheck) {
             if ($flow->audience !== 'admin' || $flow->purpose !== 'login' || $flow->action !== null
-                || ! $factor?->confirmed_at || ! $this->consume($factor, $code, $recovery, $precheck)) {
+                || ! self::active($factor) || ! $this->consume($factor, $code, $recovery, $precheck)) {
                 return null;
             }
             $this->complete($flow);
@@ -200,12 +203,30 @@ final class MfaService
         });
     }
 
-    public function rotateRecoveryCodes(string $flowId, #[\SensitiveParameter] string $binding, #[\SensitiveParameter] string $totp): SecretValue
+    public function prepareRecoveryRotation(): SecretValue
     {
-        [$batch, $codes, $rows] = $this->newRecoveryBatch();
+        $proof = new SecretValue('[internal recovery batch]');
+        $this->recoveryBatches[$proof] = $this->newRecoveryBatch();
+
+        return $proof;
+    }
+
+    public function rotateRecoveryCodes(string $flowId, #[\SensitiveParameter] string $binding, #[\SensitiveParameter] string $totp, ?SecretValue $prepared = null): SecretValue
+    {
+        if ($prepared) {
+            if (! isset($this->recoveryBatches[$prepared])) {
+                throw new MfaDenied;
+            }
+            [$batch, $codes, $rows] = $this->recoveryBatches[$prepared];
+            unset($this->recoveryBatches[$prepared]);
+        } else {
+            [$batch, $codes, $rows] = $this->newRecoveryBatch();
+        }
 
         return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($totp, $batch, $codes, $rows) {
-            if ($flow->purpose !== 'login' || $flow->action !== null || ! $factor?->confirmed_at || ! $this->consume($factor, $totp, false, null)) {
+            $clientGrant = $flow->audience === 'client' && $flow->purpose === 'mfa_enroll'
+                && $flow->action === 'rotate_recovery' && $flow->session_binding_hash !== null;
+            if (! self::active($factor) || (! $clientGrant && ($flow->purpose !== 'login' || $flow->action !== null || ! $this->consume($factor, $totp, false, null)))) {
                 return null;
             }
             $this->installBatch($user->id, $batch, $rows);
@@ -219,15 +240,62 @@ final class MfaService
 
     public function disableFactor(int $userId): never
     {
-        // Жодного admin disable або чужого reset; optional client management — AUTH-5.
+        // Жодного disable за голим user ID: AUTH-5 приймає лише bound fresh flow.
         throw new MfaDenied;
+    }
+
+    /** AUTH-5: тільки fresh email primary поточної сесії, плюс чинний другий фактор. */
+    public function authorizeClientAction(string $flowId, #[\SensitiveParameter] string $binding, string $sessionHash, #[\SensitiveParameter] string $code, bool $recovery, callable $complete): array
+    {
+        $precheck = $recovery ? $this->recoveryPrecheck($code) : null;
+
+        return $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($sessionHash, $code, $recovery, $precheck, $complete) {
+            if ($flow->audience !== 'client' || $flow->purpose !== 'reauth' || $flow->session_binding_hash !== $sessionHash
+                || $flow->capability_hash !== null || ! $flow->action
+                || CarbonImmutable::parse($flow->primary_verified_at)->addSeconds(300)->lessThanOrEqualTo($this->now())
+                || (self::active($factor) && ! $this->consume($factor, $code, $recovery, $precheck))) {
+                return null;
+            }
+            $token = bin2hex(random_bytes(32));
+            DB::table('auth_flows')->where('id', $flow->id)->update(['capability_hash' => hash('sha256', $token)]);
+            $this->audit($user->id, 'client.reauthenticated');
+
+            // Витрачання recovery та version/session revocation комітяться разом.
+            return $complete(new SecretValue($token));
+        });
+    }
+
+    public static function active(?object $factor): bool
+    {
+        return $factor !== null && $factor->confirmed_at !== null && $factor->disabled_at === null;
+    }
+
+    public function disableClientFactor(string $flowId, #[\SensitiveParameter] string $binding): void
+    {
+        $this->withFlow($flowId, $binding, function ($user, $flow, $factor) {
+            if ($flow->audience !== 'client' || $user->role !== 'client' || $flow->purpose !== 'mfa_enroll'
+                || $flow->action !== 'disable_factor' || ! $flow->session_binding_hash || ! self::active($factor)) {
+                return null;
+            }
+            DB::table('mfa_recovery_codes')->where('user_id', $user->id)->whereNull('used_at')->whereNull('revoked_at')->update(['revoked_at' => $this->stamp()]);
+            $stamp = $this->stamp();
+            DB::table('user_totp_factors')->where('user_id', $user->id)->update([
+                'secret_ciphertext' => null, 'key_version' => null, 'disabled_at' => $stamp, 'updated_at' => $stamp,
+                'pending_secret_ciphertext' => null, 'pending_key_version' => null, 'pending_expires_at' => null, 'recovery_batch_id' => null,
+            ]);
+            $this->complete($flow);
+            $this->revoke($user->id);
+            $this->audit($user->id, 'client.mfa_disabled');
+
+            return true;
+        });
     }
 
     public function logoutAll(string $flowId, #[\SensitiveParameter] string $binding, #[\SensitiveParameter] string $code, bool $recovery = false): void
     {
         $precheck = $recovery ? $this->recoveryPrecheck($code) : null;
         $this->withFlow($flowId, $binding, function ($user, $flow, $factor) use ($code, $recovery, $precheck) {
-            if ($flow->purpose !== 'login' || $flow->action !== null || ! $factor?->confirmed_at
+            if ($flow->purpose !== 'login' || $flow->action !== null || ! self::active($factor)
                 || ! $this->consume($factor, $code, $recovery, $precheck)) {
                 return null;
             }
@@ -258,7 +326,7 @@ final class MfaService
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', $binding))
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->now())
                 || $flow->auth_version_at_start !== $user->auth_version
-                || ! in_array($flow->purpose, ['login', 'mfa_enroll'], true)
+                || ! in_array($flow->purpose, ['login', 'mfa_enroll', 'reauth'], true)
                 || ($flow->audience === 'admin' && $user->role !== 'admin')
                 || ($flow->audience === 'client' && $user->role !== 'client')) {
                 $this->audit($userId, 'mfa.denied', 'denied', $flow?->public_id);
@@ -266,6 +334,19 @@ final class MfaService
                 return null;
             }
             $factor = DB::table('user_totp_factors')->where('user_id', $userId)->lockForUpdate()->first();
+            if ($flow->audience === 'client' && $flow->session_binding_hash !== null) {
+                $session = DB::table('auth_session_states as a')->join('sessions as s', 's.id', '=', 'a.session_id')
+                    ->where('a.user_id', $userId)->where('a.audience', 'client')->where('a.auth_version', $user->auth_version)
+                    ->where('a.browser_binding_hash', $flow->browser_binding_hash)->whereNull('a.revoked_at')
+                    ->whereRaw('a.absolute_expires_at > clock_timestamp()')
+                    ->where('s.last_activity', '>', $this->now()->timestamp - 43200)->get(['a.*'])
+                    ->first(fn ($state) => hash_equals($flow->session_binding_hash, hash('sha256', $state->session_id)));
+                if (! $session || (self::active($factor) && ! $session->mfa_verified_at)) {
+                    $this->audit($userId, 'mfa.denied', 'denied', $flow->public_id);
+
+                    return null;
+                }
+            }
             $result = $operation($user, $flow, $factor);
             if ($result === null) {
                 $this->audit($userId, 'mfa.denied', 'denied', $flow?->public_id);
@@ -282,6 +363,9 @@ final class MfaService
 
     private function consume(object $factor, string $code, bool $recovery, ?object $precheck): bool
     {
+        if (! self::active($factor)) {
+            return false;
+        }
         if ($recovery) {
             if (! $precheck || $precheck->user_id !== $factor->user_id || $precheck->batch_id !== $factor->recovery_batch_id) {
                 return false;
@@ -380,6 +464,8 @@ final class MfaService
     private function revoke(int $id): void
     {
         DB::table('users')->where('id', $id)->increment('auth_version');
+        DB::table('auth_challenges')->whereIn('flow_id', DB::table('auth_flows')->where('user_id', $id)->select('id'))
+            ->whereNull('consumed_at')->whereNull('invalidated_at')->update(['invalidated_at' => $this->stamp()]);
         $this->invalidateFlows($id);
         DB::table('auth_session_states')->where('user_id', $id)->whereNull('revoked_at')->update(['revoked_at' => $this->stamp()]);
     }

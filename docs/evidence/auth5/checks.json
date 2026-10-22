@@ -1,0 +1,135 @@
+{
+  "base_sha": "57b257f0d9ab293bb5bcb4b601762ba65cc99a64",
+  "branch": "codex/auth5-client-security",
+  "scope": "Локальний AUTH-5 working state; GitHub Actions перевіряється окремо на PR head.",
+  "postgresql": {
+    "major": 18,
+    "isolation": "нові pinned 18.6 containers, network=none, tmpfs/private Unix socket, non-superuser runner, trap cleanup",
+    "working_databases_accessed": false
+  },
+  "suites": {
+    "sql_laravel": {
+      "PASS": 76,
+      "FAIL": 0,
+      "GAP": 0
+    },
+    "sql_reference": {
+      "PASS": 76,
+      "FAIL": 0,
+      "GAP": 0
+    },
+    "stage_1_2": {
+      "tests": 41,
+      "assertions": 713,
+      "result": "PASS"
+    },
+    "base_phpunit": {
+      "tests": 22,
+      "assertions": 46,
+      "result": "PASS"
+    },
+    "auth2": {
+      "tests": 12,
+      "assertions": 131,
+      "races": 14,
+      "upgrade_down": "PASS",
+      "catalog": "PASS",
+      "result": "PASS"
+    },
+    "auth3": {
+      "tests": 25,
+      "assertions": 129,
+      "races": "PASS",
+      "chromium": "PASS",
+      "result": "PASS"
+    },
+    "auth4": {
+      "tests": 24,
+      "assertions": 152,
+      "races": 5,
+      "chromium": "PASS",
+      "result": "PASS"
+    },
+    "auth5": {
+      "tests": 16,
+      "assertions": 116,
+      "races": 5,
+      "upgrade_down": "PASS",
+      "result": "PASS"
+    },
+    "auth1": {
+      "tests": 15,
+      "assertions": 93,
+      "result": "PASS"
+    },
+    "sql_runner": {
+      "contracts": 10,
+      "result": "PASS"
+    },
+    "pint": "PASS",
+    "frontend_lint": "PASS",
+    "frontend_build": "PASS",
+    "laravel_assets": "PASS"
+  },
+  "browser": {
+    "result": "PASS",
+    "chromium": "154.0.8037.57",
+    "scenarios": [
+      "independent admin password+MFA session",
+      "registration fragment removed once",
+      "wrong and expired OTP",
+      "real resend cooldown 60s",
+      "pending is not active payment",
+      "real CSRF 419",
+      "forged action proof 403",
+      "passwordless repeated login",
+      "419 explicit retry and CSRF refresh",
+      "Authenticator QR/manual enrollment and masked one-time recovery",
+      "restricted OTP to full MFA session",
+      "recovery login",
+      "recovery regeneration",
+      "factor replacement",
+      "optional disable after fresh MFA",
+      "new enrollment after disable",
+      "opaque own session list",
+      "revoke real parallel session",
+      "logout-all invalidates both real browsers",
+      "email change requires fresh current MFA and new email OTP",
+      "503 central rate store fail closed",
+      "422 and 429",
+      "idle expiry"
+    ],
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "production_enabled": false,
+    "synthetic_time_acceleration": "Known test delivery windows cleared between independent operations; registration resend waited actual 60s."
+  },
+  "screenshots": {
+    "count": 24,
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "capture_masked": [
+      "inputs",
+      "QR image",
+      "manual key",
+      "recovery codes"
+    ],
+    "trace_har_dom_dumps": false
+  },
+  "schema": {
+    "explicit_approval": "Користувач погодив additive user_totp_factors.disabled_at та CHECK/trigger amendments зі збереженням історії.",
+    "new_migration": "2026_10_22_001000_add_disabled_at_to_user_totp_factors.php",
+    "historical_migrations_unchanged": true,
+    "business_sql_01_04_unchanged": true
+  },
+  "default_off": true,
+  "production_enabled": false,
+  "real_smtp_or_credentials_used": false,
+  "open": "P5/P6, production provider/key management/backup/retention/grants/rollout та AUTH-6 acceptance; описано в docs/auth5.md."
+}

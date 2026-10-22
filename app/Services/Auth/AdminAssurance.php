@@ -27,7 +27,7 @@ final class AdminAssurance
             ->where('s.session_id', $request->session()->getId())->where('s.user_id', $id)
             ->where('s.audience', 'admin')->where('s.primary_method', 'password')
             ->whereNotNull('s.mfa_verified_at')->whereIn('s.mfa_method', ['totp', 'recovery_code'])
-            ->whereNotNull('f.confirmed_at')->whereNull('s.revoked_at')
+            ->whereNotNull('f.confirmed_at')->whereNull('f.disabled_at')->whereNull('s.revoked_at')
             ->whereRaw('s.absolute_expires_at > clock_timestamp()')
             ->where('s.browser_binding_hash', hash('sha256', $request->session()->get('mfa_binding')))
             ->select('s.auth_version')->first();
@@ -60,7 +60,7 @@ final class AdminAssurance
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', $request->session()->get('mfa_binding')))
                 || $flow->primary_verified_at !== $proof->primary_verified_at
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($now)
-                || ! $factor?->confirmed_at
+                || ! MfaService::active($factor)
                 || CarbonImmutable::parse($proof->mfa_verified_at)->lessThan(CarbonImmutable::parse($flow->consumed_at))
                 || CarbonImmutable::parse($proof->mfa_verified_at)->greaterThan($now)) {
                 throw new MfaDenied;

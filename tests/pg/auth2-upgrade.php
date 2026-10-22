@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 require __DIR__.'/auth2-bootstrap.php';
 $files = glob(database_path('migrations/2026_10_22_*.php'));
-assert(count($files) === 8);
+assert(count($files) === 9);
 
 // Реальні up/down на порожній та заповненій Stage 1 схемі, без постійних фікстур.
 foreach ([false, true] as $populated) {
