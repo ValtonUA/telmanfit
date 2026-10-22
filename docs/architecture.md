@@ -56,7 +56,7 @@
 > **Поточну архітектуру перевірено:** 23.10.2026. Датовані історичні описи нижче не визначають актуальну готовність.
 > **Призначення:** описати технологічний стек, шари застосунку, межі модулів і **поточний стан реалізації**.
 > **Технічний стан і походження перевірок:** [project-status.md](project-status.md). Його перелік розбіжностей і наступних задач — знімок до цієї синхронізації; актуальні формулювання архітектури та етапів наведено тут і в [roadmap.md](roadmap.md).
-> **Джерела істини щодо даних:** [database.dbml](database.dbml), `01–04_*.sql` для 37 бізнес-таблиць та `05–09_*.sql` для auth/security схеми; виконувані частини — `database/sql/` і Laravel-міграції. [Карта всіх файлів](README.md), [Entity Catalog](entity-catalog.md), [бізнес-правила](business-rules.md), [roadmap](roadmap.md).
+> **Джерела істини щодо даних:** [database.dbml](database.dbml), `01–04_*.sql` для 37 бізнес-таблиць та `05–09_*.sql` для auth/security схеми; виконувані частини — `database/sql/` і Laravel-міграції. [Карта технічних файлів](#31-карта-технічних-файлів), [Entity Catalog](entity-catalog.md), [бізнес-правила](business-rules.md), [roadmap](roadmap.md).
 > **Правила роботи агентів:** [../AGENTS.md](../AGENTS.md).
 
 ## 1. Огляд
@@ -112,12 +112,39 @@ PWA і Telegram Mini App використовують максимально о�
 | Фреймворк | Laravel | `^13.17` | `composer.json` |
 | Адмінка | Filament | `~5.0` | `composer.json` |
 | Розробка | Laravel Tinker, Pint, Pail, PAO | `^3.0`, `^1.27`, `^1.2.5`, `^1.0.6` | `composer.json` |
-| Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [карта](README.md#конфігурації-phpunit-xml) |
-| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–09_*.sql`, `database/sql/`, `database/migrations/`; [карта](README.md#sql-модулі-два-рівні-схеми) |
+| Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [пояснення](#31-карта-технічних-файлів) |
+| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–09_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
 | SPA | React + TypeScript + Vite | React `^19.3`, TS `~6.0.3`, Vite `^8.3.4` | `client/package.json` |
 | Стилі SPA | CSS + Tailwind (Laravel-конвеєр) | Tailwind `^4.0` | `package.json`, `vite.config.js` |
 | Лінт SPA | ESLint + typescript-eslint | `^10.13`, `^8.71` | `client/eslint.config.js` |
 | Хостинг (обраний, ще не розгорнутий) | **Hyperhost VPS Старт** | 2 CPU, 3 ГБ RAM, 45 ГБ NVMe; сумісність PHP/PG на VPS ще не доведена | [D8](auth6-d8-infrastructure.md), [D8.1](auth6-d8-preflight.md) |
+
+### 3.1. Карта технічних файлів
+
+**У `docs/` є дев'ять SQL-файлів — це не дев'ять баз даних:**
+
+| Рівень | Файли | Для чого |
+|---|---|---|
+| Бізнес-схема | `01_nutrition_schema.sql`, `02_users_clients.sql`, `03_progress_tracking.sql`, `04_fitness_messaging.sql` | Продукти/рецепти, клієнти, прогрес, інвентар/повідомлення — 37 бізнес-таблиць |
+| Auth-таблиці | `05_auth_schema.sql` | Запрошення, сесії, MFA, резервні коди |
+| Auth recovery | `06_auth_recovery_schema.sql` | Технічна схема assisted recovery; **D3 operational із друзями відкладено** |
+| Security notices | `07_auth_security_notice_outbox.sql` | Черга повідомлень про події безпеки |
+| Retention/restore | `08_auth_retention_restore.sql` | Історія та захист після відновлення БД |
+| Rate budgets | `09_auth_rate_budgets.sql` | Серверні ліміти частоти запитів |
+
+Це **еталонні SQL-проєкції**. Реальна Laravel-інтеграція описана у `database/migrations/` та `database/sql/stage1/`, `database/sql/auth2/`, `database/sql/auth5/`, `database/sql/auth6b*/`; див. [Stage 1](stage-1.md) та [AUTH-2](auth-schema.md)–[B6](auth6-b6.md). `docs/05_auth_schema.sql` передбачає вже узгоджену Laravel `users`, тому **не запускати docs/01–09 SQL вручну на робочій БД**.
+
+**11 файлів `phpunit*.xml` у корені — лише конфігурації тестів:**
+- `phpunit.xml` — `tests/Unit` і `tests/Feature`, базові SQLite-тести;
+- `phpunit.pgsql.xml` — `tests/Postgres`, бізнес-схема;
+- `phpunit.auth2.xml` – `phpunit.auth5.xml` — `tests/AuthPostgres`, `tests/Auth3`, `tests/Auth4`, `tests/Auth5`;
+- `phpunit.auth6.xml`, `phpunit.auth6b.xml`, `phpunit.auth6b4.xml`, `phpunit.auth6b5.xml`, `phpunit.auth6b6.xml` — `tests/Auth6`, `tests/Auth6B`, `tests/Auth6B4`, `tests/Auth6B5`, `tests/Auth6B6`.
+
+Їх використовує [`tests/pg/run-stage1.sh`](../tests/pg/run-stage1.sh) і [GitHub Actions](../.github/workflows/stage1.yml). Розділення забезпечує окремі test-only конфігурації session/cache/auth. **Без перегляду залежностей не об'єднувати та не видаляти.**
+
+**`docs/evidence/` і `docs/screenshots/` — архів технічних доказів, не вміст застосунку.** Там JSON-виміри та скриншоти браузерних перевірок MFA/Filament і UX-1. На 23.10.2026: **55 + 21 = 76 файлів, близько 2,8 МБ**. На них посилаються [UX-1](ux-1.md), [AUTH-3](auth3.md), [AUTH-5](auth5.md), [AUTH-6B/B6](auth6-b6.md) та workflow. Заміна на тимчасові GitHub Actions artifacts можлива лише з перевіркою CI, посилань, маскування секретів і потрібного строку збереження доказів.
+
+**Навігація для Codex:** [AGENTS.md](../AGENTS.md) → [roadmap.md](roadmap.md) → [project-status.md](project-status.md) → потрібна частина [архітектури](architecture.md) та відповідні SQL/бізнес-правила. Немає потреби сприймати кожен `evidence`/XML як документ для планування функціоналу.
 
 `laravel/boost` у проєкті **не встановлено і не встановлюється** (див. [../AGENTS.md](../AGENTS.md), розділ 4).
 
@@ -180,7 +207,7 @@ PWA і Telegram Mini App використовують максимально о�
 
 ## 9. Дані: PostgreSQL, схема, міграції
 
-- **Два рівні однієї PostgreSQL-схеми:** 37 бізнес-таблиць у `docs/01–04_*.sql` (порядок 01 → 02 → 03 → 04), додаткові auth/security об'єкти у `docs/05–09_*.sql`. Файли 05–09 не є окремими БД і не означають, що production auth увімкнено. [Індекс SQL](README.md#sql-модулі-два-рівні-схеми).
+- **Два рівні однієї PostgreSQL-схеми:** 37 бізнес-таблиць у `docs/01–04_*.sql` (порядок 01 → 02 → 03 → 04), додаткові auth/security об'єкти у `docs/05–09_*.sql`. Файли 05–09 не є окремими БД і не означають, що production auth увімкнено. [карта SQL](#31-карта-технічних-файлів).
 - Обов'язкове розширення `btree_gist` (потрібне для `EXCLUDE`-обмеження `no_overlapping_client_plan_dates`).
 - PG-специфіка, яку не можна втратити в міграціях: `EXCLUDE`, часткові UNIQUE-індекси, складені FK `(food_id, food_type)`, `DEFERRABLE` constraint trigger, тригери незмінності/валідації, `text + CHECK` замість enum.
 - Службові таблиці Laravel (`migrations`, `sessions`, `jobs`, `failed_jobs`, `cache`, `cache_locks`, `password_reset_tokens`; за потреби `job_batches`, `personal_access_tokens`) не входять до Entity Catalog і створюються Laravel-міграціями.
