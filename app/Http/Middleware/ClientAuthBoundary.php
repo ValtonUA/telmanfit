@@ -22,11 +22,16 @@ final class ClientAuthBoundary
         if (! config('auth4.enabled')) {
             return response()->json(['code' => 'not_found'], 404);
         }
+        if ($request->is('api/auth/security/*') && ! in_array(config('auth5.enabled'), [true, 'true', '1'], true)) {
+            return response()->json(['code' => 'not_found'], 404);
+        }
         $original = config('session');
+        $originalLocale = app()->getLocale();
         try {
+            app()->setLocale('uk');
             app(ControlledAuth::class)->assert();
             config(['session.cookie' => 'telmanfit_client_session', 'session.path' => '/api', 'session.domain' => null,
-                'session.http_only' => true, 'session.same_site' => 'lax', 'session.lifetime' => 720]);
+                'session.http_only' => true, 'session.same_site' => 'lax', 'session.lifetime' => 720, 'session.encrypt' => true]);
             $response = $next($request);
         } catch (AuthDenied $e) {
             $response = response()->json(['code' => $e->reason, 'message' => 'Не вдалося завершити запит.'], $e->status);
@@ -43,6 +48,7 @@ final class ClientAuthBoundary
             $response = response()->json(['code' => 'auth_unavailable'], 503);
         } finally {
             config(['session' => $original]);
+            app()->setLocale($originalLocale);
         }
         // Readable CSRF cookie доступна SPA /app, session cookie залишається HttpOnly /api.
         foreach ($response->headers->getCookies() as $cookie) {

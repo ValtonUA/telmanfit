@@ -70,11 +70,15 @@ final class ClientAuthController
                     if (! $client) {
                         throw new AuthDenied('unauthenticated', 401);
                     }
-                    $mfa = DB::table('user_totp_factors')->where('user_id', $user->id)->whereNotNull('confirmed_at')->exists();
+                    $mfa = DB::table('user_totp_factors')->where('user_id', $user->id)->whereNotNull('confirmed_at')->whereNull('disabled_at')->exists();
+                    $remaining = $mfa ? DB::table('mfa_recovery_codes as c')->join('user_totp_factors as f', 'f.user_id', '=', 'c.user_id')
+                        ->where('c.user_id', $user->id)->whereColumn('c.batch_id', 'f.recovery_batch_id')->whereNull('c.used_at')->whereNull('c.revoked_at')->count() : 0;
+                    $recovered = $mfa && DB::table('auth_session_states')->where('session_id', $request->session()->getId())->value('mfa_method') === 'recovery_code';
 
                     return response()->json(['user' => ['id' => (string) $user->id, 'name' => $user->name],
                         'client' => ['id' => (string) $client->id, 'status' => $client->status],
-                        'security' => ['mfa_enabled' => $mfa, 'methods' => $mfa ? ['email_otp', 'totp', 'recovery_code'] : ['email_otp']]]);
+                        'security' => ['mfa_enabled' => $mfa, 'methods' => $mfa ? ['email_otp', 'totp', 'recovery_code'] : ['email_otp'],
+                            'recovery_codes_remaining' => $remaining, 'recovery_used' => $recovered]]);
                 });
             case 'auth4.logout':
                 $sessions->logout($request);

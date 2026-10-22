@@ -342,3 +342,14 @@ P3/P5/P6, normalization/backfill і реальний rollout потребуют�
 збереженням журналу безпеки. У AUTH-2 вона не реалізується; FK не послаблюються.
 Безстрокове запрошення (`expires_at=NULL`) лишається одноразовим і відкличним;
 TTL тимчасових OTP, flows та recovery capabilities залишається обов’язковим.
+
+### AUTH-5: погоджений стан вимкнення TOTP — 22.10.2026
+
+`user_totp_factors.disabled_at` — nullable timestamptz. Активний фактор має
+`confirmed_at NOT NULL AND disabled_at IS NULL`. Вимкнення доступне тільки client
+після fresh primary + чинного MFA, очищає старий ciphertext/key і pending material,
+деактивує recovery batch зі збереженням used/revoked рядків, confirmed_at,
+last_used_step та аудиту. Повторне підключення — новий pending secret і новіший
+прийнятий step; старий фактор не відновлюється. Ролі та бізнес-сутності незмінні.
+Виконуваний additive DDL — `database/sql/auth5/00_disabled_factor.sql`; актуальний
+SQL snapshot — `docs/05_auth_schema.sql`. Історичні міграції AUTH-2 не змінено.

@@ -62,7 +62,7 @@ final class AdminMfaController extends Controller
             if ($name === 'auth3.challenge') {
                 // Лише вибір restricted форми; не перевірка доступу до бізнес-даних.
                 $userId = DB::table('auth_flows')->where('public_id', $flow)->value('user_id');
-                $active = DB::table('user_totp_factors')->where('user_id', $userId)->whereNotNull('confirmed_at')->exists();
+                $active = DB::table('user_totp_factors')->where('user_id', $userId)->whereNotNull('confirmed_at')->whereNull('disabled_at')->exists();
 
                 return $this->page($active ? 'verify' : 'enroll');
             }

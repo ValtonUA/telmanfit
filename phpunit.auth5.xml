@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php" colors="true" failOnSkipped="true" failOnWarning="true">
+    <testsuites>
+        <testsuite name="AUTH-5 PostgreSQL"><directory>tests/Auth5</directory></testsuite>
+    </testsuites>
+    <source ignoreSuppressionOfPhpWarnings="true"/>
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:dGVsbWFuZml0LXBocHVuaXQtdGVzdC1vbmx5ISEhISE=" force="true"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="CACHE_STORE" value="database" force="true"/>
+        <env name="SESSION_DRIVER" value="database" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="AUTH3_CONTROLLED" value="true" force="true"/>
+        <env name="AUTH3_FLOW_SECONDS" value="600" force="true"/>
+        <env name="AUTH3_SESSION_SECONDS" value="3600" force="true"/>
+        <env name="AUTH3_ATTEMPTS" value="100" force="true"/>
+        <env name="AUTH3_TOTP_WINDOW" value="1" force="true"/>
+        <env name="AUTH3_RECOVERY_COUNT" value="3" force="true"/>
+        <env name="AUTH3_KEY_VERSION" value="test_v1" force="true"/>
+        <env name="AUTH5_CONTROLLED" value="true" force="true"/>
+        <env name="AUTH4_CONTROLLED" value="true" force="true"/>
+        <env name="AUTH4_OTP_KEY_VERSION" value="test_v1" force="true"/>
+        <env name="AUTH4_OTP_KEY" value="synthetic-only-hmac-key-32-bytes-minimum" force="true"/>
+        <env name="AUTH4_RATE_KEY" value="synthetic-only-stable-rate-key-minimum32" force="true"/>
+    </php>
+</phpunit>

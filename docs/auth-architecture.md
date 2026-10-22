@@ -1,3 +1,9 @@
+> **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
+> reauth, optional MFA management, sessions та email change; default OFF. Користувач
+> окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
+> очищенням ciphertext і watermark protection; історичні міграції незмінні.
+> P5/P6/production rollout залишаються відкритими. [Факти й перевірки](auth5.md).
+
 > **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
 > invitation/registration/email OTP backend, окремий client session context і shared
 > MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.

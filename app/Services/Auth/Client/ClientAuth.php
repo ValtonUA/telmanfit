@@ -38,8 +38,11 @@ final class ClientAuth
     }
 
     /** 202 shape однакова, suppressed/unknown challenges — випадкові UUID без authority. */
-    public function request(string $purpose, string $email, ?string $flowId, string $binding, string $ip): array
+    public function request(string $purpose, string $email, ?string $flowId, string $binding, string $ip, ?array $context = null): array
     {
+        if (! in_array($purpose, ['register', 'login'], true) && (! $context || ! in_array($purpose, ['reauth', 'email_change'], true))) {
+            throw new AuthDenied;
+        }
         $normalized = $this->emails->normalize($email);
         $delivery = null;
         $allowed = $this->auth->transaction(fn () => $this->budget->take('issue:ip:15:'.$ip, 20, 900)
@@ -47,7 +50,7 @@ final class ClientAuth
         if (! $allowed) {
             throw new AuthDenied('rate_limited', 429);
         }
-        $result = $this->auth->transaction(function () use ($purpose, $email, $normalized, $flowId, $binding, &$delivery) {
+        $result = $this->auth->transaction(function () use ($purpose, $email, $normalized, $flowId, $binding, $context, &$delivery) {
             $response = ['challenge_id' => (string) Str::uuid(), 'expires_in' => 300, 'resend_after' => 60];
             $delivery = new DeliverEmailOtp($response['challenge_id'], trim($email), sprintf('%08d', random_int(0, 99999999)));
             // Усі budgets спільні для нових flows та resends.
@@ -63,7 +66,24 @@ final class ClientAuth
             foreach ($limits as [$key, $limit, $seconds]) {
                 $this->budget->take($key, $limit, $seconds);
             }
-            if ($purpose === 'register') {
+            if ($context) {
+                $user = DB::table('users')->where('id', $context['user_id'])->lockForUpdate()->first();
+                if (! $this->eligible($user, $user?->email_normalized ?? '')
+                    || $user->auth_version !== $context['version']
+                    || ($purpose === 'reauth' && $normalized !== $user->email_normalized)) {
+                    return new AuthDenied('unauthenticated', 401);
+                }
+                if ($flowId) {
+                    $flow = $this->lockedFlow($flowId, $binding, 'pending');
+                    if ($flow->purpose !== $purpose || $flow->user_id !== $user->id
+                        || $flow->action !== $context['action'] || $flow->session_binding_hash !== $context['session_hash']) {
+                        return new AuthDenied;
+                    }
+                } else {
+                    $this->invalidate($binding, $purpose);
+                    $flow = $this->newFlow($binding, $purpose, $user, null, 300, $context);
+                }
+            } elseif ($purpose === 'register') {
                 $flow = $this->lockedFlow($flowId, $binding, 'pending');
                 if ($flow->purpose !== 'register') {
                     return new AuthDenied;
@@ -146,7 +166,7 @@ final class ClientAuth
             }
             if ($flow->user_id) {
                 $user = DB::table('users')->where('id', $flow->user_id)->first();
-                if (! $this->eligible($user, $challenge->email_normalized)) {
+                if (! $this->eligible($user, $flow->purpose === 'email_change' ? $user->email_normalized : $challenge->email_normalized)) {
                     return new AuthDenied;
                 }
             }
@@ -166,10 +186,13 @@ final class ClientAuth
             if ($flow->purpose === 'register') {
                 return ['next' => 'registration_complete', 'flow_id' => $flow->public_id];
             }
+            if (in_array($flow->purpose, ['reauth', 'email_change'], true)) {
+                return ['next' => $flow->purpose.'_verified', 'flow_id' => $flow->public_id];
+            }
             if ($flow->purpose !== 'login') {
                 throw new AuthDenied;
             }
-            if (DB::table('user_totp_factors')->where('user_id', $flow->user_id)->whereNotNull('confirmed_at')->exists()) {
+            if (DB::table('user_totp_factors')->where('user_id', $flow->user_id)->whereNotNull('confirmed_at')->whereNull('disabled_at')->exists()) {
                 return ['next' => 'mfa_required', 'flow_id' => $flow->public_id];
             }
             DB::table('auth_flows')->where('id', $flow->id)->update(['state' => 'completed', 'consumed_at' => $this->auth->stamp()]);
@@ -268,7 +291,7 @@ final class ClientAuth
             }
         }
         $flow = DB::table('auth_flows')->where('id', $candidate->id)->lockForUpdate()->first();
-        if ($flow->audience !== 'client' || ! in_array($flow->purpose, ['register', 'login'], true) || $flow->state !== $state
+        if ($flow->audience !== 'client' || ! in_array($flow->purpose, ['register', 'login', 'reauth', 'email_change'], true) || $flow->state !== $state
             || ! hash_equals($flow->browser_binding_hash, hash('sha256', $binding))
             || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->auth->now())
             || ($user && ($user->role !== 'client' || $user->auth_version !== $flow->auth_version_at_start
@@ -313,12 +336,15 @@ final class ClientAuth
             ->whereIn('state', ['pending', 'primary_verified'])->update(['state' => 'invalidated', 'invalidated_at' => $this->auth->stamp()]);
     }
 
-    private function newFlow(string $binding, string $purpose, ?object $user, ?int $invitation, int $ttl): object
+    private function newFlow(string $binding, string $purpose, ?object $user, ?int $invitation, int $ttl, ?array $context = null): object
     {
         $row = ['public_id' => (string) Str::uuid(), 'browser_binding_hash' => hash('sha256', $binding), 'audience' => 'client',
             'purpose' => $purpose, 'user_id' => $user?->id, 'auth_version_at_start' => $user?->auth_version,
             'invitation_id' => $invitation, 'created_at' => $this->auth->stamp(), 'generation' => 1,
             'expires_at' => $this->auth->now()->addSeconds($ttl)->format('Y-m-d H:i:s.uP')];
+        if ($context) {
+            $row += ['action' => $context['action'], 'session_binding_hash' => $context['session_hash']];
+        }
         $row['id'] = DB::table('auth_flows')->insertGetId($row);
 
         return (object) $row;
