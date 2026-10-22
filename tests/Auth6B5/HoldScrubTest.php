@@ -251,7 +251,10 @@ final class HoldScrubTest extends TestCase
         DB::statement('ALTER TABLE auth_retention_holds RENAME TO b5_hold_registry_outage');
         try {
             try {
-                app(RetentionService::class)->cleanup($run, 1, 'pending_totp');
+                DB::transaction(function () use ($run) {
+                    DB::statement('SET LOCAL ROLE telmanfit_retention_executor');
+                    app(RetentionService::class)->cleanup($run, 1, 'pending_totp');
+                });
                 $this->fail('Missing holds accepted');
             } catch (\RuntimeException $e) {
                 $this->assertSame('retention_unavailable', $e->getMessage());
