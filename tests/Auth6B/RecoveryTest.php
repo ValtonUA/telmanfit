@@ -11,6 +11,7 @@ use App\Services\Auth\Client\ControlledAuth;
 use App\Services\Auth\Client\EmailNormalizer;
 use App\Services\Auth\MfaDenied;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\Notices\NoticeUnavailable;
 use App\Services\Auth\Recovery\RecoveryBoundary;
 use App\Services\Auth\Recovery\RecoveryDenied;
 use App\Services\Auth\Recovery\RecoveryGate;
@@ -365,6 +366,44 @@ class RecoveryTest extends TestCase
         }
     }
 
+    public function test_b4_outbox_insert_fault_rolls_back_quarantine_and_finalize(): void
+    {
+        $case = $this->fixture();
+        $this->ready($case, false);
+        DB::unprepared("CREATE FUNCTION b4_recovery_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.notice_type='credentials_revoked' THEN RAISE EXCEPTION 'CANARY'; END IF; RETURN NEW; END $$;
+            CREATE TRIGGER b4_recovery_fault BEFORE INSERT ON auth_security_notice_outbox FOR EACH ROW EXECUTE FUNCTION b4_recovery_fault();");
+        try {
+            try {
+                $this->recovery->issue($case->id);
+                $this->fail('Outbox fault ignored');
+            } catch (NoticeUnavailable $e) {
+                $this->assertNull($e->getPrevious());
+                $this->assertFalse(RecoveryGate::blocked($this->user));
+                $this->assertSame(0, DB::table('users')->where('id', $this->user)->value('auth_version'));
+                $this->assertSame(0, DB::table('auth_recovery_grants')->where('case_id', $case->id)->count());
+            }
+        } finally {
+            DB::unprepared('DROP TRIGGER b4_recovery_fault ON auth_security_notice_outbox; DROP FUNCTION b4_recovery_fault();');
+        }
+        [$binding, $ip, $secret] = $this->pendingEnrollment($case, true);
+        DB::unprepared("CREATE FUNCTION b4_recovery_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.notice_type='recovery_completed' THEN RAISE EXCEPTION 'CANARY'; END IF; RETURN NEW; END $$;
+            CREATE TRIGGER b4_recovery_fault BEFORE INSERT ON auth_security_notice_outbox FOR EACH ROW EXECUTE FUNCTION b4_recovery_fault();");
+        try {
+            try {
+                app(MfaService::class)->confirmRecoveryEnrollment($case->id, $binding, (new Google2FA)->oathTotp($secret, intdiv(time(), 30)), $ip);
+                $this->fail('Finalize outbox fault ignored');
+            } catch (NoticeUnavailable) {
+                $this->assertTrue(RecoveryGate::blocked($this->user));
+                $this->assertSame(1, DB::table('users')->where('id', $this->user)->value('auth_version'));
+                $this->assertSame('enrolling', DB::table('auth_recovery_cases')->where('id', $case->id)->value('state'));
+                $this->assertNull(DB::table('user_totp_factors')->where('user_id', $this->user)->value('confirmed_at'));
+                $this->assertSame(0, DB::table('mfa_recovery_codes')->where('user_id', $this->user)->count());
+            }
+        } finally {
+            DB::unprepared('DROP TRIGGER b4_recovery_fault ON auth_security_notice_outbox; DROP FUNCTION b4_recovery_fault();');
+        }
+    }
+
     public function test_history_and_registry_updates_and_populated_down_are_rejected(): void
     {
         $case = $this->fixture();
@@ -465,9 +504,9 @@ class RecoveryTest extends TestCase
         }
     }
 
-    private function pendingEnrollment(object $case): array
+    private function pendingEnrollment(object $case, bool $ready = false): array
     {
-        $token = $this->ready($case);
+        $token = $ready ? $this->recovery->issue($case->id)->reveal() : $this->ready($case);
         $binding = bin2hex(random_bytes(32));
         $ip = '192.0.2.'.random_int(30, 200);
         $this->recovery->exchange($case->id, $token, $binding, $ip);

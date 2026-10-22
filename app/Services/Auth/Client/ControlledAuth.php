@@ -3,6 +3,8 @@
 namespace App\Services\Auth\Client;
 
 use App\Services\Auth\MfaPolicy;
+use App\Services\Auth\Notices\NoticeType;
+use App\Services\Auth\Notices\NoticeWriter;
 use App\Support\Auth\AuditOutcome;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -74,7 +76,12 @@ final class ControlledAuth
 
     public function audit(string $event, ?int $user = null, AuditOutcome $outcome = AuditOutcome::Success, ?string $correlation = null): void
     {
+        $correlation ??= (string) Str::uuid();
         DB::table('auth_audit_events')->insert(['event_type' => $event, 'outcome' => $outcome->value,
-            'subject_user_id' => $user, 'request_id' => $correlation ?? (string) Str::uuid()]);
+            'subject_user_id' => $user, 'request_id' => $correlation]);
+        if (in_array($event, ['client.session_revoked', 'client.logout_all'], true)) {
+            app(NoticeWriter::class)->write($user, NoticeType::CredentialsRevoked,
+                ['current' => DB::table('users')->where('id', $user)->value('email')], request: $correlation);
+        }
     }
 }

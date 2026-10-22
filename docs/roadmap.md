@@ -1,3 +1,8 @@
+> **AUTH-6B/B4, 22.10.2026:** D4 затверджено; реалізовано transactional security
+> notice outbox, encrypted snapshot, lease/fencing, bounded retry і terminal scrub.
+> Лише synthetic/local/testing adapters; production delivery/recovery OFF.
+> D3/D5–D8/P5/P6 відкриті; [контракт і докази](auth6-b4.md).
+
 > **AUTH-6B/B3, 22.10.2026:** реалізовано additive recovery ядро, dual approvals/Ed25519,
 > quarantine/gates і shared restricted TOTP/password replacement. [Звіт, перевірки та точні blockers](auth6-b3.md).
 > Production закрито; D3 operational adapters і B4 transactional notices відсутні.

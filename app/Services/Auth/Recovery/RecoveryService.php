@@ -266,6 +266,7 @@ final class RecoveryService
         if ($case->replace_admin_password !== ($passwordHash !== null) || ($passwordHash !== null && $user->role !== 'admin')) {
             throw new RecoveryDenied;
         }
+        $case->noticeOldEmail = $user->email;
         $changes = [];
         if ($passwordHash !== null) {
             $changes['password'] = $passwordHash;
@@ -319,6 +320,7 @@ final class RecoveryService
         DB::table('auth_audit_events')->insert(['subject_user_id' => $case->target_user_id, 'event_type' => 'recovery.'.$event,
             'outcome' => $event === 'denied' ? 'denied' : 'success', 'case_reference' => $case->id, 'request_id' => $request]);
         $this->boundary()->notice($case, $event, $request);
+        app(RecoveryNoticeWriter::class)->notice($case, $event, $request);
     }
 
     private function withCase(string $id, callable $operation, bool $approvals = true): mixed

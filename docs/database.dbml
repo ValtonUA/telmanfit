@@ -893,3 +893,35 @@ Table auth_recovery_events [headercolor: #7C3AED] {
 Ref: auth_recovery_events.case_id > auth_recovery_cases.id [delete: restrict]
 Ref: auth_recovery_events.actor_principal_id > auth_recovery_principals.id [delete: restrict]
 Ref: auth_recovery_approvals.(key_id,principal_id) > auth_recovery_keys.(id,principal_id) [delete: restrict]
+
+// AUTH-6B/B4: D4 затверджено; security-only outbox, не business outbound_messages.
+Table auth_security_notice_outbox [headercolor: #0369A1] {
+ id uuid [pk]
+ request_id uuid [not null]
+ subject_user_id bigint [not null]
+ case_reference uuid
+ notice_type text [not null]
+ contract_version smallint [not null]
+ recipient_slot text [not null]
+ recipient_ciphertext text
+ recipient_key_version text
+ created_at timestamptz [not null]
+ expires_at timestamptz [not null]
+ next_attempt_at timestamptz [not null]
+ attempts integer [not null, default: 0]
+ lease_token uuid
+ lease_until timestamptz
+ state text [not null, default: 'pending']
+ finished_at timestamptz
+ last_error_code text
+ indexes {
+  (request_id,notice_type,recipient_slot) [unique]
+  (next_attempt_at,id) [name: 'auth_notice_due']
+  (lease_until,id) [name: 'auth_notice_lease']
+  (subject_user_id) [name: 'auth_notice_subject']
+  (request_id) [name: 'auth_notice_correlation']
+  (finished_at,id) [name: 'auth_notice_finished']
+ }
+ Note: 'CHECK/partial indexes/guards/ACL: docs/07_auth_security_notice_outbox.sql. Contract v1; encrypted immutable snapshot; 20 attempts/24h, 90s leases. Terminal rows immutable, ciphertext/key NULL. Metadata 30d, фізичний purge лише B5; production delivery OFF.'
+}
+Ref: auth_security_notice_outbox.subject_user_id > users.id [delete: restrict]
