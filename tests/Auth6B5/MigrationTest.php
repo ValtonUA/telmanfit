@@ -16,6 +16,9 @@ final class MigrationTest extends TestCase
                 CREATE TABLE users(id bigint PRIMARY KEY);
                 CREATE TABLE auth_recovery_principals(id uuid PRIMARY KEY);
                 CREATE TABLE auth_recovery_cases(id uuid PRIMARY KEY,target_user_id bigint);');
+            foreach (['auth_audit_events', 'auth_flows', 'auth_challenges', 'auth_recovery_grants', 'mfa_recovery_codes', 'user_totp_factors', 'client_invitations', 'auth_security_notice_outbox', 'failed_jobs'] as $table) {
+                DB::statement('CREATE TABLE b5_reference.'.$table.' (LIKE public.'.$table.' INCLUDING ALL)');
+            }
             DB::statement('INSERT INTO b5_reference.users VALUES(9000000001)');
             $sql = str_replace('public.', 'b5_reference.', file_get_contents(base_path('docs/08_auth_retention_restore.sql')));
             DB::unprepared($sql);

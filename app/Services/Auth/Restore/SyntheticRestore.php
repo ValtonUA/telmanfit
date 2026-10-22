@@ -80,6 +80,7 @@ final class SyntheticRestore
             DB::table('sessions')->delete();
             DB::statement('UPDATE mfa_recovery_codes SET revoked_at=clock_timestamp() WHERE used_at IS NULL AND revoked_at IS NULL');
             DB::statement('UPDATE auth_recovery_grants SET revoked_at=clock_timestamp() WHERE exchanged_at IS NULL AND revoked_at IS NULL');
+            DB::insert("INSERT INTO auth_recovery_events(case_id,event_type,request_id,reason_code) SELECT id,'cancelled',?::uuid,'policy' FROM auth_recovery_cases WHERE closed_at IS NULL", [$epoch]);
             DB::statement("UPDATE auth_recovery_cases SET state='cancelled',closed_at=clock_timestamp() WHERE closed_at IS NULL");
             $fault?->__invoke('capabilities');
             // Pending-only row може видалятися лише без replay history та children.

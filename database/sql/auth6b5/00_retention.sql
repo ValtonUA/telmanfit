@@ -95,6 +95,7 @@ CREATE FUNCTION auth_retention_purge_audit(rid uuid, batch integer, mid uuid, id
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET lock_timeout='2s' SET statement_timeout='5s' AS $$
 DECLARE m public.auth_archive_manifests; r public.auth_retention_runs; n integer; d text; old public.auth_retention_batches;
 BEGIN
+ IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
  IF current_user<>'telmanfit_retention_owner' OR batch IS NULL OR batch<1 OR ids IS NULL OR
   cardinality(ids) NOT BETWEEN 1 AND 500 OR array_position(ids,NULL) IS NOT NULL OR
   cardinality(ids)<>(SELECT count(DISTINCT x) FROM unnest(ids) x) THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
@@ -204,6 +205,7 @@ CREATE FUNCTION auth_retention_cleanup(rid uuid,batch integer,kind text) RETURNS
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET lock_timeout='2s' SET statement_timeout='10s' AS $$
 DECLARE r public.auth_retention_runs; prior public.auth_retention_batches; row record; chosen text[]:=ARRAY[]::text[]; n integer:=0; k integer;
 BEGIN
+ IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
  IF current_user<>'telmanfit_retention_owner' OR kind IS NULL OR kind NOT IN ('challenges','flows','codes','invitations','pending_totp','outbox','failed_jobs') OR batch IS NULL OR batch<1 THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
  IF NOT EXISTS(SELECT FROM public.auth_security_runtime WHERE id=1 AND state='ready') THEN RAISE EXCEPTION 'Restore fence closed'; END IF;
  PERFORM pg_advisory_xact_lock_shared(6060505);
@@ -267,6 +269,7 @@ REVOKE ALL ON FUNCTION auth_retention_candidates(text,timestamptz),auth_retentio
 CREATE FUNCTION auth_retention_finish(rid uuid,failed boolean) RETURNS void LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public SET lock_timeout='2s' AS $$
 BEGIN
+ IF current_database()<>'telmanfit_stage1_test' OR session_user<>'telmanfit_test_runner' THEN RAISE EXCEPTION 'Synthetic retention only'; END IF;
  IF current_user<>'telmanfit_retention_owner' OR failed IS NULL THEN RAISE EXCEPTION 'Retention unavailable'; END IF;
  UPDATE public.auth_retention_runs SET state=CASE WHEN failed THEN 'failed' ELSE 'completed' END,
   finished_at=statement_timestamp(),reason_code=CASE WHEN failed THEN 'unavailable' ELSE NULL END WHERE id=rid AND state='running';

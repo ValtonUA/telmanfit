@@ -81,7 +81,10 @@ if [[ ${AUTH6B_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit -c phpunit.auth6b.xml --display-all-issues
     vendor/bin/phpunit -c phpunit.auth6b4.xml --display-all-issues
     php tests/pg/auth6b4-concurrency.php
-    if [[ ${AUTH6B_CASES_ONLY:-0} == 1 ]]; then exit; fi
+    if [[ ${AUTH6B_CASES_ONLY:-0} == 1 ]]; then
+        php tests/pg/auth6b-concurrency.php
+        exit
+    fi
     vendor/bin/phpunit -c phpunit.auth3.xml --display-all-issues
     vendor/bin/phpunit -c phpunit.auth4.xml --display-all-issues
     vendor/bin/phpunit -c phpunit.auth5.xml --display-all-issues

@@ -4,6 +4,7 @@ namespace App\Services\Auth\Retention;
 
 use App\Services\Auth\Restore\RestoreFence;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class RetentionService
@@ -47,7 +48,7 @@ final class RetentionService
             throw new \RuntimeException('retention_unavailable');
         }
 
-        return $this->transaction(fn () => (int) DB::selectOne('SELECT auth_retention_cleanup(?::uuid,?,?) n', [$run, $batch, $entity])->n);
+        return $this->transaction(fn () => (int) DB::selectOne('SELECT auth_retention_cleanup(?::uuid,?,?) n', [$run, $batch, $entity])->n, $run);
     }
 
     public function apply(string $run, int $batch, string $manifest, array $ids): int
@@ -65,16 +66,28 @@ final class RetentionService
 
         // Немає caller predicates/SQL/verified flag. SQL повторно перевіряє holds/age/exact content.
         return $this->transaction(fn () => (int) DB::selectOne('SELECT auth_retention_purge_audit(?::uuid,?,?::uuid,?::bigint[]) n',
-            [$run, $batch, $manifest, '{'.implode(',', $ids).'}'])->n);
+            [$run, $batch, $manifest, '{'.implode(',', $ids).'}'])->n, $run);
     }
 
-    private function transaction(callable $operation): mixed
+    private function transaction(callable $operation, ?string $run = null): mixed
     {
-        return DB::transaction(function () use ($operation) {
-            DB::statement("SET LOCAL lock_timeout='2s'");
-            DB::statement("SET LOCAL statement_timeout='10s'");
+        try {
+            return DB::transaction(function () use ($operation) {
+                DB::statement("SET LOCAL lock_timeout='2s'");
+                DB::statement("SET LOCAL statement_timeout='10s'");
 
-            return $operation();
-        });
+                return $operation();
+            });
+        } catch (\Throwable) {
+            // Після rollback; crash не робить failed, отже durable running можна поновити.
+            if ($run !== null && DB::transactionLevel() === 0) {
+                try {
+                    DB::transaction(fn () => DB::select('SELECT auth_retention_finish(?::uuid,true)', [$run]));
+                } catch (\Throwable) {
+                    Log::error('retention.failed', ['request_id' => $run, 'audit' => 'unavailable']);
+                }
+            }
+            throw new \RuntimeException('retention_unavailable');
+        }
     }
 }

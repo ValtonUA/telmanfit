@@ -247,9 +247,9 @@ final class RetentionTest extends TestCase
         app()->instance(ArchiveVerification::class, $archive);
         $this->reject(fn () => app(RetentionService::class)->apply($run, 1, $mid, $ids));
         $manifest = DB::table('auth_archive_manifests')->where('id', $mid)->first();
-        $archive->receipts[$manifest->object_ref] = str_repeat('0', 64);
+        $archive->objects[$manifest->object_ref] = 'synthetic corrupted object';
         $this->reject(fn () => app(RetentionService::class)->apply($run, 1, $mid, $ids));
-        $archive->receipts[$manifest->object_ref] = $manifest->content_digest;
+        $archive->objects[$manifest->object_ref] = DB::selectOne('SELECT jsonb_agg(to_jsonb(a) ORDER BY id)::text bytes FROM auth_audit_events a WHERE id=ANY(?::bigint[])', ['{'.implode(',', $ids).'}'])->bytes;
         DB::statement('SET LOCAL ROLE telmanfit_retention_executor');
         $this->assertSame(1, app(RetentionService::class)->apply($run, 1, $mid, $ids));
         DB::statement('RESET ROLE');

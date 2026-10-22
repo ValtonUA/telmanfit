@@ -4,13 +4,16 @@ namespace Tests\Auth6B5;
 
 use App\Services\Auth\Retention\ArchiveVerification;
 
-/** Object store поза restored DB; тільки synthetic receipt fixture, без production bind. */
+/** Synthetic object bytes поза DB; немає production bind або довіри до manifest digest. */
 final class SyntheticArchive implements ArchiveVerification
 {
-    public array $receipts = [];
+    public array $objects = [];
 
     public function verify(object $manifest): bool
     {
-        return app()->environment('testing') && ($this->receipts[$manifest->object_ref] ?? null) === $manifest->content_digest;
+        $bytes = $this->objects[$manifest->object_ref] ?? null;
+
+        return app()->environment('testing') && is_string($bytes)
+            && hash_equals($manifest->content_digest, hash('sha256', $bytes));
     }
 }

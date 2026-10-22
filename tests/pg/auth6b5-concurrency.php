@@ -22,6 +22,11 @@ if (($argv[1] ?? '') === 'worker') {
         echo $handler->gc(43200);
         exit;
     }
+    if ($input['action'] === 'cleanup') {
+        DB::statement('SET ROLE telmanfit_retention_executor');
+        echo DB::selectOne('SELECT auth_retention_cleanup(?::uuid,?,?) n', [$input['run'], $input['batch'], $input['kind']])->n;
+        exit;
+    }
     if ($input['action'] === 'restore-stage') {
         $external = new SyntheticEpoch($input['epoch']);
         app()->instance(ExternalEpoch::class, $external);
@@ -202,3 +207,51 @@ try {
     DB::table('auth_security_runtime')->where('id', 1)->update(['restore_epoch' => SyntheticEpoch::INITIAL, 'state' => 'ready', 'issuance_not_before' => DB::raw('clock_timestamp()')]);
 }
 echo "B5 restore SIGTERM drill PASS: eight crash stages, transactional rollback/durable closed fence, fresh-process idempotent retry\n";
+
+// Той самий user lock, що й MFA/code writers: cleanup пропускає зайнятий account.
+$user = DB::table('users')->insertGetId(['name' => 'Synthetic MFA cleanup race', 'role' => 'client']);
+DB::table('user_totp_factors')->insert(['user_id' => $user, 'pending_secret_ciphertext' => str_repeat('p', 100), 'pending_key_version' => 'test_v1',
+    'pending_expires_at' => DB::raw("clock_timestamp()-interval '1 second'"), 'created_at' => DB::raw("clock_timestamp()-interval '1 hour'")]);
+$run = fixtureB5()['run'];
+DB::beginTransaction();
+DB::table('users')->where('id', $user)->lockForUpdate()->first();
+if (finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 1, 'kind' => 'pending_totp'])) !== '0') {
+    throw new RuntimeException('pending_lock_not_skipped');
+}
+DB::table('user_totp_factors')->where('user_id', $user)->update(['secret_ciphertext' => str_repeat('p', 100), 'key_version' => 'test_v1', 'confirmed_at' => DB::raw('clock_timestamp()'),
+    'last_used_step' => 12345, 'pending_secret_ciphertext' => null, 'pending_key_version' => null, 'pending_expires_at' => null, 'updated_at' => DB::raw('clock_timestamp()')]);
+DB::commit();
+if (finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 2, 'kind' => 'pending_totp'])) !== '0' || DB::table('user_totp_factors')->where('user_id', $user)->value('last_used_step') !== 12345) {
+    throw new RuntimeException('confirmed_pending_race');
+}
+$batch = (string) Str::uuid();
+$code = DB::table('mfa_recovery_codes')->insertGetId(['user_id' => $user, 'selector' => (string) Str::uuid(), 'batch_id' => $batch, 'code_hash' => password_hash('synthetic', PASSWORD_ARGON2ID),
+    'created_at' => DB::raw("clock_timestamp()-interval '400 days'"), 'used_at' => DB::raw("clock_timestamp()-interval '366 days'")]);
+DB::beginTransaction();
+DB::table('users')->where('id', $user)->lockForUpdate()->first();
+if (finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 3, 'kind' => 'codes'])) !== '0') {
+    throw new RuntimeException('code_lock_not_skipped');
+}
+DB::table('user_totp_factors')->where('user_id', $user)->update(['recovery_batch_id' => $batch]);
+DB::commit();
+if (finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 4, 'kind' => 'codes'])) !== '0' || ! DB::table('mfa_recovery_codes')->where('id', $code)->exists()) {
+    throw new RuntimeException('current_batch_recheck');
+}
+echo "B5 MFA/code cleanup concurrency PASS: busy account skip, confirmed material and current batch rechecked after commit, watermark preserved\n";
+$notice = (string) Str::uuid();
+DB::table('auth_security_notice_outbox')->insert(['id' => $notice, 'request_id' => (string) Str::uuid(), 'subject_user_id' => $user, 'notice_type' => 'mfa_changed', 'contract_version' => 1,
+    'recipient_slot' => 'current', 'recipient_ciphertext' => str_repeat('s', 100), 'recipient_key_version' => 'test_v1', 'created_at' => DB::raw('clock_timestamp()'),
+    'expires_at' => DB::raw("clock_timestamp()+interval '1 hour'"), 'next_attempt_at' => DB::raw('clock_timestamp()')]);
+if (finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 5, 'kind' => 'outbox'])) !== '0') {
+    throw new RuntimeException('pending_notice_deleted');
+}
+$claims = DB::select('SELECT * FROM auth_notice_claim(50)');
+$claim = collect($claims)->firstWhere('id', $notice);
+if (! $claim || finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 6, 'kind' => 'outbox'])) !== '0') {
+    throw new RuntimeException('leased_notice_deleted');
+}
+DB::select("SELECT auth_notice_ack(?::uuid,?::uuid,'sent')", [$notice, $claim->lease_token]);
+if (finishB5(spawnB5(['action' => 'cleanup', 'run' => $run, 'batch' => 7, 'kind' => 'outbox'])) !== '0' || DB::table('auth_security_notice_outbox')->where('id', $notice)->value('recipient_ciphertext') !== null) {
+    throw new RuntimeException('terminal_notice_retention_or_scrub');
+}
+echo "B5 outbox claim/cleanup PASS: independent cleanup preserves pending/leased/young terminal rows; ack scrubs recipient\n";

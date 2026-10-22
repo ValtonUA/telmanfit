@@ -23,7 +23,7 @@ whitelisted cleanup і exact-manifest audit apply. Немає SQL predicate ві
 500 candidates, policy lock, recheck під user lock, child-first/FK RESTRICT defer.
 UNIQUE run/batch та immutable selection digest дають retry після commit; навіть
 нульовий batch має receipt. Помилка batch відкочує DELETE/receipt/audit разом;
-оператор може завершити run як failed окремою транзакцією. SQL і adapter мають
+adapter записує sanitized failed окремою транзакцією після rollback; оператор також має явне finish. SQL і adapter мають
 bounded lock/statement timeouts. Run transitions та batches додають typed audit.
 
 | Дані | Фактична поведінка B5 |
@@ -56,7 +56,7 @@ scope захищає пов'язані audit records; ephemeral flows із grant
 
 `ArchiveVerification` — незалежний port перевірки доступного object/receipt.
 Default provider відсутній; `SyntheticArchive` існує лише в tests і порівнює
-окремий in-memory object digest із immutable manifest. Production не може отримати
+SHA256 окремих in-memory object bytes із immutable manifest. Production не може отримати
 «verified» через flag. SQL receipt записує окрема archival identity; retention
 executor не INSERT/UPDATE manifest. SQL повторно звіряє full-row ordered jsonb
 SHA256, count, exact IDs, time/ID bounds, age, freshness≤24h і retain_until. Немає
@@ -69,7 +69,8 @@ runtime/executor. Executor має тільки whitelisted EXECUTE та run INSE
 виняток B4 outbox guard, решта B4 transitions незмінні. Recovery append-only guards
 залишаються deny-all. ACL provisioning існує **тільки** у новому isolated harness
 `01_test_acl.sql`, який виконує synthetic cluster superuser. Міграція сама не
-надає runtime жодних прав. Threat boundary не включає compromised DB superuser.
+надає runtime жодних прав. Definer entrypoints додатково обмежені synthetic DB
+і session identity; production API закритий навіть за помилкового GRANT. Threat boundary не включає compromised DB superuser.
 
 ## D6-A і межа D3/D8
 
@@ -137,7 +138,7 @@ commit/rollback із observed lock waits, SIGTERM до/після purge commit, 
 save/GC та SIGTERM на восьми етапах restore з idempotent retry.
 
 Окремий **реальний synthetic** `pg_dump/pg_restore --clean` drill відновлює snapshot
-до використання OTP/code і зміни factor/auth_version. Зовнішній adapter і поточні
+до використання OTP/code/grant і зміни factor/auth_version. Зовнішній adapter і поточні
 hold/revocation manifests лишаються поза dump. Drill доводить повернення старих DB
 bytes, epoch denial до reconciliation, повторне відкликання, secret quarantine,
 відсутність старих sessions/outbox recipients і reapply post-backup hold/revocation.
@@ -149,8 +150,33 @@ security service і повний business access **не відновлено**: 
 не досягнутий production RPO. RPO≤15m — майбутня acceptance ціль; RTO≤4h для всіх
 users не гарантується. Немає production SLA за результатом цього стенду.
 
-Фінальні результати локального прогону та CI для точного PR HEAD додаються після
-завершення перевірок; попередні master/B3/B4 результати не підміняють їх.
+Локально на фінальному коді: [checks.json](evidence/auth6b-b5/checks.json).
+
+| Перевірка | Фактичний результат |
+|---|---|
+| SQL migrations / reference | 76 PASS / 0 FAIL / 0 GAP, кожний; negative runner exit contracts PASS |
+| Stage1/2 / основний PHPUnit | 41/713 + 38/62 tests/assertions |
+| AUTH-1 / AUTH-2 / AUTH-3 | 15/93 + 12/131 + 25/129 |
+| AUTH-4 / AUTH-5 / AUTH-6 | 24/152 + 19/131 + 5/359 |
+| B3 / B4 / B5 | 22/213 + 16/128 + **20/188** |
+| Process / HTTP / browser | AUTH2–5/B3/B4/B5 concurrency, 25 B1 HTTP scenarios, Chromium AUTH3/4/5 PASS |
+| Pint / frontend | Pint, client ESLint/build, root Filament build PASS |
+
+Початкові невдалі прогони виявили незалежне clock_timestamp evaluation у factor
+quarantine, старі AUTH-2 audit-source/B3 downgrade fixtures та різний JSON після
+cache outage в aborted transaction. Виправлено; фінальні повні Stage1 та окремі
+B3/B4/B5/HTTP повтори успішні. B3 historical downgrade fixture відтворює pre-B5
+projection тільки видаленням порожньої нової holds table всередині transaction;
+rollback повертає її FK. Production downgrade не дозволяється.
+
+Synthetic snapshot drill: observed snapshot age **1.108s**, infrastructure restore
+**0.738s**, closed reconciliation **0.023s**. Restricted service/business access
+не відновлювалися; це не production SLA і не WAL/PITR acceptance.
+
+[Draft PR #20](https://github.com/ValtonUA/telmanfit/pull/20). GitHub checks для
+остаточного HEAD перевіряються окремо у PR; під час підготовки звіту вони стояли
+у `queued`, без steps/results. **Green CI не заявляється.** Base master CI та
+локальні результати не підміняють CI поточного HEAD.
 
 ## Відкриті блокери
 
@@ -164,3 +190,55 @@ Recovery history purge, verified archive lifecycle та production failed-payloa
 Реальні БД, персональні дані, runtime/SMTP/hosting/cron, `.env`, production secrets,
 ключі й trustee records не змінювалися. Усі дампи/receipts/identities синтетичні й
 ізольовані. Один Draft PR; без merge, auto-merge або переписування історії.
+
+## Повний перелік змінених / створених файлів
+
+```text
+.github/workflows/stage1.yml
+app/Http/Middleware/AdminMfaBoundary.php
+app/Models/User.php
+app/Providers/AppServiceProvider.php
+app/Services/Auth/Client/AuthBudget.php
+app/Services/Auth/Client/ControlledAuth.php
+app/Services/Auth/MfaPolicy.php
+app/Services/Auth/Notices/NoticeDispatcher.php
+app/Services/Auth/Notices/NoticeWriter.php
+app/Services/Auth/Recovery/RecoveryService.php
+app/Services/Auth/Restore/ExternalEpoch.php
+app/Services/Auth/Restore/RestoreFence.php
+app/Services/Auth/Restore/SyntheticEpoch.php
+app/Services/Auth/Restore/SyntheticRestore.php
+app/Services/Auth/Retention/ArchiveVerification.php
+app/Services/Auth/Retention/RetentionService.php
+app/Support/Session/ContextDatabaseSessionHandler.php
+database/migrations/2026_10_22_004000_create_auth_retention_restore.php
+database/sql/auth6b5/00_retention.sql
+database/sql/auth6b5/01_test_acl.sql
+docs/08_auth_retention_restore.sql
+docs/architecture.md
+docs/auth6-b5.md
+docs/database.dbml
+docs/entity-catalog.md
+docs/evidence/auth6b-b5/checks.json
+docs/evidence/auth6b-b5/restore.json
+docs/project-status.md
+docs/roadmap.md
+phpunit.auth6b5.xml
+tests/Auth6B/FixtureBoundary.php
+tests/Auth6B/MigrationTest.php
+tests/Auth6B4/SchemaTest.php
+tests/Auth6B5/MigrationTest.php
+tests/Auth6B5/OperatorTest.php
+tests/Auth6B5/RestoreTest.php
+tests/Auth6B5/RetentionTest.php
+tests/Auth6B5/SyntheticArchive.php
+tests/AuthPostgres/AuthSchemaTest.php
+tests/Postgres/PostgresTestCase.php
+tests/pg/auth2-upgrade.php
+tests/pg/auth6b-concurrency.php
+tests/pg/auth6b5-bootstrap.php
+tests/pg/auth6b5-concurrency.php
+tests/pg/auth6b5-grant-fixture.php
+tests/pg/auth6b5-restore-drill.php
+tests/pg/run-stage1.sh
+```
