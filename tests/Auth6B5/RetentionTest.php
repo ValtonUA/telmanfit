@@ -4,6 +4,7 @@ namespace Tests\Auth6B5;
 
 use App\Services\Auth\Retention\ArchiveVerification;
 use App\Services\Auth\Retention\RetentionService;
+use App\Support\Session\ContextDatabaseSessionHandler;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -313,6 +314,23 @@ final class RetentionTest extends TestCase
             } else {
                 $this->reject(fn () => $this->purge($run, $mid, [$id], 2));
                 $this->assertTrue(DB::table('auth_audit_events')->where('id', $id)->exists());
+            }
+        }
+    }
+
+    public function test_session_gc_schema_outages_preserve_rows_and_outer_transaction_health(): void
+    {
+        $id = (string) Str::uuid();
+        DB::table('sessions')->insert(['id' => $id, 'payload' => 'synthetic', 'last_activity' => time() - 50000]);
+        $handler = new ContextDatabaseSessionHandler(DB::connection(), 'sessions', 720, app());
+        foreach (['auth_session_states', 'auth_retention_holds'] as $table) {
+            DB::statement('ALTER TABLE '.$table.' RENAME TO b5_gc_registry_outage');
+            try {
+                $this->assertSame(0, $handler->gc(43200));
+                $this->assertTrue(DB::table('sessions')->where('id', $id)->exists());
+                $this->assertSame(1, DB::selectOne('SELECT 1 n')->n);
+            } finally {
+                DB::statement('ALTER TABLE b5_gc_registry_outage RENAME TO '.$table);
             }
         }
     }

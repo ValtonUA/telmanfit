@@ -30,7 +30,7 @@ bounded lock/statement timeouts. Run transitions та batches додають typ
 |---|---|
 | Challenges / flows | ≥24h після max(expiry,terminal), challenge тільки коли parent теж старий; children перед parent; будь-який recovery-grant FK залишає row online |
 | Pending TOTP | Expiry recheck під user lock; clear pending у confirmed history; pending-only delete лише без watermark/codes; confirmed factor і watermark зберігаються |
-| Sessions / assurance | B1 idle admin15m/client12h, absolute assurance expiry; максимум500 IDs; одна transaction/ID, B1 session advisory lock → hold-policy → user → TTL recheck; busy session skip, assurance CASCADE |
+| Sessions / assurance | B1 idle admin15m/client12h, absolute assurance expiry; максимум500 IDs; одна transaction/ID, B1 session advisory lock → hold-policy → user → TTL recheck; busy session skip, assurance CASCADE; GC outage rollback/savepoint і skip без зміни auth failure contract |
 | Invitations | Активні не expire; terminal ≥365d і без child flow; holds пов'язаних users захищають row |
 | Recovery codes | Used/revoked ≥365d; current factor batch не purge; hashes не змінюються |
 | Recovery cases/events/approvals/grants, principals/keys/gates | **Залишаються online.** Фізичний purge не реалізований без окремого verified archive contract; чинні append-only/RESTRICT guards не послаблено |
@@ -160,19 +160,22 @@ users не гарантується. Немає production SLA за резуль
 | Stage1/2 / основний PHPUnit | 41/713 + 38/62 tests/assertions |
 | AUTH-1 / AUTH-2 / AUTH-3 | 15/93 + 12/131 + 25/129 |
 | AUTH-4 / AUTH-5 / AUTH-6 | 24/152 + 19/131 + 5/359 |
-| B3 / B4 / B5 | 22/213 + 16/128 + **20/190** |
+| B3 / B4 / B5 | 22/213 + 16/128 + **21/196** |
 | Process / HTTP / browser | AUTH2–5/B3/B4/B5 concurrency, 25 B1 HTTP scenarios, Chromium AUTH3/4/5 PASS |
 | Pint / frontend | Pint, client ESLint/build, root Filament build PASS |
 
 Початкові невдалі прогони виявили незалежне clock_timestamp evaluation у factor
 quarantine, старі AUTH-2 audit-source/B3 downgrade fixtures та різний JSON після
-cache outage в aborted transaction. Виправлено; фінальні повні Stage1 та окремі
+cache outage в aborted transaction. CI додатково виявив lottery GC exception поза auth
+boundary за assurance outage; детерміновано відтворено з GC100 (HTTP500),
+виправлено transactional skip/savepoint (HTTP503). AUTH3 browser CI тепер завжди
+виконується з GC100 через окремий guarded synthetic router. Виправлено; фінальні повні Stage1 та окремі
 B3/B4/B5/HTTP повтори успішні. B3 historical downgrade fixture відтворює pre-B5
 projection тільки видаленням порожньої нової holds table всередині transaction;
 rollback повертає її FK. Production downgrade не дозволяється.
 
-Synthetic snapshot drill: observed snapshot age **0.990s**, infrastructure restore
-**0.634s**, closed reconciliation **0.029s**. Restricted service/business access
+Synthetic snapshot drill: observed snapshot age **1.061s**, infrastructure restore
+**0.680s**, closed reconciliation **0.034s**. Restricted service/business access
 не відновлювалися; це не production SLA і не WAL/PITR acceptance.
 
 [Draft PR #20](https://github.com/ValtonUA/telmanfit/pull/20). GitHub checks для
@@ -191,6 +194,7 @@ Recovery history purge, verified archive lifecycle та production failed-payloa
 Реальні БД, персональні дані, runtime/SMTP/hosting/cron, `.env`, production secrets,
 ключі й trustee records не змінювалися. Усі дампи/receipts/identities синтетичні й
 ізольовані. Один Draft PR; без merge, auto-merge або переписування історії.
+
 
 ## Повний перелік змінених / створених файлів
 
@@ -235,6 +239,8 @@ tests/Auth6B5/RetentionTest.php
 tests/Auth6B5/SyntheticArchive.php
 tests/AuthPostgres/AuthSchemaTest.php
 tests/Postgres/PostgresTestCase.php
+tests/browser/auth3-in-context.sh
+tests/browser/auth3-router.php
 tests/pg/auth2-upgrade.php
 tests/pg/auth6b-concurrency.php
 tests/pg/auth6b5-bootstrap.php
