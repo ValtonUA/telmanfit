@@ -1,3 +1,5 @@
+> **D8: вибір інфраструктури (22.10.2026):** власник затвердив **Hyperhost VPS Старт (2 CPU/3 ГБ/45 ГБ NVMe)**, один VPS для Laravel+PostgreSQL18, **SendPulse SMTP** та **Hyperhost зовнішні резервні копії** для **5–10 клієнтів**. Простої допустимі, HA/Redis/другий VPS не потрібні. D3 assisted recovery із друзями **відкладено**; звичайний пароль + recovery code в 1Password. [D8 перевірки та відкриті ризики](auth6-d8-infrastructure.md): backup consistency/RPO, незалежні секрети/epoch, відновлення останнього admin після B5/PITR та production activation **не перевірені**.
+
 > **AUTH-6B/B6, 22.10.2026:** D7 затверджено. Additive PostgreSQL exact sliding
 > budgets (25 policies), окремий committed admission connection, transactional
 > failure accounting, bounded cleanup і D6-A fence реалізовано для guarded synthetic
