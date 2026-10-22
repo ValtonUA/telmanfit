@@ -1,3 +1,20 @@
+> **ПОТОЧНИЙ СТАН — 23.10.2026; `master` `bb0816d` (до цього документаційного PR).** Цей блок є головним джерелом поточного статусу, **нижчі датовані секції є історичними знімками** та можуть містити твердження «ще немає AUTH-4», «лише health API», «немає міграцій» тощо, які вже не відповідають поточній ревізії.
+>
+> | Область | Факти / статус |
+> |---|---|
+> | Stage 1 (БД) | 37 бізнес-таблиць, Laravel-міграції та isolated PG18 CI/SQL тести реалізовано; **не готові бізнес-форми** |
+> | Stage 2 (Filament) | Реалізовано картки клієнтів: список, пошук, перегляд, редагування, статуси, заблоковане ручне створення; T2.4 анкета відкрита |
+> | AUTH-3/4/5 | Shared MFA, Filament gate, invitation, реєстрація/email OTP, client sessions та React login/security реалізовано **лише для controlled local/testing, default OFF**; production activation не виконано |
+> | AUTH-6B | B1–B6 мають реалізовані guarded/synthetic частини (див. B3–B6); B7, P5/P6 та production go/no-go **відкриті**; глобальний `4040404` не знято |
+> | Stage 3 | **Наступний продуктовий пріоритет:** каталог продуктів та рецептів, модель/UI/сервіси публікації відсутні. Відкриті T1.5 значення довідників, BR-F-11 правило перерахунку чернеток |
+> | Stage 4–7 | Раціони, їх призначення, бізнес-кабінет, прогрес, повідомлення ще не реалізовано; SPA наразі лише auth/security shell |
+> | Stage 8 | Telegram не реалізовано; тренувальний модуль поза чинним MVP-scope (окреме майбутнє рішення) |
+> | D8 / запуск | Hyperhost VPS Старт / SendPulse / зовнішні резервні копії Hyperhost **обрані**, але не розгорнуті; D8.1 = docs preflight merged PR #24; D8.2 = [Draft PR #25](https://github.com/ValtonUA/telmanfit/pull/25) (staging-kit, без реального VPS); «D8.3» = неофіційна назва майбутнього механізму last-admin after-restore; B7 ще не виконано |
+> | Власник погодив | Допустимий простій і до **24 годин останніх змін, втрачених після disaster** (RPO-ціль), для масштабу 5–10 клієнтів; потрібні щоденний PostgreSQL-aware backup, encrypted offsite і restore drill перед production |
+> | Recovery | Звичайний пароль + TOTP recovery code (план зберігання у 1Password); **D3 через 1–2 друзів відкладено**, [PR #22](https://github.com/ValtonUA/telmanfit/pull/22) залишено Draft. Після B5 restore старі recovery codes можуть бути відкликані: **безпечний повторний MFA enrollment останнього admin залишається pre-production blocker** |
+>
+> **Наступна робота: Stage 3, не VPS.** Інфраструктурні D8.2/last-admin after-restore/B7 виконуються перед пілотним production-запуском, а не замість продуктового MVP. Позначення й порядок — [roadmap.md](roadmap.md#актуальний-стан-і-наступний-крок--23102026).
+
 > **D8: вибір інфраструктури (22.10.2026):** власник затвердив **Hyperhost VPS Старт (2 CPU/3 ГБ/45 ГБ NVMe)**, один VPS для Laravel+PostgreSQL18, **SendPulse SMTP** та **Hyperhost зовнішні резервні копії** для **5–10 клієнтів**. Простої допустимі, HA/Redis/другий VPS не потрібні. D3 assisted recovery із друзями **відкладено**; звичайний пароль + recovery code в 1Password. [D8 перевірки та відкриті ризики](auth6-d8-infrastructure.md): backup consistency/RPO, незалежні секрети/epoch, відновлення останнього admin після B5/PITR та production activation **не перевірені**.
 
 > **AUTH-6B/B6, 22.10.2026:** D7 затверджено. Additive PostgreSQL exact sliding
