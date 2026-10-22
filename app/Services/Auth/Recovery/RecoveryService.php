@@ -41,6 +41,7 @@ final class RecoveryService
     {
         $context = $this->boundary()->context();
         if (! isset($context['deployment_id'], $context['restore_epoch'], $context['registry_version'])
+            || ($context['restore_epoch'] ?? null) !== DB::table('auth_security_runtime')->where('id', 1)->value('restore_epoch')
             || ! Str::isUuid($context['restore_epoch']) || (int) $context['registry_version'] < 1
             || ($case && ($case->deployment_id !== $context['deployment_id'] || $case->restore_epoch !== $context['restore_epoch']
                 || $case->registry_version !== (int) $context['registry_version']))) {

@@ -394,3 +394,24 @@ case retention. Єдиний recipient snapshot зашифрований version
 30-денний retention contract; фізичне видалення/restore/holds та keys custody —
 B5/D5–D6, purge у B4 відсутній. Production adapters, SMTP, trustees і grants не
 активовано; незалежний канал має окремий port без default provider.
+
+## AUTH-6B/B5 — retention та restore fence
+
+D5 та D6-A затверджено. Additive [SQL 08](08_auth_retention_restore.sql) →
+[DBML](database.dbml) → нова міграція 004000; історичні DDL незмінні.
+
+| Сутність | Призначення та інваріант |
+|---|---|
+| `auth_retention_holds` | Durable user/case/time-range hold; рівно один selector; release іншим principal, history не видаляється; policy advisory lock серіалізує hold commit і purge. |
+| `auth_retention_runs` | Версія policy, фіксований cutoff, request idempotency; terminal state із finish; без довільного payload. Dry-run API read-only, run не створює. |
+| `auth_retention_batches` | Immutable commit receipt, до 500 IDs, selection digest, UNIQUE run/batch та archive; retry того самого batch не повторює DELETE. |
+| `auth_archive_manifests` | Immutable exact-content receipt, opaque object UUID, повні bounds/count/digest, незалежний verifier; online audit ≥180d, archive до ≥365d від останньої події. |
+| `auth_security_runtime` | Singleton зовнішнього restore epoch, reconciliation timestamp, closed state та issuance fence. Порожня таблиця/відсутній external adapter закривають операції. |
+
+Production provider/provisioning відсутні. Synthetic adapters не є D3/D8 доказами;
+повний статус реалізованого ядра й відкладених cleanup paths — [B5](auth6-b5.md).
+
+B5 P2 forward fix (005000): held expired sessions зберігають лише typed audit
+metadata перед payload/assurance GC; невідомий guest subject захищений будь-яким
+active hold. Confirmed-factor pending secret scrub не видаляє MFA history чи
+watermark; held pending-only row не purge. Нових сутностей/полів немає.

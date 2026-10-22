@@ -7,8 +7,12 @@ use App\Http\Responses\AdminLogoutResponse;
 use App\Mail\SyntheticTransport;
 use App\Services\Auth\Client\ClientAuth;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\Restore\ExternalEpoch;
+use App\Services\Auth\Restore\SyntheticEpoch;
+use App\Services\Auth\Restore\SyntheticMaintenanceMode;
 use App\Support\Session\ContextDatabaseSessionHandler;
 use Filament\Auth\Http\Responses\Contracts\LogoutResponse;
+use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -21,6 +25,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        if ($this->app->environment('testing') && getenv('TELMANFIT_PG_TEST') === '1') {
+            $this->app->singleton(ExternalEpoch::class, SyntheticEpoch::class);
+            if (config('database.default') === 'pgsql') {
+                $this->app->singleton(MaintenanceMode::class, SyntheticMaintenanceMode::class);
+            }
+        }
         $this->app->singleton(MfaService::class);
         $this->app->singleton(ClientAuth::class);
     }

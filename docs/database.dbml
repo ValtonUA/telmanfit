@@ -925,3 +925,68 @@ Table auth_security_notice_outbox [headercolor: #0369A1] {
  Note: 'CHECK/partial indexes/guards/ACL: docs/07_auth_security_notice_outbox.sql. Contract v1; encrypted immutable snapshot; 20 attempts/24h, 90s leases. Terminal rows immutable, ciphertext/key NULL. Metadata 30d, фізичний purge лише B5; production delivery OFF.'
 }
 Ref: auth_security_notice_outbox.subject_user_id > users.id [delete: restrict]
+
+// AUTH-6B/B5; точні CHECK/guards/ACL — SQL 08.
+Table auth_security_runtime {
+  id smallint [pk, note: 'Singleton id=1; empty means fail-closed']
+  restore_epoch uuid [not null]
+  last_reconciled_at timestamptz [not null]
+  state text [not null, note: 'ready / maintenance / recovery_required']
+  issuance_not_before timestamptz [not null]
+}
+Table auth_retention_holds {
+  id uuid [pk]
+  subject_user_id bigint [ref: > users.id]
+  case_id uuid [ref: > auth_recovery_cases.id]
+  audit_from timestamptz
+  audit_to timestamptz
+  reason_code text [not null, note: 'legal / incident / dispute']
+  created_at timestamptz [not null]
+  created_by_principal_id uuid [not null, ref: > auth_recovery_principals.id]
+  released_at timestamptz
+  released_by_principal_id uuid [ref: > auth_recovery_principals.id]
+  Note: 'Exactly one selector; paired half-open time range; release by a different principal; immutable durable history'
+}
+Table auth_retention_runs {
+  id uuid [pk]
+  mode text [not null, note: 'dry_run / apply']
+  policy_version integer [not null, note: '1']
+  cutoff timestamptz [not null]
+  started_at timestamptz [not null]
+  finished_at timestamptz
+  state text [not null, note: 'running / completed / failed']
+  request_id uuid [not null, unique]
+  reason_code text [note: 'archive / hold / conflict / unavailable']
+}
+Table auth_archive_manifests {
+  id uuid [pk]
+  entity_type text [not null, note: 'audit; other history stays online']
+  first_occurred_at timestamptz [not null]
+  last_occurred_at timestamptz [not null]
+  first_id bigint [not null]
+  last_id bigint [not null]
+  row_count bigint [not null, note: '1..500']
+  content_digest text [not null, note: 'SHA256 of ordered complete PostgreSQL jsonb row projection']
+  object_ref uuid [not null, unique]
+  exported_at timestamptz [not null]
+  verified_at timestamptz [not null]
+  retain_until timestamptz [not null, note: '>=last_occurred_at+365 days']
+  request_id uuid [not null, unique]
+}
+Table auth_retention_batches {
+  id uuid [pk]
+  run_id uuid [not null, ref: > auth_retention_runs.id]
+  batch_no integer [not null]
+  entity_type text [not null, note: 'audit / challenges / flows / codes / invitations / pending_totp / outbox / failed_jobs']
+  candidate_count integer [not null]
+  deleted_count integer [not null]
+  selection_digest text [not null]
+  archive_manifest_id uuid [unique, ref: > auth_archive_manifests.id]
+  committed_at timestamptz [not null]
+  indexes { (run_id, batch_no) [unique] }
+  Note: 'Append-only; 0<=deleted<=candidate<=500; exact identity retry'
+}
+
+// B5 P2/005000: held session payload GC exports typed auth_audit_events metadata;
+// unknown guest subject stays protected under any active hold. Confirmed-factor
+// expired pending scrub preserves factor/watermark; held pending-only is not deleted.

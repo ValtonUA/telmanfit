@@ -5,6 +5,7 @@ namespace App\Services\Auth\Client;
 use App\Services\Auth\MfaPolicy;
 use App\Services\Auth\Notices\NoticeType;
 use App\Services\Auth\Notices\NoticeWriter;
+use App\Services\Auth\Restore\RestoreFence;
 use App\Support\Auth\AuditOutcome;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,7 @@ final class ControlledAuth
 {
     public function assert(): void
     {
+        app(RestoreFence::class)->assert();
         if (! in_array(config('auth4.enabled'), [true, 'true', '1'], true) || ! app()->environment(['local', 'testing'])
             || config('database.default') !== 'pgsql' || config('session.driver') !== 'database'
             || config('cache.default') !== 'database'

@@ -2,6 +2,7 @@
 
 namespace Tests\Postgres;
 
+use App\Services\Auth\Restore\SyntheticEpoch;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -40,6 +41,7 @@ abstract class PostgresTestCase extends TestCase
                 (require $file)->up();
             }
         }
+        DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     }
 
     protected function tearDown(): void

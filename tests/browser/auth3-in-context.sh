@@ -9,7 +9,7 @@ export PAO_DISABLE=1
 php tests/browser/auth3-fixture.php
 AUTH3_SERVER_LOG=$(mktemp /tmp/auth3-http.XXXXXXXX)
 export AUTH3_SERVER_LOG
-php -S 127.0.0.1:8093 -t public server.php >"$AUTH3_SERVER_LOG" 2>&1 &
+php -S 127.0.0.1:8093 -t public tests/browser/auth3-router.php >"$AUTH3_SERVER_LOG" 2>&1 &
 server=$!
 cleanup() {
     kill "$server" 2>/dev/null || true

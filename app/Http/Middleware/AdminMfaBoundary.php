@@ -7,6 +7,7 @@ use App\Services\Auth\Client\ControlledAuth;
 use App\Services\Auth\MfaDenied;
 use App\Services\Auth\MfaPolicy;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\Restore\RestoreFence;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,14 @@ final class AdminMfaBoundary
 {
     public function handle(Request $request, Closure $next): mixed
     {
+        if ($request->is('admin', 'admin/*', 'livewire*', 'livewire*/*')
+            && (config('database.default') === 'pgsql' || ! app()->environment(['local', 'testing']))) {
+            try {
+                app(RestoreFence::class)->assert();
+            } catch (\Throwable) {
+                abort(503, 'security_runtime_unavailable');
+            }
+        }
         if (! config('mfa.enabled')) {
             return $request->is('admin', 'admin/*', 'livewire*', 'livewire*/*')
                 ? app(RequireAdminMfa::class)->handle($request, $next) : $next($request);

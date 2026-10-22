@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-22",
+  "base_master": "265587696be0fc3adc358a7f32032603c8e1904e",
+  "synthetic_only": true,
+  "php": "8.4.27",
+  "postgresql": "18.6",
+  "production_changed": false,
+  "checks": [
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 41,
+      "assertions": 713,
+      "result": "passed"
+    },
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 38,
+      "assertions": 62,
+      "result": "passed"
+    },
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 12,
+      "assertions": 131,
+      "result": "passed"
+    },
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 25,
+      "assertions": 129,
+      "result": "passed"
+    },
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 24,
+      "assertions": 152,
+      "result": "passed"
+    },
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 19,
+      "assertions": 131,
+      "result": "passed"
+    },
+    {
+      "group": "Stage1_AUTH2_6",
+      "tests": 5,
+      "assertions": 359,
+      "result": "passed"
+    },
+    {
+      "group": "B3_B4",
+      "tests": 12,
+      "assertions": 131,
+      "result": "passed"
+    },
+    {
+      "group": "B3_B4",
+      "tests": 22,
+      "assertions": 213,
+      "result": "passed"
+    },
+    {
+      "group": "B3_B4",
+      "tests": 16,
+      "assertions": 128,
+      "result": "passed"
+    },
+    {
+      "group": "B5",
+      "tests": 23,
+      "assertions": 208,
+      "result": "passed"
+    },
+    {
+      "group": "AUTH1",
+      "tests": 15,
+      "assertions": 93,
+      "result": "passed"
+    }
+  ],
+  "sql": {
+    "passed": 76,
+    "failed": 0,
+    "gap": 0,
+    "reference_and_migrations": true
+  },
+  "browser": {
+    "auth3": "passed",
+    "auth4": "passed",
+    "auth5": "passed",
+    "chromium": "154.0.8037.57",
+    "auth3_gc100": "passed: assurance GET/Livewire both503 after fix; before fix GET500"
+  },
+  "concurrency": {
+    "auth2_5": "passed",
+    "b1_http_scenarios": 25,
+    "b3": "passed",
+    "b4": "passed",
+    "b5": "passed",
+    "b5_restore_sigterm_stages": 8
+  },
+  "other": {
+    "pint": "passed",
+    "client_lint": "passed",
+    "client_build": "passed",
+    "filament_build": "passed",
+    "sql_runner_negative_contracts": "passed"
+  },
+  "ci": "Exact final HEAD results are recorded in Draft PR #20; local checks do not imply GitHub CI success.",
+  "retention_safety": {
+    "apply_isolation": "read committed only",
+    "preview": "read-only definer, no secret-table SELECT for executor",
+    "invitation_holds": "creator/coach/consumer/revoker/target client user/case",
+    "maintenance": "private per-cluster file; no workspace artisan down/up"
+  }
+}

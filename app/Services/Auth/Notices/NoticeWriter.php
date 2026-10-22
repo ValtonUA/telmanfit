@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth\Notices;
 
+use App\Services\Auth\Restore\RestoreFence;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -11,6 +12,11 @@ final class NoticeWriter
     public function write(int $subject, NoticeType $type, #[\SensitiveParameter] array $recipients, ?string $case = null, ?string $request = null): string
     {
         if (DB::connection()->getDriverName() !== 'pgsql' || DB::transactionLevel() < 1 || ! app()->environment(['local', 'testing'])) {
+            throw new NoticeUnavailable;
+        }
+        try {
+            app(RestoreFence::class)->assert();
+        } catch (\Throwable) {
             throw new NoticeUnavailable;
         }
         $request ??= (string) Str::uuid();

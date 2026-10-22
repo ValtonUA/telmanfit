@@ -47,6 +47,7 @@ class SchemaTest extends TestCase
     {
         require __DIR__.'/../pg/auth2-guard.php';
         DB::unprepared(file_get_contents(database_path('sql/auth6b4/01_test_acl.sql')));
+        DB::statement('GRANT SELECT ON auth_security_runtime TO telmanfit_notice_writer,telmanfit_notice_dispatcher');
         foreach ([
             'telmanfit_notice_writer' => [
                 "UPDATE auth_security_notice_outbox SET state='pending'", 'DELETE FROM auth_security_notice_outbox',

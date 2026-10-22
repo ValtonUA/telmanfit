@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth\Notices;
 
+use App\Services\Auth\Restore\RestoreFence;
 use App\Services\Auth\SecretValue;
 use Illuminate\Support\Facades\DB;
 
@@ -95,6 +96,11 @@ final class NoticeDispatcher
 
     private function assertAvailable(): void
     {
+        try {
+            app(RestoreFence::class)->assert();
+        } catch (\Throwable) {
+            throw new NoticeUnavailable;
+        }
         if (! app()->environment(['local', 'testing']) || DB::connection()->getDriverName() !== 'pgsql') {
             throw new NoticeUnavailable;
         }

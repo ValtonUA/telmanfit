@@ -2,10 +2,17 @@
 
 namespace App\Services\Auth;
 
+use App\Services\Auth\Restore\RestoreFence;
+
 final class MfaPolicy
 {
     public function assertControlled(): void
     {
+        try {
+            app(RestoreFence::class)->assert();
+        } catch (\Throwable) {
+            throw new MfaDenied;
+        }
         if (! in_array(config('mfa.enabled'), [true, 'true', '1'], true) || ! app()->environment(['local', 'testing'])
             || config('database.default') !== 'pgsql' || config('session.driver') !== 'database') {
             throw new MfaDenied;

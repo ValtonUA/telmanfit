@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Auth\Recovery\RecoveryGate;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\Auth\Restore\RestoreFence;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -45,6 +46,14 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        if ($this->exists && (config('database.default') === 'pgsql' || ! app()->environment(['local', 'testing']))) {
+            try {
+                app(RestoreFence::class)->assert();
+            } catch (\Throwable) {
+                return false;
+            }
+        }
+
         return $this->role === self::ROLE_ADMIN
             && (! $this->exists || (config('mfa.enabled') ? ! RecoveryGate::blocked((int) $this->getKey()) : ! RecoveryGate::hasHistory((int) $this->getKey())));
     }

@@ -1,3 +1,9 @@
+> **AUTH-6B/B5, 22.10.2026:** D5/D6-A затверджено. Реалізовано additive retention
+> ядро, holds/exact archive audit API, bounded cleanup, зовнішній epoch fence та
+> maintenance-only synthetic restore із глобальним `recovery_required` і issuance≥24h.
+> Operational reopening/D3/D8, recovery-history purge та частина retention acceptance
+> відкриті; production OFF. [Реалізовано, докази й обмеження](auth6-b5.md).
+
 > **AUTH-6B/B4, 22.10.2026:** D4 затверджено; реалізовано transactional security
 > notice outbox, encrypted snapshot, lease/fencing, bounded retry і terminal scrub.
 > Лише synthetic/local/testing adapters; production delivery/recovery OFF.
