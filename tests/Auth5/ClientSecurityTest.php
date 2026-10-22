@@ -13,11 +13,14 @@ use App\Services\Auth\Client\ControlledAuth;
 use App\Services\Auth\MfaDenied;
 use App\Services\Auth\MfaService;
 use App\Support\Auth\AuthSecretCodec;
+use App\Support\Session\ContextDatabaseSessionHandler;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
@@ -408,5 +411,46 @@ class ClientSecurityTest extends TestCase
         config(['mail.default' => 'array']);
         DB::statement('ALTER TABLE cache RENAME TO auth5_cache_outage');
         $this->postJson('/api/auth/email-otp/request', ['purpose' => 'login', 'email' => 'auth5@example.invalid'])->assertStatus(503);
+    }
+
+    public function test_notice_dispatch_failure_is_correlated_error_without_rolling_back_email(): void
+    {
+        $result = $this->security->requestEmail($this->request, $this->grant('email_change'), 'notice6@example.invalid');
+        Bus::shouldReceive('dispatch')->once()->andThrow(new \RuntimeException('CANARY-email-OTP-secret'));
+        Log::shouldReceive('error')->once()->with('client.notice_failed', \Mockery::on(fn ($context) => $context['subject_user_id'] === $this->id && $context['audit'] === 'recorded' && isset($context['request_id'])));
+        $this->security->confirmEmail($this->request, $result['challenge_id'], $this->otp());
+        $changed = DB::table('auth_audit_events')->where('subject_user_id', $this->id)->where('event_type', 'client.email_changed')->first();
+        $failed = DB::table('auth_audit_events')->where('subject_user_id', $this->id)->where('event_type', 'client.notice_failed')->first();
+        $this->assertSame('error', $failed->outcome);
+        $this->assertSame($changed->request_id, $failed->request_id);
+        $this->assertSame('notice6@example.invalid', DB::table('users')->where('id', $this->id)->value('email_normalized'));
+        $this->assertSame(0, DB::table('auth_session_states')->where('user_id', $this->id)->whereNull('revoked_at')->count());
+    }
+
+    public function test_notice_audit_outage_has_independent_sanitized_observation(): void
+    {
+        $result = $this->security->requestEmail($this->request, $this->grant('email_change'), 'notice-outage6@example.invalid');
+        DB::unprepared("CREATE FUNCTION auth6_notice_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='client.notice_failed' THEN RAISE EXCEPTION 'CANARY-secret'; END IF; RETURN NEW; END $$;
+            CREATE TRIGGER auth6_notice_fault BEFORE INSERT ON auth_audit_events FOR EACH ROW EXECUTE FUNCTION auth6_notice_fault();");
+        Bus::shouldReceive('dispatch')->once()->andThrow(new \RuntimeException('CANARY-email-OTP-secret'));
+        Log::shouldReceive('error')->once()->with('client.notice_failed', \Mockery::on(fn ($context) => $context['audit'] === 'failed' && $context['subject_user_id'] === $this->id && count($context) === 3));
+        $this->security->confirmEmail($this->request, $result['challenge_id'], $this->otp());
+        $this->assertSame('notice-outage6@example.invalid', DB::table('users')->where('id', $this->id)->value('email_normalized'));
+        $this->assertSame(1, DB::table('users')->where('id', $this->id)->value('auth_version'));
+    }
+
+    public function test_admin_gc_keeps_real_client_assurance_past_admin_idle_then_expires_at_client_idle(): void
+    {
+        $this->request->session()->save();
+        $id = $this->request->session()->getId();
+        DB::table('sessions')->where('id', $id)->update(['last_activity' => time() - 960]);
+        $handler = new ContextDatabaseSessionHandler(DB::connection(), 'sessions', 15, app());
+        $handler->gc(900);
+        $this->assertSame($this->id, app(ClientSession::class)->user($this->request)->id);
+        DB::table('sessions')->where('id', $id)->update(['last_activity' => time() - 43201]);
+        $handler->gc(900);
+        $this->assertFalse(DB::table('sessions')->where('id', $id)->exists());
+        $this->assertFalse(DB::table('auth_session_states')->where('session_id', $id)->exists());
+        $this->denied(fn () => app(ClientSession::class)->user($this->request), 'unauthenticated');
     }
 }

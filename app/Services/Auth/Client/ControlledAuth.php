@@ -3,6 +3,7 @@
 namespace App\Services\Auth\Client;
 
 use App\Services\Auth\MfaPolicy;
+use App\Support\Auth\AuditOutcome;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -71,9 +72,9 @@ final class ControlledAuth
         });
     }
 
-    public function audit(string $event, ?int $user = null): void
+    public function audit(string $event, ?int $user = null, AuditOutcome $outcome = AuditOutcome::Success, ?string $correlation = null): void
     {
-        DB::table('auth_audit_events')->insert(['event_type' => $event, 'outcome' => 'success',
-            'subject_user_id' => $user, 'request_id' => (string) Str::uuid()]);
+        DB::table('auth_audit_events')->insert(['event_type' => $event, 'outcome' => $outcome->value,
+            'subject_user_id' => $user, 'request_id' => $correlation ?? (string) Str::uuid()]);
     }
 }

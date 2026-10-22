@@ -13,7 +13,7 @@ final class AdminSessionContext
         $original = config('session');
         if (config('mfa.enabled') && $request->is('admin', 'admin/*')) {
             config(['session.cookie' => 'telmanfit_admin_session', 'session.path' => '/admin',
-                'session.lifetime' => 15, 'session.http_only' => true, 'session.same_site' => 'lax', 'session.domain' => null]);
+                'session.lifetime' => 15, 'session.encrypt' => true, 'session.http_only' => true, 'session.same_site' => 'lax', 'session.domain' => null]);
         }
 
         try {

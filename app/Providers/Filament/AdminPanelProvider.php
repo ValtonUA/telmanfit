@@ -6,6 +6,7 @@ use App\Filament\AvatarProviders\LocalAvatarProvider;
 use App\Http\Middleware\AdminMfaBoundary;
 use App\Http\Middleware\AdminSessionContext;
 use App\Http\Middleware\RequireAdminMfa;
+use App\Http\Middleware\SerializedAuthSession;
 use App\Http\Middleware\UseUkrainianLocale;
 use Filament\Auth\Pages\Login;
 use Filament\Http\Middleware\Authenticate;
@@ -22,7 +23,6 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -56,7 +56,7 @@ class AdminPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 AdminSessionContext::class,
-                StartSession::class,
+                SerializedAuthSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,

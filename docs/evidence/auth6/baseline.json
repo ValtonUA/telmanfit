@@ -1,0 +1,9 @@
+{
+  "base": "6536611a2fc982f50d638891ebaa804d83168968",
+  "AUTH6A_PR": 14,
+  "merged": true,
+  "R1_baseline": "CONFIRMED: late GET Set-Cookie replaces rotated cookie; next /me=401",
+  "baseline_scope": "Full HTTP reproduction before SerializedAuthSession was added; D1/D2 fixes already present. No authentication bypass claimed.",
+  "schema_changed": false,
+  "production_enabled": false
+}

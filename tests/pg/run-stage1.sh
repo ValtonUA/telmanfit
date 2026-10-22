@@ -47,6 +47,12 @@ export DB_DATABASE=telmanfit_stage1_test DB_USERNAME=telmanfit_test_runner DB_PA
 export APP_ENV=testing TELMANFIT_PG_TEST=1
 # Лише випадковий ключ цього прогону; жодного читання локальних/реальних секретів.
 export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+if [[ ${AUTH6_ONLY:-0} == 1 ]]; then
+    php artisan migrate --force --no-interaction
+    vendor/bin/phpunit -c phpunit.auth6.xml --display-all-issues
+    bash tests/http/auth6-in-context.sh
+    exit
+fi
 # AUTH-5 завжди на новій ізольованій БД із тим самим fail-closed guard.
 if [[ ${AUTH5_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
@@ -112,3 +118,6 @@ php tests/pg/auth5-concurrency.php
 if [[ ${AUTH5_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth5-in-context.sh
 fi
+
+vendor/bin/phpunit -c phpunit.auth6.xml --display-all-issues
+bash tests/http/auth6-in-context.sh

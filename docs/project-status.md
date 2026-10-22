@@ -1,3 +1,7 @@
+> **AUTH-6B / B1, 22.10.2026:** виправлено D1/D2/D3, підтверджену HTTP cookie race,
+> додано очищення сесій за контекстом та шифрування admin payload. [Зміни, докази й межі](auth6-b1.md).
+> Controlled local/testing, default OFF; P5/P6 і production залишаються відкритими.
+
 > **AUTH-6A, 22.10.2026:** виконано статичний аудит master `7b38445` після PR #13.
 > Підготовлено [readiness і пакет рішень P5/P6](auth6-readiness.md): рекомендовані
 > recovery/operations, дефекти enumeration через login flow_id і спільного session

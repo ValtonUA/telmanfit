@@ -61,3 +61,4 @@ jobs:
             docs/evidence/auth4/results.json
             docs/evidence/auth5/*.png
             docs/evidence/auth5/results.json
+            docs/evidence/auth6/*.json

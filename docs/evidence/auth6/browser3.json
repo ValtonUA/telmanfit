@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "chromium": "154.0.8037.57",
+  "checks": [
+    "CSRF: POST without token = 419",
+    "Password-only enrollment session: business HTTP and direct Livewire denied",
+    "Enrollment secret JSON response forbidden = 406",
+    "Enrollment confirmed: codes shown once; new full login required",
+    "Fresh password + TOTP: Filament reached; session rotated; scoped HttpOnly cookie",
+    "Authenticated real Filament Livewire update = 200",
+    "Real Filament edit form: invalid coach retains field validation via Livewire 200",
+    "Authorized HTTP/real Filament Livewire: missing record = 404; forbidden creation = 403",
+    "auth_version bump: stale signed Livewire snapshot and HTTP business access = 403",
+    "Repeat full login using one-time recovery as second factor succeeds",
+    "Consumed recovery code rejected on repeat login",
+    "Real unavailable PostgreSQL assurance relation: HTTP and signed Livewire = 503, fail closed",
+    "Native Filament logout destroys session and returns to restricted login",
+    "No TOTP secret, OTP or recovery codes in server/application logs"
+  ],
+  "screenshots": "real Chromium; sensitive elements masked at capture"
+}

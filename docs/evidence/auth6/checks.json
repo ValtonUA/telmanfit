@@ -1,0 +1,85 @@
+{
+  "base": "6536611a2fc982f50d638891ebaa804d83168968",
+  "result": "PASS",
+  "environment": "isolated PostgreSQL 18.6 pinned image, tmpfs, network=none, private Unix socket, nonprivileged runner, cleanup traps",
+  "phpunit": {
+    "Stage 1/2": {
+      "tests": 41,
+      "assertions": 713,
+      "result": "passed"
+    },
+    "Base PHPUnit": {
+      "tests": 22,
+      "assertions": 46,
+      "result": "passed"
+    },
+    "AUTH-2": {
+      "tests": 12,
+      "assertions": 131,
+      "result": "passed"
+    },
+    "AUTH-3": {
+      "tests": 25,
+      "assertions": 129,
+      "result": "passed"
+    },
+    "AUTH-4": {
+      "tests": 24,
+      "assertions": 152,
+      "result": "passed"
+    },
+    "AUTH-5": {
+      "tests": 19,
+      "assertions": 132,
+      "result": "passed"
+    },
+    "AUTH-6B B1": {
+      "tests": 5,
+      "assertions": 359,
+      "result": "passed"
+    },
+    "AUTH-1": {
+      "tests": 15,
+      "assertions": 93,
+      "result": "passed"
+    }
+  },
+  "total_tests": 163,
+  "total_assertions": 1755,
+  "sql_laravel": {
+    "PASS": 76,
+    "FAIL": 0,
+    "GAP": 0
+  },
+  "sql_reference": {
+    "PASS": 76,
+    "FAIL": 0,
+    "GAP": 0
+  },
+  "sql_runner_contracts": 10,
+  "service_concurrency": {
+    "AUTH-2": 14,
+    "AUTH-3": 3,
+    "AUTH-4": 5,
+    "AUTH-5": 5
+  },
+  "full_parallel_HTTP": 25,
+  "D1": "36 email/flow combinations: neutral 202, no decoy authority; malformed 422, suppression, 429, queue/cache 503",
+  "D2": "forced mixed GC and real client assurance retained at 16 min; client expires at >12 h with FK cascade; idle/absolute TTL unchanged",
+  "D3": "dispatch/transport/audit fault injection; error outcome and same request UUID/subject; email/revocations preserved; sanitized exception/log context",
+  "chromium": "154.0.8037.57",
+  "browsers": [
+    "browser3.json",
+    "browser4.json",
+    "browser5.json"
+  ],
+  "pint": "PASS",
+  "php_syntax": "PASS (18 changed/new PHP files)",
+  "eslint": "PASS",
+  "react_build": "PASS",
+  "laravel_assets_build": "PASS",
+  "schema_changed": false,
+  "production_enabled": false,
+  "gates_default": "OFF",
+  "GitHub_Actions": "Checked separately for published head SHA; see PR/final report."
+}
