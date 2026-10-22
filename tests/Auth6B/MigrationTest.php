@@ -13,6 +13,10 @@ class MigrationTest extends TestCase
         require __DIR__.'/../pg/auth2-guard.php';
         DB::beginTransaction();
         try {
+            // Історична B3 projection до B5: порожню additive holds table
+            // прибираємо тільки всередині synthetic transaction; rollback повертає всі FK.
+            $this->assertSame(0, DB::table('auth_retention_holds')->count());
+            DB::statement('DROP TABLE auth_retention_holds');
             $migration = require database_path('migrations/2026_10_22_002000_create_auth_recovery.php');
             $this->assertSame(0, DB::table('auth_recovery_principals')->count());
             $this->assertSame(0, DB::table('auth_recovery_cases')->count());
