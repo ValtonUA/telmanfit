@@ -61,6 +61,11 @@ class DocsGuardTest(unittest.TestCase):
             with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": str(event)}):
                 self.assertEqual(docs_guard.validate_pr_impact("base-sha"), [])
 
+    def test_module_report_alone_is_not_canonical_status(self) -> None:
+        with patch.object(docs_guard.subprocess, "check_output", return_value="app/Models/Client.php\ndocs/auth4.md\n"):
+            with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):
+                self.assertEqual(len(docs_guard.validate_pr_impact("base-sha")), 1)
+
     def test_code_pr_with_updated_roadmap(self) -> None:
         with patch.object(docs_guard.subprocess, "check_output", return_value="app/Models/Client.php\ndocs/roadmap.md\n"):
             self.assertEqual(docs_guard.validate_pr_impact("base-sha"), [])
