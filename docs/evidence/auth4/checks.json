@@ -57,10 +57,10 @@
       "run": "AUTH4 final targeted",
       "tool": "phpunit",
       "result": "passed",
-      "tests": 22,
-      "passed": 22,
-      "assertions": 144,
-      "duration_ms": 7011
+      "tests": 23,
+      "passed": 23,
+      "assertions": 145,
+      "duration_ms": 1908
     }
   ],
   "concurrency": [
@@ -94,5 +94,6 @@
   "production_enabled": false,
   "real_smtp_used": false,
   "database_schema_changed": false,
-  "github_actions": "Run on PR head; see PR checks for actual result."
+  "github_actions": "Run on PR head; see PR checks for actual result.",
+  "enumeration_regression": "PASS: six invalid login verifications have identical status/code for real and unknown email; account-only pause remains enforced"
 }

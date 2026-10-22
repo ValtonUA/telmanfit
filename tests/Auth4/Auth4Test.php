@@ -156,7 +156,7 @@ class Auth4Test extends TestCase
             $this->denied(fn () => $this->auth->verify($challenge, 'wrong', $this->binding, '192.0.2.1'));
         }
         $this->assertSame(5, DB::table('auth_challenges')->where('public_id', $challenge)->value('attempts'));
-        $this->denied(fn () => $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1'), 'rate_limited');
+        $this->denied(fn () => $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1'), 'invalid_challenge');
         $this->assertSame('pending', DB::table('auth_flows')->where('public_id', $flow)->value('state'));
     }
 
@@ -304,7 +304,7 @@ class Auth4Test extends TestCase
         $other = $this->auth->exchange($this->invitation(), $this->binding, '192.0.2.1')['flow_id'];
         [$next, $code] = $this->requestCode('register', 'new+tag@example.invalid', $other);
         $this->denied(fn () => $this->auth->verify($next, 'wrong', $this->binding, '192.0.2.1'));
-        $this->denied(fn () => $this->auth->verify($next, $code, $this->binding, '192.0.2.1'), 'rate_limited');
+        $this->denied(fn () => $this->auth->verify($next, $code, $this->binding, '192.0.2.1'), 'invalid_challenge');
         $this->assertTrue(app(AuthBudget::class)->blocked('new+tag@example.invalid'));
     }
 
@@ -431,5 +431,24 @@ class Auth4Test extends TestCase
         }
         $this->assertTrue(Cache::store('database')->has('auth4:mfa-pause:'.$id));
         $this->assertSame(10, DB::table('auth_audit_events')->where('subject_user_id', $id)->where('event_type', 'mfa.denied')->count());
+    }
+
+    public function test_verification_failures_do_not_enumerate_real_and_unknown_login_email(): void
+    {
+        $id = DB::table('users')->insertGetId(['name' => 'Enumeration fixture', 'email' => 'enum-real@example.invalid', 'email_normalized' => 'enum-real@example.invalid', 'email_verified_at' => now()]);
+        DB::table('clients')->insert(['user_id' => $id, 'coach_user_id' => $this->coach]);
+        $outcomes = [];
+        foreach (['enum-real@example.invalid', 'enum-unknown@example.invalid'] as $index => $email) {
+            $challenge = $this->auth->request('login', $email, null, $this->binding, '192.0.2.'.(30 + $index))['challenge_id'];
+            for ($i = 0; $i < 6; $i++) {
+                try {
+                    $this->auth->verify($challenge, 'wrong', $this->binding, '192.0.2.'.(30 + $index));
+                    $this->fail('Unexpected OTP acceptance');
+                } catch (AuthDenied $e) {
+                    $outcomes[$index][] = [$e->status, $e->reason];
+                }
+            }
+        }
+        $this->assertSame($outcomes[0], $outcomes[1]);
     }
 }

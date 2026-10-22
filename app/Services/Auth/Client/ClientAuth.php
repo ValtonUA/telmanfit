@@ -136,7 +136,8 @@ final class ClientAuth
             $flow = $this->lockedFlow($flowId, $binding, 'pending');
             $challenge = DB::table('auth_challenges')->where('id', $candidate->id)->lockForUpdate()->first();
             if ($this->budget->blocked($challenge->email_normalized)) {
-                return new AuthDenied('rate_limited', 429);
+                // Account-only pause не відрізняє real challenge від neutral decoy.
+                return new AuthDenied;
             }
             if ($challenge->consumed_at || $challenge->invalidated_at || $challenge->generation !== $flow->generation
                 || CarbonImmutable::parse($challenge->expires_at)->lessThanOrEqualTo($this->auth->now())

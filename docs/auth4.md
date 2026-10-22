@@ -80,7 +80,10 @@ HMAC зі стабільним окремим rate key, тому заміна OT
 Ковзні вікна: 1/60 s, 3/900 s, 10/86400 s email+purpose; 15/86400 s email загалом;
 IP 20/900 s і 100/86400 s; verify IP 10/min, invitation exchange/complete IP 10/min,
 exchange token fingerprint 5/15 min, complete flow 5/15 min. Account suppression
-зберігає 202. Додано §10 global delivery circuit budget 1000/h. Cache TTL має
+зберігає 202. Account-only verify pause повертає ту саму 422 invalid_challenge, що
+і unknown/decoy: 429 тільки для загального IP budget. Це явне звуження кандидатного
+429 із §11: різниця 429 real / 422 unknown після п’яти помилок давала enumeration.
+Пауза 15 хвилин та всі ліміти залишаються чинними. Додано §10 global delivery circuit budget 1000/h. Cache TTL має
 консервативну додаткову секунду; фактичні timestamps із PG з мікросекундами, щоб
 округлення секунд не дозволяло resend раніше 60 s.
 
@@ -194,7 +197,7 @@ backup/retention/NTP/rollout лишаються явними блокерами 
 - Stage 1/2: 41 tests / 713 assertions; основний PHPUnit: 22 / 46.
 - AUTH-2: 12 / 130, upgrade/down PASS, 14 SQL races PASS.
 - AUTH-3: 25 / 129; service/middleware races та Chromium regression PASS.
-- AUTH-4 фінальний targeted: 22 / 144; 5 service concurrency сценаріїв PASS.
+- AUTH-4 фінальний targeted: 23 / 145; 5 service concurrency сценаріїв PASS.
 - Chromium 154.0.8037.57: invitation create/revoke, OTP registration, MFA login,
   cookies/CSRF/rotation/logout/version та відсутність секретів у JSON/logs PASS.
 - AUTH-1: 15 / 93; runner fail-closed contracts 10 PASS.
@@ -256,4 +259,20 @@ backup/retention/NTP/rollout лишаються явними блокерами 
 - `tests/browser/auth4-in-context.sh`
 - `tests/browser/auth4.py`
 - `tests/pg/auth4-concurrency.php`
+- `experiments/auth1/fetch-upstream.py`
 - `tests/pg/run-stage1.sh`
+
+### Фінальне уточнення security/CI
+
+Регресія enumeration порівнює всі шість невдалих verify для real/unknown login:
+ідентичні 422 invalid_challenge, із чинною 15-хвилинною account pause. Загальний
+IP throttle і далі повертає 429. Наявність email не розкривається статусом на
+шостій спробі. AUTH-4 фінально: 23 tests / 145 assertions.
+
+Перший GitHub Actions run на 9bb0920 пройшов усі PG/SQL/AUTH-2/3/4/Chromium
+перевірки; завершився помилкою тільки на AUTH-1 regression. Локально AUTH-1
+повторно PASS 15/93. CI fetch pinned public upstream blobs тепер використовує
+штатний ephemeral GitHub token замість shared anonymous IP; у разі failure CI
+публікує bounded error annotation, щоб причина була доступна без raw log service.
+Це не змінює production auth, залежності або pinned upstream revisions. Остаточний
+CI результат перевіряється на новому head SHA PR.
