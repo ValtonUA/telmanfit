@@ -53,10 +53,10 @@
 
 
 
-> **Оновлено:** 21.10.2026.
+> **Поточну архітектуру перевірено:** 23.10.2026. Датовані історичні описи нижче не визначають актуальну готовність.
 > **Призначення:** описати технологічний стек, шари застосунку, межі модулів і **поточний стан реалізації**.
 > **Технічний стан і походження перевірок:** [project-status.md](project-status.md). Його перелік розбіжностей і наступних задач — знімок до цієї синхронізації; актуальні формулювання архітектури та етапів наведено тут і в [roadmap.md](roadmap.md).
-> **Джерела істини щодо даних:** [database.dbml](database.dbml) (структура) і `01…04_*.sql` (обмеження та тригери). Призначення сутностей — [entity-catalog.md](entity-catalog.md); правила — [business-rules.md](business-rules.md); порядок робіт — [roadmap.md](roadmap.md).
+> **Джерела істини щодо даних:** [database.dbml](database.dbml), `01–04_*.sql` для 37 бізнес-таблиць та `05–09_*.sql` для auth/security схеми; виконувані частини — `database/sql/` і Laravel-міграції. [Карта всіх файлів](README.md), [Entity Catalog](entity-catalog.md), [бізнес-правила](business-rules.md), [roadmap](roadmap.md).
 > **Правила роботи агентів:** [../AGENTS.md](../AGENTS.md).
 
 ## 1. Огляд
@@ -108,16 +108,16 @@ PWA і Telegram Mini App використовують максимально о�
 
 | Шар | Технологія | Версія в репозиторії | Джерело |
 |---|---|---|---|
-| Мова backend | PHP | `^8.3` (локально перевірено 8.5) | `composer.json` |
+| Мова backend | PHP | `~8.3.36 \|\| ~8.4.27 \|\| ~8.5.12` у Composer; цільовий runtime — PHP 8.5 із security patch | `composer.json`, [D8.1](auth6-d8-preflight.md) |
 | Фреймворк | Laravel | `^13.17` | `composer.json` |
 | Адмінка | Filament | `~5.0` | `composer.json` |
 | Розробка | Laravel Tinker, Pint, Pail, PAO | `^3.0`, `^1.27`, `^1.2.5`, `^1.0.6` | `composer.json` |
-| Тести backend | PHPUnit | `^12.5.12` | `composer.json`, `phpunit.xml` |
-| БД | PostgreSQL (структура — SQL-модулі 01–04) | 15+ | `docs/01…04_*.sql`, `.env` (`DB_CONNECTION=pgsql`) |
+| Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [карта](README.md#конфігурації-phpunit-xml) |
+| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–09_*.sql`, `database/sql/`, `database/migrations/`; [карта](README.md#sql-модулі-два-рівні-схеми) |
 | SPA | React + TypeScript + Vite | React `^19.3`, TS `~6.0.3`, Vite `^8.3.4` | `client/package.json` |
 | Стилі SPA | CSS + Tailwind (Laravel-конвеєр) | Tailwind `^4.0` | `package.json`, `vite.config.js` |
 | Лінт SPA | ESLint + typescript-eslint | `^10.13`, `^8.71` | `client/eslint.config.js` |
-| Хостинг (цільовий) | CloudLinux/cPanel, shared | — | [schema-audit.md](schema-audit.md) |
+| Хостинг (обраний, ще не розгорнутий) | **Hyperhost VPS Старт** | 2 CPU, 3 ГБ RAM, 45 ГБ NVMe; сумісність PHP/PG на VPS ще не доведена | [D8](auth6-d8-infrastructure.md), [D8.1](auth6-d8-preflight.md) |
 
 `laravel/boost` у проєкті **не встановлено і не встановлюється** (див. [../AGENTS.md](../AGENTS.md), розділ 4).
 
@@ -176,19 +176,19 @@ PWA і Telegram Mini App використовують максимально о�
 - У production: `base = '/app/'`, `build.outDir = '../public/app'`, `emptyOutDir: true` → статика роздається Laravel-роутом `/app/{any?}`. Тека `public/app` у `.gitignore`.
 - У розробці: Vite-сервер із проксі `/api` → `http://127.0.0.1:8000`, тому CORS не потрібен; запити йдуть відносними URL (`client/src/components/HealthStatus.tsx`).
 - TypeScript: `noEmit`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`, `erasableSyntaxOnly` (`client/tsconfig.app.json`); ESLint flat-config із `typescript-eslint` і `react-hooks`.
-- Наразі SPA містить лише каркас (`App.tsx` + `HealthStatus`): роутера, клієнта API, стейт-менеджера й UI-кіта немає. Їх додавання — окреме архітектурне рішення, яке потребує погодження.
+- **Поточний стан SPA:** крім health-check реалізовані controlled/default OFF реєстрація, email OTP/login, security/MFA UI й керування сесіями — [AUTH-5](auth5.md). **Раціони, рецепти, прогрес і бізнес-навігація ще не реалізовані.** Нові frontend-залежності погоджувати окремо.
 
 ## 9. Дані: PostgreSQL, схема, міграції
 
-- Структура — 37 бізнес-таблиць у чотирьох SQL-модулях; порядок застосування `01 → 02 → 03 → 04` (модулі 02–04 додають cross-module FK, які 01 навмисно не створює).
+- **Два рівні однієї PostgreSQL-схеми:** 37 бізнес-таблиць у `docs/01–04_*.sql` (порядок 01 → 02 → 03 → 04), додаткові auth/security об'єкти у `docs/05–09_*.sql`. Файли 05–09 не є окремими БД і не означають, що production auth увімкнено. [Індекс SQL](README.md#sql-модулі-два-рівні-схеми).
 - Обов'язкове розширення `btree_gist` (потрібне для `EXCLUDE`-обмеження `no_overlapping_client_plan_dates`).
 - PG-специфіка, яку не можна втратити в міграціях: `EXCLUDE`, часткові UNIQUE-індекси, складені FK `(food_id, food_type)`, `DEFERRABLE` constraint trigger, тригери незмінності/валідації, `text + CHECK` замість enum.
 - Службові таблиці Laravel (`migrations`, `sessions`, `jobs`, `failed_jobs`, `cache`, `cache_locks`, `password_reset_tokens`; за потреби `job_batches`, `personal_access_tokens`) не входять до Entity Catalog і створюються Laravel-міграціями.
 - **G3 затверджено 21.10.2026: B + R1.** Стратегія B — інтеграція перевірених SQL-модулів через Laravel-міграції; R1 — розширення стандартної `users` без перестворення, зі збереженням BIGINT `users.id`. Повторного погодження G3 не потрібно. Це рішення не дозволяє самовільно змінювати SQL/DBML чи запускати міграції.
-- **SQL-схему попередньо перевірено:** модулі `01→04` виконано в ізольованій PostgreSQL 18.6 (`btree_gist` 1.8), 37 таблиць; 76 перевірок, `PASS=76 FAIL=0 GAP=0` ([schema-audit.md](schema-audit.md), §2/§6). Повторний фактичний прогін Codex Cloud у G4 дав той самий результат, успішні PDO та cleanup — [докази](../tests/pg/G4.md). Це не перевірка схеми, створеної Laravel-міграціями.
+- **Stage 1 перевірено на схемі Laravel-міграцій:** ізольований PG18.6, 37 бізнес-таблиць, `btree_gist` 1.8, SQL 76 PASS/0 FAIL/0 GAP, PG PHPUnit/CI та перевірки BIGINT/FK; [відтворення](stage-1.md). AUTH-2–6B мають окремі міграції й контрольовані тести, production activation відсутня.
 - **Міграція `users` реалізована:** `2026_10_21_000000_align_users_with_business_schema.php` доповнює стандартну міграцію: nullable `email`/`password`, унікальний nullable `telegram_user_id`, `role` з default `client` і CHECK. За R1 також збережено `remember_token`, `email_verified_at` та `created_at`/`updated_at` як nullable timestamp без DB-default. Ці погоджені відмінності від SQL/DBML не потребують перестворення `users`; сумісність майбутніх FK слід перевірити при перенесенні модулів.
 - **Підтверджено локально користувачем:** міграцію застосовано до `telmanfit_dev` (`Ran`, batch 2), наявний користувач збережений, `users` має 10 колонок; роль `admin` явно призначено та перевірено. У Codex Cloud ці операції не виконувалися. Міграція сама не призначає `admin`; інші середовища потребуватимуть окремого погодженого призначення.
-- **Залишається реалізувати:** повні Laravel-міграції модулів 01–04 з урахуванням R1, погоджені сіди та PG-регресію саме на створеній ними схемі. Захищений відкат `users` і HTTP-вхід з реальною БД ще не підтверджені наведеними результатами.
+- **Виконано:** Laravel-міграції бізнес-модулів 01–04, ізольовані PG-тести та CI. **Відкритий T1.5:** початкові значення довідників. **Не реалізовано:** сервіси та Filament UI продуктів і рецептів (Stage 3). Production deployment і B7 окремо.
 - Заборонено запускати міграції, виконувати SQL-модулі або використовувати production-БД без прямого дозволу ([../AGENTS.md](../AGENTS.md), розділ 4).
 
 ## 10. Асинхронність: черги, планувальник, Telegram
