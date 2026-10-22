@@ -1,3 +1,5 @@
+> **AUTH-6B/D3-Design, 22.10.2026:** власник обрав **двох друзів** як незалежних recovery trustees; особистий контакт ініціює запит, але не замінює двох підписів та перевірки intent. Рекомендовано як кандидат автоматичний незалежний verifier + restricted operator без постійної третьої людини; bootstrap з незалежним witness, зовнішній registry/custody, revoke та канали залишаються відкритими. **Лише дизайн: D3/P5/P6/D8/B7 не закриті, production identities/keys відсутні.** [Варіанти, рішення й блокери](auth6-d3-design.md).
+
 > **AUTH-6B/B6, 22.10.2026:** D7 затверджено. Additive PostgreSQL exact sliding
 > budgets (25 policies), окремий committed admission connection, transactional
 > failure accounting, bounded cleanup і D6-A fence реалізовано для guarded synthetic
