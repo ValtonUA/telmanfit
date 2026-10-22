@@ -1,199 +1,31 @@
-> **ПОТОЧНИЙ СТАН — 23.10.2026; `master` `bb0816d` (до цього документаційного PR).** Цей блок є головним джерелом поточного статусу, **нижчі датовані секції є історичними знімками** та можуть містити твердження «ще немає AUTH-4», «лише health API», «немає міграцій» тощо, які вже не відповідають поточній ревізії.
->
-> | Область | Факти / статус |
-> |---|---|
-> | Stage 1 (БД) | 37 бізнес-таблиць, Laravel-міграції та isolated PG18 CI/SQL тести реалізовано; **не готові бізнес-форми** |
-> | Stage 2 (Filament) | Реалізовано картки клієнтів: список, пошук, перегляд, редагування, статуси, заблоковане ручне створення; T2.4 анкета відкрита |
-> | AUTH-3/4/5 | Shared MFA, Filament gate, invitation, реєстрація/email OTP, client sessions та React login/security реалізовано **лише для controlled local/testing, default OFF**; production activation не виконано |
-> | AUTH-6B | B1–B6 мають реалізовані guarded/synthetic частини (див. B3–B6); B7, P5/P6 та production go/no-go **відкриті**; глобальний `4040404` не знято |
-> | Stage 3 | **Наступний продуктовий пріоритет:** каталог продуктів та рецептів, модель/UI/сервіси публікації відсутні. Відкриті T1.5 значення довідників, BR-F-11 правило перерахунку чернеток |
-> | Stage 4–7 | Раціони, їх призначення, бізнес-кабінет, прогрес, повідомлення ще не реалізовано; SPA наразі лише auth/security shell |
-> | Stage 8 | Telegram не реалізовано; тренувальний модуль поза чинним MVP-scope (окреме майбутнє рішення) |
-> | D8 / запуск | Hyperhost VPS Старт / SendPulse / зовнішні резервні копії Hyperhost **обрані**, але не розгорнуті; D8.1 = docs preflight merged PR #24; D8.2 = [Draft PR #25](https://github.com/ValtonUA/telmanfit/pull/25) (staging-kit, без реального VPS); «D8.3» = неофіційна назва майбутнього механізму last-admin after-restore; B7 ще не виконано |
-> | Власник погодив | Допустимий простій і до **24 годин останніх змін, втрачених після disaster** (RPO-ціль), для масштабу 5–10 клієнтів; потрібні щоденний PostgreSQL-aware backup, encrypted offsite і restore drill перед production |
-> | Recovery | Звичайний пароль + TOTP recovery code (план зберігання у 1Password); **D3 через 1–2 друзів відкладено**, [PR #22](https://github.com/ValtonUA/telmanfit/pull/22) залишено Draft. Після B5 restore старі recovery codes можуть бути відкликані: **безпечний повторний MFA enrollment останнього admin залишається pre-production blocker** |
->
-> **Наступна робота: Stage 3, не VPS.** Інфраструктурні D8.2/last-admin after-restore/B7 виконуються перед пілотним production-запуском, а не замість продуктового MVP. Позначення й порядок — [roadmap.md](roadmap.md#поточний-зріз).
+# TelmanFit — технічний стан реалізації
 
-> **D8: вибір інфраструктури (22.10.2026):** власник затвердив **Hyperhost VPS Старт (2 CPU/3 ГБ/45 ГБ NVMe)**, один VPS для Laravel+PostgreSQL18, **SendPulse SMTP** та **Hyperhost зовнішні резервні копії** для **5–10 клієнтів**. Простої допустимі, HA/Redis/другий VPS не потрібні. D3 assisted recovery із друзями **відкладено**; звичайний пароль + recovery code в 1Password. [D8 перевірки та відкриті ризики](auth6-d8-infrastructure.md): backup consistency/RPO, незалежні секрети/epoch, відновлення останнього admin після B5/PITR та production activation **не перевірені**.
+**Цей документ містить лише підтверджені факти коду й тестування, не черговість робіт.** Поточний пріоритет, статус кожного T/G/AUTH і відкриті рішення ведемо **тільки у [roadmap.md](roadmap.md)**. Правила оновлення — [AGENTS.md §16](../AGENTS.md#16-політика-актуальності-документації-обовязково-для-кожного-pr).
 
-> **AUTH-6B/B6, 22.10.2026:** D7 затверджено. Additive PostgreSQL exact sliding
-> budgets (25 policies), окремий committed admission connection, transactional
-> failure accounting, bounded cleanup і D6-A fence реалізовано для guarded synthetic
-> testing. `4040404` збережено; live cutover/production не активовано.
-> [Матриця відмінностей, перевірки, виміри й умови переходу](auth6-b6.md).
-> D3/D8/P5/P6/B7 та окреме рішення cutover/global-lock removal відкриті.
+**Як читати:** наявна SQL-схема ≠ готовий бізнес-модуль; наявний код MFA ≠ дозвіл production. Перед твердженням звіряй відповідні `app/`, `client/`, `database/`, `tests/` та актуальний PR/CI.
 
-> **AUTH-6B/B5, 22.10.2026:** D5/D6-A затверджено. Реалізовано additive retention
-> ядро, holds/exact archive audit API, bounded cleanup, зовнішній epoch fence та
-> maintenance-only synthetic restore із глобальним `recovery_required` і issuance≥24h.
-> Operational reopening/D3/D8, recovery-history purge та частина retention acceptance
-> відкриті; production OFF. [Реалізовано, докази й обмеження](auth6-b5.md).
+## Підтверджені факти й межі
 
-> **AUTH-6B/B4, 22.10.2026:** D4 затверджено; реалізовано transactional security
-> notice outbox, encrypted snapshot, lease/fencing, bounded retry і terminal scrub.
-> Лише synthetic/local/testing adapters; production delivery/recovery OFF.
-> D3/D5–D8/P5/P6 відкриті; [контракт і докази](auth6-b4.md).
+| Підсистема | Реалізовано / перевірено | Не реалізовано / не підтверджено | Джерело |
+|---|---|---|---|
+| Backend і UI | Laravel 13, Filament 5, React 19/TypeScript/Vite; health API, SPA fallback і адмінка `/admin` | Каркас ще не означає готовий MVP | `composer.json`, `client/package.json`, `routes/`, [architecture.md](architecture.md) |
+| Бізнес-схема | Laravel-міграції 37 таблиць `01–04`, збереження `users` за B+R1; ізольована PG 18.6 з `btree_gist`, SQL `PASS=76 FAIL=0 GAP=0`, PG PHPUnit/CI | Це не реалізація продуктового UI; реальний Hyperhost не перевірено | [stage-1.md](stage-1.md), [schema-audit.md](schema-audit.md), [tests/pg](../tests/pg/README.md) |
+| Клієнти | `Client`, `ClientPolicy`, Filament `/admin/clients`: пошук, перегляд, редагування, статуси; ручне створення заборонено, `user_id=NULL` підтримується | Не зафіксовано JSON-контракт анкети | [stage-2.md](stage-2.md), [ux-1.md](ux-1.md), `app/Models/Client.php` |
+| Авторизація | AUTH-3/4/5: Filament MFA, invitation, email OTP, client sessions, React auth/security; додаткові auth міграції та тести | **Controlled/default OFF**, не production; AUTH-6B B3–B6 лише guarded/synthetic, а не operational recovery | [auth3.md](auth3.md), [auth4.md](auth4.md), [auth5.md](auth5.md), [B3](auth6-b3.md)–[B6](auth6-b6.md) |
+| Продукти/раціони | Бізнес-схема й обмеження PostgreSQL | Повноцінних моделей, редакторів і сервісів публікації/призначення немає | [roadmap.md](roadmap.md), [business-rules.md](business-rules.md) |
+| Прогрес/комунікація | Відповідні таблиці запроєктовано та частково включено в бізнес-міграції | Немає реалізованих UI/API прогресу, бізнес-повідомлень і Telegram adapter | [roadmap.md](roadmap.md), [entity-catalog.md](entity-catalog.md) |
+| Інфраструктура | Hyperhost VPS Старт, SendPulse і зовнішні копії **обрані**; документаційний D8.1 preflight виконано | VPS/SMTP/backup restore не налаштовано й не доведено. Погоджений RPO до 24 год — ціль, не виміряний результат | [D8](auth6-d8-infrastructure.md), [D8.1](auth6-d8-preflight.md) |
 
-> **AUTH-6B/B3 CI, 22.10.2026:** master після PR #17 інтегровано без переписування історії;
-> B3 migration/privileges/security/concurrency та Ed25519 vector додано як обов’язковий CI-крок.
-> [Інтеграція, повторні перевірки й обмеження](auth6-b3-ci.md). Незалежне review та D3/B4 залишаються обов’язковими.
+## Докази й перевірки
 
-> **AUTH-6B/B3, 22.10.2026:** реалізовано additive recovery ядро, dual approvals/Ed25519,
-> quarantine/gates і shared restricted TOTP/password replacement. [Звіт, перевірки та точні blockers](auth6-b3.md).
-> Production закрито; D3 operational adapters і B4 transactional notices відсутні.
-> D4–D8, P5/P6 та activation відкриті; старі записи B2 нижче історичні.
+| Напрям | Де перевіряти | Межі |
+|---|---|---|
+| Бізнес-схема | `tests/pg/`, `phpunit.pgsql.xml`, [Stage 1](stage-1.md) | Підтвердження в ізольованій PostgreSQL не дорівнює production |
+| Auth та browser | `phpunit.auth*.xml`, `tests/Auth*`, [AUTH-3](auth3.md), [AUTH-4](auth4.md), [AUTH-5](auth5.md), `docs/evidence/` | Тестові прапорці та синтетична доставка не означають activation |
+| Вигляд Filament | [UX-1](ux-1.md), `docs/screenshots/ux-1/` | Скриншоти з тестового браузера, не клієнтські файли |
+| Recovery/retention/budgets | [B3](auth6-b3.md), [B4](auth6-b4.md), [B5](auth6-b5.md), [B6](auth6-b6.md) | Підтверджені лише зазначені там synthetic/guarded операції |
+| CI | `.github/workflows/stage1.yml`, `.github/workflows/php-runtime.yml` | Результати звіряти за **конкретним SHA**, не копіювати старий PASS |
 
-> **PHP security, 22.10.2026:** окремий patch встановлює мінімальні виправлені
-> PHP-версії для CVE-2026-109618/109619, runtime policy та CI; зафіксовані пакети
-> не змінено. Встановлений Herd PHP — 8.5.12; активні web/Cloud/production workers
-> потребують окремого підтвердження. [Джерела, факти й межі](php-security-2026-10-22.md).
->
-> **AUTH-6B / B2, 22.10.2026:** підготовлено [технічний проєкт recovery, outbox, budgets та retention](auth6-b2-design.md) для окремого архітектурного погодження. Це документаційний етап: B3–B6, схема й код не реалізовані; P5/P6 та production залишаються відкритими.
+## Правило підтримки
 
-> **AUTH-6B / B1, 22.10.2026:** виправлено D1/D2/D3, підтверджену HTTP cookie race,
-> додано очищення сесій за контекстом та шифрування admin payload. [Зміни, докази й межі](auth6-b1.md).
-> Controlled local/testing, default OFF; P5/P6 і production залишаються відкритими.
-
-> **AUTH-6A, 22.10.2026:** виконано статичний аудит master `7b38445` після PR #13.
-> Підготовлено [readiness і пакет рішень P5/P6](auth6-readiness.md): рекомендовані
-> recovery/operations, дефекти enumeration через login flow_id і спільного session
-> GC, план перевірюваних частин AUTH-6B та критерії go/no-go. P5/P6 **не затверджено
-> й не реалізовано**; production заблоковано. Нові runtime/PG тести не запускалися,
-> код, схема, дані, секрети та gates не змінювалися.
-
-> **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
-> reauth, optional MFA management, sessions та email change; default OFF. Користувач
-> окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
-> очищенням ciphertext і watermark protection; історичні міграції незмінні.
-> P5/P6/production rollout залишаються відкритими. [Факти й перевірки](auth5.md).
-
-> **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
-> invitation/registration/email OTP backend, окремий client session context і shared
-> MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.
-> Фактичні API, перевірки, synthetic delivery та межі AUTH-5 — [auth4.md](auth4.md).
-> Нижчі історичні згадки про відкритий P3/відсутній AUTH-4 не описують поточний стан.
-
-> **AUTH-3, 22.10.2026:** реалізовано спільний durable MFA, recovery та server assurance
-> gate для контрольованого Filament. За замовчуванням вимкнено; production rollout
-> заблоковано P3/P5/P6. Точна поведінка, контракт і перевірки — [auth3.md](auth3.md).
-> Нижче збережено історичний стан попереднього етапу.
-
-> **AUTH-2, 22.10.2026:** користувач затвердив P1/P2/P4: additive PostgreSQL-схему,
-> штатні Laravel session guards без Sanctum/Fortify з окремими client/admin контекстами,
-> Filament email+password+mandatory TOTP та PWA passwordless email OTP+optional TOTP,
-> один durable MFA-сервіс. Реалізовано лише сховище, read-only preflight, codec і PG-тести;
-> production auth/gates ще немає. P3/P5/P6 відкриті; normalized email/backfill заблоковано
-> до окремого рішення. Точний стан і межі: [auth-schema.md](auth-schema.md).
-> Подальші формулювання про непогоджені P1/P2/P4 — історичний дизайн AUTH-0/1.
-
-> **AUTH-1, 21.10.2026 — ізольований runtime spike:** Laravel 13.38.0 / Filament 5.10.2, pinned Sanctum 4.3.3 і Fortify 1.41.0: Composer SAT snapshot успішний (132 runtime + 33 dev), 15 spike-тестів / 93 assertions. Перевірено passwordless OTP→MFA→session, replay/fixation/CSRF/version, shared TOTP adapter, native Filament Login/recovery та HTTP Livewire gate. Звичайний online Composer resolution заблокований proxy:8080 (curl 7); full install/Fortify pipeline, PG concurrency та dual-cookie browser E2E не підтверджено. Основний PHPUnit у review-копії: 17 passed, 2 skipped; Pint успішний. Рекомендація до погодження P2/P4 — штатний session guard без Sanctum/Fortify та спільний durable MFA service. Production auth/схему/залежності не змінено, P1–P6 не затверджено. [Докази, межі й AUTH-2](auth-compatibility-spike.md), [відтворення](../experiments/auth1/README.md).
-
-> **Auth-дизайн, 21.10.2026:** користувач затвердив закриті одноразові запрошення від admin у Filament (без прив’язки до email), passwordless email OTP для PWA, optional client TOTP/резервні коди в найближчому етапі, обов’язкову admin MFA, захищене адміністративне recovery та майбутні Telegram/Passkeys. Повний дизайн, межі й відкриті технічні пропозиції P1–P6 — [auth-architecture.md](auth-architecture.md). Реалізації auth ще немає; SQL/DBML і БД не змінено.
-
-> **Коригування PR #6 (21.10.2026):** доступ нових клієнтів затверджено лише за персональним запрошенням тренера; ручне створення адміністратором заблоковано через UI, Policy та Livewire. Список, пошук, перегляд, редагування, статуси й перехідні NULL-картки збережено. Запрошення, Telegram-автентифікація, прив’язка Telegram і PWA-автентифікація ще не реалізовані; до їх реалізації UI-створення недоступне. Один акаунт/профіль і спільні оболонки, відкриті рішення та перевірки — [stage-2.md](stage-2.md), [architecture.md](architecture.md), [business-rules.md](business-rules.md).
-
-> **Stage 2 (21.10.2026):** реалізовано картки клієнтів у Filament 5, доступ лише admin, явний coach/admin за рішенням G1, Eloquent-зв’язки та PostgreSQL/Livewire-тести. Деталі й межі — [stage-2.md](stage-2.md). Наведені нижче історичні описи відсутніх бізнес-ресурсів стосуються попередньої ревізії.
-
-# Технічний стан TelmanFit
-
-## Оновлення Stage 1 — 21.10.2026
-
-Бізнес-схему G3=B+R1 реалізовано через Laravel-міграції та перевірено в Codex Cloud на новій ізольованій PostgreSQL 18.6 з `btree_gist` 1.8: 37 бізнес-таблиць, 19 тригерів, 6 часткових індексів (4 UNIQUE), 1 EXCLUDE, 4 міжмодульні FK. Незмінені SQL-сценарії через `psql`: **PASS=76 FAIL=0 GAP=0**. PostgreSQL PHPUnit: **12 passed, 260 assertions**; основний PHPUnit: **19 passed** після збірки SPA; Pint і frontend lint/build успішні. Повний прогін повторено на ще одному новому контейнері.
-
-Перевірено BIGINT у всіх п'яти FK на `users`, порівняння живого каталогу з еталоном, відкат/повторне застосування, збереження користувача, nullable/CHECK/UNIQUE та HTTP-доступ admin/coach/client. Сіди довідників не додавалися без погодження T1.5; наявні БД, секрети й еталонні SQL/DBML не змінювалися. G4 для Stage 1 реалізовано ізольованим конвеєром та окремим PHPUnit-конфігом. G5 затверджено користувачем: перший бізнес-модуль — картки клієнтів у Filament (Stage 2). G1 і перевірка цільового хостингу залишаються для наступних задач. Деталі, відповідність файлів і відтворення — [stage-1.md](stage-1.md).
-
-Після виправлення warnings у PR #5 повний конвеєр повторно пройшов у Linux Codex Cloud: 76 SQL PASS, PG PHPUnit 12/260, основний PHPUnit 19/26 без warnings, Pint, frontend lint/build. Обидва PHPUnit-конфіги тепер завершують перевірку помилкою при warnings; першопричина та негативна перевірка захисту — у [stage-1.md](stage-1.md#виправлення-phpunit-warnings-у-pr-5--21102026).
-
-## Історичний знімок до реалізації Stage 1
-
-Нижче збережено попередній звіт; його твердження про відсутні міграції, PHP/PG-перевірки та відкриті G4/G5 описують лише попередню ревізію. Чинне рішення G5 — картки клієнтів у Filament; решта G1 залишається відкритою.
-
-## Оновлення G4, 21.10.2026
-
-G4 виконано в наявному Codex Cloud на базі GitHub master
-`b890c390c1bdc4900e1052a4469a2d0e8e164557`, у гілці існуючого Draft PR #4.
-Офіційний PostgreSQL 18.6 Bookworm зафіксовано за digest; `btree_gist 1.8`,
-UTF8/ICU `uk-UA`, нові `telmanfit_test` і непривілейована `telmanfit_test_runner`.
-Незмінені SQL-модулі `01→04`, точні t01→t06 і кожен із 76 ID пройшли:
-**PASS=76 FAIL=0 GAP=0**, усі 37 бізнес-таблиць порожні після rollback.
-PHP 8.4.26/PDO поза контейнером підключився до тієї самої БД через приватний
-Unix socket; контейнер мав `network=none`, без опублікованих портів.
-Власні тимчасові ресурси очищено. Докази версії/digest, ID та перевірок —
-[tests/pg/G4.md](../tests/pg/G4.md).
-
-G1/G5 залишаються відкритими, Stage 1 не завершено. Laravel-міграції,
-сіди та PHPUnit у G4 не запускалися; чинні 76 тестів не доводять G3/R1 BIGINT/FK
-або схему зі службовими Laravel-таблицями. Нижче збережено **історичний звіт
-ревізії 8729338**, до синхронізації документації й виконання G4; його твердження
-про відкритий G4 та відсутність PG-прогону в Cloud не описують поточний стан.
-
-## Історичний звіт до G4
-
-Станом на **21.10.2026**, код ревізії `8729338`. Звіт звірено з `AGENTS.md`, документацією `docs/`, SQL/DBML, Laravel-міграціями, моделями, маршрутами, SPA та тестами. PostgreSQL безпосередньо в Codex Cloud не перевіряли; локальні результати нижче наведено за підтвердженням користувача від 21.10.2026.
-
-Позначення: **реалізовано** — є код; **перевірено в Codex Cloud** — перевірку виконано під час підготовки звіту в хмарному середовищі; **підтверджено локально користувачем** — результат локальної розробки, без повторної перевірки в Codex Cloud; **попередньо перевірено** — результат узято з документації; **затверджено** — рішення зафіксоване у джерелах або прямо підтверджене користувачем; **заплановано** — реалізації ще немає.
-
-## Реалізована функціональність
-
-| Область | Фактичний стан і джерело |
-|---|---|
-| Backend/API | Laravel 13; `GET /api/health` повертає `{"status":"ok"}` без автентифікації. Є службовий `/up`; бізнес-ендпоінтів немає (`bootstrap/app.php`, `routes/api.php`, `HealthController`). Health не перевіряє БД. |
-| Адмінка | Filament v5: `/admin`, логін, стандартні dashboard/віджети. `User::canAccessPanel()` допускає лише `admin`; `coach`, `client`, відсутня або невідома роль не допускаються. `role` виключено з масового призначення. Бізнес-ресурсів немає. |
-| SPA | React 19 + TypeScript + Vite: заголовок TelmanFit і стан `/api/health`. Laravel-фолбек `/app/{any?}` читає `public/app/index.html`, без збірки повертає 404; dev-проксі спрямовує `/api` на Laravel. Кабінету, навігації та автентифікації клієнта ще немає. |
-| Міграції | Три стандартні міграції Laravel та `2026_10_21_000000_align_users_with_business_schema.php`: nullable `email`/`password`, унікальний nullable `telegram_user_id`, `role` із default `client` і CHECK; відкат перевіряє ризик втрати даних. Користувач підтвердив локальне застосування цієї міграції до `telmanfit_dev` 21.10.2026: `Ran`, batch 2; у `users` 10 колонок, наявний користувач збережений. |
-| Бізнес-схема | Виконуваний DDL 37 таблиць у модулях `01`–`04` та SQL-тести в `tests/pg`. Це реалізація обмежень схеми, а не готові функції застосунку. Повного перенесення DDL у Laravel-міграції немає. |
-
-У `app/Models` є лише `User`. Клієнти, каталог продуктів, рецепти, плани, КБЖВ, списки покупок, прогрес, фото, повідомлення, бізнес-джоби та Telegram-адаптер **заплановані**: моделей, сервісів і UI цих модулів немає. `routes/console.php` містить лише стандартну команду `inspire`.
-
-## Завершені етапи та результати тестування
-
-- **Реалізовано:** технічний каркас Laravel/Filament/SPA та обмеження доступу до панелі за роллю. У PHPUnit є `HealthEndpointTest`, `SpaFallbackTest`, `UserPanelAccessTest` і стандартні `ExampleTest`. Тести доступу ізольовані від БД; HTTP-вхід із реальною БД та міграція `users` ними не перевіряються. Два SPA-тести пропускаються без `public/app/index.html`.
-- **Підтверджено локально користувачем, 21.10.2026:** міграцію `2026_10_21_000000_align_users_with_business_schema.php` успішно застосовано до `telmanfit_dev` (`Ran`, batch 2); `users` має 10 колонок, наявний користувач збережений. Після міграції користувачу `id=1` явно призначено `role='admin'`, результат перевірено SQL-запитом. Особисті дані не наводяться. У Codex Cloud ці операції та перевірки не виконувалися.
-- **Попередньо перевірено:** за [schema-audit.md](schema-audit.md), §2/§6, і [README PG-тестів](../tests/pg/README.md), 21.10.2026 модулі `01→04` виконано в ізольованій тестовій PostgreSQL 18.6 з `btree_gist` 1.8: **`PASS=76 FAIL=0 GAP=0`**, 37 таблиць, 19 тригерів, 1 EXCLUDE, 4 міжмодульні FK, 6 часткових індексів (4 унікальні). Це попередній задокументований прогін SQL-схеми, не прогін цього звіту і не перевірка Laravel-міграції `users`.
-- Закриття GAP за документацією: GAP-1 — дефект тесту грамування плану; GAP-2 — CHECK проти самозаміни призначення; GAP-3 — рішення перевіряти межі метрик у додатку. `GAP=0` не означає готовність сервісів, приватності фото чи конкурентних операцій; багатосесійних перевірок немає.
-
-**Перевірки, виконані безпосередньо в Codex Cloud під час підготовки звіту** (SPA-команди виконано в `client/`):
-
-| Команда | Результат |
-|---|---|
-| `npm run lint` | Успіх, код 0. |
-| `./node_modules/.bin/tsc -p tsconfig.app.json --noEmit --incremental false` | Успіх, код 0. |
-| `./node_modules/.bin/tsc -p tsconfig.node.json --noEmit --incremental false` | Успіх, код 0. |
-| `./node_modules/.bin/vite build --outDir /tmp/telmanfit-status-build --emptyOutDir --configLoader runner` | Успіх, Vite 8.3.4, 18 модулів. Артефакти в `/tmp`; `public/app` не змінено. Це окремі перевірки типів і збірки, не запуск `npm run build`. |
-| `php artisan test`, `php vendor/bin/pint --test` | Не виконано: `php: command not found`, код 127. Успішний результат PHPUnit/Pint для цієї ревізії не підтверджено. |
-| `git diff --check` | Успіх; документ додатково перевірено як новий файл через `git diff --no-index --check /dev/null docs/project-status.md`. |
-
-У Codex Cloud PG-тести **не запускалися**: заборонено змінювати PostgreSQL, а `t01`–`t05` виконують DML і змінюють identity-послідовності навіть після `ROLLBACK`. Також у хмарному середовищі не знайдено `psql` і `pwsh`. Міграції та сіди в Codex Cloud не запускалися; нових тестів для документаційної зміни не додано.
-
-## Затверджені архітектурні рішення
-
-За [architecture.md](architecture.md), [entity-catalog.md](entity-catalog.md), §11, і [business-rules.md](business-rules.md):
-
-- Laravel + PostgreSQL 15+, Filament для тренера; окрема React/TypeScript SPA спілкується через stateless JSON `/api`. Inertia не використовується. SQL → DBML → Entity Catalog → Markdown — пріоритет джерел щодо схеми.
-- Доменні сервіси незалежні від Telegram; Telegram — пізніший адаптер. Транзакції, права доступу, розрахунки й сервісні перевірки мають доповнювати обмеження БД. Ці сервіси ще не реалізовані.
-- Версії рецептів/планів після публікації незмінні; персоналізація — Copy-on-Write; призначення фіксує конкретну опубліковану версію без автоматичного оновлення. КБЖВ і склад рецепта фіксуються на порцію; інгредієнти не версіонуються.
-- Зберігаються PG-механізми: `btree_gist`, EXCLUDE дат, часткові UNIQUE, складені FK, відкладений constraint trigger і тригери публікації. Поточне SQL-представлення логічних enum — рядкові поля з CHECK.
-- **Рішення BR-T-02 від 21.10.2026:** включні межі метрик перевіряють Laravel API та React; PostgreSQL не застосовує ці межі до вимірів. API/UI-валідація ще запланована.
-- Фото мають бути приватними, у БД — шлях; списки покупок генеруються без нових таблиць. Обидві можливості ще заплановані.
-- **G3 затверджено — прямо підтверджено користувачем 21.10.2026:** варіант **B** — перевірені SQL-модулі через Laravel-міграції; **R1** — розширення наявної `users` без перестворення, `users.id` залишається BIGINT. Коментар міграції також фіксує збереження Laravel-службових полів і часових колонок. Затвердження стратегії не означає завершення реалізації: повні міграції модулів `01–04` ще попереду.
-
-## Поточний етап розробки
-
-**Stage 0 ще не закритий; Stage 1 виконаний частково.** За [roadmap.md](roadmap.md), §2–3, G2 і перевірка SQL-схеми T1.6 задокументовані як завершені. **G3 затверджено (B + R1)** за прямим підтвердженням користувача; G1, G4, G5 залишаються відкритими. Міграцію узгодження `users` застосовано локально, роль `admin` призначено й перевірено користувачем. Повні Laravel-міграції модулів `01–04` і погоджені сіди відсутні. Є окремий початковий крок Stage 2 — рольовий доступ `User`, але клієнтський модуль і Stage 2 загалом не завершені. MVP не готовий до експлуатації.
-
-## Відкриті питання й ризики
-
-- **Розбіжності документації:** `AGENTS.md`, `architecture.md` і `roadmap.md` потребують окремої синхронізації з уже ухваленою стратегією G3 (B + R1), локальним застосуванням міграції `users` і підтвердженим призначенням `admin`. Позначка G3 як відкритого в roadmap застаріла. Також `architecture.md`, §9, стверджує, що SQL не виконувався, всупереч аудиту від 21.10.2026; у PG README залишилася застаріла таблиця відкритих GAP після опису їх закриття. Інші файли в цій задачі не виправлялися.
-- **`users` і доступ:** застосування міграції та явне призначення `admin` у `telmanfit_dev` підтверджені користувачем локально; повторної перевірки в Codex Cloud немає. Міграція сама не призначає `admin`, тому інші середовища потребуватимуть окремого явного призначення. BIGINT PK і timestamps відрізняються від SQL/DBML; сумісність майбутніх FK та міграцій потребує перевірки з урахуванням затвердженого R1. Захищений відкат та HTTP-вхід не підтверджені наведеними локальними результатами. `up/down` містять PG-only DDL і не перевіряються SQLite-конфігурацією PHPUnit.
-- **Блокери рішень:** [schema-audit.md](schema-audit.md), §7.3–7.7 — JSON-контракти анкет/налаштувань, вимоги входу адміністратора, права тренера й контракт автентифікації клієнта, життєвий цикл призначень, перерахунок чернеток. Питання категорій, травм, архівування `foods`, повідомлень/подій і retention також залишаються відкритими (§7.1–7.2, §7.8, §7.10–7.11); нових рішень цей звіт не ухвалює.
-- **Межі тестування:** SQL-тести перевіряють DDL, а не наскрізні сценарії Laravel/SPA. Немає підтвердження багатосесійної конкурентності, приватності фото чи повторної доставки. Зокрема `client_events` описано як журнал лише додавання, але модуль `04` не містить захисту від UPDATE/DELETE; це не підтверджена гарантія БД.
-- **Розгортання:** не перевірені `btree_gist`, cron, постійний queue-worker і приватне сховище на cPanel/shared hosting. Залишаються ризики точності `NUMERIC(7,2)` та округлення малих кількостей до нуля.
-
-## Наступні пріоритетні завдання
-
-1. **Синхронізувати документацію окремою задачею:** оновити `AGENTS.md`, `architecture.md` і `roadmap.md` відповідно до вже затвердженого G3 (B + R1) та підтверджених локальних результатів `users`/`admin`. Для закриття Stage 0 погодити PG-конвеєр тестування (G4), обсяг першого модуля (G5) та відповідні блокери G1; повторного погодження G3 не потрібно.
-2. **Доповнити перевірки `users` у погодженому ізольованому PG-середовищі:** відтворюваність міграції, захищений відкат, CHECK/UNIQUE/nullable, HTTP-доступ адміністратора та відмови іншим ролям. Локальне застосування в `telmanfit_dev` і призначення `admin` уже підтверджені; порядок явного призначення ролі для інших середовищ слід задокументувати.
-3. **Завершити Stage 1 після дозволу:** міграції модулів `01→04`, відповідність SQL/DBML з урахуванням винятків `users`, окремо погоджені довідники; прогнати PG-регресію саме на схемі, створеній Laravel-міграціями.
-4. **Далі — погоджений вертикальний бізнес-модуль** за roadmap: клієнти/авторизація та каталог/рецепти з транзакційними сервісами й тестами. Telegram залишається Stage 8 після веб-кабінету та доменної комунікації.
-
+При зміні реалізації/тестів **у тому самому PR** змінюй конкретний факт або доказ у цьому файлі. Застаріле речення замінюй, **не додавай зверху ще один датований звіт**. Пріоритети та статуси тут не дублюються: [roadmap.md](roadmap.md) — єдина поточна шкала. Історія попередніх датованих звітів збережена в [Git history](https://github.com/ValtonUA/telmanfit/commits/master/docs/project-status.md) та модульних файлах `docs/auth*.md`, `docs/stage-*.md`.
