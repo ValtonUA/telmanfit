@@ -802,7 +802,7 @@ Table auth_recovery_cases [headercolor: #7C3AED] {
  operator_principal_id uuid
  target_role text [not null]
  action text [not null]
- replace_admin_password boolean [not null]
+ replace_admin_password boolean [not null, default: false]
  expected_auth_version bigint [not null]
  registry_version bigint [not null]
  policy_version integer [not null]
@@ -815,7 +815,7 @@ Table auth_recovery_cases [headercolor: #7C3AED] {
  email_key_version text
  created_at timestamptz [not null]
  expires_at timestamptz [not null]
- state text [not null]
+ state text [not null, default: 'collecting']
  hold_until timestamptz
  closed_at timestamptz
  reason_code text [not null]
@@ -881,7 +881,7 @@ Table auth_recovery_events [headercolor: #7C3AED] {
  event_type text [not null]
  actor_principal_id uuid
  request_id uuid [not null]
- occurred_at timestamptz [not null]
+ occurred_at timestamptz [not null, default: `clock_timestamp()`]
  reason_code text
  indexes {
   (case_id,request_id,event_type) [unique]
