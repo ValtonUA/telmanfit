@@ -34,6 +34,8 @@ class ClientResource extends Resource
     {
         return $schema->components([
             Select::make('user_id')
+                ->disabled(fn () => (bool) config('auth4.enabled'))
+                ->dehydrated(fn () => ! config('auth4.enabled'))
                 ->label('Акаунт клієнта')
                 ->relationship('user', 'name')
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => self::userLabel($record))

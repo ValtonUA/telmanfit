@@ -1,3 +1,9 @@
+> **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
+> invitation/registration/email OTP backend, окремий client session context і shared
+> MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.
+> Фактичні API, перевірки, synthetic delivery та межі AUTH-5 — [auth4.md](auth4.md).
+> Нижчі історичні згадки про відкритий P3/відсутній AUTH-4 не описують поточний стан.
+
 > **Стан AUTH-3:** shared MFA/recovery і admin gate реалізовано для контрольованого
 > стенда; default off. Чужий reset і last-admin recovery не активовано (P5).
 > Деталі реалізації — [auth3.md](auth3.md); затверджені бізнес-правила незмінні.

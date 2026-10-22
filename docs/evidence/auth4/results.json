@@ -1,0 +1,19 @@
+{
+  "result": "PASS",
+  "chromium": "154.0.8037.57",
+  "scenarios": [
+    "Filament admin password+TOTP login",
+    "action fresh password+TOTP and one-time HTML invitation display",
+    "Filament revoke with fresh password and TOTP",
+    "invitation fragment exchange",
+    "encrypted database queue and synthetic mailbox",
+    "registration pending and session rotation",
+    "two independent cookies in one browser",
+    "CSRF 419",
+    "logout and guest 401",
+    "email OTP then restricted TOTP then full session",
+    "auth_version revocation",
+    "no OTP/token in logs"
+  ],
+  "production_enabled": false
+}

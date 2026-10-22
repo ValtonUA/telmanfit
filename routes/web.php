@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AdminInvitationController;
 use App\Http\Controllers\Auth\AdminMfaController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,4 +40,9 @@ if (config('mfa.enabled')) {
     ] as [$method, $uri, $name]) {
         Route::$method($uri, AdminMfaController::class)->name('auth3.'.$name);
     }
+}
+
+if (config('auth4.enabled')) {
+    Route::post('/admin/auth/invitations/create', AdminInvitationController::class)->name('auth4.invitation.create');
+    Route::post('/admin/auth/invitations/revoke', AdminInvitationController::class)->name('auth4.invitation.revoke');
 }

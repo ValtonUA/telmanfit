@@ -1,3 +1,9 @@
+> **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
+> invitation/registration/email OTP backend, окремий client session context і shared
+> MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.
+> Фактичні API, перевірки, synthetic delivery та межі AUTH-5 — [docs/auth4.md](docs/auth4.md).
+> Нижчі історичні згадки про відкритий P3/відсутній AUTH-4 не описують поточний стан.
+
 > **AUTH-3, 22.10.2026:** прямою задачею дозволено shared MFA service, ізольовані
 > PostgreSQL 18/Playwright перевірки, код/тести/документацію та один Draft PR без merge.
 > Новий Filament login — лише controlled local/testing, default off; live activation,

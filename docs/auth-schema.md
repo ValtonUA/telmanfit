@@ -1,3 +1,9 @@
+> **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
+> invitation/registration/email OTP backend, окремий client session context і shared
+> MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.
+> Фактичні API, перевірки, synthetic delivery та межі AUTH-5 — [auth4.md](auth4.md).
+> Нижчі історичні згадки про відкритий P3/відсутній AUTH-4 не описують поточний стан.
+
 > **AUTH-3, 22.10.2026:** реалізовано спільний durable MFA, recovery та server assurance
 > gate для контрольованого Filament. За замовчуванням вимкнено; production rollout
 > заблоковано P3/P5/P6. Точна поведінка, контракт і перевірки — [auth3.md](auth3.md).
