@@ -59,7 +59,27 @@
 
 # Roadmap: реалізація MVP TelmanFit
 
-> **Оновлено:** 21.10.2026.
+## Актуальний стан і наступний крок — 23.10.2026
+
+**Головна шкала прогресу — Stage 0–9.** `Tn.m` = задача всередині Stage; `AUTH-n` = напрям автентифікації у Stage 2; `B1–B7` = частини AUTH-6B; `D1–D8` = **архітектурні рішення** AUTH-6B, а не продуктові етапи. `D8.1` — документаційний preflight, `D8.2` — підготовка staging, «D8.3» — **неофіційне робоче позначення** майбутньої процедури last-admin recovery після restore. B7 — репетиція й acceptance перед запуском. [Детальний AUTH-план](auth6-readiness.md).
+
+| Пріоритет | Етап | Стан |
+|---|---|---|
+| Реалізовано для ізольованого тестування | **Stage 1 — PostgreSQL** | 37 бізнес-таблиць, Laravel-міграції та PostgreSQL 18 тести; це **не** готові бізнес-функції |
+| Частково реалізовано | **Stage 2 — клієнти та auth** | Filament картки клієнтів (список/перегляд/редагування/статуси); AUTH-3/4/5 мають MFA, invitation, OTP і React auth/security у **controlled local/testing, default OFF**; production не активовано |
+| **Працюємо наступним** | **Stage 3 — продукти та рецепти** | Бізнес-схема є, моделей/Filament каталогу та сервісів рецептів немає; перед відповідними функціями узгодити довідники T1.5 та правило перерахунку чернеток BR-F-11 |
+| Після Stage 3 | **Stage 4 — раціони й призначення** | Лише бізнес-схема; повноцінного workflow немає |
+| Далі за залежностями | **Stages 5–7 — клієнтські функції, прогрес і комунікація** | SPA auth/security shell є; раціонів/прогресу/бізнес-повідомлень ще немає |
+| Пізніше | **Stage 8 — Telegram** | Ще не реалізовано |
+| **Перед запуском, не зараз** | **Stage 9 — VPS, backup, release acceptance** | Hyperhost VPS Старт, SendPulse і зовнішні Hyperhost backup обрані. D8.1 — docs-only merged PR #24; D8.2 — **Draft PR #25 зі staging-kit, без реального сервера**; B7 і disaster admin recovery не реалізовано |
+
+**Поточний порядок:** Stage 3 → Stage 4 → клієнтські бізнес-функції → Stage 9 / D8 / B7. **Не купувати або тестувати VPS замість розробки застосунку.** Перед production потрібні тестування Hyperhost, реальна SMTP delivery, щоденні зашифровані PostgreSQL-aware резервні копії з перевіреним **RPO до 24 годин** (погоджено власником), безпечне повернення останнього admin після B5 restore і незалежне go/no-go. Допустимий простій; це не скасовує вимоги відновлення даних і безпеки. D3 через **1–2 друзів відкладено**; [Draft PR #22](https://github.com/ValtonUA/telmanfit/pull/22) — **не** затверджена production-процедура.
+
+Докладний технічний стан: [project-status.md](project-status.md), [stage-1.md](stage-1.md), [stage-2.md](stage-2.md), [auth4.md](auth4.md), [auth5.md](auth5.md), [B5](auth6-b5.md), [B6](auth6-b6.md), [D8.1](auth6-d8-preflight.md), [Draft PR #25](https://github.com/ValtonUA/telmanfit/pull/25).
+
+
+
+> **Актуальний стан звірено:** 23.10.2026. Датовані технічні звіти нижче можуть описувати попередні ревізії; таблиця вище має пріоритет для планування.
 > **Що це:** покроковий план реалізації узгодженої архітектури. План не додає нових сутностей і не змінює схему.
 > **Поточний технічний стан:** [project-status.md](project-status.md). Його перелік задач і розбіжностей зафіксовано до цієї синхронізації; актуальні статуси етапів наведено нижче.
 > **Пов'язані документи:** [../AGENTS.md](../AGENTS.md) (правила), [architecture.md](architecture.md) (стек і стан), [business-rules.md](business-rules.md) (правила), [entity-catalog.md](entity-catalog.md) · [database.dbml](database.dbml) · `01…04_*.sql` (джерела істини), [schema-audit.md](schema-audit.md) (блокери, тести схеми, відкриті питання).
@@ -141,12 +161,12 @@ UX-1 доповнює наявні картки українською лока�
 - T2.2 Реалізовано `ClientPolicy`: список, перегляд і редагування лише для `admin`; створення заборонене всім ролям; `coach` і `client` не отримують доступу через Filament. G1 для призначення тренера вирішено користувачем: явний вибір `coach` або `admin`, без default; самосупровід за BR-U-08 заборонено.
 - T2.3 Реалізовано `ClientResource`: `/admin/clients`, пошук за ID, акаунтом і тренером, фільтр статусу, перегляд, редагування й статуси; ручне створення заблоковане через UI/HTTP/Livewire/Policy; дата першої активації зберігається після паузи. Обмеження і відтворення — [stage-2.md](stage-2.md).
 - T2.4 Погоджений контракт `client_onboardings.answers` (BR-U-12) — реалізується лише після рішення.
-- T2.5 Затверджено: одноразові персональні invitation від admin у Filament без email binding; PWA email OTP без пароля; один `users`/максимум один `clients`; optional client TOTP/резервні коди найближчим етапом, обов’язкова admin MFA і захищений recovery. Детальний [auth-дизайн](auth-architecture.md) і послідовність AUTH-0…AUTH-8 нижче. Усе це ще не реалізовано; SQL/DBML і БД не змінюються. Telegram linking — пізніше з доказом володіння; автоматичне ототожнення за ім’ям, username чи email заборонене. Реєстрація не активує платний супровід.
+- T2.5 **Частково реалізовано у controlled local/testing:** затверджено одноразові invitation від admin у Filament без email binding, PWA email OTP без пароля, один `users`/максимум один `clients`, optional client TOTP/резервні коди й обов'язкову admin MFA. AUTH-3/4/5 вже мають відповідні backend/UI, **default OFF, не production-ready**. Ручне створення клієнтів і auto activation платного супроводу заборонені. Telegram linking — пізніше за доказом володіння; ототожнення за ім'ям/username/email заборонене. [AUTH-4](auth4.md), [AUTH-5](auth5.md).
 - T2.6 Зберегти перехідні картки з `user_id=NULL`; не видаляти їх і не вводити NOT NULL без окремого погодження.
 
 **Тести:** PostgreSQL/Livewire — заборона ручного створення для всіх ролей, зокрема прямий HTTP/Livewire та виклик create зі старої форми; пошук/фільтри, статуси й дата початку, nullable/UNIQUE акаунта, явний coach/admin, заборона самосупроводу, модельна й DB-валідація, HTTP/Policy/Livewire-доступ лише admin. БД відхиляє прямий `active` без дати; модель автоматично встановлює дату.
 
-**DoD поточного PR:** admin переглядає й редагує наявні картки; ручне створення заблоковано; правило «один профіль на акаунт» і статуси працюють. **Повний Stage 2 ще відкритий:** продуктові auth-рішення A1–A8 затверджені; технічні пропозиції P1–P6 потребують review, реалізація й security-тести попереду.
+**DoD початкового PR карток виконано:** admin переглядає й редагує наявні картки; ручне створення заблоковано. **Stage 2 частково реалізований:** AUTH-3/4/5 доступні лише в controlled local/testing; production/P5/P6 та контракт анкети відкриті.
 
 **Ризики:** неузгоджений контракт анкети блокує T2.4; схему Stage 1 та інтеграцію `users` перевірено; довідники потребують окремого погодження. Стратегія G3 та локальне застосування міграції `users` уже підтверджені.
 
@@ -161,7 +181,7 @@ AUTH-0 — поточний документаційний дизайн, без 
 | AUTH-1 | **Ізольований spike виконано з межами:** exact-version SAT snapshot; Laravel/Sanctum sessions, shared TOTP, Filament Login/recovery, HTTP Livewire gate | 15 tests / 93 assertions; online Composer заблокований proxy; full install/PG concurrency/dual-cookie E2E не доведено; [звіт](auth-compatibility-spike.md). P1–P6 — до погодження |
 | AUTH-2 | **Реалізовано storage за затвердженими P1/P2/P4:** 7 таблиць, additive users, preflight без backfill, SQL/DBML/EC | Fresh/populated PG18, FK/UNIQUE/CHECK/BIGINT, safe down, 12 concurrent transaction scenarios; [межі й докази](auth-schema.md). Normalization/backfill заблоковано до рішення, production auth відсутня |
 | AUTH-3 | **Реалізовано для controlled local/testing:** shared TOTP/recovery, server assurance і Filament gate; production rollout заблоковано P3/P5/P6 | PG service races, HTTP/Livewire, session revoke й Chromium; [докази та rollout](auth3.md) |
-| AUTH-4 | Invitation/revoke, атомарна реєстрація, OTP/session API | Конкурентний invitation/OTP, rollback, без автоактивації |
+| AUTH-4 | **Реалізовано controlled/default OFF:** invitation/revoke, реєстрація, email OTP та client sessions | PG/concurrency/HTTP, [докази](auth4.md); production OFF |
 | AUTH-5 | **Реалізовано controlled/default OFF:** React PWA auth/security, fresh reauth, optional TOTP із disabled history, email change та sessions | PostgreSQL races, Chromium, lint/build; [факти й межі](auth5.md) |
 | AUTH-6 | **AUTH-6A: аналіз підготовлено**, P5/P6 відкриті; AUTH-6B: recovery, mail/keys/backup/rate/retention/rollout після погодження | [Readiness, Q1–Q6, B1–B7 і go/no-go](auth6-readiness.md); production acceptance ще не виконано |
 | AUTH-7 | Майбутній Telegram primary/linking того самого user | initData/replay/conflict/MFA |
@@ -306,7 +326,7 @@ AUTH-3–AUTH-5 входять у найближчий реліз разом: pu
 
 **DoD:** розгортання можливе без ручних правок схеми; усі тести проходять; відкат описаний.
 
-**Залежності:** Stages 1–8.
+**Залежності:** потрібні для MVP бізнес-функції та незалежні pre-production security/hosting gates. Stage 8 залишається у чинному плані й може бути відкладений від пілота лише окремим продуктовим рішенням.
 
 ## 4. Порядок і залежності
 
@@ -345,6 +365,8 @@ Stage 0 (gates) → Stage 1 (схема) → Stage 2 (люди) → Stage 3 (р�
 Модуль тренувань, плани завдань, збережені списки покупок, альтернативні способи приготування, M:N-категорії, каталог раціонів для самостійного вибору, інтеграції з фітнес-застосунками, feature toggles з окремими таблицями (EC §10; [architecture.md](architecture.md), розділ 17).
 
 ## Майбутня опція: аварійне відновлення з допомогою друзів
+
+**Актуально 23.10.2026:** D3 operational trustees **відкладено**. Після B5 disaster restore старі MFA/recovery codes можуть бути відкликані, тому окремий last-admin re-enrollment protocol і release review усе одно **потрібні до production**. Їх не слід оголошувати готовими або ототожнювати з 1Password.
 
 **Відкладено без строку.** Після MVP за окремим рішенням власника повернутися до можливості аварійного відновлення через **1–2 друзів**, визначивши безпечну перевірку особи та повноважень. **Сьогодні основний шлях — пароль + одноразовий recovery code, який власник зберігає в 1Password.** Не вмикати assisted/last-admin recovery у production, не повертати через це D3 у критичний шлях розробки. Попередній Draft PR #22 — незатверджений історичний дизайн, а не поточне зобов'язання. **Окремий ризик:** після B5/PITR коди можуть бути відкликані, тому спосіб безпечного відновлення останнього admin після disaster все одно потребує review до production — див. [D8](auth6-d8-infrastructure.md).
 
