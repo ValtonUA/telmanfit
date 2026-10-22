@@ -1,0 +1,46 @@
+name: PHP runtime security
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:dGVsbWFuZml0LXBocHVuaXQtdGVzdC1vbmx5ISEhISE=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      DB_URL: ''
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      MAIL_MAILER: array
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4.27', '8.5.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, pgsql, pdo_sqlite, intl, mbstring, dom, bcmath, zip
+          coverage: none
+      - run: php scripts/check-php-runtime.php
+      - run: composer validate --strict
+      - run: composer install --no-interaction --prefer-dist --no-scripts --no-plugins
+      - run: composer check-platform-reqs
+      - run: composer audit --locked --no-interaction
+      - run: php artisan package:discover --ansi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --package-lock=false
+      - run: npm run build
+      - run: npm ci --prefix client --ignore-scripts
+      - run: npm run build --prefix client
+      - run: php artisan test --display-all-issues
+      - run: php vendor/bin/pint --test
