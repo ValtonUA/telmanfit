@@ -18,13 +18,8 @@ from pathlib import Path
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-ACTIVE_DOCS = (
-    "README.md",
-    "AGENTS.md",
-    "docs/roadmap.md",
-    "docs/project-status.md",
-    "docs/architecture.md",
-)
+# Verify all tracked Markdown, not only canonical docs: module reports and their
+# screenshot links are part of the documentation graph.
 ALLOWED_STATUSES = {"Виконано", "Частково", "Очікує рішення", "Заплановано"}
 # Baseline IDs protect against a task silently disappearing during editing.
 TASK_BASELINE = {
@@ -32,7 +27,7 @@ TASK_BASELINE = {
     for stage, maximum in enumerate((4, 6, 6, 5, 6, 5, 5, 5, 4, 5))
     for n in range(1, maximum + 1)
 }
-LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 TASK_ROW = re.compile(r"^\|\s*(T\d+\.\d+)\s*\|")
 GATE_ROW = re.compile(r"^\|\s*(G\d+)\s*\|")
 DOCS_IMPACT_NONE = re.compile(
@@ -42,11 +37,13 @@ DOCS_IMPACT_NONE = re.compile(
 
 def validate_links() -> list[str]:
     errors = []
-    for name in ACTIVE_DOCS:
-        doc = ROOT / name
-        if not doc.is_file():
-            errors.append(f"{name}: missing canonical document")
-            continue
+    paths = sorted(
+        list(ROOT.glob("*.md"))
+        + list((ROOT / "docs").rglob("*.md"))
+        + list((ROOT / ".github").glob("*.md"))
+    )
+    for doc in paths:
+        name = str(doc.relative_to(ROOT))
         # Ignore code fences: paths in examples are not actionable links.
         content = re.sub(r"(?ms)^\s*```.*?^\s*```\s*$", "", doc.read_text(encoding="utf-8"))
         for match in LINK.finditer(content):
