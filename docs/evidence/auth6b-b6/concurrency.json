@@ -1,0 +1,97 @@
+[
+    {
+        "scenario": "existing",
+        "rollback": false,
+        "independent_workers": 2,
+        "observed_lock_waits": 2,
+        "allowed": 0
+    },
+    {
+        "scenario": "existing",
+        "rollback": true,
+        "independent_workers": 2,
+        "observed_lock_waits": 2,
+        "allowed": 1
+    },
+    {
+        "scenario": "absent",
+        "rollback": false,
+        "independent_workers": 2,
+        "observed_lock_waits": 2,
+        "allowed": 2
+    },
+    {
+        "scenario": "absent",
+        "rollback": true,
+        "independent_workers": 2,
+        "observed_lock_waits": 2,
+        "allowed": 2
+    },
+    {
+        "scenario": "group",
+        "rollback": false,
+        "independent_workers": 2,
+        "observed_lock_waits": 2,
+        "allowed": 0
+    },
+    {
+        "scenario": "group",
+        "rollback": true,
+        "independent_workers": 2,
+        "observed_lock_waits": 2,
+        "allowed": 1
+    },
+    {
+        "scenario": "lock_timeout",
+        "observed_lock_waits": 1,
+        "closed": true
+    },
+    {
+        "scenario": "real_pg_deadlock",
+        "sqlstate": "40P01",
+        "observed_lock_waits": 1,
+        "no_new_admission": true
+    },
+    {
+        "scenario": "crash_before_commit",
+        "pass": true
+    },
+    {
+        "scenario": "crash_after_commit_response_lost",
+        "pass": true
+    },
+    {
+        "scenario": "cleanup_consume",
+        "pass": true
+    },
+    {
+        "scenario": "otp_same_code",
+        "observed_lock_waits": 2,
+        "success": 1,
+        "denied": 1
+    },
+    {
+        "scenario": "totp_same_code",
+        "observed_lock_waits": 2,
+        "success": 1,
+        "denied": 1
+    },
+    {
+        "scenario": "recovery-code_same_code",
+        "observed_lock_waits": 2,
+        "success": 1,
+        "denied": 1
+    },
+    {
+        "scenario": "otp-fail_same_code",
+        "observed_lock_waits": 2,
+        "success": 0,
+        "denied": 2
+    },
+    {
+        "scenario": "totp-fail_same_code",
+        "observed_lock_waits": 2,
+        "success": 0,
+        "denied": 2
+    }
+]

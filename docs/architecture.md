@@ -1,3 +1,10 @@
+> **AUTH-6B/B6, 22.10.2026:** D7 затверджено. Additive PostgreSQL exact sliding
+> budgets (25 policies), окремий committed admission connection, transactional
+> failure accounting, bounded cleanup і D6-A fence реалізовано для guarded synthetic
+> testing. `4040404` збережено; live cutover/production не активовано.
+> [Матриця відмінностей, перевірки, виміри й умови переходу](auth6-b6.md).
+> D3/D8/P5/P6/B7 та окреме рішення cutover/global-lock removal відкриті.
+
 > **AUTH-6B/B5, 22.10.2026:** D5/D6-A затверджено. Реалізовано additive retention
 > ядро, holds/exact archive audit API, bounded cleanup, зовнішній epoch fence та
 > maintenance-only synthetic restore із глобальним `recovery_required` і issuance≥24h.

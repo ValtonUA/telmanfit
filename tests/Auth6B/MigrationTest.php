@@ -32,13 +32,13 @@ class MigrationTest extends TestCase
             $this->assertSame(3, DB::selectOne("SELECT count(*) n FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
                 WHERE c.contype='f' AND c.confrelid='users'::regclass AND c.conrelid::regclass::text LIKE 'auth_recovery_%' AND format_type(a.atttypid,a.atttypmod)='bigint'")->n);
             $this->assertSame(file_get_contents(database_path('sql/auth6b/00_recovery.sql')), file_get_contents(base_path('docs/06_auth_recovery_schema.sql')));
-            $functions = DB::select("SELECT p.proname,p.prosecdef,p.proconfig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE 'auth6b_%'");
+            $functions = DB::select("SELECT p.proname,p.prosecdef,p.proconfig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname ~ '^auth6b_'");
             $this->assertCount(14, $functions);
             foreach ($functions as $function) {
                 $this->assertStringContainsString('search_path=pg_catalog, public', $function->proconfig);
             }
             $this->assertSame(0, DB::selectOne("SELECT count(*) n FROM pg_proc p CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
-                WHERE p.proname LIKE 'auth6b_%' AND a.grantee=0 AND a.privilege_type='EXECUTE'")->n);
+                WHERE p.proname ~ '^auth6b_' AND a.grantee=0 AND a.privilege_type='EXECUTE'")->n);
         } finally {
             DB::rollBack();
         }

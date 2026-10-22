@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\Auth\AdminAssurance;
+use App\Services\Auth\Budgets\BudgetKey;
+use App\Services\Auth\Budgets\BudgetLimited;
+use App\Services\Auth\Budgets\BudgetScope;
+use App\Services\Auth\Budgets\PostgresBudgets;
+use App\Services\Auth\Budgets\SyntheticBudgets;
 use App\Services\Auth\MfaDenied;
 use App\Services\Auth\MfaService;
 use Illuminate\Http\Request;
@@ -36,6 +41,13 @@ final class AdminMfaController extends Controller
                 }
                 RateLimiter::hit($key, (int) config('mfa.flow_seconds'));
             }
+            if ($request->isMethod('post') && in_array($name, ['auth3.confirm', 'auth3.verify'], true)
+                && SyntheticBudgets::enabled()
+                && ! app(PostgresBudgets::class)->admit([
+                    new BudgetKey(BudgetScope::MfaIp, (string) $request->ip()),
+                ])->allowed) {
+                return $this->page('login', ['error' => 'Забагато спроб. Спробуйте пізніше.'], 429)->header('Retry-After', '900');
+            }
             if ($name === 'auth3.primary') {
                 foreach (['email' => 255, 'password' => 1024] as $field => $limit) {
                     if (! is_string($request->input($field)) || strlen($request->input($field)) > $limit) {
@@ -45,7 +57,7 @@ final class AdminMfaController extends Controller
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
                 $binding = bin2hex(random_bytes(32));
-                $flow = $mfa->beginPasswordLogin((string) $request->input('email'), (string) $request->input('password'), $binding);
+                $flow = $mfa->beginPasswordLogin((string) $request->input('email'), (string) $request->input('password'), $binding, (string) $request->ip());
                 $request->session()->put(['mfa_flow' => $flow, 'mfa_binding' => $binding]);
 
                 return redirect('/admin/auth/challenge');
@@ -84,6 +96,9 @@ final class AdminMfaController extends Controller
                 return redirect('/admin');
             }
             abort(404);
+        } catch (BudgetLimited $exception) {
+            return $this->page('login', ['error' => 'Забагато спроб. Спробуйте пізніше.'], 429)
+                ->header('Retry-After', (string) $exception->decision->retryAfter);
         } catch (MfaDenied $exception) {
             return $this->page('login', ['error' => $exception->getMessage()], 422);
         } catch (\Throwable) {

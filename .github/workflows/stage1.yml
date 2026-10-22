@@ -34,6 +34,12 @@ jobs:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
+      - name: AUTH-6B B6 atomic PostgreSQL budgets, faults and concurrency
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          mkdir -p tests/pg/out
+          AUTH6B6_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b6.out
       - name: AUTH-6B B5 retention, archive ACL, restore faults and concurrency
         shell: bash
         run: |
@@ -73,3 +79,4 @@ jobs:
             docs/evidence/auth5/results.json
             docs/evidence/auth6/*.json
             docs/evidence/auth6b-b5/*.json
+            docs/evidence/auth6b-b6/*.json
