@@ -47,6 +47,14 @@ export DB_DATABASE=telmanfit_stage1_test DB_USERNAME=telmanfit_test_runner DB_PA
 export APP_ENV=testing TELMANFIT_PG_TEST=1
 # Лише випадковий ключ цього прогону; жодного читання локальних/реальних секретів.
 export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+# Цільовий повтор AUTH-4: та сама нова ізольована БД, без повтору вже пройдених регресій.
+if [[ ${AUTH4_ONLY:-0} == 1 ]]; then
+    php artisan migrate --force --no-interaction
+    vendor/bin/phpunit -c phpunit.auth4.xml --display-all-issues
+    php tests/pg/auth4-concurrency.php
+    if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then bash tests/browser/auth4-in-context.sh; fi
+    exit
+fi
 baseline_paths=()
 for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php; do
     baseline_paths+=(--path="$file")
@@ -82,4 +90,11 @@ vendor/bin/phpunit -c phpunit.auth3.xml --display-all-issues
 php tests/pg/auth3-concurrency.php
 if [[ ${AUTH3_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth3-in-context.sh
+fi
+
+vendor/bin/phpunit -c phpunit.auth4.xml --display-all-issues
+
+php tests/pg/auth4-concurrency.php
+if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then
+    bash tests/browser/auth4-in-context.sh
 fi

@@ -32,10 +32,23 @@ jobs:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
-      - run: AUTH3_BROWSER=1 tests/pg/run-stage1.sh
+      - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 tests/pg/run-stage1.sh
       - run: bash tests/pg/test-runner.sh
       - run: bash tests/pg/run-isolated-pg.sh
-      - run: bash experiments/auth1/run.sh
+      - name: AUTH-1 regression
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
+            tail -2 tests/pg/out/auth1.out
+          else
+            python3 - <<'PYCODE'
+          from pathlib import Path
+          text = '\n'.join(Path('tests/pg/out/auth1.out').read_text().splitlines()[-30:])
+          print('::error::AUTH-1 regression failed: ' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PYCODE
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,3 +57,5 @@ jobs:
             tests/pg/out/*.out
             docs/evidence/auth3/*.png
             docs/evidence/auth3/results.json
+            docs/evidence/auth4/*.png
+            docs/evidence/auth4/results.json

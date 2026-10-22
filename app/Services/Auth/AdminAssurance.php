@@ -21,6 +21,8 @@ final class AdminAssurance
         }
         $user = DB::table('users')->where('id', $id)->lockForUpdate()->first();
         $state = DB::table('auth_session_states AS s')
+            ->join('sessions AS ls', 'ls.id', '=', 's.session_id')
+            ->whereRaw('ls.last_activity > EXTRACT(EPOCH FROM clock_timestamp()) - 900')
             ->join('user_totp_factors AS f', 'f.user_id', '=', 's.user_id')
             ->where('s.session_id', $request->session()->getId())->where('s.user_id', $id)
             ->where('s.audience', 'admin')->where('s.primary_method', 'password')
@@ -77,7 +79,7 @@ final class AdminAssurance
                 'auth_version' => $proof->auth_version, 'primary_method' => 'password',
                 'primary_verified_at' => $proof->primary_verified_at, 'mfa_verified_at' => $proof->mfa_verified_at,
                 'mfa_method' => $proof->mfa_method,
-                'absolute_expires_at' => CarbonImmutable::parse($proof->mfa_verified_at)->addSeconds((int) config('mfa.session_seconds'))->format('Y-m-d H:i:s.uP'),
+                'absolute_expires_at' => CarbonImmutable::parse($proof->mfa_verified_at)->addHours(8)->format('Y-m-d H:i:s.uP'),
             ]);
         });
     }

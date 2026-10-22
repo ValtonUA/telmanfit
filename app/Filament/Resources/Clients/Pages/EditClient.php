@@ -26,6 +26,10 @@ class EditClient extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
+        if (config('auth4.enabled')) {
+            unset($data['user_id']);
+        }
+
         return $this->withClientValidation(fn () => parent::handleRecordUpdate($record, $data));
     }
 }

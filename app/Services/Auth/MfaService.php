@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Support\Auth\AuthSecretCodec;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -15,9 +16,12 @@ final class MfaService
     /** @var \WeakMap<MfaProof, string> Лише proofs після успішної domain verification. */
     private \WeakMap $loginProofs;
 
+    private \WeakMap $passwordProofs;
+
     public function __construct(private AuthSecretCodec $codec, private MfaPolicy $policy)
     {
         $this->loginProofs = new \WeakMap;
+        $this->passwordProofs = new \WeakMap;
     }
 
     public function claimLoginProof(MfaProof $proof): string
@@ -34,6 +38,12 @@ final class MfaService
 
     public function beginPasswordLogin(string $email, #[\SensitiveParameter] string $password, #[\SensitiveParameter] string $binding): string
     {
+        return $this->beginVerifiedPasswordLogin($this->verifyPassword($email, $password), $binding);
+    }
+
+    /** Password hashing до business gate locks; opaque proof лише в request memory. */
+    public function verifyPassword(string $email, #[\SensitiveParameter] string $password): SecretValue
+    {
         $this->policy->assertControlled();
         // Exact delivery email чинного Filament; normalized-key/backfill не запроваджується.
         $candidate = DB::table('users')->where('email', $email)->first();
@@ -41,6 +51,21 @@ final class MfaService
         if (! $candidate || ! $valid || $candidate->role !== 'admin') {
             throw new MfaDenied;
         }
+
+        $proof = new SecretValue('[internal password proof]');
+        $this->passwordProofs[$proof] = $candidate;
+
+        return $proof;
+    }
+
+    public function beginVerifiedPasswordLogin(SecretValue $proof, #[\SensitiveParameter] string $binding): string
+    {
+        $this->policy->assertControlled();
+        if (! isset($this->passwordProofs[$proof])) {
+            throw new MfaDenied;
+        }
+        $candidate = $this->passwordProofs[$proof];
+        unset($this->passwordProofs[$proof]);
 
         return DB::transaction(function () use ($candidate, $binding) {
             $user = $this->user($candidate->id);
@@ -228,7 +253,7 @@ final class MfaService
         $result = DB::transaction(function () use ($id, $binding, $operation, $userId) {
             $user = $this->user($userId);
             $flow = DB::table('auth_flows')->where('public_id', $id)->lockForUpdate()->first();
-            $this->budget($userId);
+            $this->budget($userId, $flow);
             if (! $flow || $flow->user_id !== $user->id || $flow->state !== 'primary_verified'
                 || ! hash_equals($flow->browser_binding_hash, hash('sha256', $binding))
                 || CarbonImmutable::parse($flow->expires_at)->lessThanOrEqualTo($this->now())
@@ -236,14 +261,14 @@ final class MfaService
                 || ! in_array($flow->purpose, ['login', 'mfa_enroll'], true)
                 || ($flow->audience === 'admin' && $user->role !== 'admin')
                 || ($flow->audience === 'client' && $user->role !== 'client')) {
-                $this->audit($userId, 'mfa.denied', 'denied');
+                $this->audit($userId, 'mfa.denied', 'denied', $flow?->public_id);
 
                 return null;
             }
             $factor = DB::table('user_totp_factors')->where('user_id', $userId)->lockForUpdate()->first();
             $result = $operation($user, $flow, $factor);
             if ($result === null) {
-                $this->audit($userId, 'mfa.denied', 'denied');
+                $this->audit($userId, 'mfa.denied', 'denied', $flow?->public_id);
             }
 
             return $result;
@@ -359,18 +384,35 @@ final class MfaService
         DB::table('auth_session_states')->where('user_id', $id)->whereNull('revoked_at')->update(['revoked_at' => $this->stamp()]);
     }
 
-    private function budget(int $id): void
+    private function budget(int $id, ?object $flow = null): void
     {
+        if (config('auth4.enabled') && $flow?->audience === 'client') {
+            $query = DB::table('auth_audit_events')->where('subject_user_id', $id)->where('event_type', 'mfa.denied');
+            if (Cache::store('database')->has('auth4:mfa-pause:'.$id)
+                || (clone $query)->where('occurred_at', '>', $this->now()->subMinutes(15))->count() >= 10
+                || (clone $query)->where('case_reference', $flow->public_id)->where('occurred_at', '>', $this->now()->subMinutes(5))->count() >= 5) {
+                throw new MfaDenied;
+            }
+
+            return;
+        }
         if (DB::table('auth_audit_events')->where('subject_user_id', $id)->where('outcome', 'denied')
             ->where('occurred_at', '>', $this->now()->subSeconds((int) config('mfa.flow_seconds')))->count() >= (int) config('mfa.attempts')) {
             throw new MfaDenied;
         }
     }
 
-    private function audit(int $id, string $event, string $outcome = 'success'): void
+    private function audit(int $id, string $event, string $outcome = 'success', ?string $flow = null): void
     {
         DB::table('auth_audit_events')->insert(['actor_user_id' => $id, 'subject_user_id' => $id,
-            'event_type' => $event, 'outcome' => $outcome, 'request_id' => (string) Str::uuid()]);
+            'event_type' => $event, 'outcome' => $outcome, 'case_reference' => $flow, 'request_id' => (string) Str::uuid()]);
+        if (config('auth4.enabled') && $event === 'mfa.denied'
+            && DB::table('auth_audit_events')->where('subject_user_id', $id)->where('event_type', 'mfa.denied')
+                ->where('occurred_at', '>', $this->now()->subMinutes(15))->count() >= 10) {
+            if (! Cache::store('database')->put('auth4:mfa-pause:'.$id, true, 901)) {
+                throw new MfaDenied;
+            }
+        }
     }
 
     private function stamp(): string

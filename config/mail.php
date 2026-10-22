@@ -36,6 +36,7 @@ return [
     */
 
     'mailers' => [
+        'auth4_synthetic' => ['transport' => 'auth4_synthetic'],
 
         'smtp' => [
             'transport' => 'smtp',
