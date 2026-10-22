@@ -1,3 +1,5 @@
+> **Поточний пріоритет — 23.10.2026 (master до документаційного PR `bb0816d`):** **Stage 3 — каталог продуктів і рецептів**, після обмежених рішень T1.5 і BR-F-11. Stage 1 (PG18/schema) реалізований; Stage 2 client cards + AUTH-3/4/5 мають код для controlled local/testing, **production OFF**. AUTH-6B B1–B6 — guarded/synthetic implementations, B7 не завершено. D8.1 — docs preflight; D8.2 — Draft PR #25 зі staging-kit **без VPS**; «D8.3» — лише робоча назва майбутнього recovery після B5 restore; RPO до 24h погоджено. D3 friend-trustees відкладено (Draft PR #22). **Весь авторитетний поточний стан**: [roadmap.md](docs/roadmap.md#актуальний-стан-і-наступний-крок--23102026), [project-status.md](docs/project-status.md). Датовані нижче pre-AUTH-6 статуси — історичні, не відновлювати їх як відкриті задачі.
+
 > **AUTH-5, 22.10.2026:** реалізовано controlled React auth/security, fresh client
 > reauth, optional MFA management, sessions та email change; default OFF. Користувач
 > окремо погодив additive `user_totp_factors.disabled_at` зі збереженням історії,
