@@ -18,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ClientResource extends Resource
@@ -69,6 +70,10 @@ class ClientResource extends Resource
             TextEntry::make('status')->label('Статус супроводу')->badge()
                 ->color(fn (string $state): string => self::statusColor($state))
                 ->formatStateUsing(fn (string $state): string => Client::STATUSES[$state]),
+            TextEntry::make('onboarding_answers')
+                ->label('Анкета — перші відповіді')
+                ->state(fn (Client $record): string => self::onboardingSummary($record))
+                ->columnSpanFull(),
             TextEntry::make('coaching_started_at')->label('Початок супроводу (UTC)')->dateTime()->timezone('UTC')->placeholder('Ще не розпочато'),
             TextEntry::make('created_at')->label('Створено (UTC)')->dateTime()->timezone('UTC'),
             TextEntry::make('updated_at')->label('Оновлено (UTC)')->dateTime()->timezone('UTC'),
@@ -98,6 +103,27 @@ class ClientResource extends Resource
             ->stackedOnMobile()
             ->extraAttributes(['class' => 'clients-table'])
             ->defaultSort('id', 'desc');
+    }
+
+    private static function onboardingSummary(Client $client): string
+    {
+        $raw = DB::table('client_onboardings')->where('client_id', $client->getKey())->value('answers');
+        $answers = is_string($raw) ? json_decode($raw, true) : $raw;
+
+        if (! is_array($answers) || ! isset($answers['workplace'], $answers['meals_per_day'], $answers['top_reasons'])) {
+            return 'Перші відповіді ще не збережено';
+        }
+
+        $workplaces = [
+            'home' => 'Повністю з дому',
+            'hybrid' => 'З дому та офісу',
+            'office' => 'Повністю в офісі',
+        ];
+        $where = $workplaces[$answers['workplace']] ?? 'Не вказано';
+
+        return 'Робота: '.$where
+            .' | Прийомів їжі: '.(string) $answers['meals_per_day']
+            .' | Перешкоди: '.(string) $answers['top_reasons'];
     }
 
     private static function statusColor(string $status): string

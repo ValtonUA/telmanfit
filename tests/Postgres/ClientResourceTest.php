@@ -195,6 +195,42 @@ class ClientResourceTest extends PostgresTestCase
         $this->assertSame(1, Client::whereKey($client->id)->count());
     }
 
+    public function test_admin_can_edit_first_questionnaire_in_existing_client_card(): void
+    {
+        $client = Client::create(['coach_user_id' => $this->coach->id]);
+
+        Livewire::test(ViewClient::class, ['record' => $client->id])
+            ->assertActionExists('editFirstAnswers')
+            ->callAction('editFirstAnswers', [
+                'top_reasons' => 'Вечірній голод',
+                'workplace' => 'home',
+                'meals_per_day' => '3',
+            ]);
+
+        $row = DB::table('client_onboardings')->where('client_id', $client->id)->first();
+        $this->assertNotNull($row);
+        $answers = json_decode($row->answers, true);
+        $this->assertSame('Вечірній голод', $answers['top_reasons']);
+        $this->assertSame('home', $answers['workplace']);
+        $this->assertSame(3, $answers['meals_per_day']);
+        $this->assertNull($row->completed_at);
+        $this->assertSame('pending', $client->refresh()->status);
+
+        Livewire::test(ViewClient::class, ['record' => $client->id])
+            ->assertSee('Вечірній голод')
+            ->callAction('editFirstAnswers', [
+                'top_reasons' => 'Проблеми з режимом',
+                'workplace' => 'office',
+                'meals_per_day' => '2',
+            ]);
+
+        $this->assertSame(1, DB::table('client_onboardings')->where('client_id', $client->id)->count());
+        $changed = json_decode(DB::table('client_onboardings')->where('client_id', $client->id)->value('answers'), true);
+        $this->assertSame('Проблеми з режимом', $changed['top_reasons']);
+        $this->assertSame('office', $changed['workplace']);
+        $this->assertSame(2, $changed['meals_per_day']);
+    }
+
     #[DataProvider('statuses')]
     public function test_status_labels_and_semantic_colors_survive_search_and_sorting(string $status): void
     {
