@@ -1,7 +1,7 @@
 <!doctype html><html lang="uk"><meta charset="utf-8"><title>AUTH4 контрольований browser harness</title>
 <style>body{font:18px system-ui;max-width:640px;margin:48px auto;background:#121c29;color:#eee}form{display:grid;gap:14px;padding:24px;border:1px solid #41536a}input,button{font:inherit;padding:12px}button{background:#e5b44b}pre{white-space:pre-wrap}</style>
 <h1>TelmanFit · AUTH-4</h1><p>Синтетичний тест backend. Екрани продукту — AUTH-5.</p>
-<form id="auth"><label>Email <input id="email" type="email" autocomplete="email"></label><label>OTP <input id="code" inputmode="numeric" autocomplete="one-time-code"></label><label>Ім’я <input id="name"></label><label>TOTP <input id="mfa" inputmode="numeric"></label><button id="exchange" type="button">Відкрити запрошення</button><button id="request" type="button">Отримати OTP</button><button id="verify" type="button">Перевірити OTP</button><button id="complete" type="button">Завершити реєстрацію</button><button id="totp" type="button">Підтвердити MFA</button><button id="me" type="button">Мій профіль</button><button id="logout" type="button">Вийти</button></form><pre id="status" aria-live="polite">Готово</pre>
+<form id="auth"><label>Email <input id="email" type="email" autocomplete="email"></label><label>OTP <input id="code" inputmode="numeric" autocomplete="one-time-code"></label><label>Ім’я <input id="name"></label><label>Прізвище <input id="last_name"></label><label>TOTP <input id="mfa" inputmode="numeric"></label><button id="exchange" type="button">Відкрити запрошення</button><button id="request" type="button">Отримати OTP</button><button id="verify" type="button">Перевірити OTP</button><button id="complete" type="button">Завершити реєстрацію</button><button id="totp" type="button">Підтвердити MFA</button><button id="me" type="button">Мій профіль</button><button id="logout" type="button">Вийти</button></form><pre id="status" aria-live="polite">Готово</pre>
 <script>
 window.state = {purpose: 'login'};
 const token = new URLSearchParams(location.hash.slice(1)).get('invite');
@@ -18,7 +18,7 @@ const value = id => document.querySelector('#'+id).value;
 document.querySelector('#exchange').onclick = async () => {state.purpose='register';Object.assign(state, await api('auth/invitations/exchange',{token}));};
 document.querySelector('#request').onclick = async () => {Object.assign(state, await api('auth/email-otp/request',{purpose:state.purpose,email:value('email'),flow_id:state.flow_id}));};
 document.querySelector('#verify').onclick = async () => {Object.assign(state, await api('auth/email-otp/verify',{challenge_id:state.challenge_id,code:value('code')}));document.querySelector('#code').value='';};
-document.querySelector('#complete').onclick = async () => {await api('auth/registration/complete',{flow_id:state.flow_id,name:value('name')});};
+document.querySelector('#complete').onclick = async () => {await api('auth/registration/complete',{flow_id:state.flow_id,first_name:value('name'),last_name:value('last_name')});};
 document.querySelector('#totp').onclick = async () => {await api('auth/mfa/verify',{flow_id:state.flow_id,method:'totp',code:value('mfa')});document.querySelector('#mfa').value='';};
 document.querySelector('#me').onclick = () => api('me');
 document.querySelector('#logout').onclick = () => api('auth/logout',{});

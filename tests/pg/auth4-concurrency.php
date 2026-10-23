@@ -27,7 +27,7 @@ if (($argv[1] ?? '') === 'worker') {
         } elseif ($input['action'] === 'verify') {
             $auth->verify($input['challenge'], $input['code'], $input['binding'], $input['ip']);
         } else {
-            $auth->complete($input['flow'], 'Synthetic race', $input['email'], $input['binding'], $input['ip']);
+            $auth->complete($input['flow'], 'Synthetic race', $input['email'], $input['binding'], $input['ip'], 'Тестове');
         }
         echo 'accepted';
     } catch (AuthDenied) {

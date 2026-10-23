@@ -149,3 +149,10 @@ COMMIT;
 - не використовуйте `FROM (INSERT … RETURNING …)` (у PostgreSQL так не можна) — застосовуйте `WITH … AS (INSERT …)`;
 - не називайте змінні PL/pgSQL так само, як колонки тимчасових таблиць (`v`, `k`, `val`) — інакше отримаєте
   помилку неоднозначності замість перевірки правила.
+
+## Ревізія профілів
+
+`CLIENT_PROFILES_ONLY=1 bash tests/pg/run-stage1.sh` — заповнена Stage1-схема →
+нова forward-міграція, звірка даних, PK/FK/CHECK і моделей. Повний runner додатково
+перевіряє Filament/OTP/MFA/sessions; baseline catalog лишається історичним Stage1.
+Контракт: [client-profiles.md](../../docs/client-profiles.md).

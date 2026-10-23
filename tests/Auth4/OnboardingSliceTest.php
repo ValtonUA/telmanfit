@@ -41,7 +41,7 @@ class OnboardingSliceTest extends TestCase
         $challenge = $auth->request('register', 'slice@example.invalid', $flow, $binding, '192.0.2.18')['challenge_id'];
         preg_match('/<strong>([0-9]{8})<\/strong>/', Mail::sent(EmailOtp::class)->last()->render(), $matches);
         $auth->verify($challenge, $matches[1], $binding, '192.0.2.18');
-        $proof = $auth->complete($flow, 'Клієнт із анкетою', 'slice@example.invalid', $binding, '192.0.2.18');
+        $proof = $auth->complete($flow, 'Клієнт із анкетою', 'slice@example.invalid', $binding, '192.0.2.18', 'Тестове');
 
         $this->request = Request::create('/api/onboarding', 'POST', server: ['REMOTE_ADDR' => '192.0.2.18']);
         $this->request->setLaravelSession(app('session')->driver());
@@ -115,6 +115,19 @@ class OnboardingSliceTest extends TestCase
         $this->assertSame('keep', $own['future_question']);
         $this->assertSame('private', json_decode(DB::table('client_onboardings')->where('client_id', $otherClient)->value('answers'), true)['top_reasons']);
         $this->assertStringNotContainsString('private', json_encode($own));
+    }
+
+    public function test_completed_answers_cannot_be_changed_through_current_api(): void
+    {
+        $this->save(['top_reasons' => 'Архів', 'workplace' => 'home', 'meals_per_day' => 3]);
+        DB::table('client_onboardings')->where('client_id', $this->clientId)->update(['completed_at' => now()]);
+        try {
+            $this->save(['top_reasons' => 'Змінити', 'workplace' => 'office', 'meals_per_day' => 2]);
+            $this->fail('Завершену анкету не можна редагувати');
+        } catch (ValidationException) {
+            $this->assertSame('Архів', app(ClientOnboardingController::class)->show($this->request, app(ClientSession::class))->getData(true)['answers']['top_reasons']);
+            $this->assertSame('pending', DB::table('clients')->where('id', $this->clientId)->value('status'));
+        }
     }
 
     public function test_invalid_answer_is_rejected_without_database_writes(): void

@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Перший робочий vertical slice: відповіді зберігаються для поточного клієнта,
@@ -54,6 +55,9 @@ final class ClientOnboardingController
             }
 
             $row = DB::table('client_onboardings')->where('client_id', $client->id)->first();
+            if ($row?->completed_at !== null) {
+                throw ValidationException::withMessages(['answers' => 'Завершена анкета є незмінним архівом.']);
+            }
             $answers = array_replace($this->decode($row?->answers), [
                 'workplace' => $validated['workplace'],
                 'meals_per_day' => (int) $validated['meals_per_day'],

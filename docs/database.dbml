@@ -333,7 +333,9 @@ TableGroup "Nutrition Planning" [color: #2563EB] {
 // Users & Client Management (stage 2)
 Table users [headercolor: #64748B] {
  id bigint [pk]
- name text [not null]
+ first_name text [note: 'Ціль NOT NULL; nullable до уточнення історичних імен']
+ last_name text [note: 'Ціль NOT NULL; nullable до уточнення історичних імен']
+ name text [note: 'Legacy, лише fallback; не розбивається автоматично']
  email text [unique]
  password text
  email_normalized varchar(254) [unique, note: 'AUTH-2: nullable, без backfill; COLLATE C; нормалізація ще не затверджена']
@@ -349,45 +351,68 @@ Table clients [headercolor: #64748B] {
  id integer [pk]
  user_id bigint [unique]
  coach_user_id bigint [not null]
- status text [not null]
+ status text [not null, default: 'pending']
  coaching_started_at timestamptz
  created_at timestamptz [not null]
  updated_at timestamptz [not null]
 }
+Table client_profiles [headercolor: #64748B] {
+ client_id integer [pk]
+ birth_date date
+ height_cm smallint
+ sex text
+ goal text
+ difficulties text
+ priorities text
+ work_mode text
+ updated_at timestamptz [not null]
+ Note: 'sex male/female; work_mode remote/office/hybrid; зріст >0, дата народження не майбутня. SQL: database/sql/profiles/00_profiles.sql'
+}
 Table client_onboardings [headercolor: #64748B] {
- id integer [pk]
- client_id integer [not null, unique]
- answers jsonb [not null]
+ client_id integer [pk]
+ id integer [not null, unique, note: 'Legacy identity збережено для сумісності']
+ answers json [not null]
  completed_at timestamptz
  updated_at timestamptz [not null]
+ Note: 'Чернетка до завершення; потім незмінний знімок. Повне завершення поки не реалізоване.'
 }
 Table client_nutrition_profiles [headercolor: #64748B] {
  client_id integer [pk]
- goal text
+ maintenance_calories smallint
+ target_calories smallint
+ weekly_free_calories smallint
+ kitchen_appliances text
  preferences text
  restrictions text
+ preferred_cooking_days "text[]"
+ legacy_goal text [note: 'Оригінал перенесено до client_profiles.goal; нові записи сюди не пишуться']
  updated_at timestamptz [not null]
 }
 Table client_activity_profiles [headercolor: #64748B] {
  client_id integer [pk]
  steps_target integer
+ fitness_equipment text
  physical_limitations text
- preferred_training_days jsonb [not null]
+ preferred_training_days "text[]"
+ legacy_preferred_training_days jsonb [note: 'Оригінальний JSON; невалідні дні потребують уточнення']
  updated_at timestamptz [not null]
 }
 Table client_settings [headercolor: #64748B] {
  client_id integer [pk]
- timezone text [not null]
- reminder_settings jsonb [not null]
- report_settings jsonb [not null]
+ timezone text [not null, default: 'Europe/Kyiv']
+ morning_message_time time [note: 'Локальний час timezone, не UTC']
+ weekly_checkin_day text
+ reminder_settings jsonb [not null, note: 'Legacy; не використовувати для нових налаштувань']
+ report_settings jsonb [not null, note: 'Legacy; не використовувати для нових налаштувань']
  updated_at timestamptz [not null]
 }
 Ref: clients.user_id > users.id
 Ref: clients.coach_user_id > users.id
-Ref: client_onboardings.client_id > clients.id
-Ref: client_nutrition_profiles.client_id > clients.id
-Ref: client_activity_profiles.client_id > clients.id
-Ref: client_settings.client_id > clients.id
+Ref: client_profiles.client_id > clients.id [delete: cascade]
+Ref: client_onboardings.client_id > clients.id [delete: cascade]
+Ref: client_nutrition_profiles.client_id > clients.id [delete: cascade]
+Ref: client_activity_profiles.client_id > clients.id [delete: cascade]
+Ref: client_settings.client_id > clients.id [delete: cascade]
 Ref: recipes.owner_client_id > clients.id
 Ref: meal_plans.owner_client_id > clients.id
 Ref: client_meal_plan_assignments.client_id > clients.id
@@ -395,6 +420,7 @@ Ref: client_meal_plan_assignments.created_by > users.id
 TableGroup "Users & Client Management" [color: #64748B] {
  users
  clients
+ client_profiles
  client_onboardings
  client_nutrition_profiles
  client_activity_profiles
@@ -1005,3 +1031,7 @@ Table auth_rate_budgets {
   }
   Note: 'Лише typed SQL API; sorted row locks; admission separate committed connection; failure state/audit same domain transaction. Production cutover відсутній.'
 }
+
+// Profiles: CHECK client_weekdays_valid перевіряє text[]: лише 7 lowercase weekday-кодів, без NULL/повторів.
+// Калорійність та кроки >=0; SQL і forward міграція — database/sql/profiles/00_profiles.sql.
+// fitness_equipment/client_fitness_equipment — legacy; нові текстові описи пишуться лише в activity profile.

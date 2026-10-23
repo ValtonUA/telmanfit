@@ -17,7 +17,7 @@ TelmanFit — застосунок онлайн-фітнес-супроводу 
 
 ### Реєстрація та оболонки клієнта — затверджено 21.10.2026
 
-Доступ нового клієнта — виключно за персональним запрошенням, створеним admin у Filament; відповідальний тренер обирається явно. Одна людина має один `users` і максимум один `clients`; ім’я зберігається в `users.name`, без `clients.display_name`. Реєстрація не активує платний супровід.
+Доступ нового клієнта — виключно за персональним запрошенням, створеним admin у Filament; відповідальний тренер обирається явно. Одна людина має один `users` і максимум один `clients`; ім’я/прізвище зберігаються в `users.first_name/last_name`, `full_name` обчислюється в Laravel (legacy fallback — [контракт профілів](client-profiles.md)), без `clients.display_name`. Реєстрація не активує платний супровід.
 
 PWA і Telegram Mini App використовують максимально один React-застосунок у `client/`, один Laravel API і PostgreSQL. Клієнт може користуватися будь-якою оболонкою або обома зі спільними даними; можливості Mini App можуть бути обмежені. Це цільова архітектура оболонок; ступінь реалізації окремих клієнтських сценаріїв визначається кодом та [поточними доказами](project-status.md).
 
@@ -58,7 +58,7 @@ PWA і Telegram Mini App використовують максимально о�
 | Адмінка | Filament | `~5.0` | `composer.json` |
 | Розробка | Laravel Tinker, Pint, Pail, PAO | `^3.0`, `^1.27`, `^1.2.5`, `^1.0.6` | `composer.json` |
 | Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [пояснення](#31-карта-технічних-файлів) |
-| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–09_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
+| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–10_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
 | SPA | React + TypeScript + Vite | React `^19.3`, TS `~6.0.3`, Vite `^8.3.4` | `client/package.json` |
 | Стилі SPA | CSS + Tailwind (Laravel-конвеєр) | Tailwind `^4.0` | `package.json`, `vite.config.js` |
 | Лінт SPA | ESLint + typescript-eslint | `^10.13`, `^8.71` | `client/eslint.config.js` |
@@ -66,18 +66,19 @@ PWA і Telegram Mini App використовують максимально о�
 
 ### 3.1. Карта технічних файлів
 
-**У `docs/` є дев'ять SQL-файлів — це не дев'ять баз даних:**
+**У `docs/` є десять SQL-файлів — це модулі та forward-проєкції однієї БД:**
 
 | Рівень | Файли | Для чого |
 |---|---|---|
 | Бізнес-схема | `01_nutrition_schema.sql`, `02_users_clients.sql`, `03_progress_tracking.sql`, `04_fitness_messaging.sql` | Продукти/рецепти, клієнти, прогрес, інвентар/повідомлення — 37 бізнес-таблиць |
+| Профілі | `10_client_profiles.sql` | Forward-ревізія типізованих профілів; доповнює незмінні знімки Stage 1 |
 | Auth-таблиці | `05_auth_schema.sql` | Запрошення, сесії, MFA, резервні коди |
 | Auth recovery | `06_auth_recovery_schema.sql` | Технічна схема assisted recovery; **D3 operational із друзями відкладено** |
 | Security notices | `07_auth_security_notice_outbox.sql` | Черга повідомлень про події безпеки |
 | Retention/restore | `08_auth_retention_restore.sql` | Історія та захист після відновлення БД |
 | Rate budgets | `09_auth_rate_budgets.sql` | Серверні ліміти частоти запитів |
 
-Це **еталонні SQL-проєкції**. Реальна Laravel-інтеграція описана у `database/migrations/` та `database/sql/stage1/`, `database/sql/auth2/`, `database/sql/auth5/`, `database/sql/auth6b*/`; див. [Stage 1](stage-1.md) та [AUTH-2](auth-schema.md)–[B6](auth6-b6.md). `docs/05_auth_schema.sql` передбачає вже узгоджену Laravel `users`, тому **не запускати docs/01–09 SQL вручну на робочій БД**.
+Це **еталонні SQL-проєкції**; SQL 10 — forward-доповнення до Stage1, його виконуване джерело — `database/sql/profiles/00_profiles.sql`. Реальна Laravel-інтеграція описана у `database/migrations/` та `database/sql/stage1/`, `database/sql/auth2/`, `database/sql/auth5/`, `database/sql/auth6b*/`; див. [Stage 1](stage-1.md) та [AUTH-2](auth-schema.md)–[B6](auth6-b6.md). `docs/05_auth_schema.sql` передбачає вже узгоджену Laravel `users`, тому **не запускати docs/01–09 SQL вручну на робочій БД**.
 
 **11 файлів `phpunit*.xml` у корені — лише конфігурації тестів:**
 - `phpunit.xml` — `tests/Unit` і `tests/Feature`, базові SQLite-тести;
@@ -249,3 +250,5 @@ cd client && npm run build       # збірка SPA у public/app
 
 
 
+
+Контракт профілів: [client-profiles.md](client-profiles.md). Початкова анкета — історичний JSON-знімок; поточні характеристики зберігаються в окремих typed профілях. Час ранкового повідомлення локальний у timezone клієнта; scheduler не додано.
