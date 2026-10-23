@@ -8,6 +8,7 @@ use App\Mail\SyntheticTransport;
 use App\Services\Auth\Client\ClientAuth;
 use App\Services\Auth\MfaService;
 use App\Services\Auth\Restore\ExternalEpoch;
+use App\Services\Auth\Restore\LocalDemoEpoch;
 use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Restore\SyntheticMaintenanceMode;
 use App\Support\Session\ContextDatabaseSessionHandler;
@@ -30,6 +31,9 @@ class AppServiceProvider extends ServiceProvider
             if (config('database.default') === 'pgsql') {
                 $this->app->singleton(MaintenanceMode::class, SyntheticMaintenanceMode::class);
             }
+        }
+        if ($this->app->environment('local') && config('local_demo.enabled') === true) {
+            $this->app->singleton(ExternalEpoch::class, LocalDemoEpoch::class);
         }
         $this->app->singleton(MfaService::class);
         $this->app->singleton(ClientAuth::class);

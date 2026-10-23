@@ -192,6 +192,8 @@ PWA і Telegram Mini App використовують максимально о�
 
 ## 13. Локальний запуск і типові команди
 
+Для перевірки Filament та клієнтської анкети використовуйте [ізольований локальний профіль](local-demo.md): окрема PostgreSQL 18, незалежний local epoch, штатні MFA/OTP, loopback-only. Він явно opt-in і не змінює production; звичайний `composer dev` сам по собі не налаштовує security runtime.
+
 ```sh
 composer install                 # залежності PHP
 npm install --ignore-scripts     # залежності Laravel-конвеєра (vite.config.js)
