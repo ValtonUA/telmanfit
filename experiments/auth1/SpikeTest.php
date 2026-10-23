@@ -397,7 +397,7 @@ class SpikeTest extends TestCase
 
     public function test_exact_installed_runtime_versions(): void
     {
-        foreach (['laravel/framework' => 'v13.38.0', 'filament/filament' => 'v5.10.2', 'livewire/livewire' => 'v4.4.7', 'pragmarx/google2fa' => 'v9.1.0'] as $package => $version) {
+        foreach (['laravel/framework' => 'v13.38.0', 'filament/filament' => 'v5.10.2', 'livewire/livewire' => 'v4.4.8', 'pragmarx/google2fa' => 'v9.1.0'] as $package => $version) {
             $this->assertSame($version, InstalledVersions::getPrettyVersion($package));
         }
     }

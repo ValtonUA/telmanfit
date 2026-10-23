@@ -24,6 +24,8 @@
 `composer.lock` фіксує Livewire `4.4.8` замість `4.4.7`: patch для
 [GHSA-mhf7-xp6r-6qrc](https://github.com/advisories/GHSA-mhf7-xp6r-6qrc).
 Інші пакети, Composer constraints та `composer audit --locked` не змінено.
+AUTH-1 зберігає точну перевірку встановлених версій; очікуваний Livewire оновлено
+до `v4.4.8` разом із lock. Історичні звіти/логи попередніх прогонів не переписано.
 Регресії PHP 8.4/8.5, auth/Filament/PostgreSQL та Chromium виконуються чинними
 workflow; результат належить лише конкретному head SHA у Checks відповідного PR.
 
