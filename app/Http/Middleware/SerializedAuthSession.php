@@ -11,7 +11,7 @@ final class SerializedAuthSession extends StartSession
 {
     public function handle($request, Closure $next)
     {
-        $controlled = (config('auth4.enabled') && $request->is('api/auth/*', 'api/me'))
+        $controlled = (config('auth4.enabled') && ClientAuthBoundary::covers($request))
             || (config('mfa.enabled') && $request->is('admin', 'admin/*'));
         if (! $controlled) {
             return parent::handle($request, $next);

@@ -24,6 +24,8 @@ absolute 8 h; registration 15 min та максимум 5 min після OTP. P5
 | GET | `/api/me` | Лише повна client assurance; BIGINT IDs як рядки, name/status/security без email/секретів |
 | POST | `/api/auth/logout` | Restricted/full client logout; invalidation flows, session/CSRF rotation |
 
+Клієнтська анкета `/api/onboarding` у `local/testing` використовує той самий `ClientAuthBoundary`, cookie/CSRF та `SerializedAuthSession`; поза цими середовищами matcher не розширено. [Ізольований локальний запуск](local-demo.md) не є production activation.
+
 Health залишається stateless/public. Нові API мають явну Laravel web session/CSRF
 підгрупу, без Sanctum/Fortify. Додатковий `ClientCsrf` вимагає token навіть коли
 Laravel 13 дозволив би same-origin origin shortcut. Header: `X-XSRF-TOKEN` із

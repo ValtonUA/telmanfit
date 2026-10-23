@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "Missing/mismatched independent epoch: admin/client 503; no fallback",
+    "Admin password-only denied; enrollment, fresh password+TOTP -> Filament",
+    "Invitation + synthetic email OTP -> actual client registration; anonymous API denied",
+    "React: all three answers saved and reopened after full reload",
+    "Filament client card: reads three answers, edits, saves and reopens; React sees same PostgreSQL data"
+  ]
+}
