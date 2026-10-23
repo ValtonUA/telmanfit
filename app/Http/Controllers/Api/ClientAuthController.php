@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\User;
 use App\Services\Auth\Client\AuthBudget;
 use App\Services\Auth\Client\AuthDenied;
 use App\Services\Auth\Client\ClientAuth;
@@ -48,8 +49,8 @@ final class ClientAuthController
 
                 return response()->json($response);
             case 'auth4.complete':
-                $data = $request->validate(['flow_id' => ['required', 'uuid'], 'name' => ['required', 'string', 'max:255']]);
-                $proof = $auth->complete($data['flow_id'], $data['name'], (string) $session->get('auth4_delivery.'.$data['flow_id']), $binding, $ip);
+                $data = $request->validate(['flow_id' => ['required', 'uuid'], 'first_name' => ['required', 'string', 'max:255'], 'last_name' => ['required', 'string', 'max:255']]);
+                $proof = $auth->complete($data['flow_id'], $data['first_name'], (string) $session->get('auth4_delivery.'.$data['flow_id']), $binding, $ip, $data['last_name']);
                 $sessions->issue($request, $proof);
 
                 return response()->json(['next' => 'authenticated'], 201);
@@ -75,7 +76,7 @@ final class ClientAuthController
                         ->where('c.user_id', $user->id)->whereColumn('c.batch_id', 'f.recovery_batch_id')->whereNull('c.used_at')->whereNull('c.revoked_at')->count() : 0;
                     $recovered = $mfa && DB::table('auth_session_states')->where('session_id', $request->session()->getId())->value('mfa_method') === 'recovery_code';
 
-                    return response()->json(['user' => ['id' => (string) $user->id, 'name' => $user->name],
+                    return response()->json(['user' => ['id' => (string) $user->id, 'first_name' => $user->first_name, 'last_name' => $user->last_name, 'full_name' => User::displayName($user)],
                         'client' => ['id' => (string) $client->id, 'status' => $client->status],
                         'security' => ['mfa_enabled' => $mfa, 'methods' => $mfa ? ['email_otp', 'totp', 'recovery_code'] : ['email_otp'],
                             'recovery_codes_remaining' => $remaining, 'recovery_used' => $recovered]]);

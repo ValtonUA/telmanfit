@@ -17,7 +17,7 @@ if ($identity->db !== getenv('DB_DATABASE') || $identity->usr !== 'telmanfit_dem
 DB::transaction(function () use ($epoch): void {
     DB::table('auth_security_runtime')->insert(['id' => 1, 'restore_epoch' => $epoch, 'state' => 'ready',
         'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()')]);
-    $id = DB::table('users')->insertGetId(['name' => 'Демонстраційний адміністратор', 'role' => 'admin',
+    $id = DB::table('users')->insertGetId(['first_name' => 'Демонстраційний', 'last_name' => 'адміністратор', 'role' => 'admin',
         'email' => 'owner@example.invalid', 'email_normalized' => 'owner@example.invalid',
         'email_verified_at' => now(), 'password' => Hash::make(getenv('DEMO_PASSWORD'))]);
     // Лише запрошення: картку створить штатний registration flow після OTP.

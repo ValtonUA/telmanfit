@@ -158,6 +158,17 @@ class ClientResourceTest extends PostgresTestCase
             ->searchTable('')->assertCanSeeTableRecords([$assigned, $other]);
     }
 
+    public function test_name_parts_are_visible_searchable_and_sortable_in_filament(): void
+    {
+        $user = User::create(['first_name' => 'DistinctFirst', 'last_name' => 'DistinctLast']);
+        $client = Client::create(['user_id' => $user->id, 'coach_user_id' => $this->coach->id]);
+        Livewire::test(ListClients::class)->searchTable('DistinctLast')->assertCanSeeTableRecords([$client])
+            ->sortTable('user.full_name')->assertSee('DistinctFirst DistinctLast');
+        Livewire::test(ViewClient::class, ['record' => $client->id])->assertSee('DistinctFirst DistinctLast');
+        DB::table('client_onboardings')->insert(['client_id' => $client->id, 'answers' => '{}', 'completed_at' => now()]);
+        Livewire::test(ViewClient::class, ['record' => $client->id])->assertActionHidden('editFirstAnswers');
+    }
+
     public function test_invitation_mode_preserves_account_when_edit_state_is_forged(): void
     {
         config(['auth4.enabled' => true]);

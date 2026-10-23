@@ -34,7 +34,7 @@ try {
         DB::transaction(function () use ($epoch, $access): void {
             DB::table('auth_security_runtime')->insert(['id' => 1, 'restore_epoch' => $epoch, 'state' => 'ready',
                 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()')]);
-            $id = DB::table('users')->insertGetId(['name' => 'Локальний адміністратор', 'role' => 'admin',
+            $id = DB::table('users')->insertGetId(['first_name' => 'Локальний', 'last_name' => 'адміністратор', 'role' => 'admin',
                 'email' => $access['email'], 'email_normalized' => $access['email'], 'email_verified_at' => now(),
                 'password' => Hash::make($access['password'])]);
             $token = parse_url($access['invitation'], PHP_URL_FRAGMENT);

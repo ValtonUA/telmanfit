@@ -11,6 +11,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ViewClient extends ViewRecord
 {
@@ -26,7 +27,8 @@ class ViewClient extends ViewRecord
         return [
             Action::make('editFirstAnswers')
                 ->label('Анкета — 3 запитання')
-                ->visible(fn (): bool => Filament::auth()->user()?->can('update', $this->getRecord()) ?? false)
+                ->visible(fn (): bool => (Filament::auth()->user()?->can('update', $this->getRecord()) ?? false)
+                    && DB::table('client_onboardings')->where('client_id', $this->getRecord()->getKey())->value('completed_at') === null)
                 ->modalHeading('Перші відповіді клієнта')
                 ->schema([
                     Textarea::make('top_reasons')
@@ -55,6 +57,9 @@ class ViewClient extends ViewRecord
                     DB::transaction(function () use ($client, $data): void {
                         DB::table('clients')->where('id', $client->getKey())->lockForUpdate()->firstOrFail();
                         $row = DB::table('client_onboardings')->where('client_id', $client->getKey())->first();
+                        if ($row?->completed_at !== null) {
+                            throw ValidationException::withMessages(['answers' => 'Завершена анкета є незмінним архівом.']);
+                        }
                         $existing = is_string($row?->answers) ? json_decode($row->answers, true) : $row?->answers;
                         $answers = array_replace(is_array($existing) ? $existing : [], [
                             'top_reasons' => trim((string) $data['top_reasons']),

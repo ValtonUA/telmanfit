@@ -1,5 +1,5 @@
 export type Me = {
-  user: { id: string; name: string }
+  user: { id: string; first_name: string | null; last_name: string | null; full_name: string }
   client: { id: string; status: 'pending' | 'active' | 'paused' | 'finished' }
   security: { mfa_enabled: boolean; methods: string[]; recovery_codes_remaining: number; recovery_used: boolean }
 }

@@ -19,9 +19,9 @@ absolute 8 h; registration 15 min та максимум 5 min після OTP. P5
 | POST | `/api/auth/invitations/exchange` | Token у body; restricted browser-bound flow; не consume |
 | POST | `/api/auth/email-otp/request` | purpose register/login, email, optional flow; 202 із opaque challenge UUID |
 | POST | `/api/auth/email-otp/verify` | Одноразовий OTP; next registration_complete / mfa_required / authenticated |
-| POST | `/api/auth/registration/complete` | Flow і name; 201 та client session після commit, conflict 409 без identity |
+| POST | `/api/auth/registration/complete` | Flow, first_name і last_name; 201 та client session після commit, conflict 409 без identity |
 | POST | `/api/auth/mfa/verify` | Той самий AUTH-3 MfaService, totp або recovery_code; без дублювання secret |
-| GET | `/api/me` | Лише повна client assurance; BIGINT IDs як рядки, name/status/security без email/секретів |
+| GET | `/api/me` | Лише повна client assurance; BIGINT IDs як рядки, first_name/last_name/full_name/status/security без email/секретів |
 | POST | `/api/auth/logout` | Restricted/full client logout; invalidation flows, session/CSRF rotation |
 
 Клієнтська анкета `/api/onboarding` у `local/testing` використовує той самий `ClientAuthBoundary`, cookie/CSRF та `SerializedAuthSession`; поза цими середовищами matcher не розширено. [Ізольований локальний запуск](local-demo.md) не є production activation.

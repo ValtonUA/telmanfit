@@ -39,7 +39,7 @@
                 <tbody class="fi-ta-records">
                     @forelse ($this->invitations() as $invitation)
                         <tr class="fi-ta-row">
-                            @foreach (['ID' => $invitation->id, 'Тренер' => $invitation->name, 'Створено' => $invitation->created_at, 'Стан' => $invitation->consumed_at ? 'Використано' : ($invitation->revoked_at ? 'Відкликано' : 'Чинне')] as $label => $value)
+                            @foreach (['ID' => $invitation->id, 'Тренер' => $invitation->full_name, 'Створено' => $invitation->created_at, 'Стан' => $invitation->consumed_at ? 'Використано' : ($invitation->revoked_at ? 'Відкликано' : 'Чинне')] as $label => $value)
                                 <td class="fi-ta-cell">
                                     <div class="fi-ta-cell-label">{{ $label }}</div>
                                     <div class="fi-ta-cell-content">

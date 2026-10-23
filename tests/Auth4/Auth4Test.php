@@ -122,7 +122,7 @@ class Auth4Test extends TestCase
         [$token, $flow, $challenge, $code] = $this->registration();
         $this->assertNull(DB::table('client_invitations')->where('token_hash', hash('sha256', $token))->value('consumed_at'));
         $this->assertSame('registration_complete', $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1')['next']);
-        $proof = $this->auth->complete($flow, 'Новий клієнт', 'New+tag@Example.invalid', $this->binding, '192.0.2.1');
+        $proof = $this->auth->complete($flow, 'Новий клієнт', 'New+tag@Example.invalid', $this->binding, '192.0.2.1', 'Тестове');
         $request = $this->requestSession();
         $oldId = $request->session()->getId();
         $oldCsrf = $request->session()->token();
@@ -133,6 +133,9 @@ class Auth4Test extends TestCase
         $this->assertSame('New+tag@Example.invalid', $user->email);
         $this->assertSame('new+tag@example.invalid', $user->email_normalized);
         $this->assertSame('client', $user->role);
+        $this->assertSame('Новий клієнт', $user->first_name);
+        $this->assertSame('Тестове', $user->last_name);
+        $this->assertNull($user->name);
         $this->assertNull($user->password);
         $this->assertNotNull($user->email_verified_at);
         $client = DB::table('clients')->where('user_id', $user->id)->first();
@@ -141,7 +144,7 @@ class Auth4Test extends TestCase
         $this->assertSame($this->coach, $client->coach_user_id);
         $this->assertSame(1, DB::table('clients')->where('coach_user_id', $this->coach)->whereNull('user_id')->count());
         $this->assertSame(0, DB::table('client_onboardings')->count());
-        $this->denied(fn () => $this->auth->complete($flow, 'again', 'New+tag@Example.invalid', $this->binding, '192.0.2.1'), 'invitation_unavailable');
+        $this->denied(fn () => $this->auth->complete($flow, 'again', 'New+tag@Example.invalid', $this->binding, '192.0.2.1', 'Тестове'), 'invitation_unavailable');
         $this->denied(fn () => app(ClientSession::class)->issue($request, $proof));
         app(ClientSession::class)->logout($request);
         $this->denied(fn () => app(ClientSession::class)->user($request), 'unauthenticated');
@@ -171,7 +174,7 @@ class Auth4Test extends TestCase
         // Роль змінилася після видачі запрошення та підтвердження OTP.
         DB::table('users')->where('id', $this->coach)->update(['role' => 'client']);
 
-        $this->denied(fn () => $this->auth->complete($flow, 'Новий клієнт', 'New+tag@Example.invalid', $this->binding, '192.0.2.1'), 'invitation_unavailable');
+        $this->denied(fn () => $this->auth->complete($flow, 'Новий клієнт', 'New+tag@Example.invalid', $this->binding, '192.0.2.1', 'Тестове'), 'invitation_unavailable');
 
         $this->assertSame($usersBefore, DB::table('users')->count());
         $this->assertSame($clientsBefore, DB::table('clients')->count());
@@ -200,7 +203,7 @@ class Auth4Test extends TestCase
         DB::table('users')->insert(['name' => 'Historical', 'email' => 'NEW+TAG@example.invalid']);
         [, $flow, $challenge, $code] = $this->registration();
         $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1');
-        $this->denied(fn () => $this->auth->complete($flow, 'takeover', 'new+tag@example.invalid', $this->binding, '192.0.2.1'), 'registration_conflict');
+        $this->denied(fn () => $this->auth->complete($flow, 'takeover', 'new+tag@example.invalid', $this->binding, '192.0.2.1', 'Тестове'), 'registration_conflict');
         $this->assertNull(DB::table('client_invitations')->where('coach_user_id', $this->coach)->value('consumed_at'));
         $response = $this->auth->request('login', 'new+tag@example.invalid', null, $this->binding, '192.0.2.1');
         $this->assertFalse(DB::table('auth_challenges')->where('public_id', $response['challenge_id'])->exists());
@@ -231,7 +234,7 @@ class Auth4Test extends TestCase
         DB::statement("CREATE FUNCTION auth4_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic audit failure'; END $$");
         DB::statement('CREATE TRIGGER auth4_fault BEFORE INSERT ON '.$table.' FOR EACH ROW EXECUTE FUNCTION auth4_fault()');
         try {
-            $this->auth->complete($flow, 'rollback', 'new+tag@example.invalid', $this->binding, '192.0.2.1');
+            $this->auth->complete($flow, 'rollback', 'new+tag@example.invalid', $this->binding, '192.0.2.1', 'Тестове');
             $this->fail('Expected rollback');
         } catch (QueryException) {
             $this->assertFalse(DB::table('users')->where('email_normalized', 'new+tag@example.invalid')->exists());
@@ -356,7 +359,7 @@ class Auth4Test extends TestCase
     {
         [, $flow, $challenge, $code] = $this->registration();
         $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1');
-        $proof = $this->auth->complete($flow, 'Timeout fixture', 'new+tag@example.invalid', $this->binding, '192.0.2.1');
+        $proof = $this->auth->complete($flow, 'Timeout fixture', 'new+tag@example.invalid', $this->binding, '192.0.2.1', 'Тестове');
         $request = $this->requestSession();
         app(ClientSession::class)->issue($request, $proof);
         DB::table('sessions')->where('id', $request->session()->getId())->update(['last_activity' => time() - 43201]);

@@ -154,6 +154,10 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
     baseline_paths+=(--path="$file")
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
+if [[ ${CLIENT_PROFILES_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit -c phpunit.pgsql.xml --filter ClientProfilesTest --display-all-issues
+    exit
+fi
 mkdir -p tests/pg/out
 for file in tests/pg/t0*.sql; do
     docker exec -i "$container" psql -X -w -U "$DB_USERNAME" -d "$DB_DATABASE" \
