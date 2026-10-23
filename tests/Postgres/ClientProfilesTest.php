@@ -180,8 +180,19 @@ class ClientProfilesTest extends PostgresTestCase
         $client = $this->client();
         $this->upgrade();
         DB::table('client_onboardings')->insert(['client_id' => $client, 'answers' => '{"kept":true}', 'completed_at' => now()]);
-        foreach ([['answers' => '{}'], ['completed_at' => null], ['client_id' => $this->client()]] as $change) {
+        $before = (array) DB::table('client_onboardings')->where('client_id', $client)->first();
+        foreach ([
+            ['answers' => '{}'],
+            ['completed_at' => null],
+            ['client_id' => $this->client()],
+            ['updated_at' => '2000-01-01 00:00:00+00'],
+            ['id' => $before['id'] + 1000],
+            ['answers' => $before['answers']],
+            ['updated_at' => $before['updated_at']],
+            ['id' => $before['id']],
+        ] as $change) {
             $this->rejected('23514', fn () => DB::table('client_onboardings')->where('client_id', $client)->update($change));
+            $this->assertSame($before, (array) DB::table('client_onboardings')->where('client_id', $client)->first());
         }
         $this->rejected('23514', fn () => DB::table('client_onboardings')->where('client_id', $client)->delete());
         ClientProfile::create(['client_id' => $client, 'goal' => 'Нова поточна ціль']);
@@ -190,5 +201,25 @@ class ClientProfilesTest extends PostgresTestCase
         $this->assertNull(DB::table('clients')->where('id', $client)->value('coaching_started_at'));
         DB::table('clients')->where('id', $client)->delete();
         $this->assertSame(0, DB::table('client_onboardings')->count());
+    }
+
+    public function test_draft_can_be_updated_and_completed_but_completion_freezes_the_whole_row(): void
+    {
+        $client = $this->client();
+        $this->upgrade();
+        DB::table('client_onboardings')->insert(['client_id' => $client]);
+        DB::table('client_onboardings')->where('client_id', $client)->update([
+            'answers' => '{"draft":true}', 'updated_at' => '2000-01-01 00:00:00+00',
+        ]);
+        $this->assertSame('{"draft":true}', DB::table('client_onboardings')->value('answers'));
+        DB::table('client_onboardings')->where('client_id', $client)->update([
+            'answers' => '{"final":true}', 'completed_at' => now(),
+        ]);
+        $this->rejected('23514', fn () => DB::statement('UPDATE client_onboardings SET completed_at = completed_at WHERE client_id = ?', [$client]));
+        $this->assertSame('{"final":true}', DB::table('client_onboardings')->value('answers'));
+
+        $draft = $this->client();
+        DB::table('client_onboardings')->insert(['client_id' => $draft]);
+        $this->assertSame(1, DB::table('client_onboardings')->where('client_id', $draft)->delete());
     }
 }

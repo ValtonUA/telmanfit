@@ -80,11 +80,8 @@ BEGIN
    END IF;
    RETURN OLD;
  END IF;
- IF OLD.completed_at IS NOT NULL AND (
-   NEW.answers::text IS DISTINCT FROM OLD.answers::text OR
-   NEW.completed_at IS DISTINCT FROM OLD.completed_at OR
-   NEW.client_id IS DISTINCT FROM OLD.client_id
- ) THEN
+ -- Після завершення заборонено будь-який UPDATE, включно з no-op та службовими полями.
+ IF OLD.completed_at IS NOT NULL THEN
    RAISE EXCEPTION 'Завершена анкета є незмінним архівом' USING ERRCODE = '23514';
  END IF;
  RETURN NEW;
