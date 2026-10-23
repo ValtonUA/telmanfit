@@ -9,6 +9,7 @@ use App\Filament\Resources\Clients\Pages\ListClients;
 use App\Filament\Resources\Clients\Pages\ViewClient;
 use App\Models\Client;
 use App\Models\User;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -144,6 +145,54 @@ class ClientResourceTest extends PostgresTestCase
             ->assertSuccessful()->assertSee('Distinctive client')->assertSee('Активний');
         Livewire::test(ViewClient::class, ['record' => $offline->id])
             ->assertSuccessful()->assertSee('Без акаунта');
+    }
+
+    public function test_search_by_coach_and_empty_results(): void
+    {
+        $assigned = Client::create(['coach_user_id' => $this->coach->id]);
+        $other = Client::create(['coach_user_id' => $this->admin->id]);
+
+        Livewire::test(ListClients::class)
+            ->searchTable('Coach')->assertCanSeeTableRecords([$assigned])->assertCanNotSeeTableRecords([$other])
+            ->searchTable('No matching synthetic client')->assertCountTableRecords(0)
+            ->searchTable('')->assertCanSeeTableRecords([$assigned, $other]);
+    }
+
+    public function test_invitation_mode_preserves_account_when_edit_state_is_forged(): void
+    {
+        config(['auth4.enabled' => true]);
+        $account = $this->user('client');
+        $replacement = $this->user('client');
+        $linked = Client::create(['coach_user_id' => $this->coach->id, 'user_id' => $account->id]);
+        $unlinked = Client::create(['coach_user_id' => $this->coach->id]);
+
+        foreach ([$linked, $unlinked] as $client) {
+            $originalAccount = $client->user_id;
+            Livewire::test(EditClient::class, ['record' => $client->id])
+                ->assertFormFieldIsDisabled('user_id')
+                ->set('data.user_id', $replacement->id)
+                ->fillForm(['coach_user_id' => $this->admin->id, 'status' => 'paused'])
+                ->call('save')->assertHasNoFormErrors();
+            $this->assertSame($originalAccount, $client->refresh()->user_id);
+            $this->assertSame($this->admin->id, $client->coach_user_id);
+            $this->assertSame('paused', $client->status);
+            $this->assertNull($client->coaching_started_at);
+        }
+    }
+
+    public function test_delete_actions_are_unavailable_and_forged_calls_preserve_card(): void
+    {
+        $client = Client::create(['coach_user_id' => $this->coach->id]);
+        $this->assertFalse(Gate::allows('deleteAny', Client::class));
+        Livewire::test(ListClients::class)
+            ->assertActionDoesNotExist(TestAction::make('delete')->table($client))
+            ->assertActionDoesNotExist(TestAction::make('delete')->table()->bulk())
+            ->call('mountAction', 'delete', [], ['table' => true, 'recordKey' => (string) $client->id])
+            ->call('callMountedAction');
+        Livewire::test(EditClient::class, ['record' => $client->id])
+            ->assertActionDoesNotExist('delete')
+            ->call('mountAction', 'delete')->call('callMountedAction');
+        $this->assertSame(1, Client::whereKey($client->id)->count());
     }
 
     #[DataProvider('statuses')]
