@@ -102,9 +102,10 @@ with sync_playwright() as p:
         code = subprocess.check_output(['php', 'scripts/local-demo/mail.php'], text=True).strip()
     cp.locator('[name=code]').fill(code)
     cp.get_by_role('button', name='Підтвердити', exact=True).click()
-    cp.locator('[name=name]').fill('Демонстраційний клієнт')
+    cp.locator('[name=first_name]').fill('Демонстраційний')
+    cp.locator('[name=last_name]').fill('клієнт')
     cp.get_by_role('button', name='Завершити реєстрацію', exact=True).click()
-    expect(cp.get_by_role('heading', name='Вітаємо, Демонстраційний клієнт')).to_be_visible()
+    expect(cp.get_by_role('heading', name='Вітаємо, Демонстраційний')).to_be_visible()
     checks.append('Invitation + synthetic email OTP -> actual client registration; anonymous API denied')
     if compose:
         assert client.request.post(base + '/api/onboarding', data={'answers': {}}, headers={'Accept': 'application/json'}).status == 419
