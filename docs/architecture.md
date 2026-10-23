@@ -192,6 +192,14 @@ PWA і Telegram Mini App використовують максимально о�
 
 ## 13. Локальний запуск і типові команди
 
+Постійне середовище Windows 11 / Docker Desktop: [Docker Compose](local-compose.md).
+`compose.yaml` збирає PHP 8.5 / Laravel, React/Vite та nginx у контейнерах,
+створює лише нову ізольовану PostgreSQL 18 і зберігає дані, ключі, storage та
+незалежний RestoreFence epoch у named volumes. Local-only adapter не реєструється
+у production; міграції на непорожній БД при рестарті заборонені.
+
+Нижче — альтернативний запуск із runtime на хості.
+
 Для перевірки Filament та клієнтської анкети використовуйте [ізольований локальний профіль](local-demo.md): окрема PostgreSQL 18, незалежний local epoch, штатні MFA/OTP, loopback-only. Він явно opt-in і не змінює production; звичайний `composer dev` сам по собі не налаштовує security runtime.
 
 ```sh

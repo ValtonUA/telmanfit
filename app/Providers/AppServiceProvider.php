@@ -8,6 +8,7 @@ use App\Mail\SyntheticTransport;
 use App\Services\Auth\Client\ClientAuth;
 use App\Services\Auth\MfaService;
 use App\Services\Auth\Restore\ExternalEpoch;
+use App\Services\Auth\Restore\LocalComposeEpoch;
 use App\Services\Auth\Restore\LocalDemoEpoch;
 use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Restore\SyntheticMaintenanceMode;
@@ -34,6 +35,9 @@ class AppServiceProvider extends ServiceProvider
         }
         if ($this->app->environment('local') && config('local_demo.enabled') === true) {
             $this->app->singleton(ExternalEpoch::class, LocalDemoEpoch::class);
+        }
+        if ($this->app->environment('local') && config('local_compose.enabled') === true) {
+            $this->app->singleton(ExternalEpoch::class, LocalComposeEpoch::class);
         }
         $this->app->singleton(MfaService::class);
         $this->app->singleton(ClientAuth::class);
