@@ -186,12 +186,16 @@ class ClientProfilesTest extends PostgresTestCase
             ['completed_at' => null],
             ['client_id' => $this->client()],
             ['updated_at' => '2000-01-01 00:00:00+00'],
-            ['id' => $before['id'] + 1000],
+            ['id' => DB::raw('DEFAULT')],
             ['answers' => $before['answers']],
             ['updated_at' => $before['updated_at']],
-            ['id' => $before['id']],
         ] as $change) {
             $this->rejected('23514', fn () => DB::table('client_onboardings')->where('client_id', $client)->update($change));
+            $this->assertSame($before, (array) DB::table('client_onboardings')->where('client_id', $client)->first());
+        }
+        // GENERATED ALWAYS відхиляє явне значення ще до BEFORE-trigger.
+        foreach ([$before['id'], $before['id'] + 1000] as $id) {
+            $this->rejected('428C9', fn () => DB::table('client_onboardings')->where('client_id', $client)->update(['id' => $id]));
             $this->assertSame($before, (array) DB::table('client_onboardings')->where('client_id', $client)->first());
         }
         $this->rejected('23514', fn () => DB::table('client_onboardings')->where('client_id', $client)->delete());
