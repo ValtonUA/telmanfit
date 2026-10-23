@@ -31,8 +31,19 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - name: Validate standard Compose and cold build without overrides
         run: |
+          # Синтетичні маркери: локальні credentials/БД не мають потрапити в образ.
+          for file in .pgpass pgpass.conf id_rsa_audit .npmrc database/context-audit.sqlite; do
+            test ! -e "$file"
+            printf 'synthetic-context-exclusion-probe\n' > "$file"
+          done
           docker compose config --quiet
           docker compose build --pull --no-cache
+      - name: Reject host credentials and database files in built image
+        run: |
+          docker run --rm --entrypoint sh telmanfit-local-app -c '
+            for file in .pgpass pgpass.conf id_rsa_audit .npmrc database/context-audit.sqlite; do
+              test ! -e "$file" || exit 1
+            done'
       - name: Start fresh isolated volumes
         run: docker compose up -d --wait --wait-timeout 240
       - name: MFA, OTP, CSRF, fence and persistence in Chromium

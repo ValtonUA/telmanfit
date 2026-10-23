@@ -16,6 +16,16 @@ storage/framework/views/*
 bootstrap/cache/*.php
 __pycache__
 auth.json
+.pgpass
+pgpass.conf
+id_rsa*
+**/.pgpass
+**/pgpass.conf
+**/id_rsa*
+**/.npmrc
+**/*.sqlite*
+**/*.db
+.ssh
 .codex
 .cursor
 .idea
