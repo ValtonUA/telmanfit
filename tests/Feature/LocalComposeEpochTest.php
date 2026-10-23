@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Providers\AppServiceProvider;
 use App\Services\Auth\Restore\ExternalEpoch;
 use App\Services\Auth\Restore\LocalComposeEpoch;
+use App\Services\Auth\Restore\SyntheticEpoch;
 use Tests\TestCase;
 
 class LocalComposeEpochTest extends TestCase
@@ -16,7 +17,13 @@ class LocalComposeEpochTest extends TestCase
         foreach (['production', 'staging', 'testing'] as $environment) {
             $this->app->instance('env', $environment);
             (new AppServiceProvider($this->app))->register();
-            $this->assertFalse($this->app->bound(ExternalEpoch::class));
+            if ($environment === 'testing' && getenv('TELMANFIT_PG_TEST') === '1') {
+                // PG runner штатно реєструє synthetic adapter; Compose не має його заміняти.
+                $this->assertInstanceOf(SyntheticEpoch::class, app(ExternalEpoch::class));
+            } else {
+                $this->assertFalse($this->app->bound(ExternalEpoch::class));
+            }
+            $this->app->offsetUnset(ExternalEpoch::class);
         }
         $this->app->instance('env', 'local');
         config(['local_compose.enabled' => false]);

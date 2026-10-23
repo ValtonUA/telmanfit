@@ -57,8 +57,18 @@ Chromium flow з down/up. Публікується лише текстовий `
 offline build override: наявні client node_modules звірено з manifest, lint/build
 виконано всередині Node-контейнера; виправлені CLI helpers/entrypoint додано в образ
 локальними COPY шарами. PHP-код, конфігурація nginx і Compose відповідають файлам PR.
-Остаточний повний cold build стандартного Dockerfile потребує повтору при справній
-мережі. Жодних TLS/proxy/auth послаблень або offline override у коді немає.
+Фінальний аудит усунув цю прогалину: на `f08a25d5b7cbe93614391f2779f5e6217d399c4f`
+[чистий GitHub runner](https://github.com/ValtonUA/telmanfit/actions/runs/39929788695)
+успішно виконав стандартний `docker compose build --pull --no-cache`, старт нових
+volumes і всі 7 груп Chromium, включно з реальним down/up. Cleanup видалив лише
+volumes цього CI stack. Жодних TLS/proxy/auth послаблень або offline override у коді немає.
+
+Той самий аудит знайшов дефект тестової ізоляції `LocalComposeEpochTest`: у PG runner
+`TELMANFIT_PG_TEST=1` законно реєструє `SyntheticEpoch` у testing. Тест тепер перевіряє,
+що Compose його не підміняє, та прибирає binding між перевірками середовищ.
+Production/staging як і раніше мають залишатися без локального adapter. Це зміна
+тесту, без послаблення runtime gate. Повний CI і cold build повторюються після
+виправлення; актуальний результат потрібно звіряти з head SHA PR.
 
 Власний перевірений stack використовує окреме ім’я `telmanfit-compose-verified`;
 його постійні volumes залишені зі синтетичними даними. Наявні користувацькі/реальні
