@@ -188,5 +188,7 @@ class ClientProfilesTest extends PostgresTestCase
         $this->assertSame('{"kept":true}', DB::table('client_onboardings')->value('answers'));
         $this->assertSame('pending', DB::table('clients')->where('id', $client)->value('status'));
         $this->assertNull(DB::table('clients')->where('id', $client)->value('coaching_started_at'));
+        DB::table('clients')->where('id', $client)->delete();
+        $this->assertSame(0, DB::table('client_onboardings')->count());
     }
 }

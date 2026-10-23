@@ -95,3 +95,7 @@ Runner [run-stage1.sh](../tests/pg/run-stage1.sh) створює новий PG18
 
 Окремий короткий прогін upgrade/constraints: `CLIENT_PROFILES_ONLY=1 bash tests/pg/run-stage1.sh`.
 Це той самий disposable PG18 runner із перевіркою ідентичності БД та cleanup.
+
+Локальні перевірки та виявлений CI dependency blocker зафіксовані в
+[checks.json](evidence/client-profiles/checks.json). Актуальний head і завершення
+GitHub jobs перевіряти в Checks [Draft PR #34](https://github.com/ValtonUA/telmanfit/pull/34).
