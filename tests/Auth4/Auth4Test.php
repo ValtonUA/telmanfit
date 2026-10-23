@@ -160,6 +160,27 @@ class Auth4Test extends TestCase
         $this->assertSame('pending', DB::table('auth_flows')->where('public_id', $flow)->value('state'));
     }
 
+    public function test_registration_rechecks_coach_role_before_creating_account_and_card(): void
+    {
+        $legacyId = DB::table('clients')->insertGetId(['coach_user_id' => $this->coach]);
+        $legacy = DB::table('clients')->where('id', $legacyId)->first();
+        [$token, $flow, $challenge, $code] = $this->registration();
+        $this->auth->verify($challenge, $code, $this->binding, '192.0.2.1');
+        $usersBefore = DB::table('users')->count();
+        $clientsBefore = DB::table('clients')->count();
+        // Роль змінилася після видачі запрошення та підтвердження OTP.
+        DB::table('users')->where('id', $this->coach)->update(['role' => 'client']);
+
+        $this->denied(fn () => $this->auth->complete($flow, 'Новий клієнт', 'New+tag@Example.invalid', $this->binding, '192.0.2.1'), 'invitation_unavailable');
+
+        $this->assertSame($usersBefore, DB::table('users')->count());
+        $this->assertSame($clientsBefore, DB::table('clients')->count());
+        $this->assertEquals($legacy, DB::table('clients')->where('id', $legacyId)->first());
+        $invite = DB::table('client_invitations')->where('token_hash', hash('sha256', $token))->first();
+        $this->assertNull($invite->consumed_at);
+        $this->assertNull($invite->consumed_by_user_id);
+    }
+
     public function test_resend_and_new_flow_do_not_reset_email_budget(): void
     {
         [, $flow, $challenge, $code] = $this->registration();
