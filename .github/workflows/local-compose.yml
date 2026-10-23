@@ -47,11 +47,13 @@ jobs:
       - name: Start fresh isolated volumes
         run: docker compose up -d --wait --wait-timeout 240
       - name: MFA, OTP, CSRF, fence and persistence in Chromium
-        run: python tests/browser/local_compose.py
+        run: TELMANFIT_FILAMENT_THEME_BROWSER=1 python tests/browser/local_compose.py
       - uses: actions/upload-artifact@v4
         with:
           name: local-compose-checks-${{ github.event.pull_request.head.sha || github.sha }}
-          path: docs/evidence/local-compose/checks.json
+          path: |
+            docs/evidence/local-compose/checks.json
+            docs/evidence/filament-theme/checks.json
           if-no-files-found: error
       - name: Service status
         if: always()
