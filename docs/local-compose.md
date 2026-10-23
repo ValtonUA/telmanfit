@@ -113,3 +113,8 @@ Stage 3 і бізнес-схема не змінюються. Анкета мі�
 після запуску stack, до ручного enrollment. Це інструмент розробника, не крок
 щоденного запуску; потрібні Playwright/Chromium. Тест використовує реальні MFA/OTP,
 зберігає/читає анкету й виконує `down/up` без видалення volumes.
+
+Перевірка штатного оформлення Filament у цьому самому disposable сценарії:
+`TELMANFIT_FILAMENT_THEME_BROWSER=1 python3 tests/browser/local_compose.py`.
+Вона охоплює запрошення, клієнтів, анкету, dropdown і сповіщення у двох темах на
+1440/390/320 px; [причина виправлення та докази](filament-theme.md).

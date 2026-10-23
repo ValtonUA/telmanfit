@@ -137,6 +137,9 @@ with sync_playwright() as p:
     expect(cp.locator('#onboarding-workplace')).to_have_value('hybrid')
     expect(cp.locator('#onboarding-meals')).to_have_value('3')
     checks.append('Filament client card: reads three answers, edits, saves and reopens; React sees same PostgreSQL data')
+    if os.environ.get('TELMANFIT_FILAMENT_THEME_BROWSER') == '1':
+        from filament_theme import audit
+        audit(page, secret, os.environ['DEMO_PASSWORD'], otp)
     if compose:
         subprocess.run(['docker', 'compose', 'down'], check=True, capture_output=True)
         subprocess.run(['docker', 'compose', 'up', '-d', '--wait', '--wait-timeout', '180'], check=True, capture_output=True)
