@@ -6,8 +6,10 @@ React/Vite, nginx, queue worker та scheduler. Усі runtime/dependency tools 
 локальну encrypted mailbox і приватне storage. Production/default auth та Stage 3
 не змінені; бізнес-схема й міграції не редагувалися.
 
-Основа — master `e7dac72` та PR #31 `bddd007`. Зміна готується як залежний Draft PR
-до `fix/local-demo`, щоб не дублювати його auth/session виправлення. Merge не виконано.
+Початкова основа — master `e7dac72` та PR #31 `bddd007`. PR #31 змерджено
+як `dc240dc62c0f22e3491c81190caa84d860d63a33`; PR #32 перенаправлено на `master`.
+Diff зберігає лише Compose-зміни; auth/session виправлення PR #31 не дублюються.
+PR #32 залишається Draft до підтвердження перевірок.
 
 ## Виконані перевірки
 
@@ -39,6 +41,15 @@ React/Vite, nginx, queue worker та scheduler. Усі runtime/dependency tools 
 
 ## Межі перевірки
 
+Наведені вище результати — попередній cloud-прогін. Фінальний аудит виконується
+окремо: [Local Compose cold build](../../../.github/workflows/local-compose.yml)
+бере точний head SHA, запускає `docker compose build --pull --no-cache` зі стандартним
+Compose/Dockerfile без offline override, створює нові synthetic volumes і проходить
+Chromium flow з down/up. Публікується лише текстовий `checks.json`, без секретів
+і screenshots. Успіх слід звіряти з конкретним SHA в GitHub Actions.
+На Windows-хості аудиту Docker відсутній, у WSL немає встановленого дистрибутива;
+локальний cold build/browser тут не запускався.
+
 Перевірено Linux Docker у керованому cloud-середовищі, не Windows 11 / Docker Desktop.
 Перші стандартні container builds (Composer, root/SPA npm) пройшли. Під час фінальних
 ітерацій cloud proxy втратив upstream tunnel: npm, Docker Hub та GitHub через shell
@@ -66,6 +77,7 @@ offline build override: наявні client node_modules звірено з manif
 ## Повний перелік змінених / нових файлів
 
 - `.dockerignore`
+- `.github/workflows/local-compose.yml`
 - `.gitignore`
 - `README.md`
 - `app/Providers/AppServiceProvider.php`
