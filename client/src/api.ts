@@ -74,7 +74,7 @@ export function initialize(): Promise<{ me?: Me; invite?: FlowResult }> {
     if (token && window.location.pathname === '/app/register') {
       return { invite: await api('auth/invitations/exchange', { token }) }
     }
-    if (['/app', '/app/', '/app/index.html', '/app/security'].includes(window.location.pathname)) {
+    if (['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding'].includes(window.location.pathname)) {
       try { return { me: await api<Me>('me') } } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 401) throw error
       }
