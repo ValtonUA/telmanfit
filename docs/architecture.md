@@ -56,6 +56,7 @@ PWA і Telegram Mini App використовують максимально о�
 | Мова backend | PHP | `~8.3.36 \|\| ~8.4.27 \|\| ~8.5.12` у Composer; цільовий runtime — PHP 8.5 із security patch | `composer.json`, [D8.1](auth6-d8-preflight.md) |
 | Фреймворк | Laravel | `^13.17` | `composer.json` |
 | Адмінка | Filament | `~5.0` | `composer.json` |
+| Реактивні компоненти адмінки | Livewire | `4.4.8` у lock; виправлення GHSA-mhf7-xp6r-6qrc, без зміни Filament чи audit policy | `composer.lock`, [advisory](https://github.com/advisories/GHSA-mhf7-xp6r-6qrc) |
 | Розробка | Laravel Tinker, Pint, Pail, PAO | `^3.0`, `^1.27`, `^1.2.5`, `^1.0.6` | `composer.json` |
 | Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [пояснення](#31-карта-технічних-файлів) |
 | БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–09_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
