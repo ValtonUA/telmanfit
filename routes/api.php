@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ClientAuthController;
+use App\Http\Controllers\Api\ClientOnboardingController;
 use App\Http\Controllers\Api\ClientSecurityController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Middleware\ClientCsrf;
@@ -33,6 +34,11 @@ Route::middleware(['web', ClientCsrf::class])->group(function () {
     ] as [$method, $uri, $name]) {
         Route::$method($uri, ClientAuthController::class)->name('auth4.'.$name);
     }
+    // Одна реальна функція для клієнта: перегляд та збереження першої частини анкети.
+    // Авторизація — той самий ClientSession, що в /api/me; без production bypass.
+    Route::get('/onboarding', [ClientOnboardingController::class, 'show'])->name('onboarding.show');
+    Route::post('/onboarding', [ClientOnboardingController::class, 'store'])->name('onboarding.store');
+
     foreach ([
         ['post', 'reauth/request', 'reauth.request'],
         ['post', 'reauth/verify', 'reauth.verify'],
