@@ -1,0 +1,61 @@
+name: Local Compose cold build
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-compose-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose:
+    name: Cold build and browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      COMPOSE_PROJECT_NAME: telmanfit-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Record exact tested source
+        run: git rev-parse HEAD
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright==1.62.0
+      - run: python -m playwright install --with-deps chromium
+      - name: Validate standard Compose and cold build without overrides
+        run: |
+          # Синтетичні маркери: локальні credentials/БД не мають потрапити в образ.
+          for file in .pgpass pgpass.conf id_rsa_audit database/.npmrc database/context-audit.sqlite; do
+            test ! -e "$file"
+            printf 'synthetic-context-exclusion-probe\n' > "$file"
+          done
+          docker compose config --quiet
+          docker compose build --pull --no-cache
+      - name: Reject host credentials and database files in built image
+        run: |
+          docker run --rm --entrypoint sh telmanfit-local-app -c '
+            for file in .pgpass pgpass.conf id_rsa_audit database/.npmrc database/context-audit.sqlite; do
+              test ! -e "$file" || exit 1
+            done'
+      - name: Start fresh isolated volumes
+        run: docker compose up -d --wait --wait-timeout 240
+      - name: MFA, OTP, CSRF, fence and persistence in Chromium
+        run: python tests/browser/local_compose.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: local-compose-checks-${{ github.event.pull_request.head.sha || github.sha }}
+          path: docs/evidence/local-compose/checks.json
+          if-no-files-found: error
+      - name: Service status
+        if: always()
+        run: docker compose ps --all
+      - name: Remove only this disposable CI stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

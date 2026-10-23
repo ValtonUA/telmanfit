@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "Missing/mismatched independent epoch: admin/client 503; no fallback",
+    "Admin password-only denied; enrollment, fresh password+TOTP -> Filament",
+    "Invitation + synthetic email OTP -> actual client registration; anonymous API denied",
+    "Authenticated onboarding mutation without CSRF token rejected with 419",
+    "React: all three answers saved and reopened after full reload",
+    "Filament client card: reads three answers, edits, saves and reopens; React sees same PostgreSQL data",
+    "Compose down/up: persisted users, sessions, answers and MFA; fresh password+TOTP login without enrollment"
+  ]
+}

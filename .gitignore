@@ -47,3 +47,6 @@ pgpass.conf
 *.pfx
 id_rsa*
 /backups/
+
+# Локальні browser artifacts не експортуються без окремої згоди.
+/docs/evidence/local-compose/*.png
