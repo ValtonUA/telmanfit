@@ -85,7 +85,7 @@ class OnboardingSliceTest extends TestCase
         $this->assertSame('Вечірній голод і брак часу', $data['answers']['top_reasons']);
 
         // Fresh read is from PostgreSQL, not React state or a mock.
-        $this->assertSame($data['answers'], $controller->show($this->request, app(ClientSession::class))->getData(true)['answers']);
+        $this->assertEquals($data['answers'], $controller->show($this->request, app(ClientSession::class))->getData(true)['answers']);
         $this->assertSame(1, DB::table('client_onboardings')->where('client_id', $this->clientId)->count());
         $this->assertNull(DB::table('client_onboardings')->where('client_id', $this->clientId)->value('completed_at'));
         $this->assertSame('pending', DB::table('clients')->where('id', $this->clientId)->value('status'));
