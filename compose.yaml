@@ -87,3 +87,5 @@ volumes:
   storage:
 networks:
   local:
+
+ci-cost-invalid-probe: [
