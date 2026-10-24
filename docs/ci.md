@@ -1,0 +1,102 @@
+# CI: Fast PR і Full PR gate
+
+Fast PR + Documentation health запускаються для кожного оновлення PR до master
+і push master без path-фільтрів. Fast перевіряє runtime, Composer lock/platform/audit,
+PHP syntax, Compose config, Pint, Unit/Feature на SQLite, обидві frontend збірки та client lint. Docs перевіряє
+посилання/roadmap і docs-impact **від PR base до точного head**, включно з видаленнями.
+Workflow/CI scripts теж потребують canonical docs або обґрунтованого Docs-Impact.
+
+## Запуск Full на фінальному head
+
+1. Оновити гілку так, щоб актуальний master був її предком. Переконатися, що
+   Fast PR і Documentation health успішні на потрібному SHA.
+2. У PR додати мітку `ci:full`. Для повтору спочатку зняти її, потім додати:
+
+   ```sh
+   gh pr edit <PR> --remove-label ci:full
+   gh pr edit <PR> --add-label ci:full
+   ```
+
+3. Дочекатися Full PR: PostgreSQL/browser, PHP 8.4.27 і 8.5.12, cold Compose,
+   Full documentation and base та агрегатор Full PR gate мають бути success.
+4. Із довіреного reviewed checkout виконати:
+
+   ```sh
+   python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit
+   ```
+
+   Позитивний JSON `eligible: true` містить head/base SHA і посилання на runs.
+   Це перевірка CI, не дозвіл merge і не зміна Draft-статусу.
+5. Лише за окремою авторизацією merge: повторити перевірку безпосередньо перед
+   дією й передати її `head_sha` у `gh pr merge --match-head-commit <SHA>`.
+   Не використовувати auto-merge. При зміні master повторити Full після оновлення гілки.
+
+Новий commit **не запускає важкі suites автоматично**, навіть якщо `ci:full` лишилася.
+Він запускає дешевий негативний Full PR gate і скасовує попередній Full тієї самої
+PR; стара зелена перевірка не годиться. На opened/reopened/synchronize та сторонню
+мітку залежні Full jobs skipped, але агрегатор **failure**, тому зеленої підміни немає.
+Потрібно знову явно додати `ci:full`. Concurrency ізольовано номером PR та рівнем CI;
+події незалежних PR не скасовують одна одну. Скасування/помилка Full блокує gate;
+найновіший run/attempt має пріоритет над попереднім success на тому самому SHA.
+`workflow_dispatch` не використовується: labeled pull_request реально прив’язаний
+до head PR, а reusable workflows беруть точний `inputs.head`.
+
+## Збережене повне покриття
+
+- Stage 1 SQL baseline 76, PostgreSQL18/ICU/btree_gist, runner fail-closed tests,
+  ізольований SQL/PDO runner, Stage 1/2/3 та profiles upgrade/regression.
+- Recipe A/B/C, B1/B2, historical upgrade, locks/concurrency, accepted/pending
+  provenance, UOM reload, Chromium light/dark та розміри екрана.
+- AUTH-1 upstream digest/versions; AUTH-2–6 PHPUnit, HTTP, browser та concurrency;
+  B3/B4 outbox/ACL, B5 retention/archive/restore faults, B6 budgets/restart/faults.
+- B6 виконується на **обох** PHP 8.4/8.5. Третій ідентичний прогін на Stage 1 PHP8.4
+  прибрано; фактичний runner/сценарії не змінені. Matrix зберігає Unit/Feature,
+  Pint, dependency audit та frontend build на обох runtime.
+- Стандартний Compose `build --pull --no-cache`, synthetic credential/database
+  exclusion probes у готовому образі, MFA/OTP/CSRF/fence, persistence та cleanup.
+- Docs guard із PR-base і регресійні тести CI виконуються також усередині Full.
+
+Кешуються лише завантаження Composer і npm, прив’язані до lock hash; vendor,
+node_modules, browser profiles, PG volumes і cold Docker layers не кешуються.
+`npm ci --ignore-scripts` замінює mutable install, Composer install не виконує
+plugins/scripts, а package discovery запускається явно. Actions pinned до повних
+commit SHA перевірених upstream tags. Усі workflows мають contents: read,
+checkout persist-credentials: false; secrets не успадковуються, pull_request_target
+не використовується. GH_TOKEN лише read token для pinned AUTH-1 public blobs.
+Synthetic PG/docker створюються незміненими runners із власним cleanup.
+
+## Межі merge-захисту
+
+На preflight інтеграція отримала HTTP403 `Resource not accessible by integration`
+для GET branch protection; master має protected=false, rulesets порожні. Приватність
+репозиторію не змінюється. Поточний токен не дозволяє налаштувати/підтвердити
+серверний required gate. AGENTS + machine checker — **обов’язковий fallback для
+агентів**, але людина/admin технічно може його обійти. Це причина зберігати
+CI-COST-1 частково виконаним, доки власник не налаштує серверний захист.
+
+Коли з’явиться адміністративний доступ, додати required checks `Full PR gate`,
+`Fast PR checks`, `Docs links, roadmap and PR impact` від GitHub Actions, strict
+up-to-date branches, заборону bypass/force pushes/deletions для master. Зберігати
+machine checker як додатковий захист SHA/run-attempt/job coverage. Workflow-зміни
+потребують предметного review: PR-код не є сам собі довіреним verifier.
+Навіть SHA-locked merge не дає атомарної блокади одночасної зміни base без
+серверного strict protection; перед merge перевіряти base, а після конфліктів — новий Full.
+
+## Вимірювання й перевірка
+
+[Виміряний baseline](evidence/ci-cost-1/before.json) містить run/job SHA, GitHub URLs,
+started/completed timestamps, усі steps і відповідь timing API. Відтворення:
+
+```sh
+python3 scripts/ci/measure.py <run-id> [<run-id> ...] > /tmp/ci-measurements.json
+python3 -m unittest discover -s tests/ci -v
+python3 -m unittest discover -s tests/docs -v
+python3 scripts/docs_guard.py --pr-base <base-sha>
+```
+
+Job-min = сума тривалостей **усіх** jobs; паралелізація сама не дає економії.
+`rounded_ubuntu_minutes_estimate` — округлення кожного job вгору, а не підтверджений
+рахунок GitHub. Якщо timing API недоступне, точні billed minutes недоведені;
+не називати оцінку списаними хвилинами. Before/after і сценарії 5/10 commits
+публікуються у Draft PR після завершення реальних GitHub runs. Дані останнього
+фінального SHA додаються до опису PR, щоб не створювати новий неперевірений commit.

@@ -1,0 +1,64 @@
+name: Fast PR
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+permissions:
+  contents: read
+concurrency:
+  group: fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  fast:
+    name: Fast PR checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:dGVsbWFuZml0LXBocHVuaXQtdGVzdC1vbmx5ISEhISE=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      DB_URL: ''
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      MAIL_MAILER: array
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: 8.4.27
+          extensions: pdo_pgsql, pgsql, pdo_sqlite, intl, mbstring, dom, bcmath, zip
+          coverage: none
+      - name: PHP syntax and Compose configuration
+        shell: bash
+        run: |
+          git ls-files -z '*.php' | xargs -0 -n1 php -l > /tmp/php-lint.log
+          docker compose config --quiet
+      - run: php scripts/check-php-runtime.php
+      - run: composer validate --strict
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+      - run: composer install --no-interaction --prefer-dist --no-scripts --no-plugins
+      - run: composer check-platform-reqs
+      - run: composer audit --locked --no-interaction
+      - run: php artisan package:discover --ansi
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm ci --prefix client --ignore-scripts
+      - run: npm run lint --prefix client
+      - run: npm run build --prefix client
+      - run: php artisan test --display-all-issues
+      - run: php vendor/bin/pint --test

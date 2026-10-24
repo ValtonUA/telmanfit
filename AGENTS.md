@@ -191,6 +191,17 @@ Telegram — це лише один із каналів доставки, а н�
 
 **Автоматичний захист:** [docs-health.yml](.github/workflows/docs-health.yml) запускає `scripts/docs_guard.py`: перевірка локальних посилань та ID/статусів roadmap; для PR зі змінами робочого коду/конфігурації вимагає змін у канонічній документації **або обґрунтованого** `Docs-Impact: none — ...`. Програма **не може довести фактичну правильність тексту** — це обов'язок автора та reviewer. Не обходити CI косметичними правками документа.
 
-**Merge-gate для агента:** перед будь-яким merge перевірити, що `Documentation health` **success** саме на актуальному head SHA PR; якщо CI failed/cancelled/pending — **не мерджити**. Це обов'язкове правило Codex, навіть якщо GitHub не застосовує required status checks через налаштування тарифу/репозиторію.
+**Merge-gate для агента:** перед будь-яким merge обов’язково виконати
+`python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit` із довіреного,
+переглянутого checkout. Потрібні **всі** jobs Full PR, Fast PR та Documentation health
+зі статусом completed/success саме на поточному head SHA, поточний master у head,
+відсутній auto-merge. Failed/cancelled/pending/skipped, попередній SHA/attempt або
+неповний набір — **не мерджити**. Новий commit вимагає нового Full: зняти й знову
+додати `ci:full`; подробиці — [CI](docs/ci.md). Перед дозволеним користувачем merge
+повторити gate, використати `gh pr merge --match-head-commit <перевірений SHA>`;
+зміна base/head під час перевірки потребує повтору. Без окремої авторизації merge
+не виконувати. Якщо GitHub required checks недоступні, це обов’язкова агентська
+політика, а не серверна заборона merge для людини/admin. Ніколи не вмикати auto-merge
+на підставі лише Fast або старого Full.
 
 **DoD будь-якого PR:** документація відповідає **поточному коду**, немає нового конфлікту з roadmap/spec, а зміни доведені тестами. У звіті Codex окремо: «Docs: оновлено ... / не потрібно, бо ...».
