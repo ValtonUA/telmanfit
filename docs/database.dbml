@@ -109,7 +109,7 @@ Table recipe_versions [headercolor: #7C3AED] {
   published_at timestamptz
   created_at timestamptz [not null]
 
-  editor_contract text [not null, default: 'legacy_v1']
+  editor_contract text [not null, default: 'legacy_v1', note: 'SQL 13: explicit one-way legacy draft to batch draft with original provenance; published immutable.']
   lock_version bigint [not null, default: 0]
   draft_pending_rows jsonb [not null, default: `'[]'::jsonb`]
   publication_review jsonb
@@ -1048,6 +1048,7 @@ Table auth_rate_budgets {
 // Калорійність та кроки >=0; SQL і forward міграція — database/sql/profiles/00_profiles.sql.
 // fitness_equipment/client_fitness_equipment — legacy; нові текстові описи пишуться лише в activity profile.
 
+// Forward C3: 13_recipe_legacy_conversion.sql — лише функції/guard, originals у наявних snapshots, без нових полів.
 // Forward Stage 3: CHECK/deferred guards — 11_recipe_batches.sql; equipment ceil count/context/adequacy — 12_recipe_equipment.sql (лише функції, без нових полів).
 Table recipe_batch_formats {
   id integer [pk]

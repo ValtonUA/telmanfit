@@ -1,6 +1,7 @@
 {
   "checks": [
     "Штатний password + MFA; guest editor недоступний",
+    "C3: 12 responsive/theme previews, confirm/cancel, negative review/token, redirect/reload, immutable source hashes",
     "150→1050→525; manual B=1000→C=500; save/reload",
     "Manual C=600 зберігається після A=160/reload; reset B=1120, reset C=560",
     "Дві вкладки: stale revision не перезаписує першу",

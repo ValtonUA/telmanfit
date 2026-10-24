@@ -10,6 +10,46 @@
             <x-filament::section><div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div></x-filament::section>
         @endif
         @if ($boundary)<x-filament::section>{{ $boundary }}</x-filament::section>@endif
+        @if ($isLegacy)
+            <x-filament::section heading="Явний перехід legacy → A/B/C">
+                <div class="space-y-4 min-w-0">
+                    <p>{{ $legacyStatus === 'published' ? 'Створюється окрема чернетка того самого рецепта. Опублікована версія, food та історичні плани зберігаються.' : 'Після підтвердження поточна чернетка стане A/B/C. Оригінальні значення зберігаються у snapshots конвертації.' }}</p>
+                    <x-filament::button wire:click="previewLegacy" wire:loading.attr="disabled">{{ $legacyStatus === 'published' ? 'Створити нову версію A/B/C' : 'Перетворити чернетку на A/B/C' }}</x-filament::button>
+                    @if ($legacyPreview)
+                        <p role="status">Це лише preview. A береться зі збережених grams на порцію; servings_count={{ $legacyPreview['original']['root']['servings_count'] }} повторно не множиться. B=7×A; C=B/2, точність 0.01 г. Упаковки не підставляються.</p>
+                        <p>Legacy не зберігав історичні nutrition snapshots, назви та factor/UOM labels. Нижче — поточні перевірені джерела; невідомі історичні значення не відновлюються.</p>
+                        @foreach ($legacyPreview['changes'] as $key => $change)
+                            <div class="space-y-2 break-words">
+                                <p>Рядок #{{ $key }}: було {{ $change['quantity'] }}, UOM #{{ $change['uom_id'] }} ({{ $change['uom_code'] }}; поточна назва: {{ $change['uom'] }}), збережено {{ $change['grams_saved'] }} г. Поточна конверсія: 1 {{ $change['uom_code'] }} = {{ $change['factor_now'] }} г → {{ $change['grams_now'] }} г.</p>
+                                @if ($change['mismatch'])<p role="alert">Розбіжність із поточним довідником. A залишає збережені {{ $change['grams_saved'] }} г. Потрібне явне прийняття.</p>@endif
+                                <p>Поточне джерело: {{ $legacyPreview['prepared']['snapshots'][$key]['name'] }}. КБЖВ на 100 г: {{ $legacyPreview['prepared']['snapshots'][$key]['kcal'] }} / {{ $legacyPreview['prepared']['snapshots'][$key]['protein'] }} / {{ $legacyPreview['prepared']['snapshots'][$key]['fat'] }} / {{ $legacyPreview['prepared']['snapshots'][$key]['carbs'] }}.</p>
+                                @foreach (['single' => 'A', 'week' => 'B', 'half_week' => 'C'] as $code => $label)
+                                    <p>{{ $label }}: {{ $legacyPreview['prepared']['evaluation']['rows'][$key][$code]['grams'] }} г</p>
+                                @endforeach
+                            </div>
+                        @endforeach
+                        <div class="space-y-2">
+                            @foreach ($legacyPreview['original']['recipe_components'] as $component)<p>Компонент: {{ $component['title'] }} · порядок {{ $component['sort_order'] }}</p>@endforeach
+                            @foreach ($legacyPreview['original']['recipe_directions'] as $step)
+                                @if ($step['image_url'])<p class="break-all">Зображення кроку {{ $step['direction_number'] }}: {{ $step['image_url'] }}</p>@endif
+                            @endforeach
+                            @foreach ($legacyPreview['nutrition'] as $name => $values)<p>{{ $name }}: збережено {{ $values['legacy'] ?? 'невідомо' }} → нова A {{ $values['current_A'] }}</p>@endforeach
+                            @foreach (['single' => 'A', 'week' => 'B', 'half_week' => 'C'] as $code => $label)
+                                <h3>{{ $label }} · кроки та обладнання</h3>
+                                @foreach ($legacyPreview['rendered'][$code] as $text)<p class="break-words">{{ $text }}</p>@endforeach
+                                @foreach ($legacyPreview['prepared']['equipment'] as $tool)<p>{{ $tool[$code]['name'] }}: {{ $tool[$code]['min_value'] ?? 'Без числової вимоги' }} {{ $tool[$code]['uom'] }} · {{ $tool[$code]['tip'] }}. Після переходу підтвердьте достатність у штатному review.</p>@endforeach
+                            @endforeach
+                        </div>
+                        <label class="flex gap-2"><x-filament::input.checkbox wire:model="legacySourcesAccepted" />Приймаю поточні джерела КБЖВ, UOM та всі показані розбіжності (явний Refresh).</label>
+                        <label class="flex gap-2"><x-filament::input.checkbox wire:model="legacyReviewed" />Переглянув A/B/C, спільні кроки, зображення й обладнання. Після переходу перевірю manual/adequacy перед Publish.</label>
+                        <div class="flex flex-wrap gap-3">
+                            <x-filament::button wire:click="convertLegacy" wire:loading.attr="disabled" wire:confirm="Явно підтверджуєте показану конвертацію? Для published буде створена окрема чернетка; старі плани й призначення зберігаються.">Підтвердити перехід на A/B/C</x-filament::button>
+                            <x-filament::button color="gray" wire:click="cancelLegacy">Скасувати конвертацію</x-filament::button>
+                        </div>
+                    @endif
+                </div>
+            </x-filament::section>
+        @endif
         @if ($canCreateVersion)
             <x-filament::button wire:click="createVersion" wire:loading.attr="disabled" wire:confirm="Створити нову чернетку A/B/C? Ручні значення збережуться й потребуватимуть повторного підтвердження. Зміни довідників приймаються окремим Refresh.">Створити нову версію A/B/C</x-filament::button>
         @endif

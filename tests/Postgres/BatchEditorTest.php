@@ -28,6 +28,7 @@ class BatchEditorTest extends PostgresTestCase
         parent::setUp();
         (require database_path('migrations/2026_10_24_010000_create_recipe_batches.php'))->up();
         (require database_path('migrations/2026_10_24_020000_complete_recipe_equipment.php'))->up();
+        (require database_path('migrations/2026_10_24_030000_allow_explicit_legacy_conversion.php'))->up();
         config(['recipes.batch_editor_enabled' => true]);
         $this->editor = app(BatchEditor::class);
         $actorId = DB::table('users')->insertGetId(['name' => 'Synthetic author', 'role' => 'admin']);

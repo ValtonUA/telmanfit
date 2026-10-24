@@ -59,7 +59,7 @@ PWA і Telegram Mini App використовують максимально о�
 | Реактивні компоненти адмінки | Livewire | `4.4.8` у lock; виправлення GHSA-mhf7-xp6r-6qrc, без зміни Filament чи audit policy | `composer.lock`, [advisory](https://github.com/advisories/GHSA-mhf7-xp6r-6qrc) |
 | Розробка | Laravel Tinker, Pint, Pail, PAO | `^3.0`, `^1.27`, `^1.2.5`, `^1.0.6` | `composer.json` |
 | Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [пояснення](#31-карта-технічних-файлів) |
-| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–10_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
+| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–13_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
 | SPA | React + TypeScript + Vite | React `^19.3`, TS `~6.0.3`, Vite `^8.3.4` | `client/package.json` |
 | Стилі SPA | CSS + Tailwind (Laravel-конвеєр) | Tailwind `^4.0` | `package.json`, `vite.config.js` |
 | Лінт SPA | ESLint + typescript-eslint | `^10.13`, `^8.71` | `client/eslint.config.js` |
@@ -67,11 +67,12 @@ PWA і Telegram Mini App використовують максимально о�
 
 ### 3.1. Карта технічних файлів
 
-**У `docs/` є десять SQL-файлів — це модулі та forward-проєкції однієї БД:**
+**У `docs/` є тринадцять SQL-файлів — це модулі та forward-проєкції однієї БД:**
 
 | Рівень | Файли | Для чого |
 |---|---|---|
 | Бізнес-схема | `01_nutrition_schema.sql`, `02_users_clients.sql`, `03_progress_tracking.sql`, `04_fitness_messaging.sql` | Продукти/рецепти, клієнти, прогрес, інвентар/повідомлення — 37 бізнес-таблиць |
+| Рецепти A/B/C | [11_recipe_batches.sql](11_recipe_batches.sql), [12_recipe_equipment.sql](12_recipe_equipment.sql), [13_recipe_legacy_conversion.sql](13_recipe_legacy_conversion.sql) | Forward-схема та guard-функції; виконувані джерела — `database/sql/recipes/` |
 | Профілі | `10_client_profiles.sql` | Forward-ревізія типізованих профілів; доповнює незмінні знімки Stage 1 |
 | Auth-таблиці | `05_auth_schema.sql` | Запрошення, сесії, MFA, резервні коди |
 | Auth recovery | `06_auth_recovery_schema.sql` | Технічна схема assisted recovery; **D3 operational із друзями відкладено** |

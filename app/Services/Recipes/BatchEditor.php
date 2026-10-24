@@ -90,6 +90,198 @@ final class BatchEditor
         });
     }
 
+    /** Read-only preview; HMAC прив'язує також весь legacy aggregate та довідники. */
+    public function previewLegacy(User $actor, int $id, string $revision): array
+    {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($actor, $id, $revision) {
+            if (DB::transactionLevel() === 1) {
+                DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+            }
+            $v = $this->legacyVersion($id, $revision);
+            $p = $this->legacyPlan($v);
+            $p['token'] = $this->legacyToken($actor, $p);
+
+            return $p;
+        });
+    }
+
+    public function convertLegacy(User $actor, int $id, string $revision, string $token, bool $acceptSources, bool $reviewed): int
+    {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($actor, $id, $revision, $token, $acceptSources, $reviewed) {
+            $recipeId = DB::table('recipe_versions')->where('id', $id)->value('recipe_id');
+            abort_unless($recipeId, 404);
+            DB::table('recipes')->where('id', $recipeId)->lockForUpdate()->first();
+            DB::table('recipe_versions')->where('id', $id)->lockForUpdate()->first();
+            $v = $this->legacyVersion($id, $revision);
+            if ($v->recipe_id !== $recipeId) {
+                $this->fail('Конфлікт рецепта. Перезавантажте сторінку.');
+            }
+            $this->lineage($v, lock: true);
+            $ids = DB::table('recipe_ingredients')->where('recipe_version_id', $id)->pluck('ingredient_id');
+            DB::table('ingredients')->whereIn('id', $ids)->orderBy('id')->sharedLock()->get();
+            DB::table('ingredient_uoms')->whereIn('ingredient_id', $ids)->orderBy('ingredient_id')->orderBy('uom_id')->sharedLock()->get();
+            foreach (['uoms', 'recipe_categories', 'kitchen_equipment'] as $table) {
+                DB::table($table)->orderBy('id')->sharedLock()->get();
+            }
+            $plan = $this->legacyPlan($v);
+            if (! hash_equals($this->legacyToken($actor, $plan), $token)) {
+                $this->fail('Legacy preview застарів. Перегляньте нові джерела та розбіжності.');
+            }
+            if (! $acceptSources || ! $reviewed) {
+                $this->fail('Явно прийміть поточні джерела/розбіжності та перегляньте A/B/C, кроки й обладнання.');
+            }
+            if ($v->status === 'published') {
+                if (DB::table('recipe_versions')->where('recipe_id', $recipeId)->where('status', 'draft')->exists()) {
+                    $this->fail('Цей рецепт уже має чернетку. Відкрийте її для редагування.');
+                }
+                $id = DB::table('recipe_versions')->insertGetId(['recipe_id' => $recipeId, 'title' => $v->title,
+                    'servings_count' => $v->servings_count, 'source_recipe_version_id' => $v->id]);
+                $components = $this->cloneChildren('recipe_components', $v->id, $id);
+                $rows = $this->cloneChildren('recipe_ingredients', $v->id, $id, fn ($r) => [
+                    'component_id' => $r['component_id'] === null ? null : $components[$r['component_id']],
+                ]);
+                $tools = $this->cloneChildren('recipe_kitchen_equipment', $v->id, $id);
+                $this->cloneChildren('recipe_directions', $v->id, $id, fn ($r) => [
+                    'direction_text' => RecipeTokens::remap($r['direction_text'], $rows, $tools),
+                ]);
+            }
+            $target = DB::table('recipe_versions')->find($id);
+            $p = $this->legacyPlan($target);
+            $formats = [];
+            foreach (self::CODES as $code) {
+                $policy = ['schema_version' => 1];
+                if ($code === 'single') {
+                    $policy['legacy_root'] = json_decode(DB::selectOne('SELECT to_jsonb(v) snapshot FROM recipe_versions v WHERE id=?', [$id])->snapshot, true);
+                    $policy['legacy_review'] = ['actor' => $actor->id, 'at' => now()->toIso8601String(),
+                        'source_version_id' => $v->id, 'source_revision' => $revision,
+                        'preview_hash' => hash('sha256', json_encode($plan)), 'historical_nutrition_snapshot' => null];
+                }
+                $formats[$code] = DB::table('recipe_batch_formats')->insertGetId(['recipe_version_id' => $id, 'code' => $code,
+                    'policy_snapshot' => json_encode($policy), 'kcal_total' => 0, 'protein_total' => 0, 'fat_total' => 0, 'carbs_total' => 0, 'calculation_hash' => 'pending']);
+            }
+            foreach ($p['prepared']['inputs'] as $key => $input) {
+                $raw = $p['original']['recipe_ingredients'][$key];
+                foreach (['week', 'half_week'] as $code) {
+                    $q = $p['prepared']['evaluation']['rows'][$key][$code];
+                    $snapshot = ['schema_version' => 1, 'factor' => '1.00', 'uom_label' => $p['prepared']['units']['g']->label,
+                        'source_hash' => $p['prepared']['hashes'][$raw['ingredient_id']]] + $q['policy'];
+                    if ($code === 'week') {
+                        $snapshot['legacy_source'] = json_decode(DB::selectOne('SELECT to_jsonb(r) snapshot FROM recipe_ingredients r WHERE id=?', [$key])->snapshot, true);
+                    } else {
+                        $snapshot['auto_policies'] = (object) [];
+                    }
+                    DB::table('recipe_batch_quantities')->insert(['recipe_version_id' => $id, 'format_id' => $formats[$code], 'format_code' => $code,
+                        'recipe_ingredient_id' => $key, 'mode' => 'auto', 'quantity' => $q['quantity'], 'quantity_grams' => $q['grams'],
+                        'uom_id' => $p['prepared']['gram_id'], 'input_snapshot' => json_encode($snapshot)]);
+                }
+            }
+            // Guard звіряє originals до нормалізації; deferred guards — увесь результат.
+            DB::table('recipe_versions')->where('id', $id)->update(['editor_contract' => 'batch_v1', 'servings_count' => 1, 'lock_version' => DB::raw('lock_version+1')]);
+            foreach ($p['prepared']['inputs'] as $key => $input) {
+                $q = $p['prepared']['evaluation']['rows'][$key]['single'];
+                DB::table('recipe_ingredients')->where('id', $key)->update(['quantity' => $q['quantity'], 'quantity_grams' => $q['grams'],
+                    'uom_id' => $p['prepared']['gram_id'], 'ingredient_snapshot' => json_encode($p['prepared']['snapshots'][$key])]);
+            }
+            $this->syncEquipment($id, $p['payload']['equipment'], $p['prepared']['equipment'], $formats, preserveBase: true);
+            $this->totals($id, $p['prepared']['evaluation']['totals']);
+            // Adequacy/manual acknowledgement не переноситься: штатний review після переходу.
+            DB::select('SELECT recipe_batch_validate(?)', [$id]);
+            DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+            DB::statement('SET CONSTRAINTS ALL DEFERRED');
+
+            return $id;
+        });
+    }
+
+    private function legacyVersion(int $id, string $revision): object
+    {
+        $v = DB::table('recipe_versions')->find($id);
+        abort_unless($v, 404);
+        $this->lineage($v);
+        if ($v->editor_contract !== 'legacy_v1' || ! in_array($v->status, ['draft', 'published'], true) || (string) $v->lock_version !== $revision) {
+            $this->fail('Конфлікт ревізій або джерело вже не legacy. Перезавантажте сторінку.');
+        }
+
+        return $v;
+    }
+
+    private function legacyToken(User $actor, array $p): string
+    {
+        return hash_hmac('sha256', json_encode($this->canonical([$actor->id, $p])), config('app.key'));
+    }
+
+    private function legacyPlan(object $v): array
+    {
+        $id = $v->id;
+        if (! $this->completeNumber($v->servings_count)) {
+            $this->fail('Legacy servings_count не є додатним скінченним decimal. Конвертацію не виконано.');
+        }
+        $original = ['root' => (array) $v];
+        foreach (['recipe_ingredients', 'recipe_components', 'recipe_directions', 'recipe_kitchen_equipment'] as $table) {
+            $original[$table] = DB::table($table)->where('recipe_version_id', $id)->orderBy('id')->get()->mapWithKeys(fn ($r) => [$r->id => (array) $r])->all();
+        }
+        $recipe = DB::table('recipes')->find($v->recipe_id);
+        $payload = ['title' => $v->title, 'category_id' => (string) ($recipe->recipe_category_id ?? ''), 'rows' => [], 'equipment' => [],
+            'components' => array_map(fn ($r) => ['id' => (string) $r['id'], 'title' => $r['title']], array_values($original['recipe_components'])),
+            'directions' => DB::table('recipe_directions')->where('recipe_version_id', $id)->orderBy('direction_number')->pluck('direction_text')->all()];
+        $changes = [];
+        foreach ($original['recipe_ingredients'] as $key => $r) {
+            $unit = DB::table('uoms')->find($r['uom_id']);
+            $conversion = $unit?->code === 'g' ? '1.00' : DB::table('ingredient_uoms')->where('ingredient_id', $r['ingredient_id'])->where('uom_id', $r['uom_id'])->value('grams_per_uom');
+            $reason = match (true) {
+                ! $unit => 'відсутня одиниця UOM #'.$r['uom_id'],
+                ! $conversion => 'відсутня поточна конверсія UOM #'.$r['uom_id'].' для інгредієнта #'.$r['ingredient_id'],
+                ! $this->completeNumber($conversion) => 'поточний factor конверсії не є додатним скінченним decimal',
+                ! $this->completeNumber($r['quantity']) => 'невалідна вихідна quantity: '.$r['quantity'],
+                ! $this->completeNumber($r['quantity_grams']) => 'невалідні збережені grams: '.$r['quantity_grams'],
+                $r['ingredient_snapshot'] !== null => 'неоднозначний legacy nutrition snapshot: потрібен предметний review',
+                default => null,
+            };
+            if ($reason !== null) {
+                $this->fail('Legacy рядок #'.$key.': '.$reason.'. Конвертацію не виконано.');
+            }
+            $current = (string) BigDecimal::of($r['quantity'])->multipliedBy($conversion)->toScale(2, RoundingMode::HalfUp);
+            if ($unit->code === 'g' && $current !== $r['quantity_grams']) {
+                $this->fail('Legacy рядок #'.$key.': quantity у g не відповідає збереженим grams.');
+            }
+            $changes[$key] = ['quantity' => $r['quantity'], 'uom_id' => $r['uom_id'], 'uom' => $unit->label, 'uom_code' => $unit->code, 'grams_saved' => $r['quantity_grams'],
+                'factor_now' => $conversion, 'grams_now' => $current, 'mismatch' => $current !== $r['quantity_grams']];
+            $auto = ['mode' => 'auto', 'quantity' => '', 'uom_id' => '', 'rounding' => 'exact', 'step' => '0.01'];
+            $payload['rows'][] = ['id' => (string) $key, 'ingredient_id' => (string) $r['ingredient_id'], 'quantity' => $r['quantity_grams'],
+                'component_id' => (string) ($r['component_id'] ?? ''), 'week' => $auto, 'half_week' => $auto];
+        }
+        if (! $payload['rows'] || ! $payload['directions'] || trim($payload['title']) === '') {
+            $this->fail('Legacy рецепт неповний: потрібні назва, завершені інгредієнти та кроки. Конвертацію не виконано.');
+        }
+        foreach ($original['recipe_kitchen_equipment'] as $r) {
+            $payload['equipment'][] = ['id' => (string) $r['id'], 'kitchen_equipment_id' => (string) $r['kitchen_equipment_id'],
+                'min_value' => $r['min_value'] ?? '', 'uom_id' => (string) ($r['uom_id'] ?? ''), 'tip' => $r['tip'] ?? '', 'scaling_mode' => $r['scaling_mode']];
+        }
+        $prepared = $this->prepare($id, $payload);
+        if ($prepared['evaluation']['incomplete']) {
+            $this->fail('Legacy рецепт містить незавершені рядки. Конвертацію не виконано.');
+        }
+        $rendered = [];
+        foreach (self::CODES as $code) {
+            foreach ($payload['directions'] as $text) {
+                if (trim($text) === '') {
+                    $this->fail('Порожній legacy крок.');
+                }
+                $rendered[$code][] = RecipeTokens::render($text, $prepared['evaluation']['rows'], $code, $prepared['equipment']);
+            }
+        }
+        $nutrition = [];
+        foreach (BatchEvaluator::NUTRIENTS as $n) {
+            $nutrition[$n] = ['legacy' => $v->{$n.'_per_serving'}, 'current_A' => $prepared['evaluation']['portions']['A/1'][$n]];
+        }
+
+        return compact('original', 'payload', 'prepared', 'changes', 'rendered', 'nutrition');
+    }
+
     private function cloneSource(int $sourceId, string $revision): object
     {
         $recipeId = DB::table('recipe_versions')->where('id', $sourceId)->value('recipe_id');
@@ -217,7 +409,10 @@ final class BatchEditor
             abort_unless($v, 404);
             $this->lineage($v);
             if ($v->editor_contract !== 'batch_v1') {
-                return ['boundary' => 'Старий формат: конвертація цієї чернетки ще недоступна.'];
+                return ['boundary' => $v->status === 'published'
+                    ? 'Опублікований legacy рецепт незмінний. Можна створити окрему нову версію A/B/C.'
+                    : 'Legacy чернетка. Перегляньте preview та явно підтвердіть перехід на A/B/C.',
+                    'legacy' => true, 'status' => $v->status, 'revision' => (string) $v->lock_version];
             }
             $recipe = DB::table('recipes')->find($v->recipe_id);
             $rows = [];
@@ -320,6 +515,11 @@ final class BatchEditor
                         $snapshot['auto_policies'] = (object) ($input['auto_policies'] ?? []);
                     }
                     $old = DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $rowId)->where('format_code', $code)->first();
+                    $previousInput = $old ? json_decode($old->input_snapshot, true)
+                        : (collect(json_decode($v->draft_pending_rows, true))->firstWhere('id', (string) $key)['overrides'][$code]['input_snapshot'] ?? []);
+                    if (isset($previousInput['legacy_source'])) {
+                        $snapshot['legacy_source'] = $previousInput['legacy_source'];
+                    }
                     $samePair = $old && $old->mode === 'manual' && $old->quantity === $q['quantity'] && $old->uom_id === $uom->id;
                     DB::table('recipe_batch_quantities')->updateOrInsert(['recipe_ingredient_id' => $rowId, 'format_code' => $code], [
                         'recipe_version_id' => $id, 'format_id' => $p['formats'][$code], 'mode' => $q['mode'], 'quantity' => $q['quantity'], 'quantity_grams' => $q['grams'],
@@ -717,7 +917,7 @@ final class BatchEditor
         return $result;
     }
 
-    private function syncEquipment(int $id, array $rows, array $resolved, array $formats): array
+    private function syncEquipment(int $id, array $rows, array $resolved, array $formats, bool $preserveBase = false): array
     {
         $map = [];
         foreach ($rows as $row) {
@@ -725,7 +925,9 @@ final class BatchEditor
                 'uom_id' => $row['uom_id'] ?: null, 'scaling_mode' => $row['scaling_mode'], 'tip' => $row['tip'] ?? ''];
             if (ctype_digit($row['id'])) {
                 $base = (int) $row['id'];
-                DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->where('id', $base)->update($values);
+                if (! $preserveBase) {
+                    DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->where('id', $base)->update($values);
+                }
             } else {
                 $base = DB::table('recipe_kitchen_equipment')->insertGetId(['recipe_version_id' => $id] + $values);
             }

@@ -48,6 +48,43 @@ final class RecipeBatches extends Page
     #[Locked]
     public ?int $parentRecipeId = null;
 
+    #[Locked]
+    public bool $isLegacy = false;
+
+    #[Locked]
+    public string $legacyStatus = '';
+
+    public array $legacyPreview = [];
+
+    public bool $legacySourcesAccepted = false;
+
+    public bool $legacyReviewed = false;
+
+    public function previewLegacy(): void
+    {
+        $this->legacyPreview = [];
+        $this->legacySourcesAccepted = $this->legacyReviewed = false;
+        $this->attempt(function () {
+            $this->legacyPreview = app(BatchEditor::class)->previewLegacy($this->actor(), $this->version, $this->revision);
+        });
+    }
+
+    public function cancelLegacy(): void
+    {
+        $this->actor();
+        $this->legacyPreview = [];
+        $this->legacySourcesAccepted = $this->legacyReviewed = false;
+    }
+
+    public function convertLegacy(): void
+    {
+        $this->attempt(function () {
+            $id = app(BatchEditor::class)->convertLegacy($this->actor(), $this->version, $this->revision,
+                $this->legacyPreview['token'] ?? '', $this->legacySourcesAccepted, $this->legacyReviewed);
+            $this->redirect(self::getUrl(['version' => $id]));
+        });
+    }
+
     public static function canAccess(): bool
     {
         return config('recipes.batch_editor_enabled') && Filament::auth()->user()?->role === User::ROLE_ADMIN;
@@ -79,6 +116,10 @@ final class RecipeBatches extends Page
     public function reload(): void
     {
         $state = app(BatchEditor::class)->open($this->actor(), $this->version);
+        $this->isLegacy = $state['legacy'] ?? false;
+        $this->legacyStatus = $this->isLegacy ? $state['status'] : '';
+        $this->legacyPreview = [];
+        $this->legacySourcesAccepted = $this->legacyReviewed = false;
         $this->canCreateVersion = ! isset($state['boundary']) && $state['status'] === 'published';
         $this->boundary = $state['boundary'] ?? ($state['status'] === 'published' ? 'Опублікована версія незмінна. Створіть нову draft-версію для редагування A/B/C.' : '');
         $this->ownerClientId = $state['owner_client_id'] ?? null;
