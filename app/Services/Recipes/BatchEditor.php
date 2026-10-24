@@ -87,10 +87,17 @@ final class BatchEditor
                 $row['auto_policies'] = $r['overrides']['half_week']['input_snapshot']['auto_policies'] ?? $r['overrides']['week']['input_snapshot']['auto_policies'] ?? [];
                 $rows[] = $row;
             }
-            $equipment = DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->orderBy('id')->get()->map(fn ($r) => [
-                'id' => (string) $r->id, 'kitchen_equipment_id' => (string) $r->kitchen_equipment_id, 'min_value' => $r->min_value ?? '',
-                'uom_id' => $r->uom_id ? (string) $r->uom_id : '', 'scaling_mode' => $r->scaling_mode, 'tip' => $r->tip ?? '',
-            ])->all();
+            $equipment = [];
+            foreach (DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->orderBy('id')->get() as $r) {
+                $tool = ['id' => (string) $r->id, 'kitchen_equipment_id' => (string) $r->kitchen_equipment_id,
+                    'min_value' => $r->min_value ?? '', 'uom_id' => $r->uom_id ? (string) $r->uom_id : '',
+                    'scaling_mode' => $r->scaling_mode, 'tip' => $r->tip ?? ''];
+                foreach (DB::table('recipe_batch_equipment as e')->join('recipe_batch_formats as f', 'f.id', '=', 'e.format_id')->where('e.recipe_kitchen_equipment_id', $r->id)->get(['e.*', 'f.code']) as $q) {
+                    $tool[$q->code] = ['mode' => $q->mode, 'min_value' => $q->min_value ?? '',
+                        'uom_id' => $q->uom_id ? (string) $q->uom_id : '', 'tip' => $q->tip ?? ''];
+                }
+                $equipment[] = $tool;
+            }
 
             return ['revision' => (string) $v->lock_version, 'status' => $v->status, 'payload' => [
                 'title' => $v->title, 'category_id' => $recipe->recipe_category_id ? (string) $recipe->recipe_category_id : '', 'rows' => $rows,
@@ -125,7 +132,7 @@ final class BatchEditor
             if (! hash_equals($this->token($actor, $v, $payload, $p), $token)) {
                 $this->fail('Preview застарів: відкрийте новий diff.');
             }
-            if ($p['diff'] && ! $acceptDiff) {
+            if (($p['diff'] || $p['equipment_diff']) && ! $acceptDiff) {
                 $this->fail('Довідник змінився: явно прийміть diff через Refresh.');
             }
             $componentMap = $this->syncComponents($id, $payload['components']);
@@ -177,18 +184,21 @@ final class BatchEditor
                     $map[$m[1]] = $rowId;
                 }
             }
-            $directions = array_map(fn ($text) => RecipeTokens::remap($text, $map), $payload['directions']);
+            $equipmentMap = $this->syncEquipment($id, $payload['equipment'], $p['equipment'], $p['formats']);
+            $directions = array_map(fn ($text) => RecipeTokens::remap($text, $map, $equipmentMap), $payload['directions']);
             DB::table('recipe_directions')->where('recipe_version_id', $id)->delete();
             foreach ($directions as $n => $text) {
                 DB::table('recipe_directions')->insert(['recipe_version_id' => $id, 'direction_number' => $n + 1, 'direction_text' => $text]);
             }
             DB::table('recipe_components')->where('recipe_version_id', $id)->whereNotIn('id', array_values($componentMap))->delete();
-            $this->syncEquipment($id, $payload['equipment'], $p['formats']);
             DB::table('recipes')->where('id', $v->recipe_id)->update(['title' => $payload['title'], 'recipe_category_id' => $payload['category_id'] ?: null]);
             DB::table('recipe_versions')->where('id', $id)->update(['title' => $payload['title'], 'draft_pending_rows' => json_encode($pending), 'lock_version' => DB::raw('lock_version+1'), 'publication_review' => null]);
             $this->totals($id, $p['evaluation']['totals']);
             if ($acknowledge) {
                 DB::update("UPDATE recipe_batch_quantities SET manual_context=recipe_batch_context(recipe_ingredient_id,format_code),review_ack_hash=md5(recipe_batch_context(recipe_ingredient_id,format_code)::text) WHERE recipe_version_id=? AND mode='manual'", [$id]);
+            }
+            if ($acknowledge) {
+                DB::update("UPDATE recipe_batch_equipment SET input_snapshot=jsonb_set(input_snapshot,'{adequacy_ack}',to_jsonb(md5(recipe_batch_equipment_context(recipe_kitchen_equipment_id,format_id)::text))), manual_context=CASE WHEN mode='manual' THEN recipe_batch_equipment_context(recipe_kitchen_equipment_id,format_id) END, review_ack_hash=CASE WHEN mode='manual' THEN md5(recipe_batch_equipment_context(recipe_kitchen_equipment_id,format_id)::text) END WHERE recipe_version_id=?", [$id]);
             }
             DB::select('SELECT recipe_batch_validate(?)', [$id]);
             // Перевіряє deferred guards до повернення успіху, зокрема FK у nested tests.
@@ -207,16 +217,25 @@ final class BatchEditor
             $v = $this->lock($id, $revision, $opened['payload'] ?? []);
             $payload = $this->open($actor, $id)['payload'];
             $p = $this->prepare($id, $payload);
-            if (! hash_equals($this->token($actor, $v, $payload, $p), $token) || $p['diff']) {
+            if (! hash_equals($this->token($actor, $v, $payload, $p), $token) || $p['diff'] || $p['equipment_diff']) {
                 $this->fail('Preview або джерела застаріли: спочатку Refresh/Save.');
             }
             if ($p['evaluation']['incomplete'] || trim($payload['title']) === '' || ! $payload['category_id'] || ! $payload['directions']) {
                 $this->fail('Для публікації завершіть склад, назву, категорію та кроки.');
             }
             foreach ($payload['directions'] as $text) {
-                RecipeTokens::render($text, $p['evaluation']['rows'], 'single');
+                foreach (self::CODES as $code) {
+                    RecipeTokens::render($text, $p['evaluation']['rows'], $code, $p['equipment']);
+                }
                 if (trim($text) === '') {
                     $this->fail('Порожній крок приготування.');
+                }
+            }
+            foreach ($p['equipment'] as $tool) {
+                foreach ($tool as $q) {
+                    if ($q['review']) {
+                        $this->fail('Підтвердіть достатність обладнання A/B/C для поточного складу та параметрів.');
+                    }
                 }
             }
             DB::select('SELECT recipe_batch_validate(?,true)', [$id]);
@@ -295,9 +314,12 @@ final class BatchEditor
             'rows.*.week.uom_id' => 'nullable|string|max:500', 'rows.*.half_week.uom_id' => 'nullable|string|max:500',
             'components' => 'present|array|max:100', 'components.*.id' => 'required|string|distinct|max:100', 'components.*.title' => 'required|string|max:500',
             'directions' => 'present|array|max:100', 'directions.*' => 'string|max:10000',
-            'equipment' => 'present|array|max:100', 'equipment.*.id' => 'required|string|distinct|max:100',
+            'equipment' => 'present|array|max:100', 'equipment.*.id' => ['required', 'string', 'distinct', 'regex:/^(?:[1-9]\d*|new-[a-zA-Z0-9-]{1,64})$/D'],
             'equipment.*.kitchen_equipment_id' => 'required|integer|exists:kitchen_equipment,id', 'equipment.*.min_value' => 'nullable|decimal:0,2|gt:0|lte:99999.99',
             'equipment.*.uom_id' => 'nullable|integer|exists:uoms,id', 'equipment.*.scaling_mode' => 'required|in:fixed,proportional', 'equipment.*.tip' => 'nullable|string|max:500',
+            'equipment.*.week.mode' => 'sometimes|required|in:auto,manual', 'equipment.*.half_week.mode' => 'sometimes|required|in:auto,manual',
+            'equipment.*.*.min_value' => 'nullable|decimal:0,2|gt:0|lte:99999.99',
+            'equipment.*.*.uom_id' => 'nullable|integer|exists:uoms,id', 'equipment.*.*.tip' => 'nullable|string|max:500',
         ])->validate();
         $owned = DB::table('recipe_ingredients')->where('recipe_version_id', $id)->get()->keyBy('id');
         $storedPending = collect(json_decode(DB::table('recipe_versions')->where('id', $id)->value('draft_pending_rows'), true))->keyBy('id');
@@ -379,6 +401,15 @@ final class BatchEditor
                 if ($state['confirmed'] ?? false) {
                     $input[$code]['policy']['confirmed'] = true;
                 }
+                if ($code === 'week' && $state['mode'] === 'auto') {
+                    $policy = $input[$code]['policy'];
+                    $allowed = $uom->code === 'g'
+                        ? (($policy['rounding'] === 'exact' && $policy['step'] === '0.01') || ($policy['rounding'] === 'nearest' && $policy['step'] === '100.00'))
+                        : ($uom->kind === 'count' && $policy['rounding'] === 'ceil' && in_array($policy['step'], ['1.00', '0.50', '0.25'], true));
+                    if (! $allowed) {
+                        $this->fail('Непогоджений пресет B: точні g, свідомий nearest 100 g або підтверджений ceil 1/0.50/0.25 дозволеної UOM.');
+                    }
+                }
                 $old = ctype_digit($key) ? DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $key)->where('format_code', $code)->first() : null;
                 $previous = $storedPending[$key]['overrides'][$code] ?? [];
                 $previousInput = $old ? json_decode($old->input_snapshot, true) : ($previous['input_snapshot'] ?? []);
@@ -425,7 +456,18 @@ final class BatchEditor
 
         $catalog_hash = hash('sha256', json_encode([DB::table('recipe_categories')->orderBy('id')->get()->all(), DB::table('kitchen_equipment')->orderBy('id')->get()->all(), DB::table('uoms')->orderBy('id')->get()->all()]));
 
-        return compact('catalog_hash', 'inputs', 'pending', 'snapshots', 'hashes', 'diff', 'evaluation', 'units', 'gram_id', 'formats');
+        $equipment = $this->equipmentPreview($id, $payload['equipment'], $inputs, $pending, $units);
+
+        $equipment_diff = [];
+        foreach ($equipment as $key => $tool) {
+            foreach ($tool as $code => $q) {
+                if ($q['source_changed']) {
+                    $equipment_diff[$key][$code] = $q['name'].' · '.$q['uom'];
+                }
+            }
+        }
+
+        return compact('equipment_diff', 'equipment', 'catalog_hash', 'inputs', 'pending', 'snapshots', 'hashes', 'diff', 'evaluation', 'units', 'gram_id', 'formats');
     }
 
     private function completeNumber(string $value): bool
@@ -449,24 +491,86 @@ final class BatchEditor
         return $map;
     }
 
-    private function syncEquipment(int $id, array $rows, array $formats): void
+    private function equipmentPreview(int $id, array $rows, array $inputs, array $pending, array $units): array
     {
-        // Базовий slice: fixed/proportional auto. Існуючі manual snapshots не переписуємо.
-        if (DB::table('recipe_batch_equipment')->where('recipe_version_id', $id)->where('mode', 'manual')->exists()) {
-            $this->fail('Manual equipment: ручне коригування обладнання ще недоступне; збережені значення захищено.');
-        }
-        DB::table('recipe_batch_equipment')->where('recipe_version_id', $id)->delete();
-        DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->delete();
-        foreach ($rows as $row) {
-            $values = ['recipe_version_id' => $id, 'kitchen_equipment_id' => $row['kitchen_equipment_id'], 'min_value' => $row['min_value'] ?: null,
-                'uom_id' => $row['uom_id'] ?: null, 'scaling_mode' => $row['scaling_mode'], 'tip' => $row['tip'] ?? ''];
-            $base = DB::table('recipe_kitchen_equipment')->insertGetId($values);
-            foreach ($formats as $code => $format) {
-                $value = $values['min_value'] === null ? null : (string) BigDecimal::of($values['min_value'])->multipliedBy($values['scaling_mode'] === 'fixed' ? '1' : ['single' => '1', 'week' => '7', 'half_week' => '3.5'][$code])->toScale(2, RoundingMode::HalfUp);
-                DB::table('recipe_batch_equipment')->insert(['recipe_version_id' => $id, 'format_id' => $format, 'recipe_kitchen_equipment_id' => $base,
-                    'mode' => 'auto', 'min_value' => $value, 'uom_id' => $values['uom_id'], 'tip' => $values['tip'], 'input_snapshot' => '{"schema_version":1}']);
+        $result = [];
+        $unitIds = collect($units)->keyBy('id');
+        $normalized = app(BatchEvaluator::class)->evaluate($inputs, $pending)['rows'];
+        foreach ($normalized as &$r) {
+            foreach (['week', 'half_week'] as $code) {
+                unset($r[$code]['review'], $r[$code]['context'], $r[$code]['target_grams']);
             }
         }
+        unset($r);
+        $dependencies = hash('sha256', json_encode($this->canonical([array_values($normalized), array_values(array_map(fn ($r) => [$r['nutrients'], $r['ingredient_fingerprint']], $inputs)), $pending])));
+        foreach ($rows as $row) {
+            $base = ctype_digit($row['id']) ? DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->find($row['id']) : null;
+            $baseChanged = ! $base || (string) $base->kitchen_equipment_id !== $row['kitchen_equipment_id']
+                || $base->min_value !== (($row['min_value'] ?? '') === '' ? null : (string) BigDecimal::of($row['min_value'])->toScale(2))
+                || (string) ($base->uom_id ?? '') !== $row['uom_id'] || $base->tip !== ($row['tip'] ?? '') || $base->scaling_mode !== $row['scaling_mode'];
+            foreach (self::CODES as $code) {
+                $state = $row[$code] ?? ['mode' => 'auto'];
+                $mode = $code === 'single' ? 'manual' : $state['mode'];
+                $unit = $unitIds[$row['uom_id']] ?? null;
+                $automatic = ($row['min_value'] ?? '') === '' || $row['min_value'] === null ? null : BigDecimal::of($row['min_value'])->multipliedBy($row['scaling_mode'] === 'fixed' ? '1' : ['single' => '1', 'week' => '7', 'half_week' => '3.5'][$code]);
+                if ($automatic !== null) {
+                    $automatic = (string) $automatic->toScale($unit?->kind === 'count' ? 0 : 2, $unit?->kind === 'count' ? RoundingMode::Ceiling : RoundingMode::HalfUp)->toScale(2);
+                    if (BigDecimal::of($automatic)->isGreaterThan('99999.99')) {
+                        $this->fail('Кількість обладнання поза діапазоном.');
+                    }
+                }
+                if ($code === 'single') {
+                    $state = $row;
+                }
+                $value = $mode === 'manual' ? (($state['min_value'] ?? '') === '' ? null : (string) BigDecimal::of($state['min_value'])->toScale(2)) : $automatic;
+                $uom = $mode === 'manual' ? ($state['uom_id'] ?: null) : ($row['uom_id'] ?: null);
+                $tip = $mode === 'manual' ? ($state['tip'] ?? '') : ($row['tip'] ?? '');
+                $old = $base ? DB::selectOne("SELECT be.*,be.input_snapshot->>'adequacy_ack'=md5(recipe_batch_equipment_context(be.recipe_kitchen_equipment_id,be.format_id)::text) accepted FROM recipe_batch_equipment be JOIN recipe_batch_formats f ON f.id=be.format_id WHERE be.recipe_kitchen_equipment_id=? AND f.code=?", [$base->id, $code]) : null;
+                $snapshot = $old ? json_decode($old->input_snapshot, true) : [];
+                $source = hash('sha256', json_encode($this->canonical([DB::table('kitchen_equipment')->find($row['kitchen_equipment_id']), $unitIds[$uom] ?? null])));
+                $sourceChanged = $old && isset($snapshot['source_hash']) && $snapshot['source_hash'] !== $source
+                    && (string) ($old->uom_id ?? '') === (string) ($uom ?? '') && (string) $base->kitchen_equipment_id === $row['kitchen_equipment_id'];
+                $review = $sourceChanged || ! $old || ! $old->accepted || $baseChanged || ($snapshot['dependencies'] ?? null) !== $dependencies
+                    || $old->mode !== $mode || $old->min_value !== $value || (string) ($old->uom_id ?? '') !== (string) ($uom ?? '') || $old->tip !== $tip;
+                $result[$row['id']][$code] = ['mode' => $mode, 'min_value' => $value, 'uom_id' => $uom, 'tip' => $tip,
+                    'uom' => $unitIds[$uom]->label ?? '', 'name' => DB::table('kitchen_equipment')->where('id', $row['kitchen_equipment_id'])->value('name'),
+                    'source_changed' => $sourceChanged, 'automatic_uom' => $unit?->label ?? '', 'automatic' => $automatic, 'review' => $review, 'reason' => $review ? 'Змінилися склад, базові параметри або ручне значення; перевірте достатність обладнання.' : '',
+                    'snapshot' => ['schema_version' => 1, 'dependencies' => $dependencies, 'source_hash' => $source] + (isset($snapshot['adequacy_ack']) ? ['adequacy_ack' => $snapshot['adequacy_ack']] : [])];
+            }
+        }
+
+        return $result;
+    }
+
+    private function syncEquipment(int $id, array $rows, array $resolved, array $formats): array
+    {
+        $map = [];
+        foreach ($rows as $row) {
+            $values = ['kitchen_equipment_id' => $row['kitchen_equipment_id'], 'min_value' => $row['min_value'] ?: null,
+                'uom_id' => $row['uom_id'] ?: null, 'scaling_mode' => $row['scaling_mode'], 'tip' => $row['tip'] ?? ''];
+            if (ctype_digit($row['id'])) {
+                $base = (int) $row['id'];
+                DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->where('id', $base)->update($values);
+            } else {
+                $base = DB::table('recipe_kitchen_equipment')->insertGetId(['recipe_version_id' => $id] + $values);
+            }
+            $map[$row['id']] = $base;
+            foreach ($formats as $code => $format) {
+                $q = $resolved[$row['id']][$code];
+                $old = DB::table('recipe_batch_equipment')->where('recipe_kitchen_equipment_id', $base)->where('format_id', $format)->first();
+                $same = $old && $old->mode === 'manual' && $q['mode'] === 'manual' && $old->min_value === $q['min_value'] && (string) ($old->uom_id ?? '') === (string) ($q['uom_id'] ?? '') && $old->tip === $q['tip'];
+                DB::table('recipe_batch_equipment')->updateOrInsert(['format_id' => $format, 'recipe_kitchen_equipment_id' => $base], [
+                    'recipe_version_id' => $id, 'mode' => $q['mode'], 'min_value' => $q['min_value'], 'uom_id' => $q['uom_id'], 'tip' => $q['tip'], 'input_snapshot' => json_encode($q['snapshot']),
+                    'manual_context' => $q['mode'] === 'manual' ? ($same ? $old->manual_context : '{}') : null,
+                    'review_ack_hash' => $same ? $old->review_ack_hash : null,
+                ]);
+            }
+        }
+        $removed = DB::table('recipe_kitchen_equipment')->where('recipe_version_id', $id)->whereNotIn('id', array_values($map))->pluck('id');
+        DB::table('recipe_batch_equipment')->whereIn('recipe_kitchen_equipment_id', $removed)->delete();
+        DB::table('recipe_kitchen_equipment')->whereIn('id', $removed)->delete();
+
+        return $map;
     }
 
     private function totals(int $id, ?array $totals = null): void

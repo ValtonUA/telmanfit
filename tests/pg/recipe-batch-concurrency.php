@@ -5,6 +5,7 @@ use Tests\Recipes\BatchFixture;
 
 require __DIR__.'/auth2-bootstrap.php';
 (require database_path('migrations/2026_10_24_010000_create_recipe_batches.php'))->up();
+(require database_path('migrations/2026_10_24_020000_complete_recipe_equipment.php'))->up();
 $fixture = new class
 {
     use BatchFixture;
