@@ -43,6 +43,7 @@ class MealPlanFoundationTest extends PostgresTestCase
     public function test_atomic_empty_draft_and_untrusted_fields(): void
     {
         $f = $this->populatedPlan($this->actor->id);
+        $untouchedCounts = array_map(fn ($table) => DB::table($table)->count(), ['foods', 'recipes', 'client_meal_plan_assignments']);
         $history = [];
         foreach (['meal_plans', 'meal_plan_versions', 'meal_plan_days', 'meals', 'meal_items', 'client_meal_plan_assignments', 'foods', 'recipes', 'recipe_versions'] as $table) {
             $history[$table] = DB::table($table)->orderBy('id')->get();
@@ -64,6 +65,7 @@ class MealPlanFoundationTest extends PostgresTestCase
         $this->assertNull($global->owner);
         $this->assertSame($p->id, $v->plan->id);
         $this->assertFalse(config('recipes.batch_editor_enabled'));
+        $this->assertSame($untouchedCounts, array_map(fn ($table) => DB::table($table)->count(), ['foods', 'recipes', 'client_meal_plan_assignments']));
         foreach ($history as $table => $rows) {
             $this->assertEquals($rows, DB::table($table)->whereIn('id', $rows->pluck('id'))->orderBy('id')->get());
         }

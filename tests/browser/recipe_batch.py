@@ -47,8 +47,10 @@ with sync_playwright() as p:
         page.wait_for_url('**/admin/auth/challenge')
 
     assert context.request.get(url).status in (302, 403)
+    guest = browser.new_context()
     for path in ('/admin/meal-plans', '/admin/meal-plans/create'):
-        assert context.request.get(base + path).status in (302, 403)
+        assert guest.request.get(base + path).status in (302, 403)
+    guest.close()
     primary()
     for path in ('/admin/meal-plans', '/admin/meal-plans/create'):
         assert context.request.get(base + path).status in (302, 403)
