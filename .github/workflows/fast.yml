@@ -1,7 +1,7 @@
 name: Fast PR
 on:
   pull_request:
-    branches: [master]
+    branches: [master, ci/ci-cost-1-validation-base]
   push:
     branches: [master]
 permissions:
