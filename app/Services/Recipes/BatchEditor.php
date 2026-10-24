@@ -458,7 +458,7 @@ final class BatchEditor
             return ['recipe_id' => $recipe->id, 'owner_client_id' => $recipe->owner_client_id, 'parent_recipe_id' => $recipe->parent_recipe_id,
                 'revision' => (string) $v->lock_version, 'status' => $v->status, 'payload' => [
                     'title' => $v->title, 'category_id' => $recipe->recipe_category_id ? (string) $recipe->recipe_category_id : '', 'rows' => $rows,
-                    'components' => DB::table('recipe_components')->where('recipe_version_id', $id)->orderBy('id')->get()->map(fn ($c) => ['id' => (string) $c->id, 'title' => $c->title])->all(),
+                    'components' => DB::table('recipe_components')->where('recipe_version_id', $id)->orderBy('sort_order')->orderBy('id')->get()->map(fn ($c) => ['id' => (string) $c->id, 'title' => $c->title])->all(),
                     'directions' => DB::table('recipe_directions')->where('recipe_version_id', $id)->orderBy('direction_number')->pluck('direction_text')->all(), 'equipment' => $equipment,
                 ]];
         });

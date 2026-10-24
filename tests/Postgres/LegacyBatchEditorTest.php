@@ -263,6 +263,20 @@ class LegacyBatchEditorTest extends PostgresTestCase
         $this->assertSame($proof, json_decode(DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $restored)->where('format_code', 'week')->value('input_snapshot'), true)['legacy_source']);
     }
 
+    public function test_component_author_order_survives_conversion_reload_and_save(): void
+    {
+        $b = $this->legacy();
+        DB::table('recipe_components')->insert(['recipe_version_id' => $b['version'], 'title' => 'Спочатку', 'sort_order' => 2]);
+        $p = $this->editor->previewLegacy($this->actor, $b['version'], $this->revision($b['version']));
+        $id = $this->editor->convertLegacy($this->actor, $b['version'], $this->revision($b['version']), $p['token'], true, true);
+        $state = $this->editor->open($this->actor, $id);
+        $this->assertSame(['Спочатку', 'Основа'], array_column($state['payload']['components'], 'title'));
+        $p = $this->editor->preview($this->actor, $id, $state['revision'], $state['payload']);
+        $this->editor->save($this->actor, $id, $state['revision'], $state['payload'], $p['token']);
+        $this->assertSame(['Спочатку', 'Основа'], DB::table('recipe_components')->where('recipe_version_id', $id)->orderBy('sort_order')->pluck('title')->all());
+        $this->assertSame((string) $b['component'], $this->editor->open($this->actor, $id)['payload']['rows'][0]['component_id']);
+    }
+
     public function test_livewire_open_preview_cancel_and_server_side_acceptance(): void
     {
         $this->installAuthSchema();

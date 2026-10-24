@@ -19,17 +19,17 @@
   "source_hashes": [
     {
       "kind": "draft",
-      "source_id": "114",
-      "before": "4a1146734288a83db8f21a35c3c26ea3fa26f3fcbac03e0a9ef10522c59a2a84",
-      "after": "b0c02c193113cc02cf1a4e01fa7a67857c47001f3af7926b46f499ef3d32f263",
-      "result_url_path": "/admin/recipe-batches?version=114"
+      "source_id": "115",
+      "before": "8853fbb3c02c695458e432b23b72c2b03c01c395550fa7957e770cd04e57ba89",
+      "after": "ebba2458c43ce40d86227fa404b70b0810a445587bfbf44154972ccd26279295",
+      "result_url_path": "/admin/recipe-batches?version=115"
     },
     {
       "kind": "published",
-      "source_id": "115",
-      "before": "940f7f6a93ca546d11701d66ec74be6ac6595a048759f04bfd7261ff033639f1",
-      "after": "940f7f6a93ca546d11701d66ec74be6ac6595a048759f04bfd7261ff033639f1",
-      "result_url_path": "/admin/recipe-batches?version=116"
+      "source_id": "116",
+      "before": "31401cd6a61124cb8f0fe5819bf2f5b1016aca08296fcc429354951979efc082",
+      "after": "31401cd6a61124cb8f0fe5819bf2f5b1016aca08296fcc429354951979efc082",
+      "result_url_path": "/admin/recipe-batches?version=117"
     }
   ]
 }

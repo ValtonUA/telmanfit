@@ -346,7 +346,9 @@ Forward-only [SQL 13](13_recipe_legacy_conversion.sql) відповідає
 - **Legacy draft:** той самий version ID. A — збережені `quantity_grams` на порцію,
   у g; `servings_count` стає 1 і повторно не множиться. B=7×A, C=B/2, exact g
   за чинними decimal-правилами. Компоненти, ingredient/equipment PK/FK,
-  sort_order, кроки й image_url зберігаються. Вихідний root зберігається у
+  sort_order, кроки й image_url зберігаються. GET читає компоненти за
+  sort_order/id; подальший Save нумерує їхні позиції в цьому авторському порядку.
+  Вихідний root зберігається у
   `single.policy_snapshot.legacy_root`; початковий ingredient row — у
   `week.input_snapshot.legacy_source`. Save/Refresh переносить цей provenance,
   зокрема через pending envelope. Це вихідні значення, а не історичні nutrition snapshots.

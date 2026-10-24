@@ -13,8 +13,8 @@ assignments не змінюються. Історичних ingredient nutrition
 | Перевірка | Результат |
 |---|---|
 | SQL baseline | PASS=76, FAIL=0, GAP=0 |
-| Увесь PostgreSQL regression | 114/114, 1943 assertions |
-| Окремий recipe набір із чинним C3 guard | 62/62, 971 assertions |
+| Увесь PostgreSQL regression | 115/115, 1953 assertions |
+| Окремий recipe набір із чинним C3 guard | 63/63, 981 assertions |
 | Unit/Feature | 80/80, 192 assertions |
 | Concurrency | Реальні recipe locks/PG waiters: duplicate draft/published conversion, stale catalog/revision, COMMIT/reload; чинні A/B/C та C1/C2 concurrency теж PASS |
 | Chromium | 17 загальних checks; C3 включає 12 draft/published × 1440/390/320 × light/dark preview/cancel, 2 confirm/negative acceptance/redirect/reload та invalid-token refusal |
@@ -31,7 +31,8 @@ legacy сценарії у всіх шести viewport/theme комбінаці
 [LegacyBatchEditorTest](../../../tests/Postgres/LegacyBatchEditorTest.php) перевіряє:
 збережені 150 г при servings_count=4 → A=150, B=1050, C=525; зміну поточної
 конверсії 30→32 та nutrition 100→120 з явним прийняттям; originals у snapshots;
-Save/Refresh/pending/review/Publish; component sort/FK, image_url та remap токенів;
+Save/Refresh/pending/review/Publish; component sort/FK, авторський порядок
+компонентів після GET/reload/Save, image_url та remap токенів;
 новий food лише під час Publish; одна чернетка; FK-захист видалення UOM.
 Негативні synthetic cases включають missing conversion, g≠grams, NaN у
 conversion/grams/servings/nutrition, overflow, невідомі tokens, порожні кроки,
