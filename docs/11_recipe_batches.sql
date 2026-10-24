@@ -306,3 +306,5 @@ BEGIN
  RETURN NEW;
 END $$;
 CREATE TRIGGER batch_publication BEFORE UPDATE OF status ON recipe_versions FOR EACH ROW EXECUTE FUNCTION recipe_batch_publication();
+
+-- CI-COST-1 disposable Stage 3 schema-path trigger probe; no SQL semantics changed.
