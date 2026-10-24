@@ -36,7 +36,10 @@ jobs:
       - name: PHP syntax and Compose configuration
         shell: bash
         run: |
-          git ls-files -z '*.php' | xargs -0 -n1 php -l > /tmp/php-lint.log
+          if ! git ls-files -z '*.php' | xargs -0 -n1 php -l > /tmp/php-lint.log; then
+            cat /tmp/php-lint.log
+            exit 1
+          fi
           docker compose config --quiet
       - run: php scripts/check-php-runtime.php
       - run: composer validate --strict
