@@ -44,6 +44,78 @@ final class BatchEditor
         });
     }
 
+    /** Копіює accepted aggregate без обчислень за поточними довідниками. */
+    public function createVersion(User $actor, int $sourceId, string $revision): int
+    {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($sourceId, $revision) {
+            $recipeId = DB::table('recipe_versions')->where('id', $sourceId)->value('recipe_id');
+            abort_unless($recipeId, 404);
+            // Той самий порядок, що й Save/Publish; серіалізує конкурентні clone.
+            DB::table('recipes')->where('id', $recipeId)->lockForUpdate()->first();
+            $source = DB::table('recipe_versions')->where('id', $sourceId)->lockForUpdate()->first();
+            abort_unless($source, 404);
+            if ($source->status !== 'published' || $source->editor_contract !== 'batch_v1'
+                || (string) $source->lock_version !== $revision) {
+                $this->fail('Оберіть опубліковану A/B/C версію з актуальною ревізією. Legacy conversion недоступна.');
+            }
+            if (DB::table('recipe_versions')->where('recipe_id', $recipeId)->where('status', 'draft')->exists()) {
+                $this->fail('Цей рецепт уже має чернетку. Відкрийте її для редагування.');
+            }
+            $id = DB::table('recipe_versions')->insertGetId([
+                'recipe_id' => $recipeId, 'title' => $source->title, 'editor_contract' => 'batch_v1',
+                'source_recipe_version_id' => $sourceId, 'servings_count' => $source->servings_count,
+            ]);
+            // Maps мають окремі простори ID; усі FK й тексти пишуться атомарно.
+            $formats = $this->cloneChildren('recipe_batch_formats', $sourceId, $id);
+            $components = $this->cloneChildren('recipe_components', $sourceId, $id);
+            $rows = $this->cloneChildren('recipe_ingredients', $sourceId, $id, fn ($r) => [
+                'component_id' => $r['component_id'] === null ? null : $components[$r['component_id']],
+            ]);
+            $equipment = $this->cloneChildren('recipe_kitchen_equipment', $sourceId, $id);
+            foreach (['recipe_batch_quantities', 'recipe_batch_equipment'] as $table) {
+                foreach (DB::table($table)->where('recipe_version_id', $sourceId)->get() as $record) {
+                    $r = (array) $record;
+                    $r['recipe_version_id'] = $id;
+                    $r['format_id'] = $formats[$r['format_id']];
+                    $r['manual_context'] = $r['mode'] === 'manual' ? '{}' : null;
+                    $r['review_ack_hash'] = null;
+                    if ($table === 'recipe_batch_quantities') {
+                        $r['recipe_ingredient_id'] = $rows[$r['recipe_ingredient_id']];
+                    } else {
+                        $r['recipe_kitchen_equipment_id'] = $equipment[$r['recipe_kitchen_equipment_id']];
+                        // JSONB SQL зберігає типи/порожні objects без PHP round-trip.
+                        $r['input_snapshot'] = DB::selectOne("SELECT ?::jsonb - 'adequacy_ack' AS snapshot", [$r['input_snapshot']])->snapshot;
+                    }
+                    DB::table($table)->insert($r);
+                }
+            }
+            $this->cloneChildren('recipe_directions', $sourceId, $id, fn ($r) => [
+                'direction_text' => RecipeTokens::remap($r['direction_text'], $rows, $equipment),
+            ]);
+            DB::select('SELECT recipe_batch_validate(?)', [$id]);
+            DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+            DB::statement('SET CONSTRAINTS ALL DEFERRED');
+
+            return $id;
+        });
+    }
+
+    private function cloneChildren(string $table, int $sourceId, int $id, ?callable $replace = null): array
+    {
+        $map = [];
+        foreach (DB::table($table)->where('recipe_version_id', $sourceId)->orderBy('id')->get() as $record) {
+            $r = (array) $record;
+            $oldId = $r['id'];
+            unset($r['id']);
+            $r['recipe_version_id'] = $id;
+            $map[$oldId] = DB::table($table)->insertGetId(array_replace($r, $replace ? $replace($r) : []));
+        }
+
+        return $map;
+    }
+
     public function open(User $actor, int $id): array
     {
         $this->authorize($actor);
@@ -186,9 +258,17 @@ final class BatchEditor
             }
             $equipmentMap = $this->syncEquipment($id, $payload['equipment'], $p['equipment'], $p['formats']);
             $directions = array_map(fn ($text) => RecipeTokens::remap($text, $map, $equipmentMap), $payload['directions']);
+            // Editor передає тексти: незмінні кроки зберігають власні image_url,
+            // зокрема після clone, зміни порядку або remap pending tokens.
+            $stepImages = [];
+            foreach (DB::table('recipe_directions')->where('recipe_version_id', $id)->orderBy('direction_number')->get() as $step) {
+                $stepImages[$step->direction_text][] = $step->image_url;
+            }
             DB::table('recipe_directions')->where('recipe_version_id', $id)->delete();
             foreach ($directions as $n => $text) {
-                DB::table('recipe_directions')->insert(['recipe_version_id' => $id, 'direction_number' => $n + 1, 'direction_text' => $text]);
+                $originalText = $payload['directions'][$n];
+                $image = empty($stepImages[$originalText]) ? null : array_shift($stepImages[$originalText]);
+                DB::table('recipe_directions')->insert(['recipe_version_id' => $id, 'direction_number' => $n + 1, 'direction_text' => $text, 'image_url' => $image]);
             }
             DB::table('recipe_components')->where('recipe_version_id', $id)->whereNotIn('id', array_values($componentMap))->delete();
             DB::table('recipes')->where('id', $v->recipe_id)->update(['title' => $payload['title'], 'recipe_category_id' => $payload['category_id'] ?: null]);

@@ -35,6 +35,9 @@ final class RecipeBatches extends Page
 
     public string $boundary = '';
 
+    #[Locked]
+    public bool $canCreateVersion = false;
+
     public bool $publicationConfirmed = false;
 
     public static function canAccess(): bool
@@ -68,7 +71,8 @@ final class RecipeBatches extends Page
     public function reload(): void
     {
         $state = app(BatchEditor::class)->open($this->actor(), $this->version);
-        $this->boundary = $state['boundary'] ?? ($state['status'] === 'published' ? 'Опублікована версія незмінна. Створення нових версій ще недоступне.' : '');
+        $this->canCreateVersion = ! isset($state['boundary']) && $state['status'] === 'published';
+        $this->boundary = $state['boundary'] ?? ($state['status'] === 'published' ? 'Опублікована версія незмінна. Створіть нову draft-версію для редагування A/B/C.' : '');
         $this->payload = $state['payload'] ?? [];
         $this->revision = $state['revision'] ?? '';
         $this->preview = [];
@@ -77,6 +81,14 @@ final class RecipeBatches extends Page
             $this->presetChoices[$index] = ($row['week']['rounding'] ?? 'exact') === 'nearest' ? 'nearest100' : (($row['week']['rounding'] ?? 'exact') === 'ceil' ? $row['week']['step'] : 'exact');
         }
         $this->publicationConfirmed = false;
+    }
+
+    public function createVersion(): void
+    {
+        $this->attempt(function () {
+            $id = app(BatchEditor::class)->createVersion($this->actor(), $this->version, $this->revision);
+            $this->redirect(self::getUrl(['version' => $id]));
+        });
     }
 
     public function updatedPayload(): void

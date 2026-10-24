@@ -181,6 +181,58 @@ with sync_playwright() as p:
             assert page.evaluate('document.documentElement.classList.contains("dark")') == (theme == 'dark')
             page.screenshot(path=str(output / f'editor-{width}-{theme}.png'), full_page=True)
             checks.append(f'{width}px {theme}: no overflow')
+    page.set_viewport_size({'width': 1440, 'height': 1000})
+    page.once('dialog', lambda dialog: dialog.accept())
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_role('button', name='Видалити інгредієнт', exact=True).nth(1).click()
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_label('Режим week 1', exact=True).select_option('manual')
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_label('Кількість week 1', exact=True).fill('1000.00')
+    action(page, 'Підтвердити ручні значення й обладнання')
+    source_text = page.locator('textarea').first.input_value()
+    source_tool = page.get_by_text('Токен: {{equipment:', exact=False).inner_text()
+    page.locator('input[type=checkbox]').check()
+    page.once('dialog', lambda dialog: dialog.accept())
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_role('button', name='Опублікувати A/B/C', exact=True).click()
+    expect(page.get_by_role('button', name='Створити нову версію A/B/C', exact=True)).to_be_visible()
+    assert page.locator('.batch-editor fieldset').count() == 0
+    before = subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
+    published_tab = context.new_page()
+    published_tab.goto(url)
+    page.once('dialog', lambda dialog: dialog.accept())
+    page.get_by_role('button', name='Створити нову версію A/B/C', exact=True).click()
+    page.wait_for_url(lambda u: '/admin/recipe-batches?version=' in u and u != url)
+    copy_url = page.url
+    expect(page.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
+    assert page.locator('textarea').first.input_value() != source_text
+    assert page.get_by_text('Токен: {{equipment:', exact=False).inner_text() != source_tool
+    action(page, 'Оновити preview')
+    expect(page.get_by_text('Ручне значення потребує підтвердження:', exact=False)).to_be_visible()
+    published_tab.once('dialog', lambda dialog: dialog.accept())
+    with published_tab.expect_response(lambda r: '/livewire/update' in r.url):
+        published_tab.get_by_role('button', name='Створити нову версію A/B/C', exact=True).click()
+    expect(published_tab.get_by_role('alert')).to_contain_text('уже має чернетку')
+    # Зміна каталогу має бути відмінною від попереднього browser Refresh.
+    subprocess.run(['php', 'tests/browser/recipe-batch-fixture.php', 'catalog-change-again'], check=True)
+    page.reload()
+    action(page, 'Оновити preview')
+    action(page, 'Зберегти чернетку')
+    expect(page.get_by_role('alert')).to_contain_text('явно прийміть diff')
+    action(page, 'Оновити preview')
+    page.once('dialog', lambda dialog: dialog.accept())
+    action(page, 'Прийняти diff і Refresh')
+    expect(page.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
+    action(page, 'Підтвердити ручні значення й обладнання')
+    page.reload()
+    assert page.url == copy_url
+    expect(page.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
+    after = subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
+    assert before == after
+    checks.append('C1: publish → clone з новими ingredient/equipment tokens, manual/review/reload; duplicate draft rejected; explicit Refresh; published source unchanged')
+    page.screenshot(path=str(output / 'clone-1440-dark.png'), full_page=True)
+    published_tab.close()
     assert not errors, errors
     browser.close()
 output.joinpath('checks.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, ensure_ascii=False, indent=2) + '\n')
