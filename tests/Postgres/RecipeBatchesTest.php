@@ -2,9 +2,12 @@
 
 namespace Tests\Postgres;
 
+use App\Domain\Recipes\BatchEvaluator;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Recipes\BatchFixture;
+use Tests\Recipes\InheritedUomCases;
 
 class RecipeBatchesTest extends PostgresTestCase
 {
@@ -121,6 +124,7 @@ class RecipeBatchesTest extends PostgresTestCase
         $this->rejected(fn () => DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->update(['quantity' => 1, 'quantity_grams' => 1]), 'Auto graph mismatch');
         $this->rejected(fn () => DB::table('recipe_versions')->where('id', $b['version'])->update(['title' => 'stale']), 'advance revision');
         $this->rejected(fn () => DB::select('SELECT recipe_batch_assert_revision(?,0)', [$b['version']]), 'Stale batch revision');
+        $this->rejected(fn () => DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'half_week')->update(['input_snapshot' => DB::raw("jsonb_set(input_snapshot,'{auto_policies}','{\"g\":null}')")]), 'Auto C needs accepted policy');
         DB::table('ingredients')->where('id', $b['ingredient'])->update(['kcal_per_100g' => '123.46']);
         $this->rejected(fn () => $this->publish($b['version']), 'Stale ingredient snapshot');
     }
@@ -152,7 +156,7 @@ class RecipeBatchesTest extends PostgresTestCase
         $input = json_encode(['schema_version' => 1, 'factor' => '33.33', 'uom_label' => 'Test can', 'rounding' => 'exact', 'step' => '0.01',
             'source_hash' => DB::selectOne('SELECT recipe_batch_source_hash(?) hash', [$b['ingredient']])->hash]);
         DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'week')->update(['mode' => 'manual', 'quantity' => '0.25', 'uom_id' => $uom, 'quantity_grams' => '8.33', 'input_snapshot' => $input, 'manual_context' => '{}']);
-        DB::update("UPDATE recipe_batch_quantities SET quantity=4.17,quantity_grams=4.17,input_snapshot=jsonb_set(input_snapshot,'{source_hash}',to_jsonb(recipe_batch_source_hash(?))) WHERE recipe_ingredient_id=? AND format_code='half_week'", [$b['ingredient'], $b['row']]);
+        DB::update("UPDATE recipe_batch_quantities SET mode='manual',manual_context='{}',quantity=4.17,quantity_grams=4.17,input_snapshot=jsonb_set(input_snapshot,'{source_hash}',to_jsonb(recipe_batch_source_hash(?))) WHERE recipe_ingredient_id=? AND format_code='half_week'", [$b['ingredient'], $b['row']]);
         $this->syncTotals($b['version']);
         $this->valid();
         $this->assertSame('5.147865', DB::table('recipe_batch_formats')->where('id', $b['formats']['half_week'])->value('kcal_total'));
@@ -167,6 +171,111 @@ class RecipeBatchesTest extends PostgresTestCase
         $this->rejected(fn () => DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->update(['quantity_grams' => 'NaN']), 'check constraint');
         $this->rejected(fn () => DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->update(['quantity' => '100000']), 'numeric field overflow');
         $this->rejected(fn () => DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->update(['input_snapshot' => '{}']), 'check constraint');
+    }
+
+    #[DataProvider('inheritedCases')]
+    public function test_inherited_uom_matches_php_storage_totals_and_publication(string $uom, string $quantity, string $factor, string $step, string $expected, string $grams): void
+    {
+        $this->install();
+        $b = $this->batch();
+        $this->addUom($b, $uom, $factor);
+        $row = InheritedUomCases::row($uom, $quantity, $factor, $step);
+        $out = $this->storeEvaluated($b, $row);
+        $this->valid();
+        $saved = DB::table('recipe_batch_quantities as q')->join('uoms as u', 'u.id', '=', 'q.uom_id')->where('q.recipe_ingredient_id', $b['row'])->where('format_code', 'half_week')->first(['q.*', 'u.code']);
+        $this->assertSame($uom, $saved->code);
+        $this->assertSame($expected, $saved->quantity);
+        $this->assertSame($grams, $saved->quantity_grams);
+        $row['half_week'] = ['mode' => $saved->mode, 'quantity' => $saved->quantity, 'uom' => $saved->code, 'policy' => json_decode($saved->input_snapshot, true)];
+        $row['auto_policies'] = $row['half_week']['policy']['auto_policies'];
+        $this->assertSame($out, (new BatchEvaluator)->evaluate([$b['row'] => json_decode(json_encode($row), true)]));
+        foreach ($out['totals'] as $code => $totals) {
+            $this->assertEquals($totals, json_decode(DB::selectOne('SELECT recipe_batch_totals(?,?) totals', [$b['version'], $code])->totals, true));
+        }
+        DB::update("UPDATE recipe_batch_quantities SET manual_context=recipe_batch_context(recipe_ingredient_id,format_code),review_ack_hash=md5(recipe_batch_context(recipe_ingredient_id,format_code)::text) WHERE recipe_ingredient_id=? AND mode='manual'", [$b['row']]);
+        $this->publish($b['version']);
+        $this->valid();
+    }
+
+    public static function inheritedCases(): array
+    {
+        return InheritedUomCases::cases();
+    }
+
+    private function addUom(array $b, string $code, string $factor): int
+    {
+        $id = DB::table('uoms')->where('code', $code)->value('id') ?? DB::table('uoms')->insertGetId(['code' => $code, 'label' => $code, 'kind' => 'count']);
+        DB::table('ingredient_uoms')->insert(['ingredient_id' => $b['ingredient'], 'uom_id' => $id, 'grams_per_uom' => $factor]);
+
+        return $id;
+    }
+
+    public function test_sql_rejects_stale_c_unit_factor_and_policy_even_when_grams_and_totals_match(): void
+    {
+        $this->install();
+        $b = $this->batch();
+        $this->addUom($b, 'piece', '100.00');
+        $row = InheritedUomCases::row('piece', '3.00', '100.00', '1.00');
+        $this->storeEvaluated($b, $row);
+        $this->valid();
+        DB::update("UPDATE recipe_batch_quantities SET manual_context=recipe_batch_context(recipe_ingredient_id,format_code),review_ack_hash=md5(recipe_batch_context(recipe_ingredient_id,format_code)::text) WHERE recipe_ingredient_id=? AND mode='manual'", [$b['row']]);
+        $c = DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'half_week');
+        $this->rejected(function () use ($c, $b): void {
+            // 150 г — математична половина B, але auto C має бути 2 шт./200 г.
+            $c->update(['uom_id' => $b['g'], 'quantity' => '150.00', 'quantity_grams' => '150.00', 'input_snapshot' => DB::raw("input_snapshot || '{\"factor\":\"1.00\",\"uom_label\":\"gram\",\"rounding\":\"exact\",\"step\":\"0.01\"}'::jsonb")]);
+            $this->syncTotals($b['version']);
+            $this->publish($b['version']);
+        }, 'Auto C must inherit B UOM and factor');
+        $this->rejected(function () use ($c, $b): void {
+            $c->update(['quantity' => '1.50', 'quantity_grams' => '150.00', 'input_snapshot' => DB::raw("jsonb_set(input_snapshot,'{step}','\"0.50\"')")]);
+            $this->syncTotals($b['version']);
+        }, 'Auto C inherited policy mismatch');
+        $this->rejected(function () use ($c, $b): void {
+            $c->update(['quantity_grams' => '400.00', 'input_snapshot' => DB::raw("jsonb_set(input_snapshot,'{factor}','\"200.00\"')")]);
+            $this->syncTotals($b['version']);
+        }, 'Auto C must inherit B UOM and factor');
+        $this->rejected(fn () => $c->update(['input_snapshot' => DB::raw("input_snapshot-'auto_policies'")]), 'Auto C needs accepted policy');
+        $this->rejected(fn () => $c->update(['input_snapshot' => DB::raw("jsonb_set(input_snapshot,'{auto_policies}','[]')")]), 'Invalid accepted auto policies');
+        $this->rejected(fn () => $c->update(['quantity' => '1.00', 'quantity_grams' => '100.00']), 'Auto graph mismatch');
+        $this->rejected(fn () => $c->update(['input_snapshot' => DB::raw("jsonb_set(jsonb_set(input_snapshot,'{confirmed}','false'),'{auto_policies,piece,confirmed}','false')")]), 'Unconfirmed rounding');
+        $this->rejected(fn () => $c->update(['input_snapshot' => DB::raw("jsonb_set(jsonb_set(input_snapshot,'{step}','\"0.00\"'),'{auto_policies,piece,step}','\"0.00\"')")]), 'Invalid rounding');
+    }
+
+    public function test_b_uom_edit_requires_c_rebuild_and_manual_c_survives_reload_and_reset(): void
+    {
+        $this->install();
+        $b = $this->batch();
+        $this->addUom($b, 'piece', '100.00');
+        $can = $this->addUom($b, 'test-can', '420.00');
+        $row = InheritedUomCases::row('piece', '3.00', '100.00', '1.00');
+        $this->storeEvaluated($b, $row);
+        $this->valid();
+        $this->rejected(fn () => DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'week')->update(['uom_id' => $can, 'quantity' => '1.00', 'quantity_grams' => '420.00', 'input_snapshot' => DB::raw("jsonb_set(input_snapshot,'{factor}','\"420.00\"')")]), 'Auto C must inherit B UOM and factor');
+        $row['week']['uom'] = 'test-can';
+        $row['week']['quantity'] = '1.00';
+        $row['factors']['test-can'] = '420.00';
+        $row['auto_policies']['test-can'] = ['rounding' => 'ceil', 'step' => '0.50', 'confirmed' => true];
+        $out = $this->storeEvaluated($b, $row);
+        $this->valid();
+        $row['half_week'] = $out['rows'][$b['row']]['half_week'];
+        $row['half_week']['mode'] = 'manual';
+        $this->storeEvaluated($b, $row);
+        DB::update("UPDATE recipe_batch_quantities SET manual_context=recipe_batch_context(recipe_ingredient_id,format_code),review_ack_hash=md5(recipe_batch_context(recipe_ingredient_id,format_code)::text) WHERE recipe_ingredient_id=? AND format_code='half_week'", [$b['row']]);
+        $before = DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'half_week')->first();
+        $row['week']['uom'] = 'g';
+        $row['week']['quantity'] = '1000.00';
+        // Змінюється тільки B: жодної перезаписувальної команди для manual C.
+        DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'week')->update(['uom_id' => $b['g'], 'quantity' => '1000.00', 'quantity_grams' => '1000.00', 'input_snapshot' => json_encode(['schema_version' => 1, 'factor' => '1.00', 'uom_label' => 'gram', 'rounding' => 'exact', 'step' => '0.01'])]);
+        $this->syncTotals($b['version']);
+        $this->valid();
+        $after = DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'half_week')->first();
+        $this->assertEquals($before, $after);
+        $this->assertTrue(DB::selectOne("SELECT manual_context IS DISTINCT FROM recipe_batch_context(recipe_ingredient_id,format_code) review FROM recipe_batch_quantities WHERE recipe_ingredient_id=? AND format_code='half_week'", [$b['row']])->review);
+        $row['half_week'] = (new BatchEvaluator)->reset($row['half_week'], ['uom' => 'stale-unit', 'policy' => ['rounding' => 'exact', 'step' => '0.01']]);
+        $out = $this->storeEvaluated($b, $row);
+        $this->valid();
+        $this->assertSame('g', $out['rows'][$b['row']]['half_week']['uom']);
+        $this->assertSame('500.00', $out['rows'][$b['row']]['half_week']['quantity']);
     }
 
     public function test_populated_historical_upgrade_preserves_recipes_plans_and_assignments(): void

@@ -157,6 +157,7 @@ php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit -c phpunit.pgsql.xml --filter RecipeBatchesTest --display-all-issues
     php tests/pg/recipe-batch-concurrency.php
+    php tests/pg/recipe-batch-uom-reload.php
     exit
 fi
 if [[ ${CLIENT_PROFILES_ONLY:-0} == 1 ]]; then

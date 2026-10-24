@@ -30,10 +30,14 @@ final class BatchEvaluator
                 if (! in_array($state['mode'], ['auto', 'manual'], true)) {
                     throw new InvalidArgumentException('Невідомий режим.');
                 }
-                $uom = $state['uom'];
-                $factor = $uom === 'g' ? '1.00' : $this->positive($row['factors'][$uom] ?? throw new InvalidArgumentException('Немає підтвердженої конверсії.'));
-                $policy = $state['policy'];
+                $inherits = $code === 'half_week' && $state['mode'] === 'auto';
+                $uom = $inherits ? $actual['week']['uom'] : $state['uom'];
+                $factor = $inherits ? $actual['week']['factor'] : ($uom === 'g' ? '1.00' : $this->positive($row['factors'][$uom] ?? throw new InvalidArgumentException('Немає підтвердженої конверсії.')));
+                // Auto C обирає правило за фактичною UOM B, а не за старим C.
+                $policy = $inherits ? $this->inheritedPolicy(array_key_exists('auto_policies', $row) ? $row['auto_policies'] : [], $uom) : $state['policy'];
                 $step = $this->positive($policy['step']);
+                // JSONB змінює порядок ключів: це не зміна policy або manual acknowledgement.
+                ksort($policy);
                 if (! in_array($policy['rounding'], ['exact', 'ceil', 'nearest'], true)
                     || ($state['mode'] === 'auto' && $policy['rounding'] === 'exact' && ($uom !== 'g' || $step !== '0.01'))
                     || ($state['mode'] === 'auto' && $policy['rounding'] !== 'exact' && ($policy['confirmed'] ?? false) !== true)) {
@@ -44,9 +48,10 @@ final class BatchEvaluator
                     : $this->automatic($target, $factor, $step, $policy['rounding']);
                 $grams = $this->positive((string) BigDecimal::of($quantity)->multipliedBy($factor)->toScale(2, RoundingMode::HalfUp));
                 // Зміна A позначає manual C навіть за незмінної manual B.
-                $context = [$a, $parent, $nutrients, $row['ingredient_fingerprint'], $row['conversion_fingerprint'], $uom, $factor, $policy, $code === 'half_week' ? $actual['week']['quantity'] : $a, $code === 'half_week' ? $actual['week']['uom'] : 'g'];
-                $review = $state['mode'] === 'manual' && ($state['acknowledged_context'] ?? null) !== $context;
-                $actual[$code] = compact('quantity', 'grams', 'uom', 'factor', 'context', 'review') + ['mode' => $state['mode'], 'target_grams' => (string) $target];
+                $context = $this->canonicalContext([$a, $parent, $nutrients, $row['ingredient_fingerprint'], $row['conversion_fingerprint'], $uom, $factor, $policy, $code === 'half_week' ? $actual['week']['quantity'] : $a, $code === 'half_week' ? $actual['week']['uom'] : 'g']);
+                $ack = $state['acknowledged_context'] ?? null;
+                $review = $state['mode'] === 'manual' && (! is_array($ack) || $this->canonicalContext($ack) !== $context);
+                $actual[$code] = compact('quantity', 'grams', 'uom', 'factor', 'policy', 'context', 'review') + ['mode' => $state['mode'], 'target_grams' => (string) $target];
             }
             foreach ($actual as $code => $quantity) {
                 foreach ($nutrients as $key => $value) {
@@ -90,6 +95,35 @@ final class BatchEvaluator
             : $units->toScale(0, $rounding === 'ceil' ? RoundingMode::Ceiling : RoundingMode::HalfUp)->multipliedBy($step);
 
         return $this->positive((string) $quantity);
+    }
+
+    private function inheritedPolicy(mixed $accepted, string $uom): array
+    {
+        if (! is_array($accepted)) {
+            throw new InvalidArgumentException('Некоректний snapshot auto policies.');
+        }
+        $policy = array_key_exists($uom, $accepted) ? $accepted[$uom] : ($uom === 'g' ? ['rounding' => 'exact', 'step' => '0.01'] : null);
+        if (! is_array($policy) || ! is_string($policy['rounding'] ?? null)
+            || ! is_string($policy['step'] ?? null) || ! preg_match('/^\d{1,5}\.\d{2}$/D', $policy['step'])) {
+            throw new InvalidArgumentException('Потрібний explicit refresh: немає прийнятої policy для UOM B.');
+        }
+
+        return $policy;
+    }
+
+    private function canonicalContext(array $value): array
+    {
+        foreach ($value as &$item) {
+            if (is_array($item)) {
+                $item = $this->canonicalContext($item);
+            }
+        }
+        unset($item);
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
     }
 
     private function positive(string $value): string

@@ -44,6 +44,27 @@ trait BatchFixture
             FROM (SELECT recipe_batch_totals(f.recipe_version_id,f.code) t) s) WHERE recipe_version_id=?", [$version]);
     }
 
+    private function storeEvaluated(array $batch, array $row): array
+    {
+        $out = (new BatchEvaluator)->evaluate([$batch['row'] => $row]);
+        foreach (['week', 'half_week'] as $code) {
+            $q = $out['rows'][$batch['row']][$code];
+            $uom = DB::table('uoms')->where('code', $q['uom'])->first();
+            $snapshot = ['schema_version' => 1, 'factor' => $q['factor'], 'uom_label' => $uom->label,
+                'source_hash' => DB::selectOne('SELECT recipe_batch_source_hash(?) hash', [$batch['ingredient']])->hash] + $q['policy'];
+            if ($code === 'half_week' && $q['mode'] === 'auto') {
+                $snapshot['auto_policies'] = (object) ($row['auto_policies'] ?? []);
+            }
+            DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $batch['row'])->where('format_code', $code)->update([
+                'mode' => $q['mode'], 'quantity' => $q['quantity'], 'quantity_grams' => $q['grams'], 'uom_id' => $uom->id,
+                'input_snapshot' => json_encode($snapshot), 'manual_context' => $q['mode'] === 'manual' ? '{}' : null, 'review_ack_hash' => null,
+            ]);
+        }
+        $this->syncTotals($batch['version']);
+
+        return $out;
+    }
+
     private function publish(int $version): void
     {
         $food = DB::table('foods')->insertGetId(['food_type' => 'recipe_version']);

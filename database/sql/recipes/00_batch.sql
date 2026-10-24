@@ -204,7 +204,7 @@ CREATE FUNCTION recipe_batch_totals(p_version integer,p_code text) RETURNS jsonb
 $$;
 CREATE FUNCTION recipe_batch_validate(p_id integer,p_publish boolean DEFAULT false) RETURNS void LANGUAGE plpgsql AS $$
 DECLARE v recipe_versions; r record; q record; f record; e record; totals jsonb;
- factor numeric; target numeric; expected numeric; step numeric; rounding text; parent numeric;
+ factor numeric; target numeric; expected numeric; step numeric; rounding text; parent numeric; parent_uom smallint; parent_factor numeric; inherited_policy jsonb;
 BEGIN
  SELECT * INTO v FROM recipe_versions WHERE id=p_id;
  IF NOT FOUND THEN RETURN; END IF;
@@ -236,6 +236,16 @@ BEGIN
     IF q.input_snapshot->>'uom_label'<>q.label THEN RAISE EXCEPTION 'Stale UOM label'; END IF;
    END IF;
    IF q.quantity_grams<>round(q.quantity*factor,2) THEN RAISE EXCEPTION 'Frozen grams mismatch'; END IF;
+   IF q.format_code='half_week' AND q.mode='auto' THEN
+    IF q.uom_id IS DISTINCT FROM parent_uom OR factor IS DISTINCT FROM parent_factor THEN RAISE EXCEPTION 'Auto C must inherit B UOM and factor'; END IF;
+    IF q.input_snapshot ? 'auto_policies' AND jsonb_typeof(q.input_snapshot->'auto_policies') IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Invalid accepted auto policies'; END IF;
+    inherited_policy:=q.input_snapshot->'auto_policies'->q.code;
+    IF inherited_policy IS NULL AND q.code='g' THEN inherited_policy:='{"rounding":"exact","step":"0.01"}'::jsonb; END IF;
+    IF inherited_policy IS NULL OR jsonb_typeof(inherited_policy) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Auto C needs accepted policy for B UOM; explicit refresh required'; END IF;
+    IF q.input_snapshot->'rounding' IS DISTINCT FROM inherited_policy->'rounding'
+     OR q.input_snapshot->'step' IS DISTINCT FROM inherited_policy->'step'
+     OR q.input_snapshot->'confirmed' IS DISTINCT FROM inherited_policy->'confirmed' THEN RAISE EXCEPTION 'Auto C inherited policy mismatch'; END IF;
+   END IF;
    target:=CASE WHEN q.format_code='week' THEN parent*7 ELSE parent/2 END;
    rounding:=q.input_snapshot->>'rounding';
    IF (q.input_snapshot->>'step') IS NULL OR (q.input_snapshot->>'step') !~ '^\d{1,5}\.\d{2}$' THEN RAISE EXCEPTION 'Invalid step'; END IF;
@@ -248,6 +258,8 @@ BEGIN
    IF p_publish AND q.mode='manual' AND (q.manual_context IS DISTINCT FROM recipe_batch_context(r.id,q.format_code)
       OR q.review_ack_hash IS DISTINCT FROM md5(q.manual_context::text)) THEN RAISE EXCEPTION 'Manual needs review'; END IF;
    parent:=q.quantity_grams;
+   parent_uom:=q.uom_id;
+   parent_factor:=factor;
   END LOOP;
  END LOOP;
  FOR f IN SELECT * FROM recipe_batch_formats WHERE recipe_version_id=p_id LOOP

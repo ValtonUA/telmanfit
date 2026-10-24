@@ -81,7 +81,7 @@
 
 Залишаємо вже погоджений принцип:
 
-Інгредієнти мають КБЖВ на 100 г і не версіонуються. Published-рецепти завжди читають frozen значення: зміна довідника не змінює історичний показ. Для `batch_v1` A — `recipe_ingredients` у g; `recipe_batch_formats` зберігає три фізичні totals, `recipe_batch_quantities` — авторські B/C quantity/UOM, їстівні grams, frozen conversion, auto/manual та review context. `recipe_batch_equipment` фіксує обладнання для кожного формату зі збереженням nullable min_value. Повний контракт — [forward Stage 3](recipe-batches.md), SQL — [11](11_recipe_batches.sql).
+Інгредієнти мають КБЖВ на 100 г і не версіонуються. Published-рецепти завжди читають frozen значення: зміна довідника не змінює історичний показ. Для `batch_v1` A — `recipe_ingredients` у g; `recipe_batch_formats` зберігає три фізичні totals, `recipe_batch_quantities` — авторські B/C quantity/UOM, їстівні grams, frozen conversion, auto/manual та review context; auto C успадковує фактичну UOM/factor B і прийняте правило округлення за UOM code, manual C лишається незалежним. `recipe_batch_equipment` фіксує обладнання для кожного формату зі збереженням nullable min_value. Повний контракт — [forward Stage 3](recipe-batches.md), SQL — [11](11_recipe_batches.sql).
 
 Не змушуємо кожен рецепт мати вагу готової страви. Коли Ви приготували каструлю їжі на п'ять порцій, достатньо розділити її на п'ять частин.
 

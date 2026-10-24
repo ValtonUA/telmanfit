@@ -17,7 +17,7 @@
 | A | `recipe_ingredients`, quantity=grams, UOM code g, positive numeric(7,2) |
 | Ingredient snapshot | object: schema_version=1, name, kcal/protein/fat/carbs як decimal strings scale 2; ≤8 KiB |
 | Headers | single/week/half_week, чотири totals numeric(14,6), policy object schema_version=1; calculation_hash=md5(JSON totals::text) |
-| B/C input snapshot | schema_version=1, factor decimal string scale 2, uom_label, source_hash, rounding exact/ceil/nearest, step scale 2; confirmed=true для не-exact; ≤8 KiB |
+| B/C input snapshot | schema_version=1, factor decimal string scale 2, uom_label, source_hash, rounding exact/ceil/nearest, step scale 2; auto C також зберігає accepted auto_policies за UOM code; confirmed=true для не-exact; ≤8 KiB |
 | Source hash | DB `recipe_batch_source_hash(ingredient_id)`: nutrition/семантика продукту, усі conversions/default, UOM labels і g; лише fingerprint, не credential |
 | Manual | quantity/UOM та grams не губляться; manual_context=DB `recipe_batch_context(row,code)` на момент ack, review_ack_hash=md5(context::text) |
 | Pending | JSON array ≤1000 rows/64 KiB, unique `pending:` ID, лише id/ingredient_id/quantity/uom_id/component_id/note/overrides; поля введення — nullable strings ≤500 chars; optional overrides week/half_week зберігає manual pair/snapshots та raw незавершене B/C введення; повний рядок нормалізувати |
@@ -37,7 +37,22 @@ manual context, повноту equipment та явне підтвердженн�
 та explicit policy. Лише decimal strings; quantity/grams scale 2, totals scale 6,
 HalfUp лише при gram conversion і показі порцій, overflow відхиляється.
 B target=A×7; C target=фактична B/2; автоматичний C за exact g може округлити
-0.005 до 0.01. Незавершені рядки передаються окремо й позначають результат incomplete.
+0.005 до 0.01. **Auto C завжди успадковує фактичну UOM і frozen factor B** за
+[§5.1](proposals/stage-3-recipe-batch-editor.md#51-три-послідовні-операції).
+Вибір виконує evaluator, а не майбутній UI: старі `half_week.uom/policy` не визначають
+новий auto результат. `row.auto_policies` — прийнятий snapshot правил за UOM code;
+він персистується як `half_week.input_snapshot.auto_policies`. Для успадкованих g
+за відсутності явного правила — exact/0.01; для інших UOM потрібне прийняте правило
+з decimal step scale 2 і confirmed=true. Відсутність правила/conversion вимагає
+explicit refresh, без fallback у g. Прийняття diff лишається командою PR B;
+evaluator не читає довідники та не пише persisted дані.
+
+Наприклад, B manual=3 шт., accepted piece ceil/1.00 → C auto=2 шт.; B=1 банка,
+accepted can ceil/0.50 → C=0.50 банки; за кроку 1.00 → ціла банка. Зміна B UOM
+обирає інше прийняте правило із snapshot; manual C зберігає власні quantity/UOM.
+SQL перевіряє однакові UOM/factor B/C та відповідність обраного округлення snapshot
+правил, включно з draft COMMIT і Publish. Самих правильних grams/totals недостатньо.
+Незавершені рядки передаються окремо й позначають результат incomplete.
 Невалідний normalized input відхиляється; evaluator не перетворює його на qty=0.
 
 Кожний B/C state містить mode, uom, policy (rounding, step, confirmed), для manual —
@@ -45,6 +60,7 @@ quantity та acknowledged_context. Manual pair не обмежується auto
 Контекст включає A, parent grams, nutrients, ingredient/conversion fingerprints,
 поточну UOM/factor і policy. Вихід містить context/review, targets, author pair,
 frozen factor/grams, totals та чотири порції. GET/preview чисті, жодних I/O.
+Порядок ключів JSON objects канонізується: JSONB reload не скидає manual acknowledgement.
 DB guards незалежно перевіряють записаний результат; це не альтернативний writer.
 DB canonical context має JSON representation сховища; adapter PR B має формувати
 його з accepted inputs і записувати ack лише за явною командою автора.
@@ -79,5 +95,10 @@ network none/tmpfs, synthetic role/database, перевіркою identity та 
 recipe/plan/assignment. Окремий concurrency script доводить реальне очікування PG lock,
 CAS conflict/rollback та serialization nutrition/UOM UPDATE/conversion INSERT.
 `BatchEvaluatorTest` перевіряє graph/reset/reload, малі зміни, UOM/rounding,
-чотири порції, precision/nonfinite/overflow. Штатний Stage 1 runner зберігає baseline
+чотири порції, precision/nonfinite/overflow та inherited C UOM/policy. Спільні
+`InheritedUomCases` звіряють PHP і PG на тих самих синтетичних conversions/steps;
+негативні тести відхиляють stale UOM/factor/policy, відсутнє підтвердження й неправильні
+кількості. `recipe-batch-uom-reload.php` додатково виконує справжній COMMIT і читає
+шість auto/manual сценаріїв через нові незалежні PG connections, після чого повторно
+обчислює склад із завантажених snapshots. Штатний Stage 1 runner зберігає baseline
 PASS=76 і catalog regression; нові DDL встановлюються у власному тестовому transaction.

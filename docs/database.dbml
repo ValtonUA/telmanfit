@@ -1070,7 +1070,7 @@ Table recipe_batch_quantities {
   format_id integer [not null]
   format_code text [not null, note: 'week/half_week']
   recipe_ingredient_id integer [not null]
-  mode text [not null, note: 'auto/manual applies to quantity and UOM together']
+  mode text [not null, note: 'auto/manual керує парою quantity/UOM; auto C успадковує фактичну UOM/factor B, policy обирається за accepted auto_policies у input_snapshot']
   quantity numeric(7,2) [not null]
   uom_id smallint [not null]
   quantity_grams numeric(7,2) [not null]
