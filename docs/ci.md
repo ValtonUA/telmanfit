@@ -56,6 +56,8 @@ PR; стара зелена перевірка не годиться. На opene
 - Харчові каталоги: atomic food/subtype, decimal/default/UOM/ACL/CAS,
   frozen history та реальні catalog writer locks; Chromium create/edit,
   CSRF/revocation, light/dark 1440/390/320; [контракт](food-catalog.md).
+- Раціони T4.1: Eloquent/atomic draft/ACL/immutable history, PG negatives,
+  реальні concurrency locks і Chromium light/dark 1440/390/320; [контракт](meal-plans.md).
 - AUTH-1 upstream digest/versions; AUTH-2–6 PHPUnit, HTTP, browser та concurrency;
   B3/B4 outbox/ACL, B5 retention/archive/restore faults, B6 budgets/restart/faults.
 - B6 виконується на **обох** PHP 8.4/8.5. Третій ідентичний прогін на Stage 1 PHP8.4
