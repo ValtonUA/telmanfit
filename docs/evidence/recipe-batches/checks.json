@@ -13,7 +13,8 @@
     "390px light: no overflow",
     "390px dark: no overflow",
     "320px light: no overflow",
-    "320px dark: no overflow"
+    "320px dark: no overflow",
+    "C1: publish → clone з новими ingredient/equipment tokens, manual/review/reload; duplicate draft rejected; explicit Refresh; published source unchanged"
   ],
   "page_errors": []
 }
