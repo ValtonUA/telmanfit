@@ -41,7 +41,7 @@ B target=A×7; C target=фактична B/2; автоматичний C за ex
 Невалідний normalized input відхиляється; evaluator не перетворює його на qty=0.
 
 Кожний B/C state містить mode, uom, policy (rounding, step, confirmed), для manual —
-quantity та acknowledged_context; `reset` прибирає manual intent лише в поверненій копії.
+quantity та acknowledged_context. Manual pair не обмежується auto-пресетом кроку/округлення. `reset(state, acceptedAutomatic)` явно отримує актуальну auto UOM/policy й прибирає manual intent лише в поверненій копії.
 Контекст включає A, parent grams, nutrients, ingredient/conversion fingerprints,
 поточну UOM/factor і policy. Вихід містить context/review, targets, author pair,
 frozen factor/grams, totals та чотири порції. GET/preview чисті, жодних I/O.

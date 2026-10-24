@@ -149,7 +149,7 @@ class RecipeBatchesTest extends PostgresTestCase
         $b = $this->batch();
         $uom = DB::table('uoms')->insertGetId(['code' => 'synthetic-can', 'label' => 'Test can', 'kind' => 'count']);
         DB::table('ingredient_uoms')->insert(['ingredient_id' => $b['ingredient'], 'uom_id' => $uom, 'grams_per_uom' => '33.33']);
-        $input = json_encode(['schema_version' => 1, 'factor' => '33.33', 'uom_label' => 'Test can', 'rounding' => 'nearest', 'step' => '0.25', 'confirmed' => true,
+        $input = json_encode(['schema_version' => 1, 'factor' => '33.33', 'uom_label' => 'Test can', 'rounding' => 'exact', 'step' => '0.01',
             'source_hash' => DB::selectOne('SELECT recipe_batch_source_hash(?) hash', [$b['ingredient']])->hash]);
         DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $b['row'])->where('format_code', 'week')->update(['mode' => 'manual', 'quantity' => '0.25', 'uom_id' => $uom, 'quantity_grams' => '8.33', 'input_snapshot' => $input, 'manual_context' => '{}']);
         DB::update("UPDATE recipe_batch_quantities SET quantity=4.17,quantity_grams=4.17,input_snapshot=jsonb_set(input_snapshot,'{source_hash}',to_jsonb(recipe_batch_source_hash(?))) WHERE recipe_ingredient_id=? AND format_code='half_week'", [$b['ingredient'], $b['row']]);

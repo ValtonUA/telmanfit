@@ -35,8 +35,8 @@ final class BatchEvaluator
                 $policy = $state['policy'];
                 $step = $this->positive($policy['step']);
                 if (! in_array($policy['rounding'], ['exact', 'ceil', 'nearest'], true)
-                    || ($policy['rounding'] === 'exact' && ($uom !== 'g' || $step !== '0.01'))
-                    || ($policy['rounding'] !== 'exact' && ! ($policy['confirmed'] ?? false))) {
+                    || ($state['mode'] === 'auto' && $policy['rounding'] === 'exact' && ($uom !== 'g' || $step !== '0.01'))
+                    || ($state['mode'] === 'auto' && $policy['rounding'] !== 'exact' && ($policy['confirmed'] ?? false) !== true)) {
                     throw new InvalidArgumentException('Непогоджена policy.');
                 }
                 $quantity = $state['mode'] === 'manual'
@@ -71,9 +71,11 @@ final class BatchEvaluator
     }
 
     /** Явна дія; preview/reset не змінює persisted стан. */
-    public function reset(array $state): array
+    public function reset(array $state, array $acceptedAutomatic): array
     {
         $state['mode'] = 'auto';
+        $state['uom'] = $acceptedAutomatic['uom'];
+        $state['policy'] = $acceptedAutomatic['policy'];
         unset($state['quantity'], $state['acknowledged_context']);
 
         return $state;

@@ -41,10 +41,10 @@ class BatchEvaluatorTest extends TestCase
             $this->assertSame($grams, $out['rows'][42][$code]['grams']);
             $this->assertTrue($out['rows'][42][$code]['review']);
         }
-        $saved['week'] = $e->reset($saved['week']);
+        $saved['week'] = $e->reset($saved['week'], self::row()['week']);
         $this->assertSame('1057.00', $e->evaluate([42 => $saved])['rows'][42]['week']['grams']);
         $this->assertSame('600.00', $e->evaluate([42 => $saved])['rows'][42]['half_week']['grams']);
-        $saved['half_week'] = $e->reset($saved['half_week']);
+        $saved['half_week'] = $e->reset($saved['half_week'], self::row()['half_week']);
         $this->assertSame('528.50', $e->evaluate([42 => $saved])['rows'][42]['half_week']['grams']);
     }
 
@@ -101,6 +101,24 @@ class BatchEvaluatorTest extends TestCase
     public static function invalidQuantities(): array
     {
         return array_map(fn ($v) => [$v], ['0', '-1', 'NaN', 'INF', '1e3', '0.005', '100000', '99999.99']);
+    }
+
+    public function test_manual_uom_ignores_auto_preset_and_reset_uses_accepted_automatic_uom(): void
+    {
+        $row = self::row();
+        $row['week']['mode'] = 'manual';
+        $row['week']['quantity'] = '1.00';
+        $row['week']['uom'] = 'test-can';
+        $row['factors']['test-can'] = '420.00';
+        // Старий exact-g preset не забороняє авторську ручну банку.
+        $e = new BatchEvaluator;
+        $out = $e->evaluate([1 => $row]);
+        $this->assertSame('420.00', $out['rows'][1]['week']['grams']);
+        $this->assertSame('210.00', $out['rows'][1]['half_week']['grams']);
+        $row['week'] = $e->reset($row['week'], self::row()['week']);
+        $out = $e->evaluate([1 => $row]);
+        $this->assertSame('g', $out['rows'][1]['week']['uom']);
+        $this->assertSame('1050.00', $out['rows'][1]['week']['grams']);
     }
 
     public function test_a_compatibility_overflow_fails_before_storage(): void

@@ -241,8 +241,8 @@ BEGIN
    IF (q.input_snapshot->>'step') IS NULL OR (q.input_snapshot->>'step') !~ '^\d{1,5}\.\d{2}$' THEN RAISE EXCEPTION 'Invalid step'; END IF;
    step:=(q.input_snapshot->>'step')::numeric;
    IF step<=0 OR rounding IS NULL OR rounding NOT IN ('exact','ceil','nearest') THEN RAISE EXCEPTION 'Invalid rounding'; END IF;
-   IF rounding='exact' AND (q.code<>'g' OR step<>0.01) THEN RAISE EXCEPTION 'Exact grams only'; END IF;
-   IF rounding<>'exact' AND q.input_snapshot->'confirmed' IS DISTINCT FROM 'true'::jsonb THEN RAISE EXCEPTION 'Unconfirmed rounding'; END IF;
+   IF q.mode='auto' AND rounding='exact' AND (q.code<>'g' OR step<>0.01) THEN RAISE EXCEPTION 'Exact grams only'; END IF;
+   IF q.mode='auto' AND rounding<>'exact' AND q.input_snapshot->'confirmed' IS DISTINCT FROM 'true'::jsonb THEN RAISE EXCEPTION 'Unconfirmed rounding'; END IF;
    expected:=CASE rounding WHEN 'exact' THEN round(target,2) WHEN 'ceil' THEN ceil(target/factor/step)*step ELSE round(target/factor/step)*step END;
    IF q.mode='auto' AND q.quantity<>expected THEN RAISE EXCEPTION 'Auto graph mismatch'; END IF;
    IF p_publish AND q.mode='manual' AND (q.manual_context IS DISTINCT FROM recipe_batch_context(r.id,q.format_code)
