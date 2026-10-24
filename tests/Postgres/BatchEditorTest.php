@@ -250,6 +250,54 @@ class BatchEditorTest extends PostgresTestCase
         $this->assertSame('1000.00', $state['payload']['rows'][0]['week']['quantity']);
     }
 
+    public function test_pending_auto_keeps_server_provenance_after_manual_reset_and_repeated_saves(): void
+    {
+        $b = $this->batch();
+        $state = $this->state($b);
+        $state['payload']['rows'][0]['week']['mode'] = 'manual';
+        $state['payload']['rows'][0]['week']['quantity'] = '1000.00';
+        $state = $this->commit($b['version'], $state, ack: true);
+        $hash = DB::selectOne('SELECT recipe_batch_source_hash(?) hash', [$b['ingredient']])->hash;
+        $state['payload']['rows'][0]['quantity'] = '';
+        $state['payload']['rows'][0]['week']['mode'] = 'auto';
+        $state['payload']['rows'][0]['week']['input_snapshot'] = ['source_hash' => 'forged'];
+        $state = $this->commit($b['version'], $state);
+        $state = $this->commit($b['version'], $state);
+        $pending = json_decode(DB::table('recipe_versions')->where('id', $b['version'])->value('draft_pending_rows'), true)[0];
+        foreach (['week', 'half_week'] as $code) {
+            $this->assertSame($hash, $pending['overrides'][$code]['input_snapshot']['source_hash']);
+            $this->assertEquals(['schema_version' => 1, 'mode' => 'auto', 'quantity_grams' => $code === 'week' ? '1000.00' : '500.00'], $pending['overrides'][$code]['input_snapshot']['pending_state']);
+            $this->assertSame('auto', $state['payload']['rows'][0][$code]['mode']);
+        }
+        DB::table('ingredients')->where('id', $b['ingredient'])->update(['kcal_per_100g' => '124.00']);
+        $state['payload']['rows'][0]['quantity'] = '150.00';
+        $this->denied(fn () => $this->commit($b['version'], $state), 'явно прийміть diff');
+        $state = $this->commit($b['version'], $state, refresh: true);
+        $this->assertSame('1050.00', $state['payload']['rows'][0]['week']['quantity']);
+    }
+
+    public function test_pending_auto_envelope_is_bounded_and_new_rows_have_no_fabricated_source(): void
+    {
+        $b = $this->batch();
+        $id = $this->editor->create($this->actor);
+        $state = $this->editor->open($this->actor, $id);
+        $row = $this->state($b)['payload']['rows'][0];
+        $row['id'] = 'pending:new-auto';
+        $row['quantity'] = '';
+        $row['auto_policies'] = ['untrusted' => str_repeat('x', 9000)];
+        $state['payload']['rows'] = [$row];
+        $this->denied(fn () => $this->commit($id, $state), '8 KiB');
+        $this->assertSame('[]', DB::table('recipe_versions')->where('id', $id)->value('draft_pending_rows'));
+        $state['payload']['rows'][0]['auto_policies'] = [];
+        $state = $this->commit($id, $state);
+        $pending = json_decode(DB::table('recipe_versions')->where('id', $id)->value('draft_pending_rows'), true)[0];
+        $this->assertArrayNotHasKey('source_hash', $pending['overrides']['week']['input_snapshot']);
+        DB::table('ingredients')->where('id', $b['ingredient'])->update(['kcal_per_100g' => '124.00']);
+        $state['payload']['rows'][0]['quantity'] = '150.00';
+        $state = $this->commit($id, $state);
+        $this->assertSame('auto', $state['payload']['rows'][0]['week']['mode']);
+    }
+
     public function test_feature_flag_and_current_database_role_are_required(): void
     {
         config(['recipes.batch_editor_enabled' => false]);

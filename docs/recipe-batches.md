@@ -20,7 +20,7 @@
 | B/C input snapshot | schema_version=1, factor decimal string scale 2, uom_label, source_hash, rounding exact/ceil/nearest, step scale 2; auto C також зберігає accepted auto_policies за UOM code; confirmed=true для не-exact; ≤8 KiB |
 | Source hash | DB `recipe_batch_source_hash(ingredient_id)`: nutrition/семантика продукту, усі conversions/default, UOM labels і g; лише fingerprint, не credential |
 | Manual | quantity/UOM та grams не губляться; manual_context=DB `recipe_batch_context(row,code)` на момент ack, review_ack_hash=md5(context::text) |
-| Pending | JSON array ≤1000 rows/64 KiB, unique `pending:` ID, лише id/ingredient_id/quantity/uom_id/component_id/note/overrides; поля введення — nullable strings ≤500 chars; optional overrides week/half_week зберігає manual pair/snapshots та raw незавершене B/C введення; повний рядок нормалізувати |
+| Pending | JSON array ≤1000 rows/64 KiB, unique `pending:` ID, лише id/ingredient_id/quantity/uom_id/component_id/note/overrides; поля введення — nullable strings ≤500 chars; optional overrides week/half_week зберігає pair/snapshots та raw незавершене B/C введення, для AUTO — службовий envelope (опис нижче); повний рядок нормалізувати |
 | Equipment | три resolved snapshots на baseline row; nullable min_value допустиме; auto fixed або proportional ×1/7/3.5; manual має context/ack |
 
 MD5 тут визначає рівність canonical PostgreSQL JSON, а не криптографічну авторизацію.
@@ -133,6 +133,25 @@ A/B/C, компоненти, кроки, обладнання, чотири по
 сталим при заміні продукту, manual не скидається. Вихід із pending отримує новий PK
 та атомарний remap токенів; інші рядки не перестворюються.
 
+Перехід завершеного рядка в pending **не скасовує accepted source**, включно з
+B/C AUTO. Adapter переносить із БД обидва `input_snapshot`, `source_hash`,
+`ingredient_snapshot`, frozen grams і accepted `auto_policies`. У дозволеному SQL 11
+`overrides.<format>.input_snapshot.pending_state` зберігається службовий object
+`{schema_version: 1, mode: auto|manual, quantity_grams: decimal|null}`. Зовнішній
+`overrides.<format>.mode=manual` — виключно сумісна з чинним CHECK оболонка;
+це **не** manual intent автора. `open` читає справжній режим із `pending_state`,
+невідому версію відхиляє; старі manual envelopes без marker читаються як раніше.
+Snapshot ≤8 KiB перевіряє adapter і БД, увесь pending — як і раніше ≤64 KiB/1000 rows.
+Нових JSONB root keys, SQL/міграцій або змін SQL 11 немає.
+
+Повторні pending Save/reload і reset manual→auto зберігають попередній fingerprint,
+не підставляють актуальний довідник у provenance. Client snapshots ігноруються.
+Після відновлення A зміни КБЖВ/UOM/conversion дають frozen/current diff; звичайний
+Save та Publish не приймають їх без explicit Refresh. Неповний рядок увесь цей час
+не входить у totals. Для нового, ще ніколи не нормалізованого pending snapshot
+джерела не вигадується. Уже втрачені попереднім кодом snapshots неможливо відновити
+з поточного довідника; backfill не виконується.
+
 Синтаксис кроків: `{{ingredient:<row_id>:quantity}}` або `:grams`, включно з
 `pending:...` до першого Save. [RecipeTokens](../app/Services/Recipes/RecipeTokens.php)
 рендерить plain text фактичного формату, Blade екранує результат. Dangling/невідомі
@@ -155,6 +174,7 @@ T1.5/фасування/Excel/Stage 4 і production activation не входят
 
 Перевірки: [BatchEditorTest](../tests/Postgres/BatchEditorTest.php),
 [command concurrency](../tests/pg/batch-editor-concurrency.php),
+[реальний pending COMMIT/reload](../tests/pg/batch-editor-pending-source.php),
 [Chromium](../tests/browser/recipe_batch.py). `RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1
 bash tests/pg/run-stage1.sh` створює новий PG18, перевіряє identity і прибирає container.
 Chromium проходить штатні password+TOTP, перевіряє graph/manual/reset, pending/reload,

@@ -78,7 +78,10 @@ final class BatchEditor
                 foreach (['week', 'half_week'] as $code) {
                     $q = $r['overrides'][$code] ?? [];
                     $s = $q['input_snapshot'] ?? [];
-                    $row[$code] = ['mode' => $q['mode'] ?? 'auto', 'quantity' => $q['quantity'] ?? '', 'uom_id' => $q['uom_id'] ?? '',
+                    if (isset($s['pending_state']) && (($s['pending_state']['schema_version'] ?? null) !== 1 || ! in_array($s['pending_state']['mode'] ?? null, ['auto', 'manual'], true))) {
+                        $this->fail('Невідома версія pending snapshot.');
+                    }
+                    $row[$code] = ['mode' => $s['pending_state']['mode'] ?? $q['mode'] ?? 'auto', 'quantity' => $q['quantity'] ?? '', 'uom_id' => $q['uom_id'] ?? '',
                         'rounding' => $s['rounding'] ?? 'exact', 'step' => $s['step'] ?? '0.01', 'confirmed' => $s['confirmed'] ?? false];
                 }
                 $row['auto_policies'] = $r['overrides']['half_week']['input_snapshot']['auto_policies'] ?? $r['overrides']['week']['input_snapshot']['auto_policies'] ?? [];
@@ -324,16 +327,23 @@ final class BatchEditor
                 $entry = ['id' => $key, 'ingredient_id' => $r['ingredient_id'], 'quantity' => $r['quantity'], 'uom_id' => (string) $gram_id, 'component_id' => $r['component_id'], 'overrides' => (object) []];
                 $overrides = [];
                 foreach (['week', 'half_week'] as $code) {
-                    if ($r[$code]['mode'] === 'manual') {
-                        $old = ctype_digit($key) ? DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $key)->where('format_code', $code)->first() : null;
-                        $overrides[$code] = ['mode' => 'manual', 'quantity' => $r[$code]['quantity'] ?? '', 'uom_id' => $r[$code]['uom_id'] ?? ''];
-                        if (! $old) {
-                            $overrides[$code]['input_snapshot'] = ($storedPending[$key]['overrides'][$code]['input_snapshot'] ?? []) + ['schema_version' => 1, 'rounding' => $r[$code]['rounding'] ?? 'exact', 'step' => $r[$code]['step'] ?? '0.01', 'auto_policies' => (object) ($r['auto_policies'] ?? [])];
-                        }
-                        if ($old) {
-                            $overrides[$code] += ['input_snapshot' => array_merge(json_decode($old->input_snapshot, true), ['auto_policies' => (object) ($r['auto_policies'] ?? []), 'ingredient_snapshot' => json_decode($owned[$key]->ingredient_snapshot, true)]), 'manual_context' => json_decode($old->manual_context ?? '{}', false), 'review_ack_hash' => $old->review_ack_hash];
-                        }
+                    $old = ctype_digit($key) ? DB::table('recipe_batch_quantities')->where('recipe_ingredient_id', $key)->where('format_code', $code)->first() : null;
+                    $previous = $storedPending[$key]['overrides'][$code] ?? [];
+                    // SQL 11 допускає лише manual-shaped envelope. Реальний режим — у
+                    // версованому pending_state; provenance береться тільки з БД, не payload.
+                    $snapshot = $old ? json_decode($old->input_snapshot, true) : ($previous['input_snapshot'] ?? []);
+                    $snapshot += ['schema_version' => 1, 'rounding' => $r[$code]['rounding'] ?? 'exact', 'step' => $r[$code]['step'] ?? '0.01'];
+                    if ($old) {
+                        $snapshot['ingredient_snapshot'] = json_decode($owned[$key]->ingredient_snapshot, true);
                     }
+                    $snapshot['auto_policies'] = (object) ($r['auto_policies'] ?? []);
+                    $snapshot['pending_state'] = ['schema_version' => 1, 'mode' => $r[$code]['mode'], 'quantity_grams' => $old->quantity_grams ?? $snapshot['pending_state']['quantity_grams'] ?? null];
+                    if (strlen(json_encode($snapshot)) > 8192) {
+                        $this->fail('Pending snapshot перевищує 8 KiB.');
+                    }
+                    $overrides[$code] = ['mode' => 'manual', 'quantity' => $r[$code]['quantity'] ?? '', 'uom_id' => $r[$code]['uom_id'] ?? '',
+                        'input_snapshot' => $snapshot, 'manual_context' => $old ? json_decode($old->manual_context ?? '{}', false) : (isset($previous['manual_context']) ? (object) $previous['manual_context'] : null),
+                        'review_ack_hash' => $old->review_ack_hash ?? $previous['review_ack_hash'] ?? null];
                 }
                 $entry['overrides'] = (object) $overrides;
                 $pending[] = $entry;
@@ -373,7 +383,7 @@ final class BatchEditor
                 $previous = $storedPending[$key]['overrides'][$code] ?? [];
                 $previousInput = $old ? json_decode($old->input_snapshot, true) : ($previous['input_snapshot'] ?? []);
                 if (isset($previousInput['source_hash']) && $previousInput['source_hash'] !== $hash) {
-                    $diff[$key][$code] = ['before' => ['quantity' => $old->quantity ?? ($previous['quantity'] ?? ''), 'grams' => $old->quantity_grams ?? 'pending', 'snapshot' => $previousInput], 'source_now' => $hash,
+                    $diff[$key][$code] = ['before' => ['quantity' => $old->quantity ?? ($previous['quantity'] ?? ''), 'grams' => $old->quantity_grams ?? $previousInput['pending_state']['quantity_grams'] ?? 'pending', 'snapshot' => $previousInput], 'source_now' => $hash,
                         'ingredient_before' => $old ? json_decode($owned[$key]->ingredient_snapshot, true) : ($previousInput['ingredient_snapshot'] ?? $snapshots[$key]), 'ingredient_after' => $snapshots[$key]];
                 }
             }
