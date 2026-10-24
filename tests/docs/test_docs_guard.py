@@ -66,6 +66,20 @@ class DocsGuardTest(unittest.TestCase):
             with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):
                 self.assertEqual(len(docs_guard.validate_pr_impact("base-sha")), 1)
 
+    def test_ci_files_require_canonical_docs_or_waiver(self) -> None:
+        for path in (".github/workflows/full.yml", "scripts/ci/pre_merge.py", "tests/ci/test_gate.py", "compose.yaml", "docker/local/Dockerfile"):
+            with self.subTest(path=path):
+                with patch.object(docs_guard.subprocess, "check_output", return_value=path + "\n"):
+                    with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):
+                        self.assertEqual(len(docs_guard.validate_pr_impact("base-sha")), 1)
+
+    def test_deletions_are_in_pr_base_impact(self) -> None:
+        with patch.object(docs_guard.subprocess, "check_output", return_value="app/Models/Removed.php\n") as diff:
+            with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):
+                self.assertEqual(len(docs_guard.validate_pr_impact("base-sha")), 1)
+            self.assertIn("--diff-filter=ACMRD", diff.call_args.args[0])
+            self.assertIn("base-sha", diff.call_args.args[0])
+
     def test_code_pr_with_updated_roadmap(self) -> None:
         with patch.object(docs_guard.subprocess, "check_output", return_value="app/Models/Client.php\ndocs/roadmap.md\n"):
             self.assertEqual(docs_guard.validate_pr_impact("base-sha"), [])

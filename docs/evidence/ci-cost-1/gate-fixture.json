@@ -1,0 +1,758 @@
+{
+  "repository": "ValtonUA/telmanfit",
+  "pr": {
+    "number": 42,
+    "state": "open",
+    "auto_merge": null,
+    "base": {
+      "ref": "master",
+      "sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d"
+    },
+    "head": {
+      "sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+      "ref": "ci/ci-cost-1",
+      "repo": {
+        "full_name": "ValtonUA/telmanfit"
+      }
+    }
+  },
+  "comparison": {
+    "status": "ahead"
+  },
+  "runs": {
+    "full.yml": [
+      {
+        "id": 40105750052,
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "event": "pull_request",
+        "path": ".github/workflows/full.yml",
+        "head_branch": "ci/ci-cost-1",
+        "pull_requests": [
+          {
+            "url": "https://api.github.com/repos/ValtonUA/telmanfit/pulls/42",
+            "id": 4996477618,
+            "number": 42,
+            "head": {
+              "ref": "ci/ci-cost-1",
+              "sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+              "repo": {
+                "id": 1428216947,
+                "url": "https://api.github.com/repos/ValtonUA/telmanfit",
+                "name": "telmanfit"
+              }
+            },
+            "base": {
+              "ref": "master",
+              "sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+              "repo": {
+                "id": 1428216947,
+                "url": "https://api.github.com/repos/ValtonUA/telmanfit",
+                "name": "telmanfit"
+              }
+            }
+          }
+        ],
+        "run_attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105750052"
+      }
+    ],
+    "fast.yml": [
+      {
+        "id": 40105600427,
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "event": "pull_request",
+        "path": ".github/workflows/fast.yml",
+        "head_branch": "ci/ci-cost-1",
+        "pull_requests": [
+          {
+            "url": "https://api.github.com/repos/ValtonUA/telmanfit/pulls/42",
+            "id": 4996477618,
+            "number": 42,
+            "head": {
+              "ref": "ci/ci-cost-1",
+              "sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+              "repo": {
+                "id": 1428216947,
+                "url": "https://api.github.com/repos/ValtonUA/telmanfit",
+                "name": "telmanfit"
+              }
+            },
+            "base": {
+              "ref": "master",
+              "sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+              "repo": {
+                "id": 1428216947,
+                "url": "https://api.github.com/repos/ValtonUA/telmanfit",
+                "name": "telmanfit"
+              }
+            }
+          }
+        ],
+        "run_attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105600427"
+      }
+    ],
+    "docs-health.yml": [
+      {
+        "id": 40105600424,
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "event": "pull_request",
+        "path": ".github/workflows/docs-health.yml",
+        "head_branch": "ci/ci-cost-1",
+        "pull_requests": [
+          {
+            "url": "https://api.github.com/repos/ValtonUA/telmanfit/pulls/42",
+            "id": 4996477618,
+            "number": 42,
+            "head": {
+              "ref": "ci/ci-cost-1",
+              "sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+              "repo": {
+                "id": 1428216947,
+                "url": "https://api.github.com/repos/ValtonUA/telmanfit",
+                "name": "telmanfit"
+              }
+            },
+            "base": {
+              "ref": "master",
+              "sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+              "repo": {
+                "id": 1428216947,
+                "url": "https://api.github.com/repos/ValtonUA/telmanfit",
+                "name": "telmanfit"
+              }
+            }
+          }
+        ],
+        "run_attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105600424"
+      }
+    ]
+  },
+  "jobs": {
+    "40105750052": [
+      {
+        "name": "Full documentation and base",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require current base included in tested head",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run python3 -m unittest discover -s tests/docs -p 'test_*.py' -v",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run python3 -m unittest discover -s tests/ci -p 'test_*.py' -v",
+            "conclusion": "success"
+          },
+          {
+            "name": "Documentation guard with actual PR base",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "stage1 / PostgreSQL and browser regressions",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan filament:upgrade --ansi",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run lint --prefix client",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run pip install playwright==1.62.0",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run python -m playwright install --with-deps chromium",
+            "conclusion": "success"
+          },
+          {
+            "name": "Stage 3 recipe batches, historical upgrade and concurrency",
+            "conclusion": "success"
+          },
+          {
+            "name": "AUTH-6B B5 retention, archive ACL, restore faults and concurrency",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh",
+            "conclusion": "success"
+          },
+          {
+            "name": "AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run bash tests/pg/test-runner.sh",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run bash tests/pg/run-isolated-pg.sh",
+            "conclusion": "success"
+          },
+          {
+            "name": "AUTH-1 regression",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "compose / Cold build and browser acceptance",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Record exact tested source",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run pip install playwright==1.62.0",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run python -m playwright install --with-deps chromium",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate standard Compose and cold build without overrides",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reject host credentials and database files in built image",
+            "conclusion": "success"
+          },
+          {
+            "name": "Start fresh isolated volumes",
+            "conclusion": "success"
+          },
+          {
+            "name": "MFA, OTP, CSRF, fence and persistence in Chromium",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "conclusion": "success"
+          },
+          {
+            "name": "Service status",
+            "conclusion": "success"
+          },
+          {
+            "name": "Remove only this disposable CI stack",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "runtime / PHP 8.5.12 security",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer validate --strict",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer audit --locked --no-interaction",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "conclusion": "success"
+          },
+          {
+            "name": "AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan test --display-all-issues",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php vendor/bin/pint --test",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "runtime / PHP 8.4.27 security",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer validate --strict",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer audit --locked --no-interaction",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "conclusion": "success"
+          },
+          {
+            "name": "AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan test --display-all-issues",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php vendor/bin/pint --test",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "Full PR gate",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reject every non-success dependency",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "40105600427": [
+      {
+        "name": "Fast PR checks",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "conclusion": "success"
+          },
+          {
+            "name": "PHP syntax and Compose configuration",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer validate --strict",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run composer audit --locked --no-interaction",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run lint --prefix client",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php artisan test --display-all-issues",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run php vendor/bin/pint --test",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "40105600424": [
+      {
+        "name": "Docs links, roadmap and PR impact",
+        "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Unit-test documentation guard",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI gate regression tests",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate documentation links and roadmap status IDs",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require a documentation review for source changes",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  }
+}
