@@ -65,7 +65,7 @@ def run_meal_plans(page, base):
     assert history == before  # створення drafts зберегло історичні rows
     page.goto(base + '/admin/meal-plans/create')
     raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()
-               if 'meal-plans.pages.create-meal-plan' in e.get_attribute('wire:snapshot'))
+               if 'data' in json.loads(e.get_attribute('wire:snapshot'))['data'])
     csrf = page.locator('meta[name=csrf-token]').get_attribute('content')
     payload = {'components': [{'snapshot': raw, 'updates': {'data.title': 'Forged plan'}, 'calls': [{'method': 'create', 'params': []}]}]}
     headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
