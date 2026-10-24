@@ -115,6 +115,8 @@ PWA і Telegram Mini App використовують максимально о�
 | `app/Providers/Filament/AdminPanelProvider.php` | Конфігурація панелі `admin` |
 | `app/Filament/Resources/Catalog/`, `app/Models/Catalog/` | Штатні Filament ресурси й моделі існуючих харчових довідників; conversions у формі ingredient |
 | `app/Services/Catalog/CatalogWriter.php`, `app/Policies/CatalogPolicy.php` | Транзакційний writer food/ingredient, decimal validation, CAS/locks та admin ACL; [предметний контракт](food-catalog.md) |
+| `app/Models/Meal*.php`, `app/Models/ClientMealPlanAssignment.php`, `app/Models/Food.php` | Eloquent чинної nutrition-схеми, явні FK та decimal casts |
+| `app/Filament/Resources/MealPlans/`, `app/Services/MealPlans/`, `app/Policies/MealPlan*` | Адміністративний foundation раціонів, atomic create та exact-version read-only views; [контракт](meal-plans.md) |
 | `client/` | Окремий Vite-проєкт React/TS; `npm run build` → `public/app` |
 | `database/migrations/` | Стандартні Laravel-міграції, узгодження `users`, `btree_gist` і модулі 01–04; див. stage-1.md |
 | `docs/` | Entity Catalog, DBML, SQL-модулі, аудит, цей документ, правила й план |

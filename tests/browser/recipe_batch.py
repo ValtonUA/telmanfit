@@ -47,7 +47,13 @@ with sync_playwright() as p:
         page.wait_for_url('**/admin/auth/challenge')
 
     assert context.request.get(url).status in (302, 403)
+    guest = browser.new_context()
+    for path in ('/admin/meal-plans', '/admin/meal-plans/create'):
+        assert guest.request.get(base + path).status in (302, 403)
+    guest.close()
     primary()
+    for path in ('/admin/meal-plans', '/admin/meal-plans/create'):
+        assert context.request.get(base + path).status in (302, 403)
     page.get_by_role('button', name='Створити ключ Authenticator').click()
     secret = page.locator('#totp-secret').inner_text()
     if time.time() % 30 >= 26:
@@ -68,6 +74,9 @@ with sync_playwright() as p:
         expect(target.locator('.batch-editor fieldset')).not_to_be_disabled()
         if name == 'Оновити preview':
             expect(target.get_by_text('Preview готовий. Збереження та публікація — окремі явні дії.', exact=True)).to_be_visible()
+
+    from meal_plans import run_meal_plans, verify_meal_plan_revocation
+    meal_plan_browser_state = run_meal_plans(page, base)
 
     from food_catalog import run_catalog
     run_catalog(page, base)
@@ -366,7 +375,10 @@ with sync_playwright() as p:
     checks.append('C2: explicit owner/confirm/cancel, redirect, remap, frozen→Refresh/manual review, duplicate rejection, publish/reload; original unchanged; 1440/390/320 light/dark action+editor')
     published_tab.close()
     from food_catalog import verify_catalog_revocation
+    from meal_plans import fixture as plan_fixture
+    meal_plan_browser_state['count'] = plan_fixture('count')
     verify_catalog_revocation(page, base)
+    verify_meal_plan_revocation(page, base, meal_plan_browser_state)
     checks.append("PR D: CSRF 419, revoked signed Livewire/HTTP 403, unchanged catalog hash")
     assert not errors, errors
     browser.close()

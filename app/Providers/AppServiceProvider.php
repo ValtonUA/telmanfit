@@ -11,7 +11,17 @@ use App\Models\Catalog\KitchenEquipment;
 use App\Models\Catalog\KitchenEquipmentCategory;
 use App\Models\Catalog\RecipeCategory;
 use App\Models\Catalog\Uom;
+use App\Models\ClientMealPlanAssignment;
+use App\Models\Food;
+use App\Models\Meal;
+use App\Models\MealItem;
+use App\Models\MealPlan;
+use App\Models\MealPlanDay;
+use App\Models\MealPlanVersion;
+use App\Models\MealType;
 use App\Policies\CatalogPolicy;
+use App\Policies\MealPlanDetailPolicy;
+use App\Policies\MealPlanPolicy;
 use App\Services\Auth\Client\ClientAuth;
 use App\Services\Auth\MfaService;
 use App\Services\Auth\Restore\ExternalEpoch;
@@ -60,6 +70,12 @@ class AppServiceProvider extends ServiceProvider
             RecipeCategory::class, Uom::class,
             KitchenEquipment::class, KitchenEquipmentCategory::class] as $model) {
             Gate::policy($model, CatalogPolicy::class);
+        }
+        Gate::policy(MealPlan::class, MealPlanPolicy::class);
+        foreach ([MealPlanVersion::class, MealPlanDay::class,
+            Meal::class, MealType::class, MealItem::class,
+            ClientMealPlanAssignment::class, Food::class] as $model) {
+            Gate::policy($model, MealPlanDetailPolicy::class);
         }
         // Спільна таблиця: request lifetime не визначає TTL інших contexts.
         app('session')->extend('database', fn ($app) => new ContextDatabaseSessionHandler(
