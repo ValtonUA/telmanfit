@@ -39,6 +39,13 @@ class GateTests(unittest.TestCase):
     def test_final_head_positive_without_merging(self):
         self.assertTrue(gate.evaluate(green())["eligible"])
 
+    def test_real_github_fixture_passes_then_stale_head_blocks(self):
+        import json
+        s = json.loads((ROOT / "docs/evidence/ci-cost-1/gate-fixture.json").read_text())
+        self.assertTrue(gate.evaluate(s)["eligible"])
+        s["pr"]["head"]["sha"] = "0" * 40
+        self.assert_blocked(s)
+
     def test_new_commit_invalidates_old_success(self):
         s = green()
         s["pr"]["head"]["sha"] = "c" * 40

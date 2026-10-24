@@ -395,6 +395,229 @@
   "notes": [
     "Probe schema changes only a SQL comment in docs/11_recipe_batches.sql; no schema semantics or migrations changed.",
     "Probe PHP is deliberately invalid and Compose is deliberately invalid YAML; neither branch is merged.",
-    "Main Full run 40105274651 remained in_progress after all four probes completed; independent PR concurrency confirmed."
-  ]
+    "Main Full run 40105274651 remained in_progress after all four probes completed; independent PR concurrency confirmed.",
+    "Initial probes included the candidate CI changes relative to master; isolated_path_probes use a temporary validation base so each PR diff contains exactly one probe file.",
+    "The validation base differs from candidate 2f6376a only by adding its own name to pull_request base branch filters; no harness changes land in the production PR.",
+    "All temporary probes closed without merge."
+  ],
+  "isolated_path_probes": [
+    {
+      "kind": "docs",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/43",
+      "head_sha": "55c7fe4e598cb4d45bfb85d036c702c52cc47fa6",
+      "base_sha": "f1770549658f5f0d11e9dcfac1702a9b2f927542",
+      "base_ref": "ci/ci-cost-1-validation-base",
+      "files": [
+        "docs/ci-cost-probe.md"
+      ],
+      "runs": [
+        {
+          "id": 40106080895,
+          "name": "Documentation health",
+          "head_sha": "55c7fe4e598cb4d45bfb85d036c702c52cc47fa6",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106080895"
+        },
+        {
+          "id": 40106080855,
+          "name": "Full PR",
+          "head_sha": "55c7fe4e598cb4d45bfb85d036c702c52cc47fa6",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106080855"
+        },
+        {
+          "id": 40106080813,
+          "name": "Fast PR",
+          "head_sha": "55c7fe4e598cb4d45bfb85d036c702c52cc47fa6",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106080813"
+        }
+      ]
+    },
+    {
+      "kind": "php",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/44",
+      "head_sha": "0b6fd02e1ee87cbcd9ae6216709e8153982f6e32",
+      "base_sha": "f1770549658f5f0d11e9dcfac1702a9b2f927542",
+      "base_ref": "ci/ci-cost-1-validation-base",
+      "files": [
+        "tests/ci/probe.php"
+      ],
+      "runs": [
+        {
+          "id": 40106085036,
+          "name": "Documentation health",
+          "head_sha": "0b6fd02e1ee87cbcd9ae6216709e8153982f6e32",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106085036"
+        },
+        {
+          "id": 40106085039,
+          "name": "Full PR",
+          "head_sha": "0b6fd02e1ee87cbcd9ae6216709e8153982f6e32",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106085039"
+        },
+        {
+          "id": 40106085037,
+          "name": "Fast PR",
+          "head_sha": "0b6fd02e1ee87cbcd9ae6216709e8153982f6e32",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106085037"
+        }
+      ]
+    },
+    {
+      "kind": "schema",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/45",
+      "head_sha": "65c520fb4b03b51bd74aa570482fbf5728e0140b",
+      "base_sha": "f1770549658f5f0d11e9dcfac1702a9b2f927542",
+      "base_ref": "ci/ci-cost-1-validation-base",
+      "files": [
+        "docs/11_recipe_batches.sql"
+      ],
+      "runs": [
+        {
+          "id": 40106089237,
+          "name": "Documentation health",
+          "head_sha": "65c520fb4b03b51bd74aa570482fbf5728e0140b",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106089237"
+        },
+        {
+          "id": 40106089355,
+          "name": "Full PR",
+          "head_sha": "65c520fb4b03b51bd74aa570482fbf5728e0140b",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106089355"
+        },
+        {
+          "id": 40106089201,
+          "name": "Fast PR",
+          "head_sha": "65c520fb4b03b51bd74aa570482fbf5728e0140b",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106089201"
+        }
+      ]
+    },
+    {
+      "kind": "compose",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/46",
+      "head_sha": "7c903615f6cfcce394065c124917cafa56f8363c",
+      "base_sha": "f1770549658f5f0d11e9dcfac1702a9b2f927542",
+      "base_ref": "ci/ci-cost-1-validation-base",
+      "files": [
+        "compose.yaml"
+      ],
+      "runs": [
+        {
+          "id": 40106093074,
+          "name": "Documentation health",
+          "head_sha": "7c903615f6cfcce394065c124917cafa56f8363c",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106093074"
+        },
+        {
+          "id": 40106093132,
+          "name": "Full PR",
+          "head_sha": "7c903615f6cfcce394065c124917cafa56f8363c",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106093132"
+        },
+        {
+          "id": 40106093095,
+          "name": "Fast PR",
+          "head_sha": "7c903615f6cfcce394065c124917cafa56f8363c",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40106093095"
+        }
+      ]
+    }
+  ],
+  "pending_full": {
+    "eligible": false,
+    "repository": "ValtonUA/telmanfit",
+    "pr": 42,
+    "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+    "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+    "evidence": {
+      "full.yml": {
+        "run_id": 40105750052,
+        "attempt": 1,
+        "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105750052"
+      },
+      "fast.yml": {
+        "run_id": 40105600427,
+        "attempt": 1,
+        "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105600427"
+      },
+      "docs-health.yml": {
+        "run_id": 40105600424,
+        "attempt": 1,
+        "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105600424"
+      }
+    },
+    "errors": [
+      "full.yml: latest run 40105750052 is not completed/success",
+      "full.yml: missing/extra/duplicate jobs: ['Full documentation and base', 'stage1 / PostgreSQL and browser regressions', 'compose / Cold build and browser acceptance', 'runtime / PHP 8.5.12 security', 'runtime / PHP 8.4.27 security']",
+      "full.yml: invalid job stage1 / PostgreSQL and browser regressions",
+      "full.yml: non-success step Run python -m playwright install --with-deps chromium",
+      "full.yml: non-success step Stage 3 recipe batches, historical upgrade and concurrency",
+      "full.yml: non-success step AUTH-6B B5 retention, archive ACL, restore faults and concurrency",
+      "full.yml: non-success step Run AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh",
+      "full.yml: non-success step AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency",
+      "full.yml: non-success step Run bash tests/pg/test-runner.sh",
+      "full.yml: non-success step Run bash tests/pg/run-isolated-pg.sh",
+      "full.yml: non-success step AUTH-1 regression",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+      "full.yml: non-success step Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: non-success step Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: non-success step Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "full.yml: invalid job compose / Cold build and browser acceptance",
+      "full.yml: non-success step Validate standard Compose and cold build without overrides",
+      "full.yml: non-success step Reject host credentials and database files in built image",
+      "full.yml: non-success step Start fresh isolated volumes",
+      "full.yml: non-success step MFA, OTP, CSRF, fence and persistence in Chromium",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Service status",
+      "full.yml: non-success step Remove only this disposable CI stack",
+      "full.yml: non-success step Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+      "full.yml: non-success step Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "full.yml: invalid job runtime / PHP 8.5.12 security",
+      "full.yml: non-success step AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+      "full.yml: non-success step Run php artisan test --display-all-issues",
+      "full.yml: non-success step Run php vendor/bin/pint --test",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: non-success step Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: non-success step Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "full.yml: invalid job runtime / PHP 8.4.27 security",
+      "full.yml: non-success step AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+      "full.yml: non-success step Run php artisan test --display-all-issues",
+      "full.yml: non-success step Run php vendor/bin/pint --test",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: non-success step Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: non-success step Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
+    ]
+  },
+  "request_during_pending_full": {
+    "requested": false,
+    "errors": [
+      "Wait for the current head's automatic Full gate run to finish before requesting Full"
+    ]
+  }
 }

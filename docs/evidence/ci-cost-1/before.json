@@ -69,7 +69,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:40:21Z",
             "completed_at": "2026-10-24T13:40:21Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist",
@@ -87,7 +87,7 @@
             "number": 7,
             "started_at": "2026-10-24T13:40:29Z",
             "completed_at": "2026-10-24T13:40:29Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run npm install --ignore-scripts",
@@ -141,7 +141,7 @@
             "number": 13,
             "started_at": "2026-10-24T13:40:53Z",
             "completed_at": "2026-10-24T13:40:53Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run pip install playwright==1.62.0",
@@ -213,7 +213,7 @@
             "number": 21,
             "started_at": "2026-10-24T13:52:31Z",
             "completed_at": "2026-10-24T13:52:31Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run bash tests/pg/run-isolated-pg.sh",
@@ -258,7 +258,7 @@
             "number": 47,
             "started_at": "2026-10-24T13:52:46Z",
             "completed_at": "2026-10-24T13:52:46Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -267,7 +267,7 @@
             "number": 48,
             "started_at": "2026-10-24T13:52:46Z",
             "completed_at": "2026-10-24T13:52:46Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -276,7 +276,7 @@
             "number": 49,
             "started_at": "2026-10-24T13:52:46Z",
             "completed_at": "2026-10-24T13:52:46Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887458920",
@@ -360,7 +360,7 @@
             "number": 3,
             "started_at": "2026-10-24T13:40:31Z",
             "completed_at": "2026-10-24T13:40:31Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/setup-python@v5",
@@ -369,7 +369,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:40:31Z",
             "completed_at": "2026-10-24T13:40:31Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run pip install playwright==1.62.0",
@@ -405,7 +405,7 @@
             "number": 8,
             "started_at": "2026-10-24T13:43:32Z",
             "completed_at": "2026-10-24T13:43:32Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Start fresh isolated volumes",
@@ -441,7 +441,7 @@
             "number": 12,
             "started_at": "2026-10-24T13:46:33Z",
             "completed_at": "2026-10-24T13:46:33Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Remove only this disposable CI stack",
@@ -459,7 +459,7 @@
             "number": 25,
             "started_at": "2026-10-24T13:46:36Z",
             "completed_at": "2026-10-24T13:46:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -468,7 +468,7 @@
             "number": 26,
             "started_at": "2026-10-24T13:46:36Z",
             "completed_at": "2026-10-24T13:46:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -477,7 +477,7 @@
             "number": 27,
             "started_at": "2026-10-24T13:46:36Z",
             "completed_at": "2026-10-24T13:46:36Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887517707",
@@ -570,7 +570,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:40:17Z",
             "completed_at": "2026-10-24T13:40:17Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer validate --strict",
@@ -579,7 +579,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:40:17Z",
             "completed_at": "2026-10-24T13:40:17Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
@@ -606,7 +606,7 @@
             "number": 8,
             "started_at": "2026-10-24T13:40:24Z",
             "completed_at": "2026-10-24T13:40:24Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run php artisan package:discover --ansi",
@@ -615,7 +615,7 @@
             "number": 9,
             "started_at": "2026-10-24T13:40:24Z",
             "completed_at": "2026-10-24T13:40:24Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/setup-node@v4",
@@ -696,7 +696,7 @@
             "number": 33,
             "started_at": "2026-10-24T13:41:49Z",
             "completed_at": "2026-10-24T13:41:49Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -705,7 +705,7 @@
             "number": 34,
             "started_at": "2026-10-24T13:41:49Z",
             "completed_at": "2026-10-24T13:41:49Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -714,7 +714,7 @@
             "number": 35,
             "started_at": "2026-10-24T13:41:49Z",
             "completed_at": "2026-10-24T13:41:49Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887458646",
@@ -781,7 +781,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:40:23Z",
             "completed_at": "2026-10-24T13:40:23Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer validate --strict",
@@ -790,7 +790,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:40:23Z",
             "completed_at": "2026-10-24T13:40:23Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
@@ -808,7 +808,7 @@
             "number": 7,
             "started_at": "2026-10-24T13:40:34Z",
             "completed_at": "2026-10-24T13:40:34Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer audit --locked --no-interaction",
@@ -826,7 +826,7 @@
             "number": 9,
             "started_at": "2026-10-24T13:40:35Z",
             "completed_at": "2026-10-24T13:40:35Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/setup-node@v4",
@@ -907,7 +907,7 @@
             "number": 33,
             "started_at": "2026-10-24T13:42:18Z",
             "completed_at": "2026-10-24T13:42:18Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -916,7 +916,7 @@
             "number": 34,
             "started_at": "2026-10-24T13:42:18Z",
             "completed_at": "2026-10-24T13:42:18Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -925,7 +925,7 @@
             "number": 35,
             "started_at": "2026-10-24T13:42:18Z",
             "completed_at": "2026-10-24T13:42:18Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887458985",
@@ -1022,7 +1022,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:40:15Z",
             "completed_at": "2026-10-24T13:40:15Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Require a documentation review for source changes",
@@ -1031,7 +1031,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:40:15Z",
             "completed_at": "2026-10-24T13:40:15Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -1040,7 +1040,7 @@
             "number": 10,
             "started_at": "2026-10-24T13:40:15Z",
             "completed_at": "2026-10-24T13:40:15Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -1049,7 +1049,7 @@
             "number": 11,
             "started_at": "2026-10-24T13:40:15Z",
             "completed_at": "2026-10-24T13:40:15Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887458735",
@@ -1133,7 +1133,7 @@
             "number": 3,
             "started_at": "2026-10-24T13:38:36Z",
             "completed_at": "2026-10-24T13:38:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/setup-python@v5",
@@ -1142,7 +1142,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:38:36Z",
             "completed_at": "2026-10-24T13:38:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run pip install playwright==1.62.0",
@@ -1178,7 +1178,7 @@
             "number": 8,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Start fresh isolated volumes",
@@ -1187,7 +1187,7 @@
             "number": 9,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "MFA, OTP, CSRF, fence and persistence in Chromium",
@@ -1196,7 +1196,7 @@
             "number": 10,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/upload-artifact@v4",
@@ -1205,7 +1205,7 @@
             "number": 11,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Service status",
@@ -1214,7 +1214,7 @@
             "number": 12,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Remove only this disposable CI stack",
@@ -1223,7 +1223,7 @@
             "number": 13,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/setup-python@v5",
@@ -1232,7 +1232,7 @@
             "number": 25,
             "started_at": "2026-10-24T13:40:22Z",
             "completed_at": "2026-10-24T13:40:22Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -1250,7 +1250,7 @@
             "number": 27,
             "started_at": "2026-10-24T13:40:23Z",
             "completed_at": "2026-10-24T13:40:23Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887120547",
@@ -1343,7 +1343,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:38:36Z",
             "completed_at": "2026-10-24T13:38:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Require a documentation review for source changes",
@@ -1352,7 +1352,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:38:36Z",
             "completed_at": "2026-10-24T13:38:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -1361,7 +1361,7 @@
             "number": 10,
             "started_at": "2026-10-24T13:38:36Z",
             "completed_at": "2026-10-24T13:38:36Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -1370,7 +1370,7 @@
             "number": 11,
             "started_at": "2026-10-24T13:38:36Z",
             "completed_at": "2026-10-24T13:38:36Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887120175",
@@ -1463,7 +1463,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:38:40Z",
             "completed_at": "2026-10-24T13:38:40Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer validate --strict",
@@ -1472,7 +1472,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:38:40Z",
             "completed_at": "2026-10-24T13:38:40Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
@@ -1490,7 +1490,7 @@
             "number": 7,
             "started_at": "2026-10-24T13:38:54Z",
             "completed_at": "2026-10-24T13:38:54Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer audit --locked --no-interaction",
@@ -1499,7 +1499,7 @@
             "number": 8,
             "started_at": "2026-10-24T13:38:54Z",
             "completed_at": "2026-10-24T13:38:54Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run php artisan package:discover --ansi",
@@ -1517,7 +1517,7 @@
             "number": 10,
             "started_at": "2026-10-24T13:38:55Z",
             "completed_at": "2026-10-24T13:38:55Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run npm install --ignore-scripts --package-lock=false",
@@ -1589,7 +1589,7 @@
             "number": 33,
             "started_at": "2026-10-24T13:40:39Z",
             "completed_at": "2026-10-24T13:40:39Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -1607,7 +1607,7 @@
             "number": 35,
             "started_at": "2026-10-24T13:40:40Z",
             "completed_at": "2026-10-24T13:40:40Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887120287",
@@ -1674,7 +1674,7 @@
             "number": 4,
             "started_at": "2026-10-24T13:38:40Z",
             "completed_at": "2026-10-24T13:38:40Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer validate --strict",
@@ -1683,7 +1683,7 @@
             "number": 5,
             "started_at": "2026-10-24T13:38:40Z",
             "completed_at": "2026-10-24T13:38:40Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
@@ -1710,7 +1710,7 @@
             "number": 8,
             "started_at": "2026-10-24T13:38:50Z",
             "completed_at": "2026-10-24T13:38:50Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run php artisan package:discover --ansi",
@@ -1719,7 +1719,7 @@
             "number": 9,
             "started_at": "2026-10-24T13:38:50Z",
             "completed_at": "2026-10-24T13:38:50Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/setup-node@v4",
@@ -1800,7 +1800,7 @@
             "number": 33,
             "started_at": "2026-10-24T13:40:35Z",
             "completed_at": "2026-10-24T13:40:35Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -1809,7 +1809,7 @@
             "number": 34,
             "started_at": "2026-10-24T13:40:35Z",
             "completed_at": "2026-10-24T13:40:35Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -1818,7 +1818,7 @@
             "number": 35,
             "started_at": "2026-10-24T13:40:35Z",
             "completed_at": "2026-10-24T13:40:35Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887120453",
@@ -1996,7 +1996,7 @@
             "number": 13,
             "started_at": "2026-10-24T13:39:10Z",
             "completed_at": "2026-10-24T13:39:10Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run pip install playwright==1.62.0",
@@ -2104,7 +2104,7 @@
             "number": 46,
             "started_at": "2026-10-24T13:50:23Z",
             "completed_at": "2026-10-24T13:50:23Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/setup-node@v4",
@@ -2113,7 +2113,7 @@
             "number": 47,
             "started_at": "2026-10-24T13:50:23Z",
             "completed_at": "2026-10-24T13:50:23Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -2122,7 +2122,7 @@
             "number": 48,
             "started_at": "2026-10-24T13:50:23Z",
             "completed_at": "2026-10-24T13:50:23Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -2131,7 +2131,7 @@
             "number": 49,
             "started_at": "2026-10-24T13:50:23Z",
             "completed_at": "2026-10-24T13:50:23Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120887120276",
@@ -2233,7 +2233,7 @@
             "number": 5,
             "started_at": "2026-10-24T14:06:13Z",
             "completed_at": "2026-10-24T14:06:13Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist",
@@ -2251,7 +2251,7 @@
             "number": 7,
             "started_at": "2026-10-24T14:06:21Z",
             "completed_at": "2026-10-24T14:06:21Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run npm install --ignore-scripts",
@@ -2305,7 +2305,7 @@
             "number": 13,
             "started_at": "2026-10-24T14:06:39Z",
             "completed_at": "2026-10-24T14:06:39Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run pip install playwright==1.62.0",
@@ -2413,7 +2413,7 @@
             "number": 46,
             "started_at": "2026-10-24T14:17:35Z",
             "completed_at": "2026-10-24T14:17:35Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/setup-node@v4",
@@ -2422,7 +2422,7 @@
             "number": 47,
             "started_at": "2026-10-24T14:17:35Z",
             "completed_at": "2026-10-24T14:17:35Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -2431,7 +2431,7 @@
             "number": 48,
             "started_at": "2026-10-24T14:17:35Z",
             "completed_at": "2026-10-24T14:17:35Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -2440,7 +2440,7 @@
             "number": 49,
             "started_at": "2026-10-24T14:17:35Z",
             "completed_at": "2026-10-24T14:17:35Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120892906647",
@@ -2533,7 +2533,7 @@
             "number": 4,
             "started_at": "2026-10-24T14:06:12Z",
             "completed_at": "2026-10-24T14:06:12Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer validate --strict",
@@ -2542,7 +2542,7 @@
             "number": 5,
             "started_at": "2026-10-24T14:06:12Z",
             "completed_at": "2026-10-24T14:06:12Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
@@ -2560,7 +2560,7 @@
             "number": 7,
             "started_at": "2026-10-24T14:06:19Z",
             "completed_at": "2026-10-24T14:06:19Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer audit --locked --no-interaction",
@@ -2578,7 +2578,7 @@
             "number": 9,
             "started_at": "2026-10-24T14:06:20Z",
             "completed_at": "2026-10-24T14:06:20Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run actions/setup-node@v4",
@@ -2587,7 +2587,7 @@
             "number": 10,
             "started_at": "2026-10-24T14:06:20Z",
             "completed_at": "2026-10-24T14:06:20Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run npm install --ignore-scripts --package-lock=false",
@@ -2641,7 +2641,7 @@
             "number": 16,
             "started_at": "2026-10-24T14:07:42Z",
             "completed_at": "2026-10-24T14:07:42Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run php vendor/bin/pint --test",
@@ -2659,7 +2659,7 @@
             "number": 33,
             "started_at": "2026-10-24T14:07:47Z",
             "completed_at": "2026-10-24T14:07:47Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -2677,7 +2677,7 @@
             "number": 35,
             "started_at": "2026-10-24T14:07:48Z",
             "completed_at": "2026-10-24T14:07:48Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120892906554",
@@ -2744,7 +2744,7 @@
             "number": 4,
             "started_at": "2026-10-24T14:06:10Z",
             "completed_at": "2026-10-24T14:06:10Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer validate --strict",
@@ -2753,7 +2753,7 @@
             "number": 5,
             "started_at": "2026-10-24T14:06:10Z",
             "completed_at": "2026-10-24T14:06:10Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
@@ -2771,7 +2771,7 @@
             "number": 7,
             "started_at": "2026-10-24T14:06:18Z",
             "completed_at": "2026-10-24T14:06:18Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run composer audit --locked --no-interaction",
@@ -2798,7 +2798,7 @@
             "number": 10,
             "started_at": "2026-10-24T14:06:20Z",
             "completed_at": "2026-10-24T14:06:20Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Run npm install --ignore-scripts --package-lock=false",
@@ -2870,7 +2870,7 @@
             "number": 33,
             "started_at": "2026-10-24T14:08:05Z",
             "completed_at": "2026-10-24T14:08:05Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -2879,7 +2879,7 @@
             "number": 34,
             "started_at": "2026-10-24T14:08:05Z",
             "completed_at": "2026-10-24T14:08:05Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -2888,7 +2888,7 @@
             "number": 35,
             "started_at": "2026-10-24T14:08:05Z",
             "completed_at": "2026-10-24T14:08:05Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120892906812",
@@ -2976,7 +2976,7 @@
             "number": 3,
             "started_at": "2026-10-24T14:06:07Z",
             "completed_at": "2026-10-24T14:06:07Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Validate documentation links and roadmap status IDs",
@@ -2985,7 +2985,7 @@
             "number": 4,
             "started_at": "2026-10-24T14:06:07Z",
             "completed_at": "2026-10-24T14:06:07Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Require a documentation review for source changes",
@@ -2994,7 +2994,7 @@
             "number": 5,
             "started_at": "2026-10-24T14:06:07Z",
             "completed_at": "2026-10-24T14:06:07Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Post Run actions/checkout@v4",
@@ -3003,7 +3003,7 @@
             "number": 10,
             "started_at": "2026-10-24T14:06:07Z",
             "completed_at": "2026-10-24T14:06:07Z",
-            "seconds": 0.0
+            "seconds": 0
           },
           {
             "name": "Complete job",
@@ -3012,7 +3012,7 @@
             "number": 11,
             "started_at": "2026-10-24T14:06:07Z",
             "completed_at": "2026-10-24T14:06:07Z",
-            "seconds": 0.0
+            "seconds": 0
           }
         ],
         "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/120892906558",

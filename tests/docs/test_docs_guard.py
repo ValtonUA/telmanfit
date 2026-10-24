@@ -67,7 +67,7 @@ class DocsGuardTest(unittest.TestCase):
                 self.assertEqual(len(docs_guard.validate_pr_impact("base-sha")), 1)
 
     def test_ci_files_require_canonical_docs_or_waiver(self) -> None:
-        for path in (".github/workflows/full.yml", "scripts/ci/pre_merge.py", "tests/ci/test_gate.py"):
+        for path in (".github/workflows/full.yml", "scripts/ci/pre_merge.py", "tests/ci/test_gate.py", "compose.yaml", "docker/local/Dockerfile"):
             with self.subTest(path=path):
                 with patch.object(docs_guard.subprocess, "check_output", return_value=path + "\n"):
                     with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):

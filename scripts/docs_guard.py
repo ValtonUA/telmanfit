@@ -92,12 +92,12 @@ def is_implementation(path: str) -> bool:
     dirs = (
         "app/", "client/src/", "routes/", "database/migrations/",
         "database/sql/", "database/seeders/", "config/", "bootstrap/",
-        "resources/views/", "lang/", ".github/workflows/", "scripts/ci/", "tests/ci/",
+        "resources/views/", "lang/", "docker/", ".github/workflows/", "scripts/ci/", "tests/ci/",
     )
     files = {
         "composer.json", "composer.lock", "package.json", "package-lock.json",
         "client/package.json", "client/package-lock.json",
-        "client/vite.config.ts", "vite.config.js",
+        "client/vite.config.ts", "vite.config.js", "compose.yaml", ".dockerignore",
     }
     return path.startswith(dirs) or path in files
 

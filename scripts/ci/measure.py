@@ -14,8 +14,10 @@ def api(path):
 def seconds(start, end):
     if not start or not end:
         return None
-    return (dt.datetime.fromisoformat(end.replace("Z", "+00:00")) -
-            dt.datetime.fromisoformat(start.replace("Z", "+00:00"))).total_seconds()
+    # GitHub skipped placeholders can report completed_at before started_at.
+    # They have no runner execution; never subtract time from real jobs.
+    return max(0, (dt.datetime.fromisoformat(end.replace("Z", "+00:00")) -
+                   dt.datetime.fromisoformat(start.replace("Z", "+00:00"))).total_seconds())
 
 
 def main():

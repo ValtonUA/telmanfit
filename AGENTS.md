@@ -196,8 +196,8 @@ Telegram — це лише один із каналів доставки, а н�
 переглянутого checkout. Потрібні **всі** jobs Full PR, Fast PR та Documentation health
 зі статусом completed/success саме на поточному head SHA, поточний master у head,
 відсутній auto-merge. Failed/cancelled/pending/skipped, попередній SHA/attempt або
-неповний набір — **не мерджити**. Новий commit вимагає нового Full: зняти й знову
-додати `ci:full`; подробиці — [CI](docs/ci.md). Перед дозволеним користувачем merge
+неповний набір — **не мерджити**. Новий commit вимагає нового Full через
+`python3 scripts/ci/request_full.py <PR>`; подробиці — [CI](docs/ci.md). Перед дозволеним користувачем merge
 повторити gate, використати `gh pr merge --match-head-commit <перевірений SHA>`;
 зміна base/head під час перевірки потребує повтору. Без окремої авторизації merge
 не виконувати. Якщо GitHub required checks недоступні, це обов’язкова агентська

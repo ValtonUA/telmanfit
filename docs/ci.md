@@ -10,12 +10,18 @@ Workflow/CI scripts теж потребують canonical docs або обґру
 
 1. Оновити гілку так, щоб актуальний master був її предком. Переконатися, що
    Fast PR і Documentation health успішні на потрібному SHA.
-2. У PR додати мітку `ci:full`. Для повтору спочатку зняти її, потім додати:
+2. Запустити із довіреного checkout:
 
    ```sh
-   gh api repos/ValtonUA/telmanfit/issues/<PR>/labels/ci:full -X DELETE
-   gh api repos/ValtonUA/telmanfit/issues/<PR>/labels -X POST -f 'labels[]=ci:full'
+   python3 scripts/ci/request_full.py <PR> --repo ValtonUA/telmanfit
    ```
+
+   Скрипт перевіряє Fast/docs на поточному SHA та завершення автоматичного Full
+   gate, тоді знімає/повертає `ci:full` через REST API. Він відмовляє при незавершених
+   runs або зміні head/base. Не ставити мітку відразу після push: GitHub не гарантує
+   порядок доставки synchronize/labeled, тому пізня автоматична подія може скасувати
+   запит. Якщо таке сталося, дочекатися Fast/docs та повторити request_full.py.
+   Мітку створює maintainer один раз: `gh label create ci:full --color 1d76db`.
 
 3. Дочекатися Full PR: PostgreSQL/browser, PHP 8.4.27 і 8.5.12, cold Compose,
    Full documentation and base та агрегатор Full PR gate мають бути success.
@@ -84,6 +90,7 @@ machine checker як додатковий захист SHA/run-attempt/job cover
 
 ## Вимірювання й перевірка
 
+[Звіт before/after і сценарії 5/10 commits](evidence/ci-cost-1/report.md).
 [Виміряний baseline](evidence/ci-cost-1/before.json) містить run/job SHA, GitHub URLs,
 started/completed timestamps, усі steps і відповідь timing API. Відтворення:
 
