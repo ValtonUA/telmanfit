@@ -85,6 +85,8 @@
 
 ### Stage 3 — Продукти та рецепти
 
+Архітектурна [пропозиція редактора трьох форматів](proposals/stage-3-recipe-batch-editor.md) — **PROPOSAL — NOT APPROVED**. Потребує окремого review до реалізації; статуси T3.1–T3.5, T1.5 та рішення BR-F-11/DEC-3B не змінює.
+
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
 | T3.1 | Моделі `Food`, `Ingredient`, `IngredientUom`, `Uom`, `IngredientCategory` + Filament-ресурси. | Заплановано |
