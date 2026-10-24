@@ -78,7 +78,7 @@ with sync_playwright() as p:
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         page.get_by_label('Кількість week 1', exact=True).fill('1000.00')
     expect(page.get_by_test_id('half_week-0')).to_contain_text('500.00 g')
-    action(page, 'Підтверджую manual review і зберігаю')
+    action(page, 'Підтвердити ручні значення й обладнання')
     page.reload()
     action(page, 'Оновити preview')
     expect(page.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
@@ -88,7 +88,7 @@ with sync_playwright() as p:
         page.get_by_label('Режим half_week 1', exact=True).select_option('manual')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         page.get_by_label('Кількість half_week 1', exact=True).fill('600.00')
-    action(page, 'Підтверджую manual review і зберігаю')
+    action(page, 'Підтвердити ручні значення й обладнання')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         page.get_by_label('A грами 1', exact=True).fill('160.00')
     expect(page.get_by_test_id('week-0')).to_contain_text('1000.00 g')
@@ -98,11 +98,11 @@ with sync_playwright() as p:
     action(page, 'Оновити preview')
     expect(page.get_by_label('Кількість half_week 1', exact=True)).to_have_value('600.00')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
-        page.get_by_role('button', name='Reset to auto', exact=True).first.click()
+        page.get_by_role('button', name='Повернути кількість до авто', exact=True).first.click()
     expect(page.get_by_test_id('week-0')).to_contain_text('1120.00 g')
     expect(page.get_by_test_id('half_week-0')).to_contain_text('600.00 g')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
-        page.get_by_role('button', name='Reset to auto', exact=True).click()
+        page.get_by_role('button', name='Повернути кількість до авто', exact=True).click()
     expect(page.get_by_test_id('half_week-0')).to_contain_text('560.00 g')
     action(page, 'Зберегти чернетку')
     # Повернути manual B для подальшого explicit refresh scenario.
@@ -110,7 +110,7 @@ with sync_playwright() as p:
         page.get_by_label('Режим week 1', exact=True).select_option('manual')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         page.get_by_label('Кількість week 1', exact=True).fill('1000.00')
-    action(page, 'Підтверджую manual review і зберігаю')
+    action(page, 'Підтвердити ручні значення й обладнання')
     checks.append('Manual C=600 зберігається після A=160/reload; reset B=1120, reset C=560')
 
     second = context.new_page()
@@ -139,6 +139,37 @@ with sync_playwright() as p:
     expect(page.get_by_text('Неповний розрахунок:', exact=False)).to_be_visible()
     expect(page.get_by_label('Інгредієнт 2', exact=True)).to_have_value('')
     checks.append('Pending row: save/reload; неповний підсумок')
+
+    expect(page.get_by_test_id('equipment-half_week-0')).to_contain_text('4.00')
+    tool_token = page.get_by_text('Токен: {{equipment:', exact=False).inner_text()
+    action(page, 'Обладнання B вручну')
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_label('Обладнання B кількість 1', exact=True).fill('2.00')
+    action(page, 'Підтвердити ручні значення й обладнання')
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_label('Обладнання A кількість 1', exact=True).fill('2.00')
+    expect(page.get_by_test_id('equipment-week-0')).to_contain_text('2.00')
+    action(page, 'Зберегти чернетку')
+    page.reload()
+    action(page, 'Оновити preview')
+    expect(page.get_by_label('Обладнання B кількість 1', exact=True)).to_have_value('2.00')
+    assert page.get_by_text('Токен: {{equipment:', exact=False).inner_text() == tool_token
+    action(page, 'Підтвердити ручні значення й обладнання')
+    action(page, 'Повернути обладнання B до авто')
+    expect(page.get_by_test_id('equipment-week-0')).to_contain_text('14.00')
+    action(page, 'Зберегти чернетку')
+    checks.append('Обладнання: ceil C=4; manual B=2, зміна A/reload зберігає ID/token/override; ack/reset B=14')
+
+    # B preset — explicit author choice; C remains exact grams.
+    action(page, 'Повернути кількість до авто')
+    page.get_by_label('Пресет B 1', exact=True).select_option('nearest100')
+    page.once('dialog', lambda dialog: dialog.accept())
+    with page.expect_response(lambda r: '/livewire/update' in r.url):
+        page.get_by_role('button', name='Застосувати й підтвердити пресет B', exact=True).first.click()
+    expect(page.get_by_test_id('week-0')).to_contain_text('1100.00 g')
+    expect(page.get_by_test_id('half_week-0')).to_contain_text('550.00 g')
+    action(page, 'Зберегти чернетку')
+    checks.append('Явний nearest 100 г B=1100 → exact C=550; preview до Save')
 
     for width in (1440, 390, 320):
         for theme in ('light', 'dark'):

@@ -6,6 +6,8 @@
     "Дві вкладки: stale revision не перезаписує першу",
     "Stale source response → відмова; explicit diff/Refresh зберігає manual",
     "Pending row: save/reload; неповний підсумок",
+    "Обладнання: ceil C=4; manual B=2, зміна A/reload зберігає ID/token/override; ack/reset B=14",
+    "Явний nearest 100 г B=1100 → exact C=550; preview до Save",
     "1440px light: no overflow",
     "1440px dark: no overflow",
     "390px light: no overflow",

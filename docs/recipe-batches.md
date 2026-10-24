@@ -121,8 +121,7 @@ Client totals/snapshots/ack hashes не використовуються. Ная
 
 Звичайний Save відхиляє змінені джерела; кнопка «Прийняти diff і Refresh» явно
 приймає переглянутий snapshot. Ручні quantity/UOM зберігаються, factor/grams/КБЖВ
-оновлюються лише після цієї згоди. Окрема кнопка «Підтверджую manual review і
-зберігаю» фіксує саме поточний DB context. Незмінні acknowledgements переживають
+оновлюються лише після цієї згоди. Окрема кнопка «Підтвердити ручні значення й обладнання» фіксує саме поточний DB context. Незмінні acknowledgements переживають
 Save/reload, зміни залежностей роблять їх stale. Немає відсоткового порогу.
 
 Одна сторінка `/admin/recipe-batches` містить новий draft, вибір версії, склад
@@ -161,17 +160,62 @@ Save та Publish не приймають їх без explicit Refresh. Непо
 один version_number у тій самій транзакції. Повторний publish дає conflict, без
 другого food; будь-яка відмова відкочує весь write.
 
-**Межа цього самодостатнього slice:** обладнання — baseline fixed/proportional auto
-із resolved ×1/7/3.5 та nullable min_value, без ручних equipment overrides. Якщо
-aggregate уже має manual equipment, Save безпечно відхиляється цілком. UI не
-пропонує auto B пресети: B auto — точні g; ручні B/C UOM дозволені лише за наявною
-конверсією. Для auto C не-g автор явно приймає ceil/step для фактичної UOM B;
-відсутність правила блокує preview без fallback у g. Preset UX для auto B/100g,
-manual equipment/review, equipment/timer tokens, розширений preview наслідків
-видалення та зручний каталог довідників — наступний PR B slice. Ці обмеження не
-маскуються як готовність усього PR B. Legacy показує явну межу; clone/CoW — PR C.
-T1.5/фасування/Excel/Stage 4 і production activation не входять.
+## Завершення редактора (PR B2)
 
+Обладнання зберігається через UPDATE/upsert за належним версії PK. Видаляються
+лише явно прибрані рядки; нові equipment IDs remap-яться окремо від ingredient IDs
+в одній транзакції. A — ручна база; B/C — auto або manual. Manual min_value/UOM/tip
+не переписуються при зміні A, складу чи параметрів B. Reset явно повертає формат
+до baseline fixed/proportional. NULL означає відсутність числової вимоги, не нуль.
+Лічильні auto значення округлюються ceil до цілого; місткість лишається decimal
+scale 2 (HalfUp лише до точності сховища), без округлення літрів до цілих.
+
+[SQL 12](12_recipe_equipment.sql), byte-identical до
+[01_equipment.sql](../database/sql/recipes/01_equipment.sql), — вузька forward-ревізія
+функцій: helper auto/context і оновлений aggregate validator. **Нових таблиць,
+полів, enum або переписування SQL 01–11 немає.** Причина міграції: старий guard
+вимагав дробове proportional count й перевіряв review лише manual обладнання.
+Новий guard незалежно перевіряє ceil count та достатність усіх A/B/C snapshots.
+Populated B1 upgrade test доводить byte-for-byte збереження published equipment/версії, навіть історичного fractional count; backfill немає, immutability діє. На реальних БД міграція не запускалася.
+
+`input_snapshot` equipment містить schema_version=1, dependencies (серверний
+SHA-256 нормалізованих inputs/pending для preview), source_hash (обраний catalog/UOM)
+і adequacy_ack (MD5 DB context). Сервер ігнорує client snapshots/ack. DB context
+містить baseline/resolved min_value/UOM/tip/mode, catalog/UOM metadata та fingerprint
+усього складу A/B/C і pending. Будь-яка зміна залежностей робить ack застарілим.
+Manual додатково має manual_context/review_ack_hash. Окрема явна дія підтвердження
+зберігає поточний DB context після всіх aggregate writes. Автор підтверджує фізичну
+достатність обладнання: довідник не містить геометричної моделі завантаження, тому
+система не вигадує формулу літрів на масу. Publish блокується до актуального ack.
+Зміни catalog/UOM обладнання показуються окремим diff і потребують explicit Refresh;
+звичайний Save їх не приймає. Preview/GET лишаються read-only.
+
+Auto B має явний вибір дозволеної UOM та пресета: exact g (default), opt-in nearest
+100 g (HalfUp на половині кроку) або ceil 1/0.50/0.25 для count із наявною конверсією.
+Дробовий крок підтверджує автор, лише коли має погоджене правило упаковки; таблиці
+довідника не містять автоматичної класифікації «штука/банка». UI не визначає SKU,
+фактичну фасовку чи їстівну масу. Немає глобального округлення 100 g. Результат
+видно до Save; «Змінити вручну» переносить фактичну пару в manual. Auto C успадковує
+B UOM/factor й accepted auto_policies; для g за замовчуванням exact 0.01, навіть коли
+B округлено до 100 g. `factor` у коді й snapshots не перейменований; UI показує
+«1 <UOM> = <factor> г». Порожні довідники мають явний стан без довільних seeds.
+
+Equipment tokens: `{{equipment:<baseline_row_id>:quantity}}` (число та UOM),
+`:min_value`, `:uom`, `:tip`, `:name`. Nullable quantity відображається як
+«Без числової вимоги». Renderer plain text, Blade екранує результат. Невідомі,
+пошкоджені й видалені tokens дозволяють draft Save, блокують Publish для всіх
+трьох форматів. Видалення показує кількість пов’язаних кроків і втрату manual
+значень; видалення компонента залишає його інгредієнти без компонента.
+
+**Відкрите рішення DEC-3T:** `recipe_directions` має лише direction_number/text;
+ні duration/temperature, ні timer entity/ID/одиниць часу у погоджених таблицях немає.
+Для повноцінного timer token власнику треба визначити джерело duration, його
+ідентичність/формат і поведінку редагування. Нових полів/JSON у B2 не вигадано.
+Час і температура залишаються авторським текстом, не масштабуються. Timer token
+наразі невідомий і блокує Publish, як будь-який непідтримуваний token.
+
+Legacy conversion, versions/CoW — PR C; Stage 4, T1.5 seeds/Excel/production activation
+не входять. Feature flag лишається false.
 Перевірки: [BatchEditorTest](../tests/Postgres/BatchEditorTest.php),
 [command concurrency](../tests/pg/batch-editor-concurrency.php),
 [реальний pending COMMIT/reload](../tests/pg/batch-editor-pending-source.php),

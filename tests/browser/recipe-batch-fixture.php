@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\User;
 use App\Services\Auth\Restore\SyntheticEpoch;
+use App\Services\Recipes\BatchEditor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -35,5 +37,15 @@ DB::transaction(function () {
         }
     };
     $b = $fixture->make();
+    $unit = DB::table('uoms')->insertGetId(['code' => 'test-pan', 'label' => 'шт.', 'kind' => 'count']);
+    $tool = DB::table('kitchen_equipment')->insertGetId(['name' => 'Synthetic browser pan']);
+    config(['recipes.batch_editor_enabled' => true]);
+    $editor = app(BatchEditor::class);
+    $actor = User::where('email', 'recipe-browser@example.invalid')->firstOrFail();
+    $state = $editor->open($actor, $b['version']);
+    $state['payload']['equipment'] = [['id' => 'new-browser-pan', 'kitchen_equipment_id' => (string) $tool, 'min_value' => '1.00', 'uom_id' => (string) $unit, 'scaling_mode' => 'proportional', 'tip' => 'Перевірити місткість']];
+    $state['payload']['directions'] = ['Використати {{equipment:new-browser-pan:quantity}}, готувати 20 хв при 180°C.'];
+    $preview = $editor->preview($actor, $b['version'], $state['revision'], $state['payload']);
+    $editor->save($actor, $b['version'], $state['revision'], $state['payload'], $preview['token'], false, true);
     echo $b['version'];
 });

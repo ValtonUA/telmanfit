@@ -1048,7 +1048,7 @@ Table auth_rate_budgets {
 // Калорійність та кроки >=0; SQL і forward міграція — database/sql/profiles/00_profiles.sql.
 // fitness_equipment/client_fitness_equipment — legacy; нові текстові описи пишуться лише в activity profile.
 
-// Forward Stage 3: точні CHECK, deferred guards та snapshots — 11_recipe_batches.sql.
+// Forward Stage 3: CHECK/deferred guards — 11_recipe_batches.sql; equipment ceil count/context/adequacy — 12_recipe_equipment.sql (лише функції, без нових полів).
 Table recipe_batch_formats {
   id integer [pk]
   recipe_version_id integer [not null]

@@ -90,8 +90,8 @@
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
 | T3.1 | [PR A: forward-схема A/B/C, guards, decimal evaluator та synthetic PG/Unit тести](recipe-batches.md). PR B1 додає базовий Filament editor через query adapter; окремі catalog resources ще відсутні. | Частково |
-| T3.2 | [PR B1: атомарні Save/Refresh/Publish, locks/CAS, accepted diff і signed preview](recipe-batches.md). Базовий batch slice; manual equipment та повний preset UX — наступний PR B. Транзакційний сервіс публікації рецепта: створення `foods`, перевірка інгредієнтів, UOM і грамування, розрахунок КБЖВ на 1 порцію, `version_number`, `published_at`, блокування рядка версії (BR-F-09, BR-F-14). | Частково |
-| T3.3 | [PR B1: одна Filament сторінка A/B/C, pending/reload, manual/reset/review, ingredient tokens, компоненти та auto equipment](recipe-batches.md). Chromium 1440/390/320 light/dark, дві вкладки та stale source. Наступний slice PR B: manual equipment, preset UX, equipment/timer tokens і preview наслідків видалення. | Частково |
+| T3.2 | [PR B1: атомарні Save/Refresh/Publish, locks/CAS, accepted diff і signed preview](recipe-batches.md). B2 додає stable equipment ID, manual/review, ceil count, nullable параметри та обов’язковий adequacy ack. Транзакційний сервіс публікації рецепта: створення `foods`, перевірка інгредієнтів, UOM і грамування, розрахунок КБЖВ на 1 порцію, `version_number`, `published_at`, блокування рядка версії (BR-F-09, BR-F-14). | Частково |
+| T3.3 | [PR B1: одна Filament сторінка A/B/C, pending/reload, manual/reset/review, ingredient tokens, компоненти та auto equipment](recipe-batches.md). Chromium 1440/390/320 light/dark, дві вкладки та stale source. B2 додає manual equipment, explicit presets B, equipment tokens, наслідки видалення й catalog empty states. Timer token — DEC-3T; legacy/versions/CoW — окремий PR C. | Частково |
 | T3.4 | Нова версія рецепта без зміни старих `food_id` (BR-F-16, BR-X-01). | Заплановано |
 | T3.5 | Персональна копія рецепта (Copy-on-Write, `parent_recipe_id`). | Заплановано |
 
@@ -180,6 +180,7 @@
 | ID | Питання | Статус | Коли потрібно |
 |---|---|---|---|
 | DEC-3A | Значення довідників T1.5 (зокрема `uoms`, категорії) | Очікує рішення | Перед відповідною частиною Stage 3 |
+| DEC-3T | Джерело duration, ідентичність timer та формат часу для timer token; у чинних таблицях є лише текст кроку | Очікує рішення | Перед timer tokens; решту B2 не блокує, час/температура не масштабуються |
 | DEC-3B | Явний refresh із diff, GET read-only; accepted snapshot для Save/Publish, manual quantity/UOM зберігаються; §17 і Issue #37 | Виконано | Базові команди PR B1; решта editor slice за T3.2–T3.3 |
 | DEC-2A | Для першого екрана затверджено гнучкий JSON без попереднього повного контракту; решта запитань переноситься поступово з Google-форми. | Частково | Розширювати разом із UI, без блокування інших модулів |
 | DEC-4A | Дострокове завершення/заміна призначення та `replaced_by_assignment_id` | Очікує рішення | Перед Stage 4 assignment workflow |

@@ -285,4 +285,5 @@ Manual зберігається після будь-якої зміни зале
 snapshots, review, коректні auto, totals і frozen equipment. Весь агрегат immutable.
 Пресети застосовуються лише з підтвердженим step/conversion: exact g, count ceil,
 opt-in nearest 100 g, дробові упаковки після погодження. Seeds/фасування не додаються.
-Межі ядра та наступних команд — [контракт реалізації](recipe-batches.md).
+Обладнання A — ручна база, B/C — auto/manual; ID стабільні при Save, manual min_value/UOM/tip не переписуються. Auto count округлюється ceil до цілого, volume — лише до decimal точності сховища; NULL не є нулем. Publish вимагає актуальної явної перевірки достатності A/B/C після будь-якої зміни залежностей ([SQL 12](12_recipe_equipment.sql)).
+Межі ядра та команд — [контракт реалізації](recipe-batches.md).

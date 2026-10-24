@@ -5,7 +5,9 @@ namespace Tests\Postgres;
 use App\Filament\Pages\RecipeBatches;
 use App\Models\User;
 use App\Services\Recipes\BatchEditor;
+use App\Services\Recipes\RecipeTokens;
 use Filament\Facades\Filament;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -24,6 +26,7 @@ class BatchEditorTest extends PostgresTestCase
     {
         parent::setUp();
         (require database_path('migrations/2026_10_24_010000_create_recipe_batches.php'))->up();
+        (require database_path('migrations/2026_10_24_020000_complete_recipe_equipment.php'))->up();
         config(['recipes.batch_editor_enabled' => true]);
         $this->editor = app(BatchEditor::class);
         $actorId = DB::table('users')->insertGetId(['name' => 'Synthetic author', 'role' => 'admin']);
@@ -182,7 +185,7 @@ class BatchEditorTest extends PostgresTestCase
         $state['payload']['category_id'] = (string) $category;
         $state['payload']['directions'] = ['Взяти {{ingredient:'.$b['row'].':quantity}}'];
         $state['payload']['equipment'] = [['id' => 'new-pot', 'kitchen_equipment_id' => (string) $tool, 'min_value' => '2.00', 'uom_id' => (string) $b['g'], 'scaling_mode' => 'proportional', 'tip' => 'Перевірити місткість']];
-        $state = $this->commit($b['version'], $state, refresh: true);
+        $state = $this->commit($b['version'], $state, refresh: true, ack: true);
         $this->assertSame(3, DB::table('recipe_batch_equipment')->where('recipe_version_id', $b['version'])->count());
         $this->assertSame(['2.00', '14.00', '7.00'], DB::table('recipe_batch_equipment')->where('recipe_version_id', $b['version'])->orderBy('format_id')->pluck('min_value')->all());
         $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
@@ -201,12 +204,17 @@ class BatchEditorTest extends PostgresTestCase
         $this->denied(fn () => $this->editor->publish($this->actor, $b['version'], $state['revision'], $p['token']), 'завершіть');
         $this->assertSame(0, DB::table('foods')->where('food_type', 'recipe_version')->count());
         $tool = DB::table('kitchen_equipment')->insertGetId(['name' => 'Synthetic']);
-        $state['payload']['equipment'] = [['id' => 'new', 'kitchen_equipment_id' => (string) $tool, 'min_value' => '', 'uom_id' => '', 'scaling_mode' => 'fixed', 'tip' => '']];
+        $state['payload']['equipment'] = [['id' => 'new-fault', 'kitchen_equipment_id' => (string) $tool, 'min_value' => '', 'uom_id' => '', 'scaling_mode' => 'fixed', 'tip' => '']];
         $state = $this->commit($b['version'], $state);
-        DB::table('recipe_batch_equipment')->where('recipe_version_id', $b['version'])->update(['mode' => 'manual', 'manual_context' => '{}']);
+        DB::unprepared("CREATE FUNCTION synthetic_equipment_failure() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEGIN RAISE EXCEPTION 'Synthetic equipment fault'; END \$\$; CREATE TRIGGER synthetic_equipment_failure BEFORE UPDATE ON recipe_batch_equipment FOR EACH ROW EXECUTE FUNCTION synthetic_equipment_failure();");
         $state = $this->state($b);
         $state['payload']['title'] = 'Must roll back';
-        $this->denied(fn () => $this->commit($b['version'], $state), 'Manual equipment');
+        try {
+            $this->commit($b['version'], $state);
+            $this->fail('Equipment fault must roll back');
+        } catch (QueryException $e) {
+            $this->assertStringContainsString('Synthetic equipment fault', $e->getMessage());
+        }
         $this->assertSame('Synthetic batch', DB::table('recipe_versions')->where('id', $b['version'])->value('title'));
         $this->assertSame($state['revision'], $this->state($b)['revision']);
     }
@@ -296,6 +304,209 @@ class BatchEditorTest extends PostgresTestCase
         $state['payload']['rows'][0]['quantity'] = '150.00';
         $state = $this->commit($id, $state);
         $this->assertSame('auto', $state['payload']['rows'][0]['week']['mode']);
+    }
+
+    private function equipmentState(array $b, string $kind = 'count', string $value = '1.00'): array
+    {
+        $unit = DB::table('uoms')->insertGetId(['code' => 'test-tool-'.$kind, 'label' => 'Synthetic '.$kind, 'kind' => $kind]);
+        $tool = DB::table('kitchen_equipment')->insertGetId(['name' => 'Synthetic pan']);
+        $state = $this->state($b);
+        $state['payload']['equipment'][] = ['id' => 'new-tool', 'kitchen_equipment_id' => (string) $tool, 'min_value' => $value,
+            'uom_id' => (string) $unit, 'scaling_mode' => 'proportional', 'tip' => 'Base tip'];
+
+        return $state;
+    }
+
+    public function test_equipment_stable_ids_manual_review_acknowledgement_and_reset(): void
+    {
+        $b = $this->batch();
+        $state = $this->equipmentState($b);
+        $state['payload']['rows'][0]['quantity'] = '150';
+        $state['payload']['equipment'][0]['min_value'] = '1';
+        $state['payload']['directions'] = ['Взяти {{equipment:new-tool:quantity}}'];
+        $state = $this->commit($b['version'], $state, ack: true);
+        $id = $state['payload']['equipment'][0]['id'];
+        $this->assertSame(['Взяти {{equipment:'.$id.':quantity}}'], $state['payload']['directions']);
+        $this->assertSame('4.00', $state['payload']['equipment'][0]['half_week']['min_value']);
+        $state['payload']['equipment'][0]['week'] = ['mode' => 'manual', 'min_value' => '2.00', 'uom_id' => $state['payload']['equipment'][0]['uom_id'], 'tip' => 'Manual tip'];
+        $state = $this->commit($b['version'], $state, ack: true);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertFalse($p['equipment'][$id]['week']['review']);
+        $state['payload']['rows'][0]['quantity'] = '160.00';
+        $state['payload']['equipment'][0]['min_value'] = '2.00';
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertTrue($p['equipment'][$id]['week']['review']);
+        $state = $this->commit($b['version'], $state);
+        $this->assertSame($id, $state['payload']['equipment'][0]['id']);
+        $this->assertSame('2.00', $state['payload']['equipment'][0]['week']['min_value']);
+        $this->assertSame('Manual tip', $state['payload']['equipment'][0]['week']['tip']);
+        $state = $this->commit($b['version'], $state, ack: true);
+        $state = $this->commit($b['version'], $state);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertFalse($p['equipment'][$id]['week']['review']);
+        $state['payload']['equipment'][0]['week']['mode'] = 'auto';
+        $state = $this->commit($b['version'], $state);
+        $this->assertSame('14.00', $state['payload']['equipment'][0]['week']['min_value']);
+        $this->assertSame($id, $state['payload']['equipment'][0]['id']);
+        $this->assertSame(3, DB::table('recipe_batch_equipment')->where('recipe_version_id', $b['version'])->count());
+    }
+
+    public function test_equipment_nullable_volume_fixed_and_manual_uom_survive_reload(): void
+    {
+        $b = $this->batch();
+        $state = $this->equipmentState($b, 'volume', '1.25');
+        $state = $this->commit($b['version'], $state, ack: true);
+        $this->assertSame('4.38', $state['payload']['equipment'][0]['half_week']['min_value']);
+        $state['payload']['equipment'][0]['scaling_mode'] = 'fixed';
+        $state = $this->commit($b['version'], $state);
+        $this->assertSame('1.25', $state['payload']['equipment'][0]['half_week']['min_value']);
+        $state['payload']['equipment'][0]['week'] = ['mode' => 'manual', 'min_value' => '', 'uom_id' => '', 'tip' => 'No minimum'];
+        $state['payload']['equipment'][0]['min_value'] = '';
+        $state = $this->commit($b['version'], $state, ack: true);
+        foreach (['single', 'week', 'half_week'] as $code) {
+            $this->assertSame('', $state['payload']['equipment'][0][$code]['min_value']);
+        }
+        $state['payload']['equipment'][0]['min_value'] = '2.00';
+        $state = $this->commit($b['version'], $state);
+        $this->assertSame('', $state['payload']['equipment'][0]['week']['min_value']);
+        $this->assertSame('', $state['payload']['equipment'][0]['week']['uom_id']);
+        $this->assertSame('No minimum', $state['payload']['equipment'][0]['week']['tip']);
+    }
+
+    public function test_equipment_tokens_deleted_draft_and_publish_rollback(): void
+    {
+        $b = $this->batch();
+        $state = $this->equipmentState($b);
+        $category = DB::table('recipe_categories')->insertGetId(['name' => 'Synthetic recipe category']);
+        $ingredientCategory = DB::table('ingredient_categories')->insertGetId(['name' => 'Synthetic ingredient category']);
+        DB::table('ingredients')->where('id', $b['ingredient'])->update(['ingredient_category_id' => $ingredientCategory]);
+        $state['payload']['category_id'] = (string) $category;
+        $state['payload']['directions'] = ['{{equipment:new-tool:quantity}} 20 хв при 180°C'];
+        $state = $this->commit($b['version'], $state, refresh: true, ack: true);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertStringContainsString('7.00', RecipeTokens::render($state['payload']['directions'][0], $p['evaluation']['rows'], 'week', $p['equipment']));
+        $state['payload']['equipment'] = [];
+        $state = $this->commit($b['version'], $state);
+        $foods = DB::table('foods')->count();
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->denied(fn () => $this->editor->publish($this->actor, $b['version'], $state['revision'], $p['token']), 'видалений');
+        $this->assertSame($foods, DB::table('foods')->count());
+        $this->assertSame('draft', DB::table('recipe_versions')->where('id', $b['version'])->value('status'));
+    }
+
+    public function test_equipment_publication_requires_current_adequacy_and_is_atomic(): void
+    {
+        $b = $this->batch();
+        $state = $this->equipmentState($b);
+        $category = DB::table('recipe_categories')->insertGetId(['name' => 'Synthetic recipe category']);
+        $ingredientCategory = DB::table('ingredient_categories')->insertGetId(['name' => 'Synthetic ingredient category']);
+        DB::table('ingredients')->where('id', $b['ingredient'])->update(['ingredient_category_id' => $ingredientCategory]);
+        $state['payload']['category_id'] = (string) $category;
+        $state['payload']['directions'] = ['Готувати {{equipment:new-tool:quantity}}'];
+        $state = $this->commit($b['version'], $state, refresh: true);
+        $foods = DB::table('foods')->count();
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->denied(fn () => $this->editor->publish($this->actor, $b['version'], $state['revision'], $p['token']), 'достатність');
+        try {
+            DB::transaction(fn () => DB::select('SELECT recipe_batch_validate(?,true)', [$b['version']]));
+            $this->fail('SQL must independently require adequacy');
+        } catch (QueryException $e) {
+            $this->assertStringContainsString('adequacy', $e->getMessage());
+        }
+        $this->assertSame($foods, DB::table('foods')->count());
+        $this->assertSame($state['revision'], $this->state($b)['revision']);
+        $state = $this->commit($b['version'], $state, ack: true);
+        $state['payload']['rows'][0]['week']['mode'] = 'manual';
+        $state['payload']['rows'][0]['week']['quantity'] = '1000.00';
+        $state = $this->commit($b['version'], $state);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertTrue($p['equipment'][$state['payload']['equipment'][0]['id']]['week']['review']);
+        $state = $this->commit($b['version'], $state, ack: true);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->editor->publish($this->actor, $b['version'], $state['revision'], $p['token']);
+        $this->assertSame('published', $this->state($b)['status']);
+        $this->assertSame($foods + 1, DB::table('foods')->count());
+    }
+
+    public function test_unknown_and_malformed_tokens_save_as_draft_but_never_publish(): void
+    {
+        $b = $this->batch();
+        $category = DB::table('recipe_categories')->insertGetId(['name' => 'Synthetic recipe category']);
+        $state = $this->state($b);
+        $state['payload']['category_id'] = (string) $category;
+        foreach (['{{timer:1:seconds}}', '{{equipment:99:quantity}', '{{ingredient:99:grams}}'] as $text) {
+            $state['payload']['directions'] = [$text];
+            $state = $this->commit($b['version'], $state);
+            $foods = DB::table('foods')->count();
+            $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+            try {
+                $this->editor->publish($this->actor, $b['version'], $state['revision'], $p['token']);
+                $this->fail('Token must block publication');
+            } catch (ValidationException) {
+                $this->assertSame($foods, DB::table('foods')->count());
+                $this->assertSame($state, $this->state($b));
+            }
+        }
+    }
+
+    public function test_equipment_catalog_requires_explicit_refresh_and_new_ack(): void
+    {
+        $b = $this->batch();
+        $state = $this->equipmentState($b);
+        $state = $this->commit($b['version'], $state, ack: true);
+        $tool = $state['payload']['equipment'][0];
+        DB::table('kitchen_equipment')->where('id', $tool['kitchen_equipment_id'])->update(['name' => 'Changed synthetic pan']);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertNotEmpty($p['equipment_diff']);
+        $this->denied(fn () => $this->commit($b['version'], $state), 'явно прийміть diff');
+        $state = $this->commit($b['version'], $state, refresh: true);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertTrue($p['equipment'][$tool['id']]['week']['review']);
+        $state = $this->commit($b['version'], $state, ack: true);
+        $p = $this->editor->preview($this->actor, $b['version'], $state['revision'], $state['payload']);
+        $this->assertFalse($p['equipment'][$tool['id']]['week']['review']);
+    }
+
+    public function test_database_rejects_fractional_auto_count_equipment(): void
+    {
+        $b = $this->batch();
+        $state = $this->commit($b['version'], $this->equipmentState($b), ack: true);
+        try {
+            DB::transaction(function () use ($b) {
+                DB::table('recipe_batch_equipment')->where('format_id', $b['formats']['half_week'])->update(['min_value' => '3.50']);
+                DB::select('SELECT recipe_batch_validate(?)', [$b['version']]);
+            });
+            $this->fail('Fractional count must fail');
+        } catch (QueryException $e) {
+            $this->assertStringContainsString('Auto equipment mismatch', $e->getMessage());
+        }
+        $this->assertSame($state, $this->state($b));
+    }
+
+    public function test_auto_b_presets_and_c_follow_actual_units_with_confirmed_steps(): void
+    {
+        $b = $this->batch();
+        $state = $this->state($b);
+        $state['payload']['rows'][0]['quantity'] = '150.00';
+        $state['payload']['rows'][0]['week'] += ['confirmed' => true];
+        $state['payload']['rows'][0]['week']['rounding'] = 'nearest';
+        $state['payload']['rows'][0]['week']['step'] = '100.00';
+        $state['payload']['rows'][0]['week']['confirmed'] = true;
+        $state = $this->commit($b['version'], $state);
+        $this->assertSame('1100.00', $state['payload']['rows'][0]['week']['quantity']);
+        $this->assertSame('550.00', $state['payload']['rows'][0]['half_week']['quantity']);
+        $can = DB::table('uoms')->insertGetId(['code' => 'test-pack', 'label' => 'Synthetic pack', 'kind' => 'count']);
+        DB::table('ingredient_uoms')->insert(['ingredient_id' => $b['ingredient'], 'uom_id' => $can, 'grams_per_uom' => '400.00']);
+        $r = &$state['payload']['rows'][0];
+        $r['week'] = ['mode' => 'auto', 'quantity' => '', 'uom_id' => (string) $can, 'rounding' => 'ceil', 'step' => '0.50', 'confirmed' => true];
+        $r['auto_policies']['test-pack'] = ['rounding' => 'ceil', 'step' => '0.25', 'confirmed' => true];
+        unset($r);
+        $state = $this->commit($b['version'], $state, refresh: true);
+        $this->assertSame('3.00', $state['payload']['rows'][0]['week']['quantity']);
+        $this->assertSame('1.50', $state['payload']['rows'][0]['half_week']['quantity']);
+        $this->assertSame((string) $can, $state['payload']['rows'][0]['half_week']['uom_id']);
+        $state['payload']['rows'][0]['week']['confirmed'] = false;
+        $this->denied(fn () => $this->commit($b['version'], $state), 'policy');
     }
 
     public function test_feature_flag_and_current_database_role_are_required(): void

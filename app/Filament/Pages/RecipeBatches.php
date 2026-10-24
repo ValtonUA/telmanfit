@@ -29,6 +29,8 @@ final class RecipeBatches extends Page
 
     public array $preview = [];
 
+    public array $presetChoices = [];
+
     public string $message = '';
 
     public string $boundary = '';
@@ -70,6 +72,10 @@ final class RecipeBatches extends Page
         $this->payload = $state['payload'] ?? [];
         $this->revision = $state['revision'] ?? '';
         $this->preview = [];
+        $this->presetChoices = [];
+        foreach ($this->payload['rows'] ?? [] as $index => $row) {
+            $this->presetChoices[$index] = ($row['week']['rounding'] ?? 'exact') === 'nearest' ? 'nearest100' : (($row['week']['rounding'] ?? 'exact') === 'ceil' ? $row['week']['step'] : 'exact');
+        }
         $this->publicationConfirmed = false;
     }
 
@@ -92,6 +98,8 @@ final class RecipeBatches extends Page
     public function removeRow(int $index): void
     {
         $this->actor();
+        unset($this->presetChoices[$index]);
+        $this->presetChoices = array_values($this->presetChoices);
         unset($this->payload['rows'][$index]);
         $this->payload['rows'] = array_values($this->payload['rows']);
         $this->updatedPayload();
@@ -122,6 +130,15 @@ final class RecipeBatches extends Page
     {
         $this->actor();
         abort_unless(in_array($type, ['components', 'directions', 'equipment'], true), 422);
+        if ($type === 'components') {
+            $id = $this->payload['components'][$index]['id'];
+            foreach ($this->payload['rows'] as &$row) {
+                if ($row['component_id'] === $id) {
+                    $row['component_id'] = '';
+                }
+            }
+            unset($row);
+        }
         unset($this->payload[$type][$index]);
         $this->payload[$type] = array_values($this->payload[$type]);
         $this->updatedPayload();
@@ -146,12 +163,84 @@ final class RecipeBatches extends Page
         $this->updatedPayload();
     }
 
+    public function applyPreset(int $index): void
+    {
+        $this->attempt(function () use ($index) {
+            $this->actor();
+            $row = $this->payload['rows'][$index];
+            $preset = $this->presetChoices[$index] ?? 'exact';
+            $unit = DB::table('uoms')->find($row['week']['uom_id'] ?: DB::table('uoms')->where('code', 'g')->value('id'));
+            if (! $unit) {
+                throw ValidationException::withMessages(['batch' => 'Оберіть дозволену одиницю B.']);
+            }
+            if ($preset === 'exact' || $preset === 'nearest100') {
+                if ($unit->code !== 'g') {
+                    throw ValidationException::withMessages(['batch' => 'Для точних грамів або округлення до 100 г оберіть одиницю g.']);
+                }
+                $policy = ['rounding' => $preset === 'exact' ? 'exact' : 'nearest', 'step' => $preset === 'exact' ? '0.01' : '100.00', 'confirmed' => true];
+            } else {
+                if (! in_array($preset, ['1.00', '0.50', '0.25'], true) || $unit->kind !== 'count'
+                    || ! DB::table('ingredient_uoms')->where('ingredient_id', $row['ingredient_id'])->where('uom_id', $unit->id)->exists()) {
+                    throw ValidationException::withMessages(['batch' => 'Округлення упаковок потребує дозволеної лічильної UOM, конверсії та кроку 1, 0.50 або 0.25.']);
+                }
+                $policy = ['rounding' => 'ceil', 'step' => $preset, 'confirmed' => true];
+                $this->payload['rows'][$index]['auto_policies'][$unit->code] = $policy;
+            }
+            $this->payload['rows'][$index]['week'] = ['mode' => 'auto', 'quantity' => '', 'uom_id' => (string) $unit->id] + $policy;
+            $this->updatedPayload();
+        });
+    }
+
+    public function manualQuantity(int $index, string $code): void
+    {
+        $this->actor();
+        abort_unless(in_array($code, ['week', 'half_week'], true), 422);
+        $q = $this->preview['evaluation']['rows'][$this->payload['rows'][$index]['id']][$code] ?? null;
+        abort_unless($q, 422);
+        $this->payload['rows'][$index][$code] = ['mode' => 'manual', 'quantity' => $q['quantity'],
+            'uom_id' => (string) DB::table('uoms')->where('code', $q['uom'])->value('id')] + $q['policy'];
+        $this->updatedPayload();
+    }
+
+    public function resetEquipment(int $index, string $code): void
+    {
+        $this->actor();
+        abort_unless(in_array($code, ['week', 'half_week'], true), 422);
+        $this->payload['equipment'][$index][$code] = ['mode' => 'auto', 'min_value' => '', 'uom_id' => '', 'tip' => ''];
+        $this->updatedPayload();
+    }
+
+    public function manualEquipment(int $index, string $code): void
+    {
+        $this->actor();
+        abort_unless(in_array($code, ['week', 'half_week'], true), 422);
+        $q = $this->preview['equipment'][$this->payload['equipment'][$index]['id']][$code] ?? null;
+        abort_unless($q, 422);
+        $this->payload['equipment'][$index][$code] = ['mode' => 'manual', 'min_value' => $q['min_value'] ?? '', 'uom_id' => (string) ($q['uom_id'] ?? ''), 'tip' => $q['tip']];
+        $this->updatedPayload();
+    }
+
+    public function deletionImpact(string $type, int $index): string
+    {
+        $row = $this->payload[$type][$index];
+        $id = $row['id'];
+        if ($type === 'components') {
+            $count = count(array_filter($this->payload['rows'], fn ($r) => $r['component_id'] === $id));
+
+            return "Видалити компонент? $count інгредієнтів залишаться без компонента в A/B/C.";
+        }
+        $kind = $type === 'equipment' ? 'equipment' : 'ingredient';
+        $count = count(array_filter($this->payload['directions'], fn ($text) => str_contains($text, '{{'.$kind.':'.$id.':')));
+
+        return "Видалити рядок у всіх A/B/C разом із ручними значеннями? Пов’язаних кроків із токенами: $count. Їх треба виправити перед публікацією.";
+    }
+
     public function calculate(): void
     {
         $this->attempt(function () {
             abort_unless($this->boundary === '', 403);
             $p = app(BatchEditor::class)->preview($this->actor(), $this->version, $this->revision, $this->payload);
-            $this->preview = array_intersect_key($p, array_flip(['token', 'evaluation', 'diff']));
+            $this->preview = array_intersect_key($p, array_flip(['token', 'evaluation', 'diff', 'equipment', 'equipment_diff']));
             $this->message = 'Preview готовий. Збереження та публікація — окремі явні дії.';
         });
     }
@@ -198,10 +287,15 @@ final class RecipeBatches extends Page
         return '{{ingredient:'.$id.':quantity}}';
     }
 
+    public function equipmentToken(string $id): string
+    {
+        return '{{equipment:'.$id.':quantity}}';
+    }
+
     public function renderedDirections(string $code): array
     {
         try {
-            return array_map(fn ($text) => RecipeTokens::render($text, $this->preview['evaluation']['rows'] ?? [], $code), $this->payload['directions'] ?? []);
+            return array_map(fn ($text) => RecipeTokens::render($text, $this->preview['evaluation']['rows'] ?? [], $code, $this->preview['equipment'] ?? []), $this->payload['directions'] ?? []);
         } catch (ValidationException $e) {
             return ['Перевірте токени: рядок видалено або ще не завершено.'];
         }
@@ -213,6 +307,7 @@ final class RecipeBatches extends Page
 
         return ['versions' => DB::table('recipe_versions')->orderByDesc('id')->limit(100)->get(['id', 'title', 'status', 'editor_contract']),
             'ingredients' => DB::table('ingredients')->orderBy('name')->get(['id', 'name']), 'units' => DB::table('uoms')->orderBy('id')->get(),
-            'categories' => DB::table('recipe_categories')->orderBy('name')->get(), 'tools' => DB::table('kitchen_equipment')->orderBy('name')->get()];
+            'categories' => DB::table('recipe_categories')->orderBy('name')->get(), 'tools' => DB::table('kitchen_equipment')->orderBy('name')->get(),
+            'conversions' => DB::table('ingredient_uoms')->get()->groupBy('ingredient_id')];
     }
 }
