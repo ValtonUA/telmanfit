@@ -69,6 +69,10 @@ with sync_playwright() as p:
         if name == 'Оновити preview':
             expect(target.get_by_text('Preview готовий. Збереження та публікація — окремі явні дії.', exact=True)).to_be_visible()
 
+    from food_catalog import run_catalog
+    run_catalog(page, base)
+    checks.append('PR D: catalog create/edit/conversions/security, 1440/390/320 light/dark')
+
     # C3: окремі legacy entrypoints, read-only preview/cancel та явний Refresh.
     c3_output = Path('docs/evidence/legacy-conversion')
     c3_output.mkdir(parents=True, exist_ok=True)
@@ -361,6 +365,9 @@ with sync_playwright() as p:
     assert before == subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
     checks.append('C2: explicit owner/confirm/cancel, redirect, remap, frozen→Refresh/manual review, duplicate rejection, publish/reload; original unchanged; 1440/390/320 light/dark action+editor')
     published_tab.close()
+    from food_catalog import verify_catalog_revocation
+    verify_catalog_revocation(page, base)
+    checks.append("PR D: CSRF 419, revoked signed Livewire/HTTP 403, unchanged catalog hash")
     assert not errors, errors
     browser.close()
 output.joinpath('checks.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, ensure_ascii=False, indent=2) + '\n')

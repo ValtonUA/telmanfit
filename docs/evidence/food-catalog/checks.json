@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Порожній каталог: ручне створення без seeds",
+    "1440-light: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete",
+    "1440-dark: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete",
+    "390-light: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete",
+    "390-dark: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete",
+    "320-light: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete",
+    "320-dark: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete",
+    "CAS two tabs: stale rejected; navigation to existing recipe editor",
+    "Real session/MFA/CSRF: missing CSRF 419, revoked signed Livewire Save and all catalog HTTP/create/edit 403; catalog hash unchanged"
+  ]
+}

@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'regex' => 'Поле «:attribute» має неправильний формат.',
+    'not_regex' => 'Поле «:attribute» має неправильний формат.',
+    'distinct' => 'Значення поля «:attribute» не повинні повторюватися.',
+    'array' => 'Поле «:attribute» має бути списком.',
+    'boolean' => 'Поле «:attribute» має бути логічним значенням.',
+    'present' => 'Поле «:attribute» має бути присутнє.',
     'required' => 'Поле «:attribute» обов’язкове.',
     'required_if' => 'Поле «:attribute» обов’язкове, коли :other має значення :value.',
     'exists' => 'Обране значення поля «:attribute» недійсне.',
@@ -15,6 +21,7 @@ return [
     'confirmed' => 'Підтвердження поля «:attribute» не збігається.',
     'current_password' => 'Неправильний пароль.',
     'max' => [
+        'array' => 'Поле «:attribute» має містити не більше :max елементів.',
         'string' => 'Поле «:attribute» має містити не більше :max символів.',
         'numeric' => 'Поле «:attribute» не може бути більшим за :max.',
     ],
@@ -23,6 +30,20 @@ return [
         'numeric' => 'Поле «:attribute» не може бути меншим за :min.',
     ],
     'attributes' => [
+        'name' => 'Назва',
+        'code' => 'Код',
+        'label' => 'Позначення',
+        'kind' => 'Тип одиниці',
+        'ingredient_category_id' => 'Категорія продукту',
+        'kitchen_equipment_category_id' => 'Категорія обладнання',
+        'kcal_per_100g' => 'Калорійність на 100 г',
+        'protein_per_100g' => 'Білки на 100 г',
+        'fat_per_100g' => 'Жири на 100 г',
+        'carbs_per_100g' => 'Вуглеводи на 100 г',
+        'conversions' => 'Додаткові одиниці',
+        'conversions.*.uom_id' => 'Додаткова одиниця',
+        'conversions.*.grams_per_uom' => 'Грамів в одиниці',
+        'conversions.*.is_default' => 'Одиниця за замовчуванням',
         'user_id' => 'Акаунт клієнта',
         'coach_user_id' => 'Відповідальний тренер',
         'status' => 'Статус супроводу',
