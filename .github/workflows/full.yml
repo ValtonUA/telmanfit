@@ -1,7 +1,7 @@
 name: Full PR
 on:
   pull_request:
-    branches: [master]
+    branches: [master, ci/ci-cost-1-validation-base]
     types: [opened, synchronize, reopened, labeled]
 permissions:
   contents: read
