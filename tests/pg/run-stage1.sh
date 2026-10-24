@@ -154,6 +154,11 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
     baseline_paths+=(--path="$file")
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
+if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit -c phpunit.pgsql.xml --filter RecipeBatchesTest --display-all-issues
+    php tests/pg/recipe-batch-concurrency.php
+    exit
+fi
 if [[ ${CLIENT_PROFILES_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit -c phpunit.pgsql.xml --filter ClientProfilesTest --display-all-issues
     exit

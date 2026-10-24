@@ -34,6 +34,8 @@ jobs:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
+      - name: Stage 3 recipe batches, historical upgrade and concurrency
+        run: RECIPE_BATCH_ONLY=1 bash tests/pg/run-stage1.sh
       - name: AUTH-6B B6 atomic PostgreSQL budgets, faults and concurrency
         timeout-minutes: 10
         shell: bash

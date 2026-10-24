@@ -70,6 +70,9 @@
 | `recipes`               | Логічні рецепти, зокрема персональні похідні рецепти |
 | `recipe_versions`       | Чернетки та незмінні опубліковані версії рецептів; КБЖВ і кількості — на 1 порцію; кроки — в `recipe_directions` |
 | `recipe_ingredients`    | Склад конкретної версії рецепта із кількостями інгредієнтів |
+| `recipe_batch_formats` | Три фізичні партії A/B/C, frozen totals та policy; один version/food |
+| `recipe_batch_quantities` | B/C author quantity/UOM, edible grams, frozen conversion, mode/context/ack |
+| `recipe_batch_equipment` | Resolved equipment snapshots трьох форматів; nullable min_value |
 | `recipe_components`     | Необов'язкові групи інгредієнтів конкретної версії рецепта |
 | `ingredient_categories` | Категорії продуктів                                |
 | `recipe_categories`     | Категорії рецептів                                 |
@@ -78,7 +81,7 @@
 
 Залишаємо вже погоджений принцип:
 
-Інгредієнти мають КБЖВ на 100 г, а рецепти — розраховану харчову цінність на порцію. Інгредієнти **не версіонуються**: виправлення значень у `ingredients` діють для всіх посилань. Це означає, що при повторному розрахунку історичних рецептів їхні відображувані КБЖВ можуть змінитися; незмінність опублікованої версії гарантує насамперед її склад, кількості та інструкції. КБЖВ фіксується в `recipe_versions` на одну порцію під час публікації; після публікації значення незмінні. Перерахунок чернеток після зміни інгредієнтів — сервісне правило (див. відкриті питання).
+Інгредієнти мають КБЖВ на 100 г і не версіонуються. Published-рецепти завжди читають frozen значення: зміна довідника не змінює історичний показ. Для `batch_v1` A — `recipe_ingredients` у g; `recipe_batch_formats` зберігає три фізичні totals, `recipe_batch_quantities` — авторські B/C quantity/UOM, їстівні grams, frozen conversion, auto/manual та review context. `recipe_batch_equipment` фіксує обладнання для кожного формату зі збереженням nullable min_value. Повний контракт — [forward Stage 3](recipe-batches.md), SQL — [11](11_recipe_batches.sql).
 
 Не змушуємо кожен рецепт мати вагу готової страви. Коли Ви приготували каструлю їжі на п'ять порцій, достатньо розділити її на п'ять частин.
 
@@ -265,11 +268,11 @@
 ### Інваріанти та затверджені рішення (v0.3)
 
 1. **Жодного автоматичного перепризначення:** нова версія рецепта чи плану не змінює посилання у вже призначених опублікованих планах.
-2. **Повна незмінність опублікованих версій:** `recipe_versions` і `meal_plan_versions` зі статусом `published`, а також їхні дочірні рядки (`recipe_components`, `recipe_ingredients`, `recipe_directions`, `recipe_kitchen_equipment`, `meal_plan_days`, `meals`, `meal_items`) не можна змінювати або видаляти. Це забезпечено тригерами SQL.
+2. **Повна незмінність опублікованих версій:** `recipe_versions` і `meal_plan_versions` зі статусом `published`, а також їхні дочірні рядки (`recipe_components`, `recipe_ingredients`, `recipe_directions`, `recipe_kitchen_equipment`, `recipe_batch_formats`, `recipe_batch_quantities`, `recipe_batch_equipment`, `meal_plan_days`, `meals`, `meal_items`) не можна змінювати або видаляти. Це забезпечено тригерами SQL.
 3. **Один вид позиції:** `meal_items.food_id` завжди посилається на `foods`; `foods.food_type` визначає типізованого нащадка — `ingredients` або опубліковану `recipe_versions`. Обидва варіанти одночасно неможливі; складений FK і constraint-тригер це забезпечують.
 4. **Copy-on-Write:** персональні рецепти й плани є окремими логічними записами з `parent_recipe_id` / `parent_meal_plan_id`; зміни копії не впливають на оригінал і на інших клієнтів.
 5. **КБЖВ рецептів:** харчова цінність зберігається в `recipe_versions` на одну порцію (`kcal_per_serving`, `protein_per_serving`, `fat_per_serving`, `carbs_per_serving`). Для опублікованої версії ці значення обов'язкові та незмінні; `ingredients` не версіонуються.
-6. **Кількості інгредієнтів:** `recipe_ingredients.quantity`, `quantity_grams` і КБЖВ рецепта зберігаються **на 1 порцію**; масштабування виконується через `recipe_versions.servings_count` під час формування плану.
+6. **Кількості інгредієнтів:** `recipe_ingredients.quantity`, `quantity_grams` і КБЖВ рецепта зберігаються **на 1 порцію**; legacy масштабується через `recipe_versions.servings_count`; для batch_v1 B/C — фізичні партії, потрібен явний формат/дільник (майбутній Stage 4).
 7. **Одна чернетка:** для кожного `recipes.id` і `meal_plans.id` допускається не більше однієї чернетки; це забезпечено частковими UNIQUE-індексами `recipe_one_draft` і `meal_plan_one_draft`.
 8. **Призначення планів:** клієнту можна призначити лише опубліковану `meal_plan_version`; перекриття дат для одного клієнта заборонені через `EXCLUDE`-обмеження `no_overlapping_client_plan_dates`; історія зберігається через `replaced_by_assignment_id`, самопосилання заборонене CHECK-ом `assignment_no_self_replacement`. Правила завершення/заміни, окрім перелічених обмежень, залишаються сервісними.
 9. **Версії в плані:** один `meal_plan` може містити багато різних `recipe_versions` через `meal_items`; тексти рецептів не дублюються.
@@ -290,7 +293,7 @@
 4. **Адмінський вхід — частково вирішено 21.10.2026:** MFA для admin обов’язкова; PWA клієнта — email OTP без пароля. Окремий admin primary email+password, shared TOTP adapter та recovery останнього admin — пропозиції P4/P5 у [auth-architecture.md](auth-architecture.md). Nullable email/password у схемі не змінюються.
 5. **Призначення тренера — вирішено 21.10.2026 (G1 для Stage 2):** адміністратор явно обирає `coach_user_id` серед користувачів з `role = coach` або `role = admin`; `client` не дозволений, типового тренера немає. БД перевіряє лише FK, роль перевіряє Laravel. Доступ до Filament залишається лише для `admin`; інші питання авторизації G1 цим не закриваються.
 6. **Життєвий цикл призначень (частково закрито 21.10.2026):** самопосилання в `replaced_by_assignment_id` заборонене CHECK-обмеженням `assignment_no_self_replacement`; `end_date` nullable; правила дострокового завершення та решти заміни — сервісні.
-7. **Перерахунок чернеток:** після зміни `ingredients` або `ingredient_uoms.grams_per_uom` опубліковані КБЖВ не змінюються; чи перераховувати КБЖВ і грами в чернетках автоматично?
+7. **Перерахунок чернеток:** після зміни `ingredients` або `ingredient_uoms.grams_per_uom` опубліковані КБЖВ не змінюються; для batch_v1 прийнято явний refresh із diff; GET не записує, manual quantity/UOM зберігаються. Команди редактора — наступний PR.
 8. **Архівування `foods`:** SQL забороняє видаляти типізованого нащадка, залишаючи `foods`; окремого workflow архівування немає.
 9. **Метрики — вирішено 21.10.2026 (GAP-3):** `metrics.min_value` / `max_value` — жорсткі **включні** межі рівня додатка (Laravel API + React); PostgreSQL свідомо не перевіряє `client_metrics.value`; зміна меж не потребує зміни схеми (BR-T-02, аудит §7.9).
 10. **Повідомлення та події:** переходи статусів, ідемпотентність, таксономія `client_events.event_type` і retention залишаються сервісними правилами.
