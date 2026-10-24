@@ -13,8 +13,8 @@ Workflow/CI scripts теж потребують canonical docs або обґру
 2. У PR додати мітку `ci:full`. Для повтору спочатку зняти її, потім додати:
 
    ```sh
-   gh pr edit <PR> --remove-label ci:full
-   gh pr edit <PR> --add-label ci:full
+   gh api repos/ValtonUA/telmanfit/issues/<PR>/labels/ci:full -X DELETE
+   gh api repos/ValtonUA/telmanfit/issues/<PR>/labels -X POST -f 'labels[]=ci:full'
    ```
 
 3. Дочекатися Full PR: PostgreSQL/browser, PHP 8.4.27 і 8.5.12, cold Compose,

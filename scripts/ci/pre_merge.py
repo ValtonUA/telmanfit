@@ -20,9 +20,14 @@ REQUIRED = {
 
 
 def api(path):
-    pages = json.loads(subprocess.check_output(
-        ["gh", "api", "--paginate", "--slurp", path], text=True,
-    ))
+    raw = subprocess.check_output(["gh", "api", "--paginate", path], text=True)
+    # --slurp is absent from older gh releases. Decode concatenated JSON pages.
+    pages = []
+    decoder = json.JSONDecoder()
+    while raw.strip():
+        page, end = decoder.raw_decode(raw.lstrip())
+        pages.append(page)
+        raw = raw.lstrip()[end:]
     return pages
 
 
