@@ -44,7 +44,7 @@ workflow; результат належить лише конкретному he
 | Аудит карток клієнтів | [Stage 2 audit](stage-2-audit.md), `tests/Postgres/ClientResourceTest.php`, `tests/Auth4/Auth4Test.php` | Чотири додаткові регресійні тести: пошук за тренером, захист прив’язки/видалення та повторна перевірка ролі тренера перед реєстрацією; бізнес-поведінка незмінна |
 | Вигляд Filament | [Штатні компоненти та перевірка теми](filament-theme.md), `tests/browser/filament_theme.py`; історичний [UX-1](ux-1.md) | Запрошення використовують штатні Blade-компоненти Filament 5; Chromium у disposable Compose перевіряє light/dark і 1440/390/320 px. Windows Desktop вручну не перевірено |
 | Recovery/retention/budgets | [B3](auth6-b3.md), [B4](auth6-b4.md), [B5](auth6-b5.md), [B6](auth6-b6.md) | Підтверджені лише зазначені там synthetic/guarded операції |
-| CI | `.github/workflows/stage1.yml`, `.github/workflows/php-runtime.yml` | Результати звіряти за **конкретним SHA**, не копіювати старий PASS |
+| CI | Fast на кожному PR commit і push master; повний PostgreSQL/auth/browser/PHP matrix/cold Compose за явною `ci:full`; [контракт і докази](ci.md) | Merge лише після всіх success на поточному head через `scripts/ci/pre_merge.py`; без доступу до branch protection це агентський, не серверний захист |
 
 ## Правило підтримки
 

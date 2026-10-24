@@ -223,6 +223,7 @@ cd client && npm run build       # збірка SPA у public/app
 - **PostgreSQL:** `phpunit.pgsql.xml`, `tests/pg/run-stage1.sh` та ізольовані SQL/PHPUnit регресії для PG-специфічних інваріантів; [Stage 1](stage-1.md).
 - **Auth:** окремі `phpunit.auth*.xml` й контекстні browser/HTTP тести; guard-режими не є production activation.
 - **SPA:** `client/` lint/type-check/build; browser перевірки UI на синтетичних даних.
+- [CI](ci.md) має Fast на кожному commit і явний Full на фінальному head; після merge виконується дешевший Fast + docs. Full не дублюється автоматично на master; можливий ризик merge-resolution знімається вимогою включити актуальний master у перевірений head.
 - Для кожного PR перевірити CI саме на його SHA. Минулі результати та покриті/непокриті випадки наведено в [project-status.md](project-status.md) і модульних звітах, **не дублювати тут датовані PASS-лічильники**.
 
 ## 15. Стан реалізації

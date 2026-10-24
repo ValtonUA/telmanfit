@@ -92,12 +92,12 @@ def is_implementation(path: str) -> bool:
     dirs = (
         "app/", "client/src/", "routes/", "database/migrations/",
         "database/sql/", "database/seeders/", "config/", "bootstrap/",
-        "resources/views/", "lang/",
+        "resources/views/", "lang/", "docker/", ".github/workflows/", "scripts/ci/", "tests/ci/",
     )
     files = {
         "composer.json", "composer.lock", "package.json", "package-lock.json",
         "client/package.json", "client/package-lock.json",
-        "client/vite.config.ts", "vite.config.js",
+        "client/vite.config.ts", "vite.config.js", "compose.yaml", ".dockerignore",
     }
     return path.startswith(dirs) or path in files
 
@@ -114,7 +114,7 @@ def is_canonical_document(path: str) -> bool:
 def validate_pr_impact(base: str) -> list[str]:
     try:
         paths = subprocess.check_output(
-            ["git", "-C", str(ROOT), "diff", "--name-only", "--diff-filter=ACMR", base, "HEAD"],
+            ["git", "-C", str(ROOT), "diff", "--name-only", "--diff-filter=ACMRD", base, "HEAD"],
             text=True, stderr=subprocess.STDOUT,
         ).splitlines()
     except subprocess.CalledProcessError as exc:
