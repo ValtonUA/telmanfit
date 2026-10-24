@@ -1,0 +1,115 @@
+<x-filament-panels::page>
+    <div class="batch-editor space-y-6">
+        <div class="flex flex-wrap gap-3">
+            <x-filament::button wire:click="createDraft" wire:loading.attr="disabled">Нова чернетка A/B/C</x-filament::button>
+            @foreach ($versions as $item)
+                <a class="underline break-words" href="{{ static::getUrl(['version' => $item->id]) }}">#{{ $item->id }} {{ $item->title }} · {{ $item->status }} · {{ $item->editor_contract === 'batch_v1' ? 'A/B/C' : 'Старий формат' }}</a>
+            @endforeach
+        </div>
+        @if ($message)<p role="status">{{ $message }}</p>@endif
+        @if ($errors->any())
+            <x-filament::section><div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div></x-filament::section>
+        @endif
+        @if ($boundary)<x-filament::section>{{ $boundary }}</x-filament::section>@endif
+        @if ($version && !$boundary)
+            <p>Версія #{{ $version }} · ревізія <span data-testid="revision">{{ $revision }}</span>. Перегляд не змінює БД.</p>
+            <fieldset wire:loading.attr="disabled" class="min-w-0 space-y-6">
+                <x-filament::section heading="Спільний рецепт">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label>Назва<x-filament::input.wrapper><x-filament::input aria-label="Назва" wire:model.live.debounce.500ms="payload.title" /></x-filament::input.wrapper></label>
+                        <label>Категорія<x-filament::input.wrapper><x-filament::input.select aria-label="Категорія" wire:model.live="payload.category_id"><option value="">Оберіть</option>@foreach ($categories as $c)<option value="{{ $c->id }}">{{ $c->name }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+                    </div>
+                </x-filament::section>
+                @foreach ($payload['rows'] as $index => $row)
+                    <x-filament::section wire:key="row-{{ $row['id'] }}">
+                        <div class="space-y-4">
+                            <p class="break-all">Рядок {{ $row['id'] }} · токен: {{ $this->ingredientToken($row['id']) }}</p>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <label>Інгредієнт<x-filament::input.wrapper><x-filament::input.select aria-label="Інгредієнт {{ $index + 1 }}" wire:model.live="payload.rows.{{ $index }}.ingredient_id"><option value="">Оберіть</option>@foreach ($ingredients as $i)<option value="{{ $i->id }}">{{ $i->name }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+                                <label>Компонент<x-filament::input.wrapper><x-filament::input.select wire:model.live="payload.rows.{{ $index }}.component_id"><option value="">Без компонента</option>@foreach ($payload['components'] as $c)<option value="{{ $c['id'] }}">{{ $c['title'] }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+                            </div>
+                            <div class="grid gap-4 lg:grid-cols-3">
+                                <div class="space-y-2"><h3>A · 1 порція · g</h3><x-filament::input.wrapper><x-filament::input aria-label="A грами {{ $index + 1 }}" inputmode="decimal" wire:model.live.debounce.500ms="payload.rows.{{ $index }}.quantity" /></x-filament::input.wrapper></div>
+                                @foreach (['week' => 'B · 7 порцій', 'half_week' => 'C · фізична партія на 3 або 4 дні'] as $code => $label)
+                                    @php($q = $preview['evaluation']['rows'][$row['id']][$code] ?? null)
+                                    <div class="space-y-2">
+                                        <h3>{{ $label }} <x-filament::badge>{{ $row[$code]['mode'] }}</x-filament::badge></h3>
+                                        <x-filament::input.wrapper><x-filament::input.select aria-label="Режим {{ $code }} {{ $index + 1 }}" wire:model.live="payload.rows.{{ $index }}.{{ $code }}.mode"><option value="auto">auto</option><option value="manual">manual</option></x-filament::input.select></x-filament::input.wrapper>
+                                        @if ($row[$code]['mode'] === 'manual')
+                                            <x-filament::input.wrapper><x-filament::input aria-label="Кількість {{ $code }} {{ $index + 1 }}" inputmode="decimal" wire:model.live.debounce.500ms="payload.rows.{{ $index }}.{{ $code }}.quantity" /></x-filament::input.wrapper>
+                                            <x-filament::input.wrapper><x-filament::input.select aria-label="UOM {{ $code }} {{ $index + 1 }}" wire:model.live="payload.rows.{{ $index }}.{{ $code }}.uom_id"><option value="">Оберіть UOM</option>@foreach ($units as $u)<option value="{{ $u->id }}">{{ $u->label }} ({{ $u->code }})</option>@endforeach</x-filament::input.select></x-filament::input.wrapper>
+                                            <x-filament::button size="sm" color="gray" wire:click="resetQuantity({{ $index }}, '{{ $code }}')">Reset to auto</x-filament::button>
+                                        @endif
+                                        @if ($q)
+                                            <p data-testid="{{ $code }}-{{ $index }}">{{ $q['quantity'] }} {{ $q['uom'] }} · {{ $q['grams'] }} їстівних g · коефіцієнт {{ $q['factor'] }}</p>
+                                            @if ($q['review'])<x-filament::badge color="warning">Manual потребує перегляду</x-filament::badge>@endif
+                                        @endif
+                                        @if ($code === 'half_week')
+                                            <label>Підтверджений крок для UOM B<x-filament::input.wrapper><x-filament::input aria-label="Крок C {{ $index + 1 }}" inputmode="decimal" wire:model="payload.rows.{{ $index }}.half_week.step" /></x-filament::input.wrapper></label>
+                                            <x-filament::button size="sm" color="gray" wire:click="acceptPolicy({{ $index }})">Прийняти ceil policy для C</x-filament::button>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                            <x-filament::button color="danger" size="sm" wire:click="removeRow({{ $index }})">Видалити інгредієнт</x-filament::button>
+                        </div>
+                    </x-filament::section>
+                @endforeach
+                <x-filament::button color="gray" wire:click="addRow">Додати інгредієнт</x-filament::button>
+                <x-filament::section heading="Компоненти та кроки">
+                    <div class="space-y-4">
+                        @foreach ($payload['components'] as $n => $c)
+                            <div class="flex gap-2" wire:key="component-{{ $c['id'] }}"><x-filament::input.wrapper class="min-w-0 flex-1"><x-filament::input aria-label="Компонент {{ $n + 1 }}" wire:model.live.debounce.500ms="payload.components.{{ $n }}.title" /></x-filament::input.wrapper><x-filament::button color="danger" size="sm" wire:click="removeDetail('components', {{ $n }})">×</x-filament::button></div>
+                        @endforeach
+                        <x-filament::button color="gray" wire:click="addComponent">Додати компонент</x-filament::button>
+                        @foreach ($payload['directions'] as $n => $text)
+                            <div class="space-y-2"><label>Крок {{ $n + 1 }}<x-filament::input.wrapper><textarea class="batch-textarea" aria-label="Крок {{ $n + 1 }}" wire:model.live.debounce.500ms="payload.directions.{{ $n }}"></textarea></x-filament::input.wrapper></label><x-filament::button color="danger" size="sm" wire:click="removeDetail('directions', {{ $n }})">Видалити крок</x-filament::button></div>
+                        @endforeach
+                        <x-filament::button color="gray" wire:click="addDirection">Додати крок</x-filament::button>
+                        <p>Токени quantity/grams посилаються на ID рядка. Час і температура задаються автором і не масштабуються.</p>
+                    </div>
+                </x-filament::section>
+                <x-filament::section heading="Обладнання · стале / пропорційне">
+                    <div class="space-y-4">
+                        @foreach ($payload['equipment'] as $n => $tool)
+                            <div class="grid gap-3 sm:grid-cols-2" wire:key="tool-{{ $tool['id'] }}">
+                                <label>Обладнання<x-filament::input.wrapper><x-filament::input.select wire:model.live="payload.equipment.{{ $n }}.kitchen_equipment_id"><option value="">Оберіть</option>@foreach ($tools as $t)<option value="{{ $t->id }}">{{ $t->name }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+                                <label>Значення A<x-filament::input.wrapper><x-filament::input wire:model.live.debounce.500ms="payload.equipment.{{ $n }}.min_value" /></x-filament::input.wrapper></label>
+                                <label>UOM<x-filament::input.wrapper><x-filament::input.select wire:model.live="payload.equipment.{{ $n }}.uom_id"><option value="">Без UOM</option>@foreach ($units as $u)<option value="{{ $u->id }}">{{ $u->label }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+                                <label>Масштабування<x-filament::input.wrapper><x-filament::input.select wire:model.live="payload.equipment.{{ $n }}.scaling_mode"><option value="fixed">Стале</option><option value="proportional">Пропорційне ×1/7/3.5</option></x-filament::input.select></x-filament::input.wrapper></label>
+                                <label>Порада<x-filament::input.wrapper><x-filament::input wire:model.live.debounce.500ms="payload.equipment.{{ $n }}.tip" /></x-filament::input.wrapper></label>
+                                <x-filament::button color="danger" size="sm" wire:click="removeDetail('equipment', {{ $n }})">Видалити обладнання</x-filament::button>
+                            </div>
+                        @endforeach
+                        <x-filament::button color="gray" wire:click="addEquipment">Додати обладнання</x-filament::button>
+                        <p>Перевірте місткість для B/C перед публікацією. Ручне коригування обладнання ще недоступне.</p>
+                    </div>
+                </x-filament::section>
+                @if ($preview)
+                    <x-filament::section heading="Preview КБЖВ та інструкцій">
+                        @if ($preview['evaluation']['incomplete'])<p role="status">Неповний розрахунок: незавершені рядки не включені в КБЖВ.</p>@endif
+                        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            @foreach ($preview['evaluation']['portions'] as $label => $totals)<div><h3>{{ $label }}</h3>@foreach ($totals as $name => $value)<p>{{ $name }}: {{ $value }}</p>@endforeach</div>@endforeach
+                        </div>
+                        <div class="mt-4"><h3>Тижнева різниця B проти 2×C</h3>@foreach ($preview['evaluation']['totals']['week'] as $name => $value)<p>{{ $name }}: {{ \Brick\Math\BigDecimal::of($value)->minus(\Brick\Math\BigDecimal::of($preview['evaluation']['totals']['half_week'][$name])->multipliedBy(2)) }}</p>@endforeach</div>
+                        <div class="mt-4 grid gap-4 lg:grid-cols-3">@foreach (['single' => 'A', 'week' => 'B', 'half_week' => 'C'] as $code => $label)<div><h3>Кроки {{ $label }}</h3>@foreach ($this->renderedDirections($code) as $text)<p class="whitespace-pre-wrap break-words">{{ $text }}</p>@endforeach</div>@endforeach</div>
+                    </x-filament::section>
+                    @if ($preview['diff'])
+                        <x-filament::section heading="Довідник змінився · потрібна явна згода">
+                            @foreach ($preview['diff'] as $rowId => $changes)@foreach ($changes as $code => $change)<p class="break-words">Рядок {{ $rowId }} {{ $code }}: {{ $change['before']['grams'] }} g → {{ $change['after']['grams'] }} g; quantity {{ $change['after']['quantity'] }} {{ $change['after']['uom'] }}. Нутрієнти та конверсії оновляться після згоди.</p><p>Нутрієнти на 100 g: @foreach (['kcal', 'protein', 'fat', 'carbs'] as $nutrient) {{ $nutrient }} {{ $change['ingredient_before'][$nutrient] }} → {{ $change['ingredient_after'][$nutrient] }}; @endforeach factor {{ $change['before']['snapshot']['factor'] }} → {{ $change['after']['factor'] }}</p>@endforeach @endforeach
+                            <x-filament::button color="warning" wire:click="saveDraft(true)">Прийняти diff і Refresh</x-filament::button>
+                        </x-filament::section>
+                    @endif
+                @endif
+                <div class="flex flex-wrap gap-3">
+                    <x-filament::button color="gray" wire:click="calculate">Оновити preview</x-filament::button>
+                    <x-filament::button wire:click="saveDraft">Зберегти чернетку</x-filament::button>
+                    <x-filament::button color="warning" wire:click="saveDraft(false, true)">Підтверджую manual review і зберігаю</x-filament::button>
+                    <x-filament::button color="gray" wire:click="reload" wire:confirm="Незбережені зміни буде втрачено. Перезавантажити?">Перезавантажити</x-filament::button>
+                </div>
+                <label class="flex items-start gap-3"><input type="checkbox" wire:model="publicationConfirmed" /><span>Склад завершений; перевірено manual, кроки A/B/C та обладнання. Публікувати збережену версію.</span></label>
+                <x-filament::button color="success" wire:click="publish" wire:confirm="Опублікувати A/B/C атомарно? Версія стане незмінною.">Опублікувати A/B/C</x-filament::button>
+            </fieldset>
+        @endif
+    </div>
+</x-filament-panels::page>

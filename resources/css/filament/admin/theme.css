@@ -47,3 +47,7 @@
     /* Довгі обрані імена й адреси в деталях мають переноситися. */
     .fi-in-text-item, .fi-select-input-value-label { overflow-wrap: anywhere; }
 }
+
+.batch-editor { min-width: 0; overflow-wrap: anywhere; }
+.batch-editor .fi-input-wrp, .batch-editor label { min-width: 0; }
+.batch-editor .batch-textarea { width: 100%; min-height: 6rem; padding: .5rem .75rem; background: transparent; }

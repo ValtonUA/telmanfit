@@ -155,9 +155,12 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit -c phpunit.pgsql.xml --filter RecipeBatchesTest --display-all-issues
+    vendor/bin/phpunit -c phpunit.pgsql.xml --filter 'RecipeBatchesTest|BatchEditorTest' --display-all-issues
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
+    php tests/pg/batch-editor-concurrency.php
+    php tests/pg/batch-editor-pending-source.php
+    if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then bash tests/browser/recipe-batch-in-context.sh; fi
     exit
 fi
 if [[ ${CLIENT_PROFILES_ONLY:-0} == 1 ]]; then
