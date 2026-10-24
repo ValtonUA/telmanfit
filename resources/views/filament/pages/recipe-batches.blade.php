@@ -9,6 +9,9 @@
             <x-filament::section><div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div></x-filament::section>
         @endif
         @if ($boundary)<x-filament::section>{{ $boundary }}</x-filament::section>@endif
+        @if ($canCreateVersion)
+            <x-filament::button wire:click="createVersion" wire:loading.attr="disabled" wire:confirm="Створити нову чернетку A/B/C? Ручні значення збережуться й потребуватимуть повторного підтвердження. Зміни довідників приймаються окремим Refresh.">Створити нову версію A/B/C</x-filament::button>
+        @endif
         @if ($version && !$boundary)
             @if ($ingredients->isEmpty() || $units->isEmpty() || $categories->isEmpty() || $tools->isEmpty())
                 <p role="status">Довідники ще не заповнені повністю. Для вибору потрібні погоджені інгредієнти, конверсії, одиниці, категорії та обладнання. Зверніться до адміністратора довідників; довільні значення не створюються.</p>

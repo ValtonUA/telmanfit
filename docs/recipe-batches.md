@@ -9,7 +9,7 @@
 Канонічний forward SQL — [11_recipe_batches.sql](11_recipe_batches.sql), byte-identical
 до [executable SQL](../database/sql/recipes/00_batch.sql). Нова forward-only міграція
 додає три таблиці, metadata версії та A snapshot; не редагує SQL 01–04 і не backfill-ить
-історію. `editor_contract` незмінний після INSERT: конвертація legacy — окремий PR C.
+історію. `editor_contract` незмінний після INSERT: конвертація legacy — окремий PR C3.
 За замовчуванням усі старі версії `legacy_v1`, snapshots NULL, revision 0.
 
 | Дані | Контракт |
@@ -214,7 +214,7 @@ Equipment tokens: `{{equipment:<baseline_row_id>:quantity}}` (число та UO
 Час і температура залишаються авторським текстом, не масштабуються. Timer token
 наразі невідомий і блокує Publish, як будь-який непідтримуваний token.
 
-Legacy conversion, versions/CoW — PR C; Stage 4, T1.5 seeds/Excel/production activation
+Legacy conversion/CoW — PR C3/C2; Stage 4, T1.5 seeds/Excel/production activation
 не входять. Feature flag лишається false.
 Перевірки: [BatchEditorTest](../tests/Postgres/BatchEditorTest.php),
 [command concurrency](../tests/pg/batch-editor-concurrency.php),
@@ -225,3 +225,56 @@ Chromium проходить штатні password+TOTP, перевіряє graph
 дві вкладки, stale source response, explicit Refresh, light/dark 1440/390/320 без
 горизонтального overflow. [Screenshots/checks](evidence/recipe-batches/checks.json) —
 локальний synthetic доказ, а результат CI завжди перевіряється на конкретному SHA.
+
+
+## Нова версія A/B/C (PR C1)
+
+`BatchEditor::createVersion(actor, sourceId, revision)` приймає лише published
+`batch_v1` з актуальною revision, перевіряє feature flag та поточну admin-role.
+Новий draft належить тому самому `recipe_id`, зберігає `source_recipe_version_id`;
+`food_id`, `version_number`, `published_at`, `publication_review` лишаються NULL.
+Сам clone не створює food і не оновлює логічний recipe або джерело. При наступній
+публікації чинна команда створює окремий food та наступний version_number.
+
+Копіюється persisted aggregate, **без виклику Save/evaluator та без прийняття
+поточних довідників**: три headers із totals/hash/policy, A ingredient snapshots,
+B/C quantity/UOM/frozen grams/input snapshots, режими й accepted auto_policies,
+компоненти з sort_order, кроки з image_url, baseline та resolved обладнання,
+nullable min_value/UOM/tip. Усі child PK нові; карти форматів, компонентів,
+інгредієнтів і обладнання розділені. FK та ingredient/equipment tokens у кроках
+remap-яться в тій самій транзакції. Save зберігає image_url незмінених текстів
+кроків, включно зі зміною порядку та remap pending tokens; змінений текст
+вважається новим кроком без попереднього зображення. Published не має pending; legacy conversion
+і персональні CoW не виконуються.
+
+Manual quantity/UOM та equipment overrides зберігаються, але `manual_context`
+стає порожнім object, `review_ack_hash` — NULL; `adequacy_ack` прибирається
+з equipment snapshot для всіх форматів. Автор явно підтверджує контекст нового
+draft після перевірки. Жодне підтвердження джерела не переноситься як чинне.
+Зміни nutrition/conversion/UOM/catalog після publish не переписують копію:
+preview показує frozen/current diff; Save/Publish відмовляють до explicit Refresh.
+Refresh зберігає manual пару й потребу повторного review.
+
+Recipe → source version locks серіалізують clone з clone/Save/Publish. Перевірка
+наявного draft виконується після recipe lock; чинний partial UNIQUE
+`recipe_one_draft` лишається незалежним захистом БД. Stale source revision,
+draft/legacy source, другий draft або помилка будь-якого child write відхиляють
+усю команду без автоматичного retry. Deferred guards перевіряються перед успіхом;
+редактор відкриває фактичну revision після всіх triggers. Схема, SQL 11–12,
+міграції та конфігурація перевірок у C1 не змінені.
+
+У Filament published A/B/C показує дію «Створити нову версію A/B/C» з явним
+підтвердженням і переходом у штатний editor нового draft. Published лишається
+read-only; повторна дія за наявного draft повертає пояснення. Legacy показує
+попередню явну межу. Feature flag лишається false.
+
+Докази: `BatchEditorTest` перевіряє всі auto/manual комбінації, frozen clone,
+нові PK/component links/tokens/image_url, nullable equipment, stale source diff,
+review reset і повторну публікацію, старий published plan/assignment/food,
+негативну авторизацію/джерело/revision/duplicate та пізній rollback.
+`batch-editor-concurrency.php` додатково доводить реальне очікування recipe lock
+для двох clone, рівно один draft, справжній COMMIT/reopen/remap та CAS копії.
+`recipe_batch.py` проходить publish → clone → review → Refresh → Save/reload,
+відмову другій вкладці та незмінність повного published aggregate.
+
+[Локальний звіт C1 та перелік змінених файлів](evidence/recipe-batches/c1-validation.md).
