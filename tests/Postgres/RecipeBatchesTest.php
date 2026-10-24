@@ -147,6 +147,30 @@ class RecipeBatchesTest extends PostgresTestCase
         $this->rejected(fn () => DB::table('recipe_batch_equipment')->insert(['recipe_version_id' => $b['version'], 'format_id' => $b['formats']['single'], 'recipe_kitchen_equipment_id' => $base, 'mode' => 'auto', 'input_snapshot' => '{"schema_version":1}']), 'immutable');
     }
 
+    public function test_b2_forward_functions_preserve_published_b1_equipment_without_backfill(): void
+    {
+        $this->install();
+        $b = $this->batch();
+        $unit = DB::table('uoms')->insertGetId(['code' => 'test-count-upgrade', 'label' => 'Synthetic count', 'kind' => 'count']);
+        $tool = DB::table('kitchen_equipment')->insertGetId(['name' => 'Synthetic upgrade pan']);
+        $base = DB::table('recipe_kitchen_equipment')->insertGetId(['recipe_version_id' => $b['version'], 'kitchen_equipment_id' => $tool,
+            'min_value' => '1.00', 'uom_id' => $unit, 'scaling_mode' => 'proportional']);
+        foreach (['single' => '1.00', 'week' => '7.00', 'half_week' => '3.50'] as $code => $value) {
+            DB::table('recipe_batch_equipment')->insert(['recipe_version_id' => $b['version'], 'format_id' => $b['formats'][$code],
+                'recipe_kitchen_equipment_id' => $base, 'mode' => 'auto', 'min_value' => $value, 'uom_id' => $unit, 'input_snapshot' => '{"schema_version":1}']);
+        }
+        $this->publish($b['version']);
+        $this->valid();
+        $before = DB::table('recipe_batch_equipment')->where('recipe_version_id', $b['version'])->orderBy('format_id')->get()->toJson();
+        $version = DB::table('recipe_versions')->find($b['version']);
+        (require database_path('migrations/2026_10_24_020000_complete_recipe_equipment.php'))->up();
+        $this->valid();
+        $this->assertSame($before, DB::table('recipe_batch_equipment')->where('recipe_version_id', $b['version'])->orderBy('format_id')->get()->toJson());
+        $this->assertEquals($version, DB::table('recipe_versions')->find($b['version']));
+        $this->assertSame('4', DB::selectOne("SELECT recipe_batch_equipment_auto(1,?::smallint,'proportional','half_week') value", [$unit])->value);
+        $this->rejected(fn () => DB::table('recipe_batch_equipment')->where('format_id', $b['formats']['half_week'])->update(['min_value' => '4.00']), 'immutable');
+    }
+
     public function test_decimal_conversion_and_pending_override_storage(): void
     {
         $this->install();

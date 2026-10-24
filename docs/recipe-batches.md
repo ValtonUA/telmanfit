@@ -176,7 +176,7 @@ scale 2 (HalfUp лише до точності сховища), без окру�
 полів, enum або переписування SQL 01–11 немає.** Причина міграції: старий guard
 вимагав дробове proportional count й перевіряв review лише manual обладнання.
 Новий guard незалежно перевіряє ceil count та достатність усіх A/B/C snapshots.
-Старі published дані не оновлюються; на реальних БД міграція не запускалася.
+Populated B1 upgrade test доводить byte-for-byte збереження published equipment/версії, навіть історичного fractional count; backfill немає, immutability діє. На реальних БД міграція не запускалася.
 
 `input_snapshot` equipment містить schema_version=1, dependencies (серверний
 SHA-256 нормалізованих inputs/pending для preview), source_hash (обраний catalog/UOM)
