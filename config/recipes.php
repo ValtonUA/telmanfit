@@ -1,6 +1,6 @@
 <?php
 
 return [
-    // Ядро доступне лише явно дозволеним local/testing командам; UI ще відсутній.
+    // Вмикати лише після окремого rollout review; production за замовчуванням закрито.
     'batch_editor_enabled' => false,
 ];

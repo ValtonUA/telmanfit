@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "Штатний password + MFA; guest editor недоступний",
+    "150→1050→525; manual B=1000→C=500; save/reload",
+    "Manual C=600 зберігається після A=160/reload; reset B=1120, reset C=560",
+    "Дві вкладки: stale revision не перезаписує першу",
+    "Stale source response → відмова; explicit diff/Refresh зберігає manual",
+    "Pending row: save/reload; неповний підсумок",
+    "1440px light: no overflow",
+    "1440px dark: no overflow",
+    "390px light: no overflow",
+    "390px dark: no overflow",
+    "320px light: no overflow",
+    "320px dark: no overflow"
+  ],
+  "page_errors": []
+}

@@ -24,11 +24,11 @@
 | Equipment | три resolved snapshots на baseline row; nullable min_value допустиме; auto fixed або proportional ×1/7/3.5; manual має context/ack |
 
 MD5 тут визначає рівність canonical PostgreSQL JSON, а не криптографічну авторизацію.
-Права автора та publication review перевірятимуть команди PR B. `publication_review`
+Права автора та publication review перевіряють команди PR B1. `publication_review`
 містить complete=true, lock_version (перед publish), actor, at. Це не аудит автентифікації.
 Валідація БД перевіряє актуальність sources, auto graph, frozen grams, totals,
 manual context, повноту equipment та явне підтвердження; не рендерить токени інструкцій.
-Повна сервісна валідація токенів/авторизації та єдиний Save/Refresh/Publish — PR B.
+Сервісна валідація ingredient tokens/авторизації та Save/Refresh/Publish описані нижче.
 
 ## Обчислення і refresh
 
@@ -44,7 +44,7 @@ B target=A×7; C target=фактична B/2; автоматичний C за ex
 він персистується як `half_week.input_snapshot.auto_policies`. Для успадкованих g
 за відсутності явного правила — exact/0.01; для інших UOM потрібне прийняте правило
 з decimal step scale 2 і confirmed=true. Відсутність правила/conversion вимагає
-explicit refresh, без fallback у g. Прийняття diff лишається командою PR B;
+explicit refresh, без fallback у g. Прийняття diff виконує команда PR B1;
 evaluator не читає довідники та не пише persisted дані.
 
 Наприклад, B manual=3 шт., accepted piece ceil/1.00 → C auto=2 шт.; B=1 банка,
@@ -62,8 +62,8 @@ quantity та acknowledged_context. Manual pair не обмежується auto
 frozen factor/grams, totals та чотири порції. GET/preview чисті, жодних I/O.
 Порядок ключів JSON objects канонізується: JSONB reload не скидає manual acknowledgement.
 DB guards незалежно перевіряють записаний результат; це не альтернативний writer.
-DB canonical context має JSON representation сховища; adapter PR B має формувати
-його з accepted inputs і записувати ack лише за явною командою автора.
+DB canonical context має JSON representation сховища; adapter PR B1 записує ack
+лише за явною командою автора після збереження accepted inputs.
 
 Зміна джерел дає preview diff, потім явне прийняття: auto перераховується, manual
 quantity/UOM зберігаються, нові grams/nutrition потребують review. Старий snapshot
@@ -82,7 +82,7 @@ ingredient FOR UPDATE, закриваючи INSERT phantom. Порядок ма�
 recipes → version → ingredients → conversions → details. Deadlock/40001 потребує
 нового preview, без сліпого повторного застосування intent.
 
-Новий application surface не підключено. `config/recipes.php` закритий; міграція
+Application surface підключений за закритим `config/recipes.php`; міграція
 сама не активує редактор. Жодних production GRANT, auth/RBAC змін, каталогів упаковок,
 meal_items selectors або Stage 4 UI. Реальні migrations тут не запускалися.
 
@@ -102,3 +102,62 @@ CAS conflict/rollback та serialization nutrition/UOM UPDATE/conversion INSERT.
 шість auto/manual сценаріїв через нові незалежні PG connections, після чого повторно
 обчислює склад із завантажених snapshots. Штатний Stage 1 runner зберігає baseline
 PASS=76 і catalog regression; нові DDL встановлюються у власному тестовому transaction.
+
+## Команди та базовий Filament editor (PR B1)
+
+[BatchEditor](../app/Services/Recipes/BatchEditor.php) — application adapter для нових
+`batch_v1` drafts. `create/open/preview/save/publish` перевіряють закритий feature flag
+та актуальну admin-role в БД. Filament використовує штатні login/MFA/CSRF/assurance
+middleware. Флаг не має нового env-перемикача і лишається `false`.
+
+`open` і `preview` читають узгоджений MVCC snapshot без записів. Preview рахує
+**поточні** джерела, показує diff frozen/current (грами, factor, нутрієнти), але
+не змінює accepted snapshot. Серверний HMAC пов'язує actor, version, revision,
+увесь input, fingerprints довідників та canonical evaluator output. Save звіряє
+його повторно під recipe → version → ingredient → conversion → UOM/catalog locks.
+Stale revision/source або змінений input відхиляються без автоматичного retry.
+Client totals/snapshots/ack hashes не використовуються. Наявні SQL deferred guards
+перевіряються до успішної відповіді; повертається фактична revision після всіх triggers.
+
+Звичайний Save відхиляє змінені джерела; кнопка «Прийняти diff і Refresh» явно
+приймає переглянутий snapshot. Ручні quantity/UOM зберігаються, factor/grams/КБЖВ
+оновлюються лише після цієї згоди. Окрема кнопка «Підтверджую manual review і
+зберігаю» фіксує саме поточний DB context. Незмінні acknowledgements переживають
+Save/reload, зміни залежностей роблять їх stale. Немає відсоткового порогу.
+
+Одна сторінка `/admin/recipe-batches` містить новий draft, вибір версії, склад
+A/B/C, компоненти, кроки, обладнання, чотири порції та різницю B−2×C. Preview після
+редагування read-only; поки він невалідний, попередній token прибирається. Pending
+рядки зберігають raw незавершене введення, зокрема `1.`, `0`, очищену manual пару;
+вони не потрапляють у totals. Завершені рядки нормалізуються. Ingredient PK лишається
+сталим при заміні продукту, manual не скидається. Вихід із pending отримує новий PK
+та атомарний remap токенів; інші рядки не перестворюються.
+
+Синтаксис кроків: `{{ingredient:<row_id>:quantity}}` або `:grams`, включно з
+`pending:...` до першого Save. [RecipeTokens](../app/Services/Recipes/RecipeTokens.php)
+рендерить plain text фактичного формату, Blade екранує результат. Dangling/невідомі
+токени допустимі в draft, блокують Publish. Публікація вимагає збереженого preview,
+окремого checkbox/confirm, відсутності pending, назви, категорій рецепта/інгредієнтів,
+непорожніх кроків, актуальних snapshots та manual review. Створюється один food і
+один version_number у тій самій транзакції. Повторний publish дає conflict, без
+другого food; будь-яка відмова відкочує весь write.
+
+**Межа цього самодостатнього slice:** обладнання — baseline fixed/proportional auto
+із resolved ×1/7/3.5 та nullable min_value, без ручних equipment overrides. Якщо
+aggregate уже має manual equipment, Save безпечно відхиляється цілком. UI не
+пропонує auto B пресети: B auto — точні g; ручні B/C UOM дозволені лише за наявною
+конверсією. Для auto C не-g автор явно приймає ceil/step для фактичної UOM B;
+відсутність правила блокує preview без fallback у g. Preset UX для auto B/100g,
+manual equipment/review, equipment/timer tokens, розширений preview наслідків
+видалення та зручний каталог довідників — наступний PR B slice. Ці обмеження не
+маскуються як готовність усього PR B. Legacy показує явну межу; clone/CoW — PR C.
+T1.5/фасування/Excel/Stage 4 і production activation не входять.
+
+Перевірки: [BatchEditorTest](../tests/Postgres/BatchEditorTest.php),
+[command concurrency](../tests/pg/batch-editor-concurrency.php),
+[Chromium](../tests/browser/recipe_batch.py). `RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1
+bash tests/pg/run-stage1.sh` створює новий PG18, перевіряє identity і прибирає container.
+Chromium проходить штатні password+TOTP, перевіряє graph/manual/reset, pending/reload,
+дві вкладки, stale source response, explicit Refresh, light/dark 1440/390/320 без
+горизонтального overflow. [Screenshots/checks](evidence/recipe-batches/checks.json) —
+локальний synthetic доказ, а результат CI завжди перевіряється на конкретному SHA.
