@@ -90,7 +90,7 @@ PWA і Telegram Mini App використовують максимально о�
 
 Їх використовує [`tests/pg/run-stage1.sh`](../tests/pg/run-stage1.sh) і [GitHub Actions](../.github/workflows/stage1.yml). Розділення забезпечує окремі test-only конфігурації session/cache/auth. **Без перегляду залежностей не об'єднувати та не видаляти.**
 
-**`docs/evidence/` і `docs/screenshots/` — архів технічних доказів, не вміст застосунку.** Там JSON-виміри та скриншоти браузерних перевірок MFA/Filament і UX-1. На 23.10.2026: **55 + 21 = 76 файлів, близько 2,8 МБ**. На них посилаються [UX-1](ux-1.md), [AUTH-3](auth3.md), [AUTH-5](auth5.md), [AUTH-6B/B6](auth6-b6.md) та workflow. Заміна на тимчасові GitHub Actions artifacts можлива лише з перевіркою CI, посилань, маскування секретів і потрібного строку збереження доказів.
+**`docs/evidence/` і `docs/screenshots/` — архів технічних доказів, не вміст застосунку.** Там JSON-виміри та скриншоти браузерних перевірок MFA/Filament і UX-1. На них посилаються [UX-1](ux-1.md), [AUTH-3](auth3.md), [AUTH-5](auth5.md), [AUTH-6B/B6](auth6-b6.md) та workflow. Заміна на тимчасові GitHub Actions artifacts можлива лише з перевіркою CI, посилань, маскування секретів і потрібного строку збереження доказів.
 
 **Навігація для Codex:** [AGENTS.md](../AGENTS.md) → [roadmap.md](roadmap.md) → [project-status.md](project-status.md) → потрібна частина [архітектури](architecture.md) та відповідні SQL/бізнес-правила. Немає потреби сприймати кожен `evidence`/XML як документ для планування функціоналу.
 
@@ -113,6 +113,8 @@ PWA і Telegram Mini App використовують максимально о�
 |---|---|
 | `app/Http/Controllers/Api/` | JSON-контролери (наразі лише `HealthController`) |
 | `app/Providers/Filament/AdminPanelProvider.php` | Конфігурація панелі `admin` |
+| `app/Filament/Resources/Catalog/`, `app/Models/Catalog/` | Штатні Filament ресурси й моделі існуючих харчових довідників; conversions у формі ingredient |
+| `app/Services/Catalog/CatalogWriter.php`, `app/Policies/CatalogPolicy.php` | Транзакційний writer food/ingredient, decimal validation, CAS/locks та admin ACL; [предметний контракт](food-catalog.md) |
 | `client/` | Окремий Vite-проєкт React/TS; `npm run build` → `public/app` |
 | `database/migrations/` | Стандартні Laravel-міграції, узгодження `users`, `btree_gist` і модулі 01–04; див. stage-1.md |
 | `docs/` | Entity Catalog, DBML, SQL-модулі, аудит, цей документ, правила й план |

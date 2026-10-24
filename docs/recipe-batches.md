@@ -388,3 +388,11 @@ Snapshots/hashes до/після доводять rollback, read-only preview/ca
 published source, foods, планів та assignments. Усі fixtures синтетичні, PG18
 без мережі/зовнішніх портів із cleanup. Feature flag лишається OFF; Stage 4,
 T1.5/Excel, timer tokens та production activation не входять у C3.
+
+## Редагування поточних каталогів
+
+[Food Catalog Management](food-catalog.md) надає окремі Filament ресурси для
+довідників, які читає query adapter редактора. Catalog writer змінює тільки
+current inputs, дотримується ingredient → conversions → UOM locks і не пише
+accepted snapshots/recipe history. Чинні diff/Refresh/Save/Publish guards
+залишаються єдиною межею прийняття змін у рецепті.

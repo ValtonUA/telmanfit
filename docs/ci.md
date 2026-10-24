@@ -53,6 +53,9 @@ PR; стара зелена перевірка не годиться. На opene
   ізольований SQL/PDO runner, Stage 1/2/3 та profiles upgrade/regression.
 - Recipe A/B/C, B1/B2, historical upgrade, locks/concurrency, accepted/pending
   provenance, UOM reload, Chromium light/dark та розміри екрана.
+- Харчові каталоги: atomic food/subtype, decimal/default/UOM/ACL/CAS,
+  frozen history та реальні catalog writer locks; Chromium create/edit,
+  CSRF/revocation, light/dark 1440/390/320; [контракт](food-catalog.md).
 - AUTH-1 upstream digest/versions; AUTH-2–6 PHPUnit, HTTP, browser та concurrency;
   B3/B4 outbox/ACL, B5 retention/archive/restore faults, B6 budgets/restart/faults.
 - B6 виконується на **обох** PHP 8.4/8.5. Третій ідентичний прогін на Stage 1 PHP8.4

@@ -84,6 +84,8 @@ jobs:
           name: stage1-pg-logs
           path: |
             tests/pg/out/*.out
+            docs/evidence/food-catalog/*.png
+            docs/evidence/food-catalog/checks.json
             docs/evidence/recipe-batches/*.png
             docs/evidence/recipe-batches/checks.json
             docs/evidence/auth3/*.png
