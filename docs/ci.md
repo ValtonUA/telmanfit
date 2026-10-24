@@ -59,7 +59,7 @@ PR; стара зелена перевірка не годиться. На opene
 Кешуються лише завантаження Composer і npm, прив’язані до lock hash; vendor,
 node_modules, browser profiles, PG volumes і cold Docker layers не кешуються.
 `npm ci --ignore-scripts` замінює mutable install, Composer install не виконує
-plugins/scripts, а package discovery запускається явно. Actions pinned до повних
+plugins/scripts, а package discovery та потрібний Stage1 `filament:upgrade` запускаються явно. Actions pinned до повних
 commit SHA перевірених upstream tags. Усі workflows мають contents: read,
 checkout persist-credentials: false; secrets не успадковуються, pull_request_target
 не використовується. GH_TOKEN лише read token для pinned AUTH-1 public blobs.
@@ -96,7 +96,8 @@ python3 scripts/docs_guard.py --pr-base <base-sha>
 
 Job-min = сума тривалостей **усіх** jobs; паралелізація сама не дає економії.
 `rounded_ubuntu_minutes_estimate` — округлення кожного job вгору, а не підтверджений
-рахунок GitHub. Якщо timing API недоступне, точні billed minutes недоведені;
+рахунок GitHub. На baseline timing API повернуло нульові billing-поля попри ненульову тривалість jobs.
+Точні billed minutes тому недоведені;
 не називати оцінку списаними хвилинами. Before/after і сценарії 5/10 commits
 публікуються у Draft PR після завершення реальних GitHub runs. Дані останнього
 фінального SHA додаються до опису PR, щоб не створювати новий неперевірений commit.
