@@ -17,6 +17,10 @@ if (($argv[1] ?? '') === 'worker') {
     $data = json_decode(file_get_contents($argv[2]), true, flags: JSON_THROW_ON_ERROR);
     DB::statement("SET application_name='telmanfit-batch-command-worker'");
     try {
+        if (($data['command'] ?? '') === 'personal') {
+            $editor->createPersonalCopy(User::findOrFail($data['actor']), $data['id'], $data['state']['revision'], $data['owner']);
+            exit(2);
+        }
         if (($data['command'] ?? '') === 'clone') {
             $editor->createVersion(User::findOrFail($data['actor']), $data['id'], $data['state']['revision']);
             exit(2);
@@ -147,6 +151,62 @@ try {
         }
     }
 
+    $owner = DB::table('clients')->insertGetId(['coach_user_id' => $actor->id]);
+    $other = DB::table('clients')->insertGetId(['coach_user_id' => $actor->id]);
+    foreach (['duplicate', 'source-owner', 'target-delete'] as $case) {
+        file_put_contents($file, json_encode(['command' => 'personal', 'id' => $b['version'], 'actor' => $actor->id, 'state' => $state, 'owner' => $case === 'target-delete' ? $other : $owner]));
+        DB::beginTransaction();
+        if ($case === 'target-delete') {
+            DB::table('clients')->where('id', $other)->lockForUpdate()->first();
+        } else {
+            DB::table('recipes')->where('id', $source->recipe_id)->lockForUpdate()->first();
+        }
+        $worker = proc_open([PHP_BINARY, __FILE__, 'worker', $file], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        if (! is_resource($worker)) {
+            throw new RuntimeException('Не запущено personal worker.');
+        }
+        fclose($pipes[0]);
+        $deadline = microtime(true) + 8;
+        do {
+            DB::select('SELECT pg_stat_clear_snapshot()');
+            $waiting = DB::selectOne("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='telmanfit-batch-command-worker' AND wait_event_type='Lock') waiting")->waiting;
+            if ($waiting) {
+                break;
+            }
+            usleep(10000);
+        } while (microtime(true) < $deadline);
+        if (! $waiting) {
+            throw new RuntimeException('Personal worker не чекає PG lock.');
+        }
+        if ($case === 'duplicate') {
+            $personal = $editor->createPersonalCopy($actor, $b['version'], $state['revision'], $owner);
+        } elseif ($case === 'source-owner') {
+            DB::table('recipes')->where('id', $source->recipe_id)->update(['owner_client_id' => $other]);
+        } else {
+            DB::table('clients')->where('id', $other)->delete();
+        }
+        DB::commit();
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $code = proc_close($worker);
+        $worker = null;
+        if ($code !== 0) {
+            throw new RuntimeException('Personal stale/duplicate command не відхилено: '.$stderr);
+        }
+        if ($case === 'source-owner') {
+            DB::table('recipes')->where('id', $source->recipe_id)->update(['owner_client_id' => null]);
+        }
+    }
+    DB::purge();
+    $personalState = $editor->open($actor, $personal);
+    $card = DB::table('recipes')->find(DB::table('recipe_versions')->find($personal)->recipe_id);
+    if ($card->parent_recipe_id !== $source->recipe_id || $card->owner_client_id !== $owner
+        || DB::table('recipes')->where('parent_recipe_id', $source->recipe_id)->count() !== 1
+        || $personalState['status'] !== 'draft' || $personalState['payload']['rows'][0]['id'] === (string) $b['row']) {
+        throw new RuntimeException('Personal COMMIT/reload/owner/remap failure.');
+    }
+
 } finally {
     while (DB::transactionLevel()) {
         DB::rollBack();
@@ -157,4 +217,4 @@ try {
     }
     unlink($file);
 }
-echo "Batch command concurrency PASS: real recipe lock wait; stale source/revision rollback; clone race leaves one draft; COMMIT/reopen/remap/CAS preserve source.\n";
+echo "Batch command concurrency PASS: real recipe lock wait; stale source/revision rollback; clone race leaves one draft; COMMIT/reopen/remap/CAS preserve source; C2 duplicate/source-owner/target-delete real lock waits reject stale copies.\n";

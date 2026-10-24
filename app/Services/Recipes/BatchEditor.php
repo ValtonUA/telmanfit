@@ -50,56 +50,144 @@ final class BatchEditor
         $this->authorize($actor);
 
         return DB::transaction(function () use ($sourceId, $revision) {
-            $recipeId = DB::table('recipe_versions')->where('id', $sourceId)->value('recipe_id');
-            abort_unless($recipeId, 404);
-            // Той самий порядок, що й Save/Publish; серіалізує конкурентні clone.
-            DB::table('recipes')->where('id', $recipeId)->lockForUpdate()->first();
-            $source = DB::table('recipe_versions')->where('id', $sourceId)->lockForUpdate()->first();
-            abort_unless($source, 404);
-            if ($source->status !== 'published' || $source->editor_contract !== 'batch_v1'
-                || (string) $source->lock_version !== $revision) {
-                $this->fail('Оберіть опубліковану A/B/C версію з актуальною ревізією. Legacy conversion недоступна.');
-            }
+            $source = $this->cloneSource($sourceId, $revision);
+            $recipeId = $source->recipe_id;
             if (DB::table('recipe_versions')->where('recipe_id', $recipeId)->where('status', 'draft')->exists()) {
                 $this->fail('Цей рецепт уже має чернетку. Відкрийте її для редагування.');
             }
-            $id = DB::table('recipe_versions')->insertGetId([
-                'recipe_id' => $recipeId, 'title' => $source->title, 'editor_contract' => 'batch_v1',
-                'source_recipe_version_id' => $sourceId, 'servings_count' => $source->servings_count,
-            ]);
-            // Maps мають окремі простори ID; усі FK й тексти пишуться атомарно.
-            $formats = $this->cloneChildren('recipe_batch_formats', $sourceId, $id);
-            $components = $this->cloneChildren('recipe_components', $sourceId, $id);
-            $rows = $this->cloneChildren('recipe_ingredients', $sourceId, $id, fn ($r) => [
-                'component_id' => $r['component_id'] === null ? null : $components[$r['component_id']],
-            ]);
-            $equipment = $this->cloneChildren('recipe_kitchen_equipment', $sourceId, $id);
-            foreach (['recipe_batch_quantities', 'recipe_batch_equipment'] as $table) {
-                foreach (DB::table($table)->where('recipe_version_id', $sourceId)->get() as $record) {
-                    $r = (array) $record;
-                    $r['recipe_version_id'] = $id;
-                    $r['format_id'] = $formats[$r['format_id']];
-                    $r['manual_context'] = $r['mode'] === 'manual' ? '{}' : null;
-                    $r['review_ack_hash'] = null;
-                    if ($table === 'recipe_batch_quantities') {
-                        $r['recipe_ingredient_id'] = $rows[$r['recipe_ingredient_id']];
-                    } else {
-                        $r['recipe_kitchen_equipment_id'] = $equipment[$r['recipe_kitchen_equipment_id']];
-                        // JSONB SQL зберігає типи/порожні objects без PHP round-trip.
-                        $r['input_snapshot'] = DB::selectOne("SELECT ?::jsonb - 'adequacy_ack' AS snapshot", [$r['input_snapshot']])->snapshot;
-                    }
-                    DB::table($table)->insert($r);
-                }
-            }
-            $this->cloneChildren('recipe_directions', $sourceId, $id, fn ($r) => [
-                'direction_text' => RecipeTokens::remap($r['direction_text'], $rows, $equipment),
-            ]);
-            DB::select('SELECT recipe_batch_validate(?)', [$id]);
-            DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
-            DB::statement('SET CONSTRAINTS ALL DEFERRED');
 
-            return $id;
+            return $this->cloneAggregate($source, $recipeId);
         });
+    }
+
+    /** Персональна CoW: admin явно обирає клієнта; автоматичних призначень немає. */
+    public function createPersonalCopy(User $actor, int $sourceId, string $revision, int $ownerId): int
+    {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($sourceId, $revision, $ownerId) {
+            $source = $this->cloneSource($sourceId, $revision);
+            $owner = DB::table('clients')->where('id', $ownerId)->lockForUpdate()->first();
+            if (! $owner) {
+                $this->fail('Оберіть існуючого клієнта для персональної копії.');
+            }
+            $recipe = DB::table('recipes')->find($source->recipe_id);
+            if ($recipe->owner_client_id !== null && $recipe->owner_client_id !== $ownerId) {
+                $this->fail('Персональний рецепт не можна копіювати іншому клієнту.');
+            }
+            // Source recipe lock серіалізує повтори, client lock захищає target.
+            if (DB::table('recipes as r')->join('recipe_versions as v', 'v.recipe_id', '=', 'r.id')
+                ->where('r.parent_recipe_id', $recipe->id)->where('r.owner_client_id', $ownerId)
+                ->where('v.status', 'draft')->exists()) {
+                $this->fail('Персональна копія для цього клієнта вже має чернетку. Відкрийте її.');
+            }
+            $target = DB::table('recipes')->insertGetId([
+                'title' => $source->title, 'recipe_category_id' => $recipe->recipe_category_id,
+                'parent_recipe_id' => $recipe->id, 'owner_client_id' => $ownerId,
+            ]);
+
+            return $this->cloneAggregate($source, $target);
+        });
+    }
+
+    private function cloneSource(int $sourceId, string $revision): object
+    {
+        $recipeId = DB::table('recipe_versions')->where('id', $sourceId)->value('recipe_id');
+        abort_unless($recipeId, 404);
+        DB::table('recipes')->where('id', $recipeId)->lockForUpdate()->first();
+        $source = DB::table('recipe_versions')->where('id', $sourceId)->lockForUpdate()->first();
+        abort_unless($source, 404);
+        if ($source->recipe_id !== $recipeId || $source->status !== 'published' || $source->editor_contract !== 'batch_v1'
+            || (string) $source->lock_version !== $revision) {
+            $this->fail('Оберіть опубліковану A/B/C версію з актуальною ревізією. Legacy conversion недоступна.');
+        }
+        $this->lineage($source, lock: true);
+
+        return $source;
+    }
+
+    /** Перевіряється також при читанні/Save/Publish: некоректна lineage не стає глобальною. */
+    private function lineage(object $version, bool $lock = false): void
+    {
+        $recipes = [];
+        $recipe = DB::table('recipes')->when($lock, fn ($q) => $q->sharedLock())->find($version->recipe_id);
+        if (! $recipe) {
+            $this->fail('Відсутній рецепт у lineage.');
+        }
+        $owner = $recipe->owner_client_id;
+        while ($recipe) {
+            if (isset($recipes[$recipe->id])) {
+                $this->fail('Циклічна lineage рецепта.');
+            }
+            if (($recipe->parent_recipe_id !== null && $recipe->owner_client_id === null)
+                || ($recipe->owner_client_id !== null && ($recipe->owner_client_id !== $owner
+                    || ! DB::table('clients')->where('id', $recipe->owner_client_id)->exists()))) {
+                $this->fail('Некоректний власник у lineage рецепта.');
+            }
+            $recipes[$recipe->id] = true;
+            if ($recipe->parent_recipe_id === null) {
+                break;
+            }
+            $recipe = DB::table('recipes')->when($lock, fn ($q) => $q->sharedLock())->find($recipe->parent_recipe_id);
+            if (! $recipe) {
+                $this->fail('Відсутній батьківський рецепт у lineage.');
+            }
+        }
+        $seen = [$version->id => true];
+        while ($version->source_recipe_version_id !== null) {
+            $id = $version->source_recipe_version_id;
+            if (isset($seen[$id])) {
+                $this->fail('Циклічна lineage версії.');
+            }
+            $seen[$id] = true;
+            $version = DB::table('recipe_versions')->find($id);
+            if (! $version || $version->status !== 'published' || ! isset($recipes[$version->recipe_id])) {
+                $this->fail('Джерело lineage має бути опублікованою версією власного або батьківського рецепта.');
+            }
+        }
+    }
+
+    private function cloneAggregate(object $source, int $recipeId): int
+    {
+        $sourceId = $source->id;
+        $id = DB::table('recipe_versions')->insertGetId([
+            'recipe_id' => $recipeId, 'title' => $source->title, 'editor_contract' => 'batch_v1',
+            'source_recipe_version_id' => $sourceId, 'servings_count' => $source->servings_count,
+        ]);
+        // Maps мають окремі простори ID; усі FK й тексти пишуться атомарно.
+        $formats = $this->cloneChildren('recipe_batch_formats', $sourceId, $id);
+        $components = $this->cloneChildren('recipe_components', $sourceId, $id);
+        $rows = $this->cloneChildren('recipe_ingredients', $sourceId, $id, fn ($r) => [
+            'component_id' => $r['component_id'] === null ? null : $components[$r['component_id']],
+        ]);
+        $equipment = $this->cloneChildren('recipe_kitchen_equipment', $sourceId, $id);
+        foreach (['recipe_batch_quantities', 'recipe_batch_equipment'] as $table) {
+            foreach (DB::table($table)->where('recipe_version_id', $sourceId)->get() as $record) {
+                $r = (array) $record;
+                $r['recipe_version_id'] = $id;
+                $r['format_id'] = $formats[$r['format_id']];
+                $r['manual_context'] = $r['mode'] === 'manual' ? '{}' : null;
+                $r['review_ack_hash'] = null;
+                if ($table === 'recipe_batch_quantities') {
+                    $r['recipe_ingredient_id'] = $rows[$r['recipe_ingredient_id']];
+                } else {
+                    $r['recipe_kitchen_equipment_id'] = $equipment[$r['recipe_kitchen_equipment_id']];
+                    // JSONB SQL зберігає типи/порожні objects без PHP round-trip.
+                    $r['input_snapshot'] = DB::selectOne("SELECT ?::jsonb - 'adequacy_ack' AS snapshot", [$r['input_snapshot']])->snapshot;
+                }
+                DB::table($table)->insert($r);
+            }
+        }
+        $this->cloneChildren('recipe_directions', $sourceId, $id, fn ($r) => [
+            'direction_text' => RecipeTokens::remap($r['direction_text'], $rows, $equipment),
+        ]);
+        DB::select('SELECT recipe_batch_validate(?)', [$id]);
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+        DB::statement('SET CONSTRAINTS ALL DEFERRED');
+
+        $this->lineage(DB::table('recipe_versions')->find($id));
+
+        return $id;
     }
 
     private function cloneChildren(string $table, int $sourceId, int $id, ?callable $replace = null): array
@@ -127,6 +215,7 @@ final class BatchEditor
             }
             $v = DB::table('recipe_versions')->find($id);
             abort_unless($v, 404);
+            $this->lineage($v);
             if ($v->editor_contract !== 'batch_v1') {
                 return ['boundary' => 'Старий формат: конвертація цієї чернетки ще недоступна.'];
             }
@@ -171,11 +260,12 @@ final class BatchEditor
                 $equipment[] = $tool;
             }
 
-            return ['revision' => (string) $v->lock_version, 'status' => $v->status, 'payload' => [
-                'title' => $v->title, 'category_id' => $recipe->recipe_category_id ? (string) $recipe->recipe_category_id : '', 'rows' => $rows,
-                'components' => DB::table('recipe_components')->where('recipe_version_id', $id)->orderBy('id')->get()->map(fn ($c) => ['id' => (string) $c->id, 'title' => $c->title])->all(),
-                'directions' => DB::table('recipe_directions')->where('recipe_version_id', $id)->orderBy('direction_number')->pluck('direction_text')->all(), 'equipment' => $equipment,
-            ]];
+            return ['recipe_id' => $recipe->id, 'owner_client_id' => $recipe->owner_client_id, 'parent_recipe_id' => $recipe->parent_recipe_id,
+                'revision' => (string) $v->lock_version, 'status' => $v->status, 'payload' => [
+                    'title' => $v->title, 'category_id' => $recipe->recipe_category_id ? (string) $recipe->recipe_category_id : '', 'rows' => $rows,
+                    'components' => DB::table('recipe_components')->where('recipe_version_id', $id)->orderBy('id')->get()->map(fn ($c) => ['id' => (string) $c->id, 'title' => $c->title])->all(),
+                    'directions' => DB::table('recipe_directions')->where('recipe_version_id', $id)->orderBy('direction_number')->pluck('direction_text')->all(), 'equipment' => $equipment,
+                ]];
         });
     }
 
@@ -339,6 +429,7 @@ final class BatchEditor
     {
         $v = DB::table('recipe_versions')->find($id);
         abort_unless($v, 404);
+        $this->lineage($v);
         if ($v->editor_contract !== 'batch_v1' || $v->status !== 'draft' || (string) $v->lock_version !== $revision) {
             $this->fail('Конфлікт ревізій або версія недоступна для редагування. Перезавантажте сторінку.');
         }
@@ -353,6 +444,10 @@ final class BatchEditor
         DB::table('recipes')->where('id', $recipe)->lockForUpdate()->first();
         DB::table('recipe_versions')->where('id', $id)->lockForUpdate()->first();
         $v = $this->version($id, $revision);
+        if ($v->recipe_id !== $recipe) {
+            $this->fail('Конфлікт рецепта. Перезавантажте сторінку.');
+        }
+        $this->lineage($v, lock: true);
         $ids = array_unique(array_filter(array_merge(array_column($payload['rows'] ?? [], 'ingredient_id'), DB::table('recipe_ingredients')->where('recipe_version_id', $id)->pluck('ingredient_id')->all()), fn ($i) => ctype_digit((string) $i)));
         DB::table('ingredients')->whereIn('id', $ids)->orderBy('id')->sharedLock()->get();
         DB::table('ingredient_uoms')->whereIn('ingredient_id', $ids)->orderBy('ingredient_id')->orderBy('uom_id')->sharedLock()->get();

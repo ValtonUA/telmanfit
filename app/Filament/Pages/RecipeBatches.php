@@ -40,6 +40,14 @@ final class RecipeBatches extends Page
 
     public bool $publicationConfirmed = false;
 
+    public string $copyOwnerId = '';
+
+    #[Locked]
+    public ?int $ownerClientId = null;
+
+    #[Locked]
+    public ?int $parentRecipeId = null;
+
     public static function canAccess(): bool
     {
         return config('recipes.batch_editor_enabled') && Filament::auth()->user()?->role === User::ROLE_ADMIN;
@@ -73,6 +81,8 @@ final class RecipeBatches extends Page
         $state = app(BatchEditor::class)->open($this->actor(), $this->version);
         $this->canCreateVersion = ! isset($state['boundary']) && $state['status'] === 'published';
         $this->boundary = $state['boundary'] ?? ($state['status'] === 'published' ? 'Опублікована версія незмінна. Створіть нову draft-версію для редагування A/B/C.' : '');
+        $this->ownerClientId = $state['owner_client_id'] ?? null;
+        $this->parentRecipeId = $state['parent_recipe_id'] ?? null;
         $this->payload = $state['payload'] ?? [];
         $this->revision = $state['revision'] ?? '';
         $this->preview = [];
@@ -81,12 +91,25 @@ final class RecipeBatches extends Page
             $this->presetChoices[$index] = ($row['week']['rounding'] ?? 'exact') === 'nearest' ? 'nearest100' : (($row['week']['rounding'] ?? 'exact') === 'ceil' ? $row['week']['step'] : 'exact');
         }
         $this->publicationConfirmed = false;
+        $this->copyOwnerId = '';
     }
 
     public function createVersion(): void
     {
         $this->attempt(function () {
             $id = app(BatchEditor::class)->createVersion($this->actor(), $this->version, $this->revision);
+            $this->redirect(self::getUrl(['version' => $id]));
+        });
+    }
+
+    public function createPersonalCopy(): void
+    {
+        $this->attempt(function () {
+            $actor = $this->actor();
+            if (! ctype_digit($this->copyOwnerId) || (int) $this->copyOwnerId < 1 || (int) $this->copyOwnerId > 2147483647) {
+                throw ValidationException::withMessages(['batch' => 'Оберіть клієнта для персональної копії.']);
+            }
+            $id = app(BatchEditor::class)->createPersonalCopy($actor, $this->version, $this->revision, (int) $this->copyOwnerId);
             $this->redirect(self::getUrl(['version' => $id]));
         });
     }
@@ -317,7 +340,11 @@ final class RecipeBatches extends Page
     {
         $this->actor();
 
-        return ['versions' => DB::table('recipe_versions')->orderByDesc('id')->limit(100)->get(['id', 'title', 'status', 'editor_contract']),
+        $sourceOwner = $this->version ? DB::table('recipes')->join('recipe_versions as v', 'v.recipe_id', '=', 'recipes.id')->where('v.id', $this->version)->value('owner_client_id') : null;
+
+        return ['copyClients' => DB::table('clients as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')
+            ->when($sourceOwner !== null, fn ($q) => $q->where('c.id', $sourceOwner))->orderBy('c.id')
+            ->get(['c.id', 'u.first_name', 'u.last_name']), 'versions' => DB::table('recipe_versions')->orderByDesc('id')->limit(100)->get(['id', 'title', 'status', 'editor_contract']),
             'ingredients' => DB::table('ingredients')->orderBy('name')->get(['id', 'name']), 'units' => DB::table('uoms')->orderBy('id')->get(),
             'categories' => DB::table('recipe_categories')->orderBy('name')->get(), 'tools' => DB::table('kitchen_equipment')->orderBy('name')->get(),
             'conversions' => DB::table('ingredient_uoms')->get()->groupBy('ingredient_id')];

@@ -4,6 +4,7 @@
             <x-filament::button wire:click="createDraft" wire:loading.attr="disabled">Нова чернетка A/B/C</x-filament::button>
             <label class="min-w-0 flex-1">Версія рецепта<x-filament::input.wrapper><x-filament::input.select aria-label="Версія рецепта" onchange="if(this.value) window.location.href=this.value"><option value="">Оберіть рецепт</option>@foreach ($versions as $item)<option value="{{ static::getUrl(['version' => $item->id]) }}" @selected($version === $item->id)>#{{ $item->id }} {{ $item->title }} · {{ $item->status === 'draft' ? 'Чернетка' : 'Опубліковано' }} · {{ $item->editor_contract === 'batch_v1' ? 'A/B/C' : 'Старий формат' }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
         </div>
+        @if ($ownerClientId)<p role="status">Персональний рецепт клієнта #{{ $ownerClientId }}@if ($parentRecipeId) · батьківський рецепт #{{ $parentRecipeId }}@endif. Зміни стосуються цієї копії.</p>@endif
         @if ($message)<p role="status">{{ $message }}</p>@endif
         @if ($errors->any())
             <x-filament::section><div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div></x-filament::section>
@@ -11,6 +12,15 @@
         @if ($boundary)<x-filament::section>{{ $boundary }}</x-filament::section>@endif
         @if ($canCreateVersion)
             <x-filament::button wire:click="createVersion" wire:loading.attr="disabled" wire:confirm="Створити нову чернетку A/B/C? Ручні значення збережуться й потребуватимуть повторного підтвердження. Зміни довідників приймаються окремим Refresh.">Створити нову версію A/B/C</x-filament::button>
+        @endif
+        @if ($canCreateVersion)
+            <x-filament::section heading="Персональна копія рецепта">
+                <div class="space-y-3 min-w-0">
+                    <label>Клієнт для копії<x-filament::input.wrapper><x-filament::input.select aria-label="Клієнт для копії" wire:model="copyOwnerId"><option value="">Оберіть клієнта</option>@foreach ($copyClients as $client)<option value="{{ $client->id }}">#{{ $client->id }} {{ $client->first_name }} {{ $client->last_name }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+                    <p>Окремий рецепт і чернетка A/B/C для обраного клієнта. Оригінал збережеться; план і призначення автоматично не змінюються. Ручні значення потребують повторного review, зміни довідників — явного Refresh.</p>
+                    <x-filament::button wire:click="createPersonalCopy" wire:loading.attr="disabled" wire:confirm="Створити окремий персональний рецепт для обраного клієнта без призначення до плану?">Створити персональну копію A/B/C</x-filament::button>
+                </div>
+            </x-filament::section>
         @endif
         @if ($version && !$boundary)
             @if ($ingredients->isEmpty() || $units->isEmpty() || $categories->isEmpty() || $tools->isEmpty())

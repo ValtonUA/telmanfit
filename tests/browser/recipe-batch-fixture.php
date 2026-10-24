@@ -53,6 +53,7 @@ DB::transaction(function () {
     config(['recipes.batch_editor_enabled' => true]);
     $editor = app(BatchEditor::class);
     $actor = User::where('email', 'recipe-browser@example.invalid')->firstOrFail();
+    DB::table('clients')->insert(['coach_user_id' => $actor->id]);
     $state = $editor->open($actor, $b['version']);
     $state['payload']['category_id'] = (string) $category;
     $state['payload']['components'] = [['id' => 'new-browser-component', 'title' => 'Основа']];
