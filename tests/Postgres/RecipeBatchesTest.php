@@ -16,6 +16,7 @@ class RecipeBatchesTest extends PostgresTestCase
     private function install(): void
     {
         (require database_path('migrations/2026_10_24_010000_create_recipe_batches.php'))->up();
+        (require database_path('migrations/2026_10_24_030000_allow_explicit_legacy_conversion.php'))->up();
     }
 
     private function valid(): void

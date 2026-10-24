@@ -69,6 +69,75 @@ with sync_playwright() as p:
         if name == 'Оновити preview':
             expect(target.get_by_text('Preview готовий. Збереження та публікація — окремі явні дії.', exact=True)).to_be_visible()
 
+    # C3: окремі legacy entrypoints, read-only preview/cancel та явний Refresh.
+    c3_output = Path('docs/evidence/legacy-conversion')
+    c3_output.mkdir(parents=True, exist_ok=True)
+    def legacy_fixture(*args):
+        return subprocess.check_output(['php', 'tests/browser/legacy-conversion-fixture.php', *map(str, args)], text=True).strip()
+
+    def legacy_action(name):
+        with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
+            page.get_by_role('button', name=name, exact=True).click()
+        assert response.value.status == 200
+
+    c3_checks = []
+    c3_hashes = []
+    for kind in ('draft', 'published'):
+        source_id = legacy_fixture(kind)
+        source_url = base + '/admin/recipe-batches?version=' + source_id
+        action_name = 'Створити нову версію A/B/C' if kind == 'published' else 'Перетворити чернетку на A/B/C'
+        original_hash = legacy_fixture('hash', source_id)
+        for width in (1440, 390, 320):
+            for theme in ('light', 'dark'):
+                page.set_viewport_size({'width': width, 'height': 1000})
+                page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
+                page.goto(source_url)
+                expect(page.get_by_role('button', name=action_name, exact=True)).to_be_visible()
+                expect(page.get_by_text('Це лише preview.', exact=False)).to_have_count(0)
+                legacy_action(action_name)
+                expect(page.get_by_text('B=7×A', exact=False)).to_be_visible()
+                expect(page.get_by_text('B: 1050.00 г', exact=True)).to_be_visible()
+                expect(page.get_by_text('C: 525.00 г', exact=True)).to_be_visible()
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                assert page.evaluate('document.documentElement.classList.contains("dark")') == (theme == 'dark')
+                page.screenshot(path=str(c3_output / f'{kind}-{width}-{theme}.png'), full_page=True)
+                legacy_action('Скасувати конвертацію')
+                assert legacy_fixture('hash', source_id) == original_hash
+                c3_checks.append(f'{kind}: {width}px {theme}, preview/cancel, source hash unchanged')
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.goto(source_url)
+        legacy_action(action_name)
+        page.once('dialog', lambda dialog: dialog.dismiss())
+        page.get_by_role('button', name='Підтвердити перехід на A/B/C', exact=True).click()
+        # Обробники встановлюються по одному для cancel/confirm.
+        assert legacy_fixture('hash', source_id) == original_hash
+        page.once('dialog', lambda dialog: dialog.accept())
+        legacy_action('Підтвердити перехід на A/B/C')
+        expect(page.get_by_role('alert')).to_contain_text('Явно прийміть')
+        page.get_by_text('Приймаю поточні джерела КБЖВ', exact=False).click()
+        page.get_by_text('Переглянув A/B/C', exact=False).click()
+        page.once('dialog', lambda dialog: dialog.accept())
+        with page.expect_navigation():
+            legacy_action('Підтвердити перехід на A/B/C')
+        expect(page.get_by_label('A грами 1', exact=True)).to_have_value('150.00')
+        page.reload()
+        expect(page.get_by_label('A грами 1', exact=True)).to_have_value('150.00')
+        if kind == 'published':
+            assert page.url != source_url
+            assert legacy_fixture('hash', source_id) == original_hash
+        c3_hashes.append({'kind': kind, 'source_id': source_id, 'before': original_hash, 'after': legacy_fixture('hash', source_id), 'result_url_path': page.url.removeprefix(base)})
+        c3_checks.append(f'{kind}: native confirm/cancel, missing acceptance rejected, explicit conversion, redirect/reload')
+    invalid_id = legacy_fixture('invalid')
+    original_hash = legacy_fixture('hash', invalid_id)
+    page.goto(base + '/admin/recipe-batches?version=' + invalid_id)
+    legacy_action('Перетворити чернетку на A/B/C')
+    expect(page.get_by_role('alert')).to_contain_text('Токен посилається')
+    assert legacy_fixture('hash', invalid_id) == original_hash
+    c3_checks.append('Invalid token: concrete refusal; original hash unchanged')
+    (c3_output / 'checks.json').write_text(json.dumps({'checks': c3_checks, 'source_hashes': c3_hashes}, ensure_ascii=False, indent=2) + '\n')
+    checks.append('C3: 12 responsive/theme previews, confirm/cancel, negative review/token, redirect/reload, immutable source hashes')
+    page.set_viewport_size({'width': 1440, 'height': 1000})
+
     page.goto(url)
     action(page, 'Оновити preview')
     expect(page.get_by_test_id('week-0')).to_contain_text('1050.00 g')

@@ -11,7 +11,7 @@
 | 0 | Рішення та gates | Частково | Закривати лише питання, що блокують конкретний модуль |
 | 1 | PostgreSQL: 37 бізнес-таблиць | Частково | Міграції/тести виконані; T1.5 seed-довідники ще не погоджені |
 | 2 | Картки клієнтів і auth | Частково | Картки готові; auth controlled/local/testing, production OFF; перший робочий екран анкети, решта питань пізніше |
-| **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; далі C3 legacy; T1.5 окремо** |
+| **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; C3: явна legacy conversion у Draft PR; T1.5 окремо** |
 | 4 | Раціони і призначення | Заплановано | Після Stage 3 |
 | 5 | Клієнтський кабінет | Частково | Auth/security shell є, харчового функціоналу немає |
 | 6 | Метрики, звіти, фото | Заплановано | Після клієнтів; окремі контракти за потреби |
@@ -91,11 +91,11 @@
 |---|---|---|
 | T3.1 | [PR A: forward-схема A/B/C, guards, decimal evaluator та synthetic PG/Unit тести](recipe-batches.md). PR B1 додає базовий Filament editor через query adapter; окремі catalog resources ще відсутні. | Частково |
 | T3.2 | [PR B1: атомарні Save/Refresh/Publish, locks/CAS, accepted diff і signed preview](recipe-batches.md). B2 додає stable equipment ID, manual/review, ceil count, nullable параметри та обов’язковий adequacy ack. Транзакційний сервіс публікації рецепта: створення `foods`, перевірка інгредієнтів, UOM і грамування, розрахунок КБЖВ на 1 порцію, `version_number`, `published_at`, блокування рядка версії (BR-F-09, BR-F-14). | Частково |
-| T3.3 | [PR B1: одна Filament сторінка A/B/C, pending/reload, manual/reset/review, ingredient tokens, компоненти та auto equipment](recipe-batches.md). Chromium 1440/390/320 light/dark, дві вкладки та stale source. B2 додає manual equipment, explicit presets B, equipment tokens, наслідки видалення й catalog empty states. C1 додає створення нової версії та редагування штатним A/B/C editor. C2 додає персональні копії з явним owner/confirm. Timer token — DEC-3T; legacy — C3. | Частково |
-| T3.4 | [C1: новий draft із published A/B/C](recipe-batches.md#нова-версія-abc-pr-c1), frozen clone/ID remap, повторний review, одна чернетка/CAS та незмінність старих `food_id`/призначень (BR-F-16, BR-X-01). Legacy conversion лишається C3. | Частково |
+| T3.3 | [PR B1: одна Filament сторінка A/B/C, pending/reload, manual/reset/review, ingredient tokens, компоненти та auto equipment](recipe-batches.md). Chromium 1440/390/320 light/dark, дві вкладки та stale source. B2 додає manual equipment, explicit presets B, equipment tokens, наслідки видалення й catalog empty states. C1 додає створення нової версії та редагування штатним A/B/C editor. C2 додає персональні копії з явним owner/confirm. C3 додає окремі legacy preview/confirm/cancel та redirect до штатного editor. Timer token — DEC-3T. | Частково |
+| T3.4 | [C1: новий draft із published A/B/C](recipe-batches.md#нова-версія-abc-pr-c1), frozen clone/ID remap, повторний review, одна чернетка/CAS та незмінність старих `food_id`/призначень (BR-F-16, BR-X-01). C3: явна атомарна legacy draft conversion та окрема нова версія для published legacy, forward SQL guard, snapshots/hashes/rollback/concurrency/browser докази; реалізовано у Draft PR без merge. | Виконано |
 | T3.5 | [C2: персональна CoW-копія published A/B/C](recipe-batches.md#персональна-копія-abc-c2): новий recipe/owner/parent/draft, спільний C1 clone, lineage/ACL, Filament confirm, PG/concurrency/Chromium; feature flag OFF. | Частково |
 
-**Наступний крок Stage 3:** review C2 та окреме погодження C3 — явної legacy draft conversion. C1/C2 охоплюють нові версії та персональні копії тільки published A/B/C; production activation не дозволена. T1.5 та упаковки ще очікуються; ядро працює на g і synthetic UOM. BR-F-11: explicit refresh із diff, без auto overwrite manual. Відсутність контракту анкети T2.4 не блокує рецепти.
+**Наступний крок Stage 3:** предметний review C3 (Draft PR, без merge) та окреме рішення про наступний slice. C1/C2 охоплюють нові версії та персональні копії published A/B/C; C3 — явну legacy conversion/нову версію. Production activation не дозволена. T1.5 та упаковки ще очікуються; ядро працює на g і synthetic UOM. BR-F-11: explicit refresh із diff, без auto overwrite manual. Відсутність контракту анкети T2.4 не блокує рецепти.
 
 ### Stage 4 — Раціони та призначення
 

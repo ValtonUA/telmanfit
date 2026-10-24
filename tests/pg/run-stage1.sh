@@ -160,6 +160,7 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/recipe-batch-uom-reload.php
     php tests/pg/batch-editor-concurrency.php
     php tests/pg/batch-editor-pending-source.php
+    php tests/pg/legacy-conversion-concurrency.php
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then bash tests/browser/recipe-batch-in-context.sh; fi
     exit
 fi

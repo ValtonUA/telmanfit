@@ -9,7 +9,8 @@
 Канонічний forward SQL — [11_recipe_batches.sql](11_recipe_batches.sql), byte-identical
 до [executable SQL](../database/sql/recipes/00_batch.sql). Нова forward-only міграція
 додає три таблиці, metadata версії та A snapshot; не редагує SQL 01–04 і не backfill-ить
-історію. `editor_contract` незмінний після INSERT: конвертація legacy — окремий PR C3.
+історію. `editor_contract` захищено guard; вузький одноразовий legacy draft перехід
+визначено forward [SQL 13](13_recipe_legacy_conversion.sql) і розділом C3 нижче.
 За замовчуванням усі старі версії `legacy_v1`, snapshots NULL, revision 0.
 
 | Дані | Контракт |
@@ -214,7 +215,7 @@ Equipment tokens: `{{equipment:<baseline_row_id>:quantity}}` (число та UO
 Час і температура залишаються авторським текстом, не масштабуються. Timer token
 наразі невідомий і блокує Publish, як будь-який непідтримуваний token.
 
-Legacy conversion — PR C3; персональні CoW описані нижче. Stage 4, T1.5 seeds/Excel/production activation
+Legacy conversion описана в розділі C3 нижче; персональні CoW — у C2. Stage 4, T1.5 seeds/Excel/production activation
 не входять. Feature flag лишається false.
 Перевірки: [BatchEditorTest](../tests/Postgres/BatchEditorTest.php),
 [command concurrency](../tests/pg/batch-editor-concurrency.php),
@@ -244,7 +245,7 @@ nullable min_value/UOM/tip. Усі child PK нові; карти форматі�
 інгредієнтів і обладнання розділені. FK та ingredient/equipment tokens у кроках
 remap-яться в тій самій транзакції. Save зберігає image_url незмінених текстів
 кроків, включно зі зміною порядку та remap pending tokens; змінений текст
-вважається новим кроком без попереднього зображення. Published не має pending; legacy conversion не виконується.
+вважається новим кроком без попереднього зображення. Published не має pending; команда C1 не виконує legacy conversion (окрема команда C3).
 Персональні CoW використовують цей самий writer агрегату (C2 нижче).
 
 Manual quantity/UOM та equipment overrides зберігаються, але `manual_context`
@@ -329,3 +330,61 @@ publish та action/editor у light/dark 1440/390/320. Evidence поточног
 
 Feature flag за замовчуванням **OFF**. Нових схем/міграцій, C3, timer tokens,
 Stage 4 selectors/призначень, зміни `factor` або production activation у C2 немає.
+
+## Явна legacy conversion (PR C3)
+
+Forward-only [SQL 13](13_recipe_legacy_conversion.sql) відповідає
+[виконуваному SQL](../database/sql/recipes/02_legacy_conversion.sql) та
+[міграції](../database/migrations/2026_10_24_030000_allow_explicit_legacy_conversion.php).
+Історичні SQL 01–12 й попередні міграції не змінюються; таблиць/полів не додано.
+
+`previewLegacy` — read-only MVCC snapshot. `convertLegacy` — окрема admin-команда
+із revision, signed preview і двома явними підтвердженнями: прийняття поточних
+джерел/розбіжностей (Refresh) та перегляд трьох форматів/кроків/обладнання.
+Відкриття сторінки, GET, reload, preview і cancel нічого не конвертують.
+
+- **Legacy draft:** той самий version ID. A — збережені `quantity_grams` на порцію,
+  у g; `servings_count` стає 1 і повторно не множиться. B=7×A, C=B/2, exact g
+  за чинними decimal-правилами. Компоненти, ingredient/equipment PK/FK,
+  sort_order, кроки й image_url зберігаються. GET читає компоненти за
+  sort_order/id; подальший Save нумерує їхні позиції в цьому авторському порядку.
+  Вихідний root зберігається у
+  `single.policy_snapshot.legacy_root`; початковий ingredient row — у
+  `week.input_snapshot.legacy_source`. Save/Refresh переносить цей provenance,
+  зокрема через pending envelope. Це вихідні значення, а не історичні nutrition snapshots.
+- **Published legacy:** оригінал незмінний. Під recipe lock створюється окрема
+  legacy draft того самого логічного рецепта, з `source_recipe_version_id`,
+  новими child IDs і remap ingredient/equipment tokens, далі виконується той
+  самий атомарний перехід. Другий draft відхиляється. Food не створюється до
+  штатного Publish; потім створюється новий food і наступний version_number.
+- **Джерела:** старі `*_per_serving` показуються поряд із новою A на поточних
+  nutrition, без реконструкції невідомого минулого. Quantity/UOM, поточний
+  factor, збережені та поточні grams показуються окремо. Розбіжність чинної
+  non-g конверсії — явний diff, не причина мовчки замінити збережену масу.
+  Історичний factor/nutrition, якого немає в legacy, позначається невідомим.
+  Після зміни довідника потрібні новий preview/Refresh; перед Publish —
+  штатні актуальні snapshots, manual review та adequacy acknowledgements.
+- **Відмови:** відсутня/видалена conversion або UOM, g quantity≠grams,
+  невалідні/переповнені числа, незавершений склад/кроки, неоднозначний legacy
+  snapshot, чужі/пошкоджені/невідомі tokens. Усі причини повертаються як
+  validation error до запису; одна пізня DB-помилка відкочує весь агрегат.
+  Діють наявні межі редактора та 8 KiB snapshots; жодних вигаданих фасувань.
+
+**DB-захист:** `recipe_batch_root_guard` дозволяє лише одноразовий
+`legacy_v1 draft → batch_v1 draft`, якщо root (крім contract/divisor/revision)
+не змінюється, є exact вихідний root snapshot і exact original для кожного
+ingredient. Підготовчі записи теж піднімають revision, тому порівняння root
+provenance виключає лише його `lock_version`; команда звіряє CAS до першого
+запису. Новий batch root UPDATE вимагає `old revision+1`. Повна трійка,
+коректність A/B/C/FK/totals перевіряються deferred guards до повернення успіху
+та COMMIT. Зворотний перехід, довільне переключення і published UPDATE
+заборонені. Legacy root/details тепер також піднімають revision при редагуванні;
+сама міграція жодного старого рядка не переписує. Тригери не відключаються.
+
+Тестові докази: [PG tests](../tests/Postgres/LegacyBatchEditorTest.php),
+[concurrency з реальним COMMIT/reload](../tests/pg/legacy-conversion-concurrency.php),
+[Chromium checks](evidence/legacy-conversion/checks.json).
+Snapshots/hashes до/після доводять rollback, read-only preview/cancel і незмінність
+published source, foods, планів та assignments. Усі fixtures синтетичні, PG18
+без мережі/зовнішніх портів із cleanup. Feature flag лишається OFF; Stage 4,
+T1.5/Excel, timer tokens та production activation не входять у C3.
