@@ -214,7 +214,7 @@ Equipment tokens: `{{equipment:<baseline_row_id>:quantity}}` (число та UO
 Час і температура залишаються авторським текстом, не масштабуються. Timer token
 наразі невідомий і блокує Publish, як будь-який непідтримуваний token.
 
-Legacy conversion/CoW — PR C3/C2; Stage 4, T1.5 seeds/Excel/production activation
+Legacy conversion — PR C3; персональні CoW описані нижче. Stage 4, T1.5 seeds/Excel/production activation
 не входять. Feature flag лишається false.
 Перевірки: [BatchEditorTest](../tests/Postgres/BatchEditorTest.php),
 [command concurrency](../tests/pg/batch-editor-concurrency.php),
@@ -244,8 +244,8 @@ nullable min_value/UOM/tip. Усі child PK нові; карти форматі�
 інгредієнтів і обладнання розділені. FK та ingredient/equipment tokens у кроках
 remap-яться в тій самій транзакції. Save зберігає image_url незмінених текстів
 кроків, включно зі зміною порядку та remap pending tokens; змінений текст
-вважається новим кроком без попереднього зображення. Published не має pending; legacy conversion
-і персональні CoW не виконуються.
+вважається новим кроком без попереднього зображення. Published не має pending; legacy conversion не виконується.
+Персональні CoW використовують цей самий writer агрегату (C2 нижче).
 
 Manual quantity/UOM та equipment overrides зберігаються, але `manual_context`
 стає порожнім object, `review_ack_hash` — NULL; `adequacy_ack` прибирається
@@ -278,3 +278,54 @@ review reset і повторну публікацію, старий published pl
 відмову другій вкладці та незмінність повного published aggregate.
 
 [Локальний звіт C1 та перелік змінених файлів](evidence/recipe-batches/c1-validation.md).
+
+
+## Персональна копія A/B/C (C2)
+
+`BatchEditor::createPersonalCopy(actor, sourceId, revision, ownerId)` створює новий
+логічний `recipes` із `parent_recipe_id` джерела, обов'язковим існуючим
+`owner_client_id`, назвою published-версії та категорією картки. Власна draft-версія
+має `source_recipe_version_id`; `food_id/version_number/published_at/publication_review`
+спочатку NULL. Джерело — тільки published `batch_v1` з актуальною revision.
+Спільні приватні `cloneSource` / `cloneAggregate` обслуговують C1 і C2 без дублювання
+клонування деталей. Frozen snapshots, режими, nullable equipment, image_url,
+компоненти та remapped tokens зберігаються за контрактом C1; manual/adequacy
+acknowledgements скидаються. Stale довідник дозволяє frozen clone, але подальші
+Save/Publish вимагають явного Refresh і нового review.
+
+Реально реалізоване повноваження — **лише admin**, перевірений за поточною роллю
+в БД, за ввімкненого feature flag. Немає нових повноважень coach або клієнтського
+self-service: client/coach/guest не можуть читати, preview, змінювати, публікувати
+чи копіювати персональні рецепти через цей editor. Admin керує всіма клієнтами;
+Filament пропонує існуючих клієнтів, без preselection, з явним confirm і redirect
+до штатної чернетки. Для personal source доступний тільки той самий owner;
+підміна owner через Livewire повторно перевіряється сервісом.
+
+Lineage перевіряється при clone/open/preview/Save/Publish: цикли та self-links,
+відсутні предки, parent без owner, cross-owner предки, mutable або стороннє
+source-version джерело відхиляються. Наявні FK/CHECK не змінюються. Створений
+сервісом новий ID завжди відмінний від parent/source. Recipe lock джерела
+серіалізує C1/C2; ancestors утримуються shared locks у writer-командах, клієнт —
+`FOR UPDATE`, source-version перевіряється повторно після lock. Одночасні/повторні
+C2 одного parent/owner не створюють другу персональну картку, доки попередня має
+draft. Це сервісний guard для єдиного writer; нового SQL UNIQUE немає. Різні
+клієнти можуть мати незалежні копії глобального рецепта. Після публікації копії
+можна створювати її наступні версії через C1 або нові персональні копії в межах
+того самого owner; автоматичного призначення до плану немає.
+
+Публікація personal draft використовує чинний Publish: новий food та
+`version_number=1` нового recipe, надалі власна нумерація. Published source,
+його foods, плани й assignments не змінюються. Уся операція, включно зі
+створенням логічної картки та late deferred guards, транзакційна.
+
+Перевірки C2 включені до наявного `RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1
+bash tests/pg/run-stage1.sh`: параметризовані C1/C2 PG-тести точних snapshots,
+PK/FK/tokens, immutable history та publish, негативні owner/role/flag/source/lineage,
+late rollback, реальні очікування source/client locks, duplicate/source-owner/
+target-delete гонки з COMMIT/reload. Chromium перевіряє відсутність автоматичного
+owner, confirm/cancel, помилки, redirect, frozen→Refresh/review, duplicate,
+publish та action/editor у light/dark 1440/390/320. Evidence поточного прогону
+публікується в CI artifacts, результат прив'язаний до SHA PR.
+
+Feature flag за замовчуванням **OFF**. Нових схем/міграцій, C3, timer tokens,
+Stage 4 selectors/призначень, зміни `factor` або production activation у C2 немає.

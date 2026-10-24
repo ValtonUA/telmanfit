@@ -221,7 +221,6 @@ with sync_playwright() as p:
     action(page, 'Зберегти чернетку')
     expect(page.get_by_role('alert')).to_contain_text('явно прийміть diff')
     action(page, 'Оновити preview')
-    page.once('dialog', lambda dialog: dialog.accept())
     action(page, 'Прийняти diff і Refresh')
     expect(page.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
     action(page, 'Підтвердити ручні значення й обладнання')
@@ -232,6 +231,66 @@ with sync_playwright() as p:
     assert before == after
     checks.append('C1: publish → clone з новими ingredient/equipment tokens, manual/review/reload; duplicate draft rejected; explicit Refresh; published source unchanged')
     page.screenshot(path=str(output / 'clone-1440-dark.png'), full_page=True)
+    # C2: явний owner, confirm, окрема картка; джерело вже stale після C1.
+    expect(published_tab.get_by_label('Клієнт для копії', exact=True)).to_have_value('')
+    published_tab.once('dialog', lambda dialog: dialog.accept())
+    with published_tab.expect_response(lambda r: '/livewire/update' in r.url):
+        published_tab.get_by_role('button', name='Створити персональну копію A/B/C', exact=True).click()
+    expect(published_tab.get_by_role('alert')).to_contain_text('Оберіть клієнта')
+    for width in (1440, 390, 320):
+        for theme in ('light', 'dark'):
+            published_tab.set_viewport_size({'width': width, 'height': 1000})
+            published_tab.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
+            published_tab.reload()
+            assert published_tab.evaluate('document.documentElement.scrollWidth <= innerWidth'), (width, theme)
+            assert published_tab.evaluate('document.documentElement.classList.contains("dark")') == (theme == 'dark')
+            published_tab.screenshot(path=str(output / f'personal-action-{width}-{theme}.png'), full_page=True)
+    owner_value = published_tab.get_by_label('Клієнт для копії', exact=True).locator('option').nth(1).get_attribute('value')
+    published_tab.get_by_label('Клієнт для копії', exact=True).select_option(owner_value)
+    published_tab.once('dialog', lambda dialog: dialog.dismiss())
+    published_tab.get_by_role('button', name='Створити персональну копію A/B/C', exact=True).click()
+    assert published_tab.url == url
+    published_tab.once('dialog', lambda dialog: dialog.accept())
+    published_tab.get_by_role('button', name='Створити персональну копію A/B/C', exact=True).click()
+    published_tab.wait_for_url(lambda u: '/admin/recipe-batches?version=' in u and u != url and u != copy_url)
+    personal_url = published_tab.url
+    expect(published_tab.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
+    assert published_tab.locator('textarea').first.input_value() != source_text
+    assert published_tab.get_by_text('Токен: {{equipment:', exact=False).inner_text() != source_tool
+    action(published_tab, 'Оновити preview')
+    action(published_tab, 'Зберегти чернетку')
+    expect(published_tab.get_by_role('alert')).to_contain_text('явно прийміть diff')
+    action(published_tab, 'Оновити preview')
+    action(published_tab, 'Прийняти diff і Refresh')
+    action(published_tab, 'Підтвердити ручні значення й обладнання')
+    for width in (1440, 390, 320):
+        for theme in ('light', 'dark'):
+            published_tab.set_viewport_size({'width': width, 'height': 1000})
+            published_tab.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
+            published_tab.reload()
+            action(published_tab, 'Оновити preview')
+            expect(published_tab.get_by_label('Кількість week 1', exact=True)).to_have_value('1000.00')
+            assert published_tab.evaluate('document.documentElement.scrollWidth <= innerWidth'), (width, theme)
+            assert published_tab.evaluate('document.documentElement.classList.contains("dark")') == (theme == 'dark')
+            published_tab.screenshot(path=str(output / f'personal-editor-{width}-{theme}.png'), full_page=True)
+    duplicate = context.new_page()
+    duplicate.goto(url)
+    duplicate.get_by_label('Клієнт для копії', exact=True).select_option(owner_value)
+    duplicate.once('dialog', lambda dialog: dialog.accept())
+    with duplicate.expect_response(lambda r: '/livewire/update' in r.url):
+        duplicate.get_by_role('button', name='Створити персональну копію A/B/C', exact=True).click()
+    expect(duplicate.get_by_role('alert')).to_contain_text('вже має чернетку')
+    duplicate.close()
+    published_tab.locator('input[type=checkbox]').check()
+    published_tab.once('dialog', lambda dialog: dialog.accept())
+    with published_tab.expect_response(lambda r: '/livewire/update' in r.url):
+        published_tab.get_by_role('button', name='Опублікувати A/B/C', exact=True).click()
+    expect(published_tab.get_by_role('button', name='Створити персональну копію A/B/C', exact=True)).to_be_visible()
+    # Для персонального published дозволений тільки його owner; вибір знову порожній.
+    expect(published_tab.get_by_label('Клієнт для копії', exact=True)).to_have_value('')
+    assert published_tab.get_by_label('Клієнт для копії', exact=True).locator('option').count() == 2
+    assert before == subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
+    checks.append('C2: explicit owner/confirm/cancel, redirect, remap, frozen→Refresh/manual review, duplicate rejection, publish/reload; original unchanged; 1440/390/320 light/dark action+editor')
     published_tab.close()
     assert not errors, errors
     browser.close()

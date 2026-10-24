@@ -11,6 +11,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Recipes\BatchFixture;
 
@@ -91,7 +92,23 @@ class BatchEditorTest extends PostgresTestCase
         return $b;
     }
 
-    public function test_clone_preserves_frozen_aggregate_remaps_every_child_and_requires_new_review(): void
+    public static function cloneKinds(): array
+    {
+        return ['C1 version' => [false], 'C2 personal copy' => [true]];
+    }
+
+    private function cloneForTest(array $b, string $revision, bool $personal): int
+    {
+        if (! $personal) {
+            return $this->editor->createVersion($this->actor, $b['version'], $revision);
+        }
+        $client = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+
+        return $this->editor->createPersonalCopy($this->actor, $b['version'], $revision, $client);
+    }
+
+    #[DataProvider('cloneKinds')]
+    public function test_clone_preserves_frozen_aggregate_remaps_every_child_and_requires_new_review(bool $personal): void
     {
         $b = $this->publishedForClone();
         $source = $this->state($b);
@@ -118,9 +135,17 @@ class BatchEditorTest extends PostgresTestCase
         foreach (['meal_plans', 'meal_plan_versions', 'meal_plan_days', 'meals', 'meal_items', 'client_meal_plan_assignments'] as $table) {
             $historical[$table] = DB::table($table)->orderBy('id')->get()->all();
         }
-        $id = $this->editor->createVersion($this->actor, $b['version'], $source['revision']);
+        $id = $this->cloneForTest($b, $source['revision'], $personal);
         $v = DB::table('recipe_versions')->find($id);
-        $this->assertSame($recipe->id, $v->recipe_id);
+        if ($personal) {
+            $this->assertNotSame($recipe->id, $v->recipe_id);
+            $card = DB::table('recipes')->find($v->recipe_id);
+            $this->assertSame($recipe->id, $card->parent_recipe_id);
+            $this->assertNotNull($card->owner_client_id);
+            $this->assertSame($recipe->recipe_category_id, $card->recipe_category_id);
+        } else {
+            $this->assertSame($recipe->id, $v->recipe_id);
+        }
         $this->assertSame($b['version'], $v->source_recipe_version_id);
         $this->assertSame('draft', $v->status);
         foreach (['food_id', 'version_number', 'published_at', 'publication_review'] as $field) {
@@ -169,7 +194,7 @@ class BatchEditorTest extends PostgresTestCase
         $this->assertSame('https://example.invalid/step.png', DB::table('recipe_directions')->where('recipe_version_id', $id)->where('direction_number', 2)->value('image_url'));
         $this->editor->publish($this->actor, $id, $copy['revision'], $preview['token']);
         $next = DB::table('recipe_versions')->find($id);
-        $this->assertSame(2, $next->version_number);
+        $this->assertSame($personal ? 1 : 2, $next->version_number);
         $this->assertNotSame($before['recipe_versions'][0]->food_id, $next->food_id);
         $this->assertEquals($before['recipe_versions'][0], DB::table('recipe_versions')->find($b['version']));
         foreach ($historical as $table => $records) {
@@ -187,7 +212,8 @@ class BatchEditorTest extends PostgresTestCase
         $this->assertSame($id, DB::table('recipe_versions')->find($third)->source_recipe_version_id);
     }
 
-    public function test_clone_stale_sources_require_explicit_refresh_and_keep_manual_pair(): void
+    #[DataProvider('cloneKinds')]
+    public function test_clone_stale_sources_require_explicit_refresh_and_keep_manual_pair(bool $personal): void
     {
         $b = $this->publishedForClone();
         $source = $this->state($b);
@@ -195,7 +221,7 @@ class BatchEditorTest extends PostgresTestCase
         DB::table('ingredients')->where('id', $b['ingredient'])->update(['kcal_per_100g' => '124.00']);
         DB::table('ingredient_uoms')->where('ingredient_id', $b['ingredient'])->update(['grams_per_uom' => '420.00']);
         DB::table('kitchen_equipment')->where('id', $source['payload']['equipment'][0]['kitchen_equipment_id'])->update(['name' => 'Changed clone pan']);
-        $id = $this->editor->createVersion($this->actor, $b['version'], $source['revision']);
+        $id = $this->cloneForTest($b, $source['revision'], $personal);
         $copy = $this->editor->open($this->actor, $id);
         $this->assertSame($snapshot, DB::table('recipe_ingredients')->where('recipe_version_id', $id)->value('ingredient_snapshot'));
         $preview = $this->editor->preview($this->actor, $id, $copy['revision'], $copy['payload']);
@@ -280,6 +306,127 @@ class BatchEditorTest extends PostgresTestCase
         $id = DB::table('recipe_versions')->where('source_recipe_version_id', $b['version'])->value('id');
         $page->assertRedirect(RecipeBatches::getUrl(['version' => $id]));
         Livewire::withQueryParams(['version' => $id])->test(RecipeBatches::class)->assertSet('boundary', '')->call('calculate')->call('saveDraft')->assertHasNoErrors();
+    }
+
+    public function test_personal_copy_rejects_invalid_owners_sources_cross_client_and_all_non_admin_access(): void
+    {
+        $b = $this->publishedForClone();
+        $state = $this->state($b);
+        $owner = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+        $other = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+        foreach ([0, -1, 2147483647] as $invalid) {
+            $this->denied(fn () => $this->editor->createPersonalCopy($this->actor, $b['version'], $state['revision'], $invalid), 'існуючого клієнта');
+        }
+        $draft = $this->batch();
+        $this->denied(fn () => $this->editor->createPersonalCopy($this->actor, $draft['version'], $this->state($draft)['revision'], $owner), 'опубліковану');
+        $legacyRecipe = DB::table('recipes')->insertGetId(['title' => 'Legacy CoW']);
+        $legacy = DB::table('recipe_versions')->insertGetId(['recipe_id' => $legacyRecipe, 'title' => 'Legacy CoW']);
+        $this->denied(fn () => $this->editor->createPersonalCopy($this->actor, $legacy, '0', $owner), 'Legacy');
+        $this->denied(fn () => $this->editor->createPersonalCopy($this->actor, $b['version'], '0', $owner), 'ревізією');
+        try {
+            $this->editor->createPersonalCopy($this->actor, 2147483647, '0', $owner);
+            $this->fail('Missing source');
+        } catch (HttpException $e) {
+            $this->assertSame(404, $e->getStatusCode());
+        }
+        $id = $this->editor->createPersonalCopy($this->actor, $b['version'], $state['revision'], $owner);
+        $count = DB::table('recipes')->count();
+        $this->denied(fn () => $this->editor->createPersonalCopy($this->actor, $b['version'], $state['revision'], $owner), 'вже має чернетку');
+        $this->assertSame($count, DB::table('recipes')->count());
+        $copy = $this->editor->open($this->actor, $id);
+        $preview = $this->editor->preview($this->actor, $id, $copy['revision'], $copy['payload']);
+        foreach (['client', 'coach', 'revoked', 'flag'] as $case) {
+            $actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic denied', 'role' => $case === 'client' ? 'client' : ($case === 'coach' ? 'coach' : 'admin')]));
+            if ($case === 'client') {
+                DB::table('clients')->where('id', $other)->update(['user_id' => $actor->id]);
+            }
+            if ($case === 'revoked') {
+                DB::table('users')->where('id', $actor->id)->update(['role' => 'client']);
+            }
+            config(['recipes.batch_editor_enabled' => $case !== 'flag']);
+            foreach ([
+                fn () => $this->editor->open($actor, $id),
+                fn () => $this->editor->preview($actor, $id, $copy['revision'], $copy['payload']),
+                fn () => $this->editor->save($actor, $id, $copy['revision'], $copy['payload'], $preview['token']),
+                fn () => $this->editor->publish($actor, $id, $copy['revision'], $preview['token']),
+                fn () => $this->editor->createVersion($actor, $b['version'], $state['revision']),
+                fn () => $this->editor->createPersonalCopy($actor, $b['version'], $state['revision'], $owner),
+            ] as $action) {
+                try {
+                    $action();
+                    $this->fail('Non-admin/flag OFF must fail');
+                } catch (HttpException $e) {
+                    $this->assertSame(403, $e->getStatusCode());
+                }
+            }
+        }
+        config(['recipes.batch_editor_enabled' => true]);
+        $copy = $this->commit($id, $copy, ack: true);
+        $p = $this->editor->preview($this->actor, $id, $copy['revision'], $copy['payload']);
+        $this->editor->publish($this->actor, $id, $copy['revision'], $p['token']);
+        $revision = $this->editor->open($this->actor, $id)['revision'];
+        $this->denied(fn () => $this->editor->createPersonalCopy($this->actor, $id, $revision, $other), 'іншому клієнту');
+        $child = $this->editor->createPersonalCopy($this->actor, $id, $revision, $owner);
+        $this->assertSame($owner, DB::table('recipes')->find(DB::table('recipe_versions')->find($child)->recipe_id)->owner_client_id);
+    }
+
+    public function test_personal_copy_lineage_guards_self_cycles_mutable_and_unrelated_sources_and_missing_owner(): void
+    {
+        $b = $this->publishedForClone();
+        $owner = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+        $id = $this->editor->createPersonalCopy($this->actor, $b['version'], $this->state($b)['revision'], $owner);
+        $v = DB::table('recipe_versions')->find($id);
+        $original = DB::table('recipe_versions')->find($b['version']);
+        foreach ([
+            ['recipes', $v->recipe_id, ['parent_recipe_id' => $v->recipe_id]],
+            ['recipe_versions', $id, ['source_recipe_version_id' => $id, 'lock_version' => DB::raw('lock_version+1')]],
+        ] as [$table, $key, $values]) {
+            try {
+                DB::transaction(fn () => DB::table($table)->where('id', $key)->update($values));
+                $this->fail('DB self CHECK must fail');
+            } catch (QueryException $e) {
+                $this->assertSame('23514', $e->errorInfo[0]);
+            }
+        }
+        // Сервіс відхиляє також графи, які чинні FK/CHECK самі не забороняють.
+        DB::table('recipes')->where('id', $original->recipe_id)->update(['parent_recipe_id' => $v->recipe_id, 'owner_client_id' => $owner]);
+        $this->denied(fn () => $this->editor->open($this->actor, $id), 'Циклічна');
+        DB::table('recipes')->where('id', $original->recipe_id)->update(['parent_recipe_id' => null, 'owner_client_id' => null]);
+        DB::table('recipes')->where('id', $v->recipe_id)->update(['owner_client_id' => null]);
+        $this->denied(fn () => $this->editor->open($this->actor, $id), 'власник');
+        DB::table('recipes')->where('id', $v->recipe_id)->update(['owner_client_id' => $owner]);
+        $other = $this->batch();
+        DB::table('recipe_versions')->where('id', $id)->update(['source_recipe_version_id' => $other['version'], 'lock_version' => DB::raw('lock_version+1')]);
+        $this->denied(fn () => $this->editor->open($this->actor, $id), 'опублікованою');
+        DB::table('recipe_versions')->where('id', $other['version'])->update(['source_recipe_version_id' => $id, 'lock_version' => DB::raw('lock_version+1')]);
+        // Окремий синтетичний цикл draft джерел відхиляється до будь-якого запису.
+        $this->denied(fn () => $this->editor->open($this->actor, $id), 'опублікованою');
+        DB::table('recipe_versions')->where('id', $id)->update(['source_recipe_version_id' => $b['version'], 'lock_version' => DB::raw('lock_version+1')]);
+        DB::table('recipe_versions')->where('id', $other['version'])->update(['source_recipe_version_id' => null, 'lock_version' => DB::raw('lock_version+1')]);
+        $this->publish($other['version']);
+        DB::table('recipe_versions')->where('id', $id)->update(['source_recipe_version_id' => $other['version'], 'lock_version' => DB::raw('lock_version+1')]);
+        $this->denied(fn () => $this->editor->open($this->actor, $id), 'батьківського рецепта');
+        DB::table('recipe_versions')->where('id', $id)->update(['source_recipe_version_id' => $b['version'], 'lock_version' => DB::raw('lock_version+1')]);
+        $copy = $this->editor->open($this->actor, $id);
+        $before = DB::table('recipes')->count();
+        DB::unprepared("CREATE FUNCTION pg_temp.reject_personal_direction() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic personal late failure'; END $$; CREATE TRIGGER synthetic_personal_failure BEFORE INSERT ON recipe_directions FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_personal_direction();");
+        $otherOwner = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+        try {
+            $this->editor->createPersonalCopy($this->actor, $b['version'], $this->state($b)['revision'], $otherOwner);
+            $this->fail('Late failure must roll back recipe and children');
+        } catch (QueryException $e) {
+            $this->assertStringContainsString('Synthetic personal late failure', $e->getMessage());
+        }
+        $this->assertSame($before, DB::table('recipes')->count());
+        $this->assertSame($copy, $this->editor->open($this->actor, $id));
+        DB::unprepared('DROP TRIGGER synthetic_personal_failure ON recipe_directions');
+        $this->installAuthSchema();
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $this->actingAs($this->actor);
+        Livewire::withQueryParams(['version' => $b['version']])->test(RecipeBatches::class)
+            ->assertSet('copyOwnerId', '')->call('createPersonalCopy')->assertHasErrors('batch')
+            ->set('copyOwnerId', (string) $otherOwner)->call('createPersonalCopy')->assertHasNoErrors()
+            ->assertRedirect(RecipeBatches::getUrl(['version' => DB::table('recipe_versions')->orderByDesc('id')->value('id')]));
     }
 
     public function test_create_get_and_preview_are_read_only_and_client_totals_are_ignored(): void
