@@ -109,6 +109,12 @@ Table recipe_versions [headercolor: #7C3AED] {
   published_at timestamptz
   created_at timestamptz [not null]
 
+  editor_contract text [not null, default: 'legacy_v1']
+  lock_version bigint [not null, default: 0]
+  draft_pending_rows jsonb [not null, default: `'[]'::jsonb`]
+  publication_review jsonb
+  source_recipe_version_id integer
+
   indexes {
     (recipe_id, version_number) [unique]
     (id, recipe_id) [unique]
@@ -139,6 +145,11 @@ Table recipe_ingredients [headercolor: #7C3AED] {
   uom_id smallint [not null]
   quantity_grams numeric(7,2) [not null]
   sort_order smallint [not null, default: 0]
+
+  ingredient_snapshot jsonb
+  indexes {
+    (id, recipe_version_id) [unique]
+  }
 
   Note: 'All quantities are stored per 1 serving of the recipe version.'
 }
@@ -176,6 +187,7 @@ Table recipe_kitchen_equipment [headercolor: #D97706] {
   tip text
 
   indexes {
+    (id, recipe_version_id) [unique]
     (recipe_version_id, kitchen_equipment_id) [unique]
   }
 }
@@ -1035,3 +1047,66 @@ Table auth_rate_budgets {
 // Profiles: CHECK client_weekdays_valid перевіряє text[]: лише 7 lowercase weekday-кодів, без NULL/повторів.
 // Калорійність та кроки >=0; SQL і forward міграція — database/sql/profiles/00_profiles.sql.
 // fitness_equipment/client_fitness_equipment — legacy; нові текстові описи пишуться лише в activity profile.
+
+// Forward Stage 3: точні CHECK, deferred guards та snapshots — 11_recipe_batches.sql.
+Table recipe_batch_formats {
+  id integer [pk]
+  recipe_version_id integer [not null]
+  code text [not null, note: 'single/week/half_week; physical batch, no C divisor']
+  policy_snapshot jsonb [not null]
+  kcal_total numeric(14,6) [not null]
+  protein_total numeric(14,6) [not null]
+  fat_total numeric(14,6) [not null]
+  carbs_total numeric(14,6) [not null]
+  calculation_hash text [not null]
+  indexes {
+    (recipe_version_id, code) [unique]
+    (id, recipe_version_id) [unique]
+    (id, recipe_version_id, code) [unique]
+  }
+}
+Table recipe_batch_quantities {
+  recipe_version_id integer [not null]
+  format_id integer [not null]
+  format_code text [not null, note: 'week/half_week']
+  recipe_ingredient_id integer [not null]
+  mode text [not null, note: 'auto/manual керує парою quantity/UOM; auto C успадковує фактичну UOM/factor B, policy обирається за accepted auto_policies у input_snapshot']
+  quantity numeric(7,2) [not null]
+  uom_id smallint [not null]
+  quantity_grams numeric(7,2) [not null]
+  input_snapshot jsonb [not null]
+  manual_context jsonb
+  review_ack_hash text
+  indexes {
+    (format_id, recipe_ingredient_id) [pk]
+    recipe_version_id
+    recipe_ingredient_id
+    uom_id
+  }
+}
+Table recipe_batch_equipment {
+  recipe_version_id integer [not null]
+  format_id integer [not null]
+  recipe_kitchen_equipment_id integer [not null]
+  mode text [not null]
+  min_value numeric(7,2)
+  uom_id smallint
+  tip text
+  input_snapshot jsonb [not null]
+  manual_context jsonb
+  review_ack_hash text
+  indexes {
+    (format_id, recipe_kitchen_equipment_id) [pk]
+    recipe_version_id
+    recipe_kitchen_equipment_id
+    uom_id
+  }
+}
+Ref: recipe_versions.source_recipe_version_id > recipe_versions.id [delete: restrict]
+Ref: recipe_batch_formats.recipe_version_id > recipe_versions.id [delete: restrict]
+Ref: recipe_batch_quantities.(format_id, recipe_version_id, format_code) > recipe_batch_formats.(id, recipe_version_id, code) [delete: restrict]
+Ref: recipe_batch_quantities.(recipe_ingredient_id, recipe_version_id) > recipe_ingredients.(id, recipe_version_id) [delete: restrict]
+Ref: recipe_batch_quantities.uom_id > uoms.id [delete: restrict]
+Ref: recipe_batch_equipment.(format_id, recipe_version_id) > recipe_batch_formats.(id, recipe_version_id) [delete: restrict]
+Ref: recipe_batch_equipment.(recipe_kitchen_equipment_id, recipe_version_id) > recipe_kitchen_equipment.(id, recipe_version_id) [delete: restrict]
+Ref: recipe_batch_equipment.uom_id > uoms.id [delete: restrict]
