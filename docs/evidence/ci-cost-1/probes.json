@@ -1,0 +1,400 @@
+{
+  "probes": [
+    {
+      "eligible": false,
+      "repository": "ValtonUA/telmanfit",
+      "pr": 43,
+      "head_sha": "71d8f19d5f9079df34b8a1360da7334d7294b093",
+      "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+      "evidence": {
+        "full.yml": {
+          "run_id": 40105331963,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105331963"
+        },
+        "fast.yml": {
+          "run_id": 40105331952,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105331952"
+        },
+        "docs-health.yml": {
+          "run_id": 40105331942,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105331942"
+        }
+      },
+      "errors": [
+        "full.yml: latest run 40105331963 is not completed/success",
+        "full.yml: missing/extra/duplicate jobs: ['Full PR gate', 'stage1', 'compose', 'Full documentation and base', 'runtime']",
+        "full.yml: invalid job Full PR gate",
+        "full.yml: non-success step Reject every non-success dependency",
+        "full.yml: invalid job stage1",
+        "full.yml: missing steps for stage1",
+        "full.yml: invalid job compose",
+        "full.yml: missing steps for compose",
+        "full.yml: invalid job Full documentation and base",
+        "full.yml: missing steps for Full documentation and base",
+        "full.yml: invalid job runtime",
+        "full.yml: missing steps for runtime"
+      ],
+      "kind": "docs",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/43",
+      "runs": [
+        {
+          "id": 40105331963,
+          "name": "Full PR",
+          "head_sha": "71d8f19d5f9079df34b8a1360da7334d7294b093",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105331963"
+        },
+        {
+          "id": 40105331952,
+          "name": "Fast PR",
+          "head_sha": "71d8f19d5f9079df34b8a1360da7334d7294b093",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105331952"
+        },
+        {
+          "id": 40105331942,
+          "name": "Documentation health",
+          "head_sha": "71d8f19d5f9079df34b8a1360da7334d7294b093",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105331942"
+        }
+      ]
+    },
+    {
+      "eligible": false,
+      "repository": "ValtonUA/telmanfit",
+      "pr": 44,
+      "head_sha": "cf39e47486a86e58ca25ca18710ba640c9207921",
+      "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+      "evidence": {
+        "full.yml": {
+          "run_id": 40105336611,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105336611"
+        },
+        "fast.yml": {
+          "run_id": 40105336552,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105336552"
+        },
+        "docs-health.yml": {
+          "run_id": 40105336638,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105336638"
+        }
+      },
+      "errors": [
+        "full.yml: latest run 40105336611 is not completed/success",
+        "full.yml: missing/extra/duplicate jobs: ['Full PR gate', 'Full documentation and base', 'stage1', 'runtime', 'compose']",
+        "full.yml: invalid job Full PR gate",
+        "full.yml: non-success step Reject every non-success dependency",
+        "full.yml: invalid job Full documentation and base",
+        "full.yml: missing steps for Full documentation and base",
+        "full.yml: invalid job stage1",
+        "full.yml: missing steps for stage1",
+        "full.yml: invalid job runtime",
+        "full.yml: missing steps for runtime",
+        "full.yml: invalid job compose",
+        "full.yml: missing steps for compose",
+        "fast.yml: latest run 40105336552 is not completed/success",
+        "fast.yml: invalid job Fast PR checks",
+        "fast.yml: non-success step PHP syntax and Compose configuration",
+        "fast.yml: non-success step Run php scripts/check-php-runtime.php",
+        "fast.yml: non-success step Run composer validate --strict",
+        "fast.yml: non-success step Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+        "fast.yml: non-success step Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+        "fast.yml: non-success step Run composer check-platform-reqs",
+        "fast.yml: non-success step Run composer audit --locked --no-interaction",
+        "fast.yml: non-success step Run php artisan package:discover --ansi",
+        "fast.yml: non-success step Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+        "fast.yml: non-success step Run npm ci --ignore-scripts",
+        "fast.yml: non-success step Run npm run build",
+        "fast.yml: non-success step Run npm ci --prefix client --ignore-scripts",
+        "fast.yml: non-success step Run npm run lint --prefix client",
+        "fast.yml: non-success step Run npm run build --prefix client",
+        "fast.yml: non-success step Run php artisan test --display-all-issues",
+        "fast.yml: non-success step Run php vendor/bin/pint --test"
+      ],
+      "kind": "php",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/44",
+      "runs": [
+        {
+          "id": 40105336611,
+          "name": "Full PR",
+          "head_sha": "cf39e47486a86e58ca25ca18710ba640c9207921",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105336611"
+        },
+        {
+          "id": 40105336552,
+          "name": "Fast PR",
+          "head_sha": "cf39e47486a86e58ca25ca18710ba640c9207921",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105336552"
+        },
+        {
+          "id": 40105336638,
+          "name": "Documentation health",
+          "head_sha": "cf39e47486a86e58ca25ca18710ba640c9207921",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105336638"
+        }
+      ]
+    },
+    {
+      "eligible": false,
+      "repository": "ValtonUA/telmanfit",
+      "pr": 45,
+      "head_sha": "5b009c38110d860348d48947ac2acdb5a35f0088",
+      "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+      "evidence": {
+        "full.yml": {
+          "run_id": 40105342812,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105342812"
+        },
+        "fast.yml": {
+          "run_id": 40105342563,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105342563"
+        },
+        "docs-health.yml": {
+          "run_id": 40105342588,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105342588"
+        }
+      },
+      "errors": [
+        "full.yml: latest run 40105342812 is not completed/success",
+        "full.yml: missing/extra/duplicate jobs: ['Full PR gate', 'stage1', 'compose', 'runtime', 'Full documentation and base']",
+        "full.yml: invalid job Full PR gate",
+        "full.yml: non-success step Reject every non-success dependency",
+        "full.yml: invalid job stage1",
+        "full.yml: missing steps for stage1",
+        "full.yml: invalid job compose",
+        "full.yml: missing steps for compose",
+        "full.yml: invalid job runtime",
+        "full.yml: missing steps for runtime",
+        "full.yml: invalid job Full documentation and base",
+        "full.yml: missing steps for Full documentation and base"
+      ],
+      "kind": "schema",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/45",
+      "runs": [
+        {
+          "id": 40105342812,
+          "name": "Full PR",
+          "head_sha": "5b009c38110d860348d48947ac2acdb5a35f0088",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105342812"
+        },
+        {
+          "id": 40105342563,
+          "name": "Fast PR",
+          "head_sha": "5b009c38110d860348d48947ac2acdb5a35f0088",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105342563"
+        },
+        {
+          "id": 40105342588,
+          "name": "Documentation health",
+          "head_sha": "5b009c38110d860348d48947ac2acdb5a35f0088",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105342588"
+        }
+      ]
+    },
+    {
+      "eligible": false,
+      "repository": "ValtonUA/telmanfit",
+      "pr": 46,
+      "head_sha": "59ec21602abce96e353206eefa1ab7aa60506799",
+      "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+      "evidence": {
+        "full.yml": {
+          "run_id": 40105346544,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105346544"
+        },
+        "fast.yml": {
+          "run_id": 40105346528,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105346528"
+        },
+        "docs-health.yml": {
+          "run_id": 40105346461,
+          "attempt": 1,
+          "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105346461"
+        }
+      },
+      "errors": [
+        "full.yml: latest run 40105346544 is not completed/success",
+        "full.yml: missing/extra/duplicate jobs: ['Full PR gate', 'compose', 'stage1', 'Full documentation and base', 'runtime']",
+        "full.yml: invalid job Full PR gate",
+        "full.yml: non-success step Reject every non-success dependency",
+        "full.yml: invalid job compose",
+        "full.yml: missing steps for compose",
+        "full.yml: invalid job stage1",
+        "full.yml: missing steps for stage1",
+        "full.yml: invalid job Full documentation and base",
+        "full.yml: missing steps for Full documentation and base",
+        "full.yml: invalid job runtime",
+        "full.yml: missing steps for runtime",
+        "fast.yml: latest run 40105346528 is not completed/success",
+        "fast.yml: invalid job Fast PR checks",
+        "fast.yml: non-success step PHP syntax and Compose configuration",
+        "fast.yml: non-success step Run php scripts/check-php-runtime.php",
+        "fast.yml: non-success step Run composer validate --strict",
+        "fast.yml: non-success step Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+        "fast.yml: non-success step Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+        "fast.yml: non-success step Run composer check-platform-reqs",
+        "fast.yml: non-success step Run composer audit --locked --no-interaction",
+        "fast.yml: non-success step Run php artisan package:discover --ansi",
+        "fast.yml: non-success step Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+        "fast.yml: non-success step Run npm ci --ignore-scripts",
+        "fast.yml: non-success step Run npm run build",
+        "fast.yml: non-success step Run npm ci --prefix client --ignore-scripts",
+        "fast.yml: non-success step Run npm run lint --prefix client",
+        "fast.yml: non-success step Run npm run build --prefix client",
+        "fast.yml: non-success step Run php artisan test --display-all-issues",
+        "fast.yml: non-success step Run php vendor/bin/pint --test"
+      ],
+      "kind": "compose",
+      "url": "https://github.com/ValtonUA/telmanfit/pull/46",
+      "runs": [
+        {
+          "id": 40105346544,
+          "name": "Full PR",
+          "head_sha": "59ec21602abce96e353206eefa1ab7aa60506799",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105346544"
+        },
+        {
+          "id": 40105346528,
+          "name": "Fast PR",
+          "head_sha": "59ec21602abce96e353206eefa1ab7aa60506799",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105346528"
+        },
+        {
+          "id": 40105346461,
+          "name": "Documentation health",
+          "head_sha": "59ec21602abce96e353206eefa1ab7aa60506799",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105346461"
+        }
+      ]
+    }
+  ],
+  "cancelled_full": {
+    "eligible": false,
+    "repository": "ValtonUA/telmanfit",
+    "pr": 42,
+    "head_sha": "717a776d4c70db4bdcf6ccc63fb49944da54fee1",
+    "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+    "evidence": {
+      "full.yml": {
+        "run_id": 40105209411,
+        "attempt": 1,
+        "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105209411"
+      },
+      "fast.yml": {
+        "run_id": 40105087113,
+        "attempt": 1,
+        "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105087113"
+      },
+      "docs-health.yml": {
+        "run_id": 40105087014,
+        "attempt": 1,
+        "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105087014"
+      }
+    },
+    "errors": [
+      "full.yml: latest run 40105209411 is not completed/success",
+      "full.yml: invalid job runtime / PHP 8.4.27 security",
+      "full.yml: non-success step Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: non-success step Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+      "full.yml: non-success step Run composer check-platform-reqs",
+      "full.yml: non-success step Run composer audit --locked --no-interaction",
+      "full.yml: non-success step Run php artisan package:discover --ansi",
+      "full.yml: non-success step Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: non-success step Run npm ci --ignore-scripts",
+      "full.yml: non-success step Run npm run build",
+      "full.yml: non-success step Run npm ci --prefix client --ignore-scripts",
+      "full.yml: non-success step Run npm run build --prefix client",
+      "full.yml: non-success step AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+      "full.yml: non-success step Run php artisan test --display-all-issues",
+      "full.yml: non-success step Run php vendor/bin/pint --test",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: invalid job stage1 / PostgreSQL and browser regressions",
+      "full.yml: non-success step Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: non-success step Run php scripts/check-php-runtime.php",
+      "full.yml: non-success step Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: non-success step Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+      "full.yml: non-success step Run php artisan package:discover --ansi",
+      "full.yml: non-success step Run composer check-platform-reqs",
+      "full.yml: non-success step Run npm ci --ignore-scripts",
+      "full.yml: non-success step Run npm run build",
+      "full.yml: non-success step Run npm ci --prefix client --ignore-scripts",
+      "full.yml: non-success step Run npm run lint --prefix client",
+      "full.yml: non-success step Run npm run build --prefix client",
+      "full.yml: non-success step Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+      "full.yml: non-success step Run pip install playwright==1.62.0",
+      "full.yml: non-success step Run python -m playwright install --with-deps chromium",
+      "full.yml: non-success step Stage 3 recipe batches, historical upgrade and concurrency",
+      "full.yml: non-success step AUTH-6B B5 retention, archive ACL, restore faults and concurrency",
+      "full.yml: non-success step Run AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh",
+      "full.yml: non-success step AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency",
+      "full.yml: non-success step Run bash tests/pg/test-runner.sh",
+      "full.yml: non-success step Run bash tests/pg/run-isolated-pg.sh",
+      "full.yml: non-success step AUTH-1 regression",
+      "full.yml: non-success step Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: invalid job runtime / PHP 8.5.12 security",
+      "full.yml: non-success step Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+      "full.yml: non-success step Run composer check-platform-reqs",
+      "full.yml: non-success step Run composer audit --locked --no-interaction",
+      "full.yml: non-success step Run php artisan package:discover --ansi",
+      "full.yml: non-success step Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "full.yml: non-success step Run npm ci --ignore-scripts",
+      "full.yml: non-success step Run npm run build",
+      "full.yml: non-success step Run npm ci --prefix client --ignore-scripts",
+      "full.yml: non-success step Run npm run build --prefix client",
+      "full.yml: non-success step AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+      "full.yml: non-success step Run php artisan test --display-all-issues",
+      "full.yml: non-success step Run php vendor/bin/pint --test",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+      "full.yml: invalid job compose / Cold build and browser acceptance",
+      "full.yml: non-success step Run python -m playwright install --with-deps chromium",
+      "full.yml: non-success step Validate standard Compose and cold build without overrides",
+      "full.yml: non-success step Reject host credentials and database files in built image",
+      "full.yml: non-success step Start fresh isolated volumes",
+      "full.yml: non-success step MFA, OTP, CSRF, fence and persistence in Chromium",
+      "full.yml: non-success step Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "full.yml: non-success step Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+      "full.yml: invalid job Full PR gate",
+      "full.yml: non-success step Reject every non-success dependency"
+    ]
+  },
+  "notes": [
+    "Probe schema changes only a SQL comment in docs/11_recipe_batches.sql; no schema semantics or migrations changed.",
+    "Probe PHP is deliberately invalid and Compose is deliberately invalid YAML; neither branch is merged.",
+    "Main Full run 40105274651 remained in_progress after all four probes completed; independent PR concurrency confirmed."
+  ]
+}

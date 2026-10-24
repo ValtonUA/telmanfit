@@ -95,6 +95,16 @@ class GateTests(unittest.TestCase):
                 s["jobs"]["1"].append(job)
             self.assert_blocked(s)
 
+    def test_missing_steps_are_not_evidence(self):
+        s = green()
+        s["jobs"]["1"][0]["steps"] = []
+        self.assert_blocked(s)
+
+    def test_old_gh_paginated_json_is_supported(self):
+        from unittest.mock import patch
+        with patch.object(gate.subprocess, "check_output", return_value='{"page": 1}\n{"page": 2}\n'):
+            self.assertEqual(gate.api("endpoint"), [{"page": 1}, {"page": 2}])
+
     def test_fast_docs_and_auto_merge_are_mandatory(self):
         for workflow in ("fast.yml", "docs-health.yml"):
             s = green()
@@ -152,6 +162,7 @@ class WorkflowTests(unittest.TestCase):
         text = self.workflows["stage1.yml"]
         for command in ("RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1 bash tests/pg/run-stage1.sh", "AUTH6B5_ONLY=1 tests/pg/run-stage1.sh", "AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh", "AUTH6B_ONLY=1 tests/pg/run-stage1.sh", "bash tests/pg/test-runner.sh", "bash tests/pg/run-isolated-pg.sh", "bash experiments/auth1/run.sh"):
             self.assertIn(command, text)
+        self.assertIn("php artisan filament:upgrade --ansi", text)
         self.assertNotIn("AUTH6B6_ONLY", text)
         runtime = self.workflows["php-runtime.yml"]
         self.assertIn("php: ['8.4.27', '8.5.12']", runtime)

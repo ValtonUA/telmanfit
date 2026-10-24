@@ -65,8 +65,9 @@ def evaluate(snapshot):
             if (job["status"] != "completed" or job["conclusion"] != "success"
                     or job["head_sha"] != sha or job["run_attempt"] != run["run_attempt"]):
                 errors.append(f"{workflow}: invalid job {job['name']}")
-            # A green job with a skipped test/build is insufficient. Cleanup steps
-            # and runner-internal pre/post action steps are the only exceptions.
+            # A green job with any skipped test/build is insufficient.
+            if not job.get("steps"):
+                errors.append(f"{workflow}: missing steps for {job['name']}")
             for step in job.get("steps", []):
                 if step["conclusion"] != "success":
                     errors.append(f"{workflow}: non-success step {step['name']}")
