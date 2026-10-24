@@ -39,6 +39,7 @@ jobs:
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
       - run: composer install --no-interaction --prefer-dist --no-scripts --no-plugins
       - run: php artisan package:discover --ansi
+      - run: php artisan filament:upgrade --ansi
       - run: composer check-platform-reqs
       - run: npm ci --ignore-scripts
       - run: npm run build
