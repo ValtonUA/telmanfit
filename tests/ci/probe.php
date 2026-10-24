@@ -1,2 +1,3 @@
 <?php
-this is deliberately invalid PHP for the disposable CI probe
+
+// CI-COST-1: disposable syntax-valid source probe.
