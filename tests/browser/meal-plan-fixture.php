@@ -3,12 +3,22 @@
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Tests\MealPlans\PlanFixture;
+use Tests\Recipes\BatchFixture;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
 if (($argv[1] ?? '') === 'seed') {
     $fixture = new class
     {
-        use PlanFixture;
+        use BatchFixture, PlanFixture;
+
+        public function publishedBatch(): array
+        {
+            $b = $this->batch();
+            DB::table('recipe_versions')->where('id', $b['version'])->update(['title' => 'Синтетичний batch writer', 'lock_version' => DB::raw('lock_version+1')]);
+            $this->publish($b['version']);
+
+            return $b;
+        }
 
         public function make(int $actor): array
         {
@@ -18,6 +28,7 @@ if (($argv[1] ?? '') === 'seed') {
     $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
     echo json_encode(DB::transaction(function () use ($fixture, $actor): array {
         $data = $fixture->make($actor->id);
+        $data['batch'] = $fixture->publishedBatch();
         $data['extra_type'] = DB::table('meal_types')->insertGetId(['code' => 'synthetic-structure-browser-'.bin2hex(random_bytes(4)), 'title' => 'Синтетичний додатковий тип']);
 
         return $data;

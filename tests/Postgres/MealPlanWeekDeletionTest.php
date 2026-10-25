@@ -31,6 +31,7 @@ class MealPlanWeekDeletionTest extends PostgresTestCase
     {
         parent::setUp();
         $this->installAuthSchema();
+        $this->installMealItemSchema();
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic week deletion admin', 'role' => 'admin']));
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));

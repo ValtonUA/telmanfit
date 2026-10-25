@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\MealPlans;
 
+use App\Domain\MealPlans\MealItemKind;
 use App\Models\MealPlanVersion;
+use App\Services\MealPlans\MealItemResolver;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
@@ -29,6 +31,15 @@ class MealPlanVersionResource extends Resource
         return ['draft' => 'Чернетка', 'published' => 'Опублікована'][$state] ?? $state;
     }
 
+    public static function portionLabel(MealItemKind $kind): string
+    {
+        return match ($kind) {
+            MealItemKind::Ingredient => 'Інгредієнт',
+            MealItemKind::LegacyRecipe => 'Рецепт — порція',
+            default => $kind->value,
+        };
+    }
+
     public static function infolist(Schema $schema): Schema
     {
         return $schema->components([
@@ -38,7 +49,7 @@ class MealPlanVersionResource extends Resource
             TextEntry::make('status')->label('Статус')->badge()->formatStateUsing(fn ($state) => self::statusLabel($state)),
             TextEntry::make('published_at')->label('Дата публікації')->placeholder('Ще не опублікована'),
             TextEntry::make('boundary')->label('Режим перегляду')->state(fn ($record) => $record->status === 'draft'
-                ? 'Чернетка ще не готова до публікації. Додайте семиденний тиждень і налаштуйте прийоми. Редактор позицій і Publish будуть окремими етапами.'
+                ? 'Чернетка ще не готова до публікації. Додайте семиденний тиждень і налаштуйте прийоми. Позиції редагуються через меню «Позиції». Publish буде окремим етапом.'
                 : 'Опублікована версія — лише читання. Історія та призначення зберігаються.'),
             RepeatableEntry::make('days')->label('Дні → прийоми їжі → позиції')->placeholder('Порожня чернетка: днів ще немає.')->schema([
                 TextEntry::make('week')->label('Тиждень')->state(fn ($record) => intdiv($record->day_number - 1, 7) + 1),
@@ -49,9 +60,19 @@ class MealPlanVersionResource extends Resource
                     TextEntry::make('sort_order')->label('Порядок'),
                     RepeatableEntry::make('items')->label('Позиції')->placeholder('Позицій ще немає.')->schema([
                         TextEntry::make('food.label')->label('Позиція'),
-                        TextEntry::make('food_id')->label('Food ID (точне історичне посилання)'),
+
                         TextEntry::make('food.food_type')->label('Тип позиції'),
                         TextEntry::make('quantity')->label('Кількість'),
+                        TextEntry::make('nutrition')->label('КБЖВ споживаної кількості')->state(function ($record): string {
+                            try {
+                                $p = app(MealItemResolver::class)->resolve($record);
+                                $n = $p->nutrition;
+
+                                return self::portionLabel($p->kind).' · '.$n['kcal'].' ккал · Б '.$n['protein'].' · Ж '.$n['fat'].' · В '.$n['carbs'];
+                            } catch (\DomainException) {
+                                return 'Розрахунок недоступний: перевірте збережену позицію.';
+                            }
+                        }),
                         TextEntry::make('uom.label')->label('Одиниця'),
                         TextEntry::make('resolved_quantity_grams')->label('Збережені грами')->placeholder('Не застосовується'),
                     ])->columns(1)->contained(),

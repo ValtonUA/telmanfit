@@ -6,6 +6,7 @@ use App\Domain\MealPlans\MealItemKind;
 use App\Domain\MealPlans\MealItemPortion;
 use App\Models\MealItem;
 use DomainException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /** Readonly: один SQL snapshot, exact food/version/format, без latest або recalculation. */
@@ -14,13 +15,32 @@ final class MealItemResolver
     public function resolve(int|MealItem $item): MealItemPortion
     {
         $id = $item instanceof MealItem ? $item->getKey() : $item;
-        $r = DB::table('meal_items as m')->join('foods as f', 'f.id', '=', 'm.food_id')
+
+        return $this->read(DB::table('meal_items as m')->where('m.id', $id));
+    }
+
+    /** Readonly preview використовує ті самі joins та Model I, без тимчасового INSERT. */
+    public function preview(array $selection): MealItemPortion
+    {
+        $row = DB::query();
+        foreach (['food_id' => 'integer', 'quantity' => 'numeric', 'uom_id' => 'smallint',
+            'resolved_quantity_grams' => 'numeric', 'recipe_version_id' => 'integer',
+            'recipe_batch_format_id' => 'integer', 'recipe_portion_divisor' => 'smallint'] as $field => $type) {
+            $row->selectRaw("CAST(? AS {$type}) AS {$field}", [$selection[$field] ?? null]);
+        }
+
+        return $this->read(DB::query()->fromSub($row, 'm'));
+    }
+
+    private function read(Builder $query): MealItemPortion
+    {
+        $r = $query->join('foods as f', 'f.id', '=', 'm.food_id')
             ->join('uoms as u', 'u.id', '=', 'm.uom_id')
             ->leftJoin('ingredients as i', 'i.food_id', '=', 'f.id')
             ->leftJoin('ingredient_uoms as iu', fn ($join) => $join->on('iu.ingredient_id', '=', 'i.id')->on('iu.uom_id', '=', 'm.uom_id'))
             ->leftJoin('recipe_versions as v', 'v.food_id', '=', 'f.id')
             ->leftJoin('recipe_batch_formats as b', 'b.id', '=', 'm.recipe_batch_format_id')
-            ->where('m.id', $id)->first(['m.*', 'f.food_type', 'u.code as uom_code', 'i.id as ingredient_id',
+            ->first(['m.*', 'f.food_type', 'u.code as uom_code', 'i.id as ingredient_id',
                 'v.id as version_id', 'v.status', 'v.editor_contract', 'b.recipe_version_id as format_version_id', 'b.code as format_code',
                 'iu.ingredient_id as permitted_ingredient_id', 'i.kcal_per_100g', 'i.protein_per_100g', 'i.fat_per_100g', 'i.carbs_per_100g',
                 'v.kcal_per_serving', 'v.protein_per_serving', 'v.fat_per_serving', 'v.carbs_per_serving',

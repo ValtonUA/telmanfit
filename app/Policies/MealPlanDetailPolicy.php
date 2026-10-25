@@ -13,6 +13,11 @@ class MealPlanDetailPolicy extends MealPlanPolicy
         return MealPlanStructure::allowed($user, $record);
     }
 
+    public function editItems(User $user, MealPlanVersion $record): bool
+    {
+        return MealPlanStructure::allowed($user, $record);
+    }
+
     public function create(User $user): bool
     {
         return false;

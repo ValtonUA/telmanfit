@@ -7,6 +7,14 @@ use Illuminate\Support\Facades\DB;
 /** Синтетичний populated legacy plan; лише ізольовані тести. */
 trait PlanFixture
 {
+    private function installMealItemSchema(): void
+    {
+        foreach (glob(database_path('migrations/2026_10_24_0[123]*.php')) as $file) {
+            (require $file)->up();
+        }
+        (require database_path('migrations/2026_10_25_010000_add_meal_item_recipe_selectors.php'))->up();
+    }
+
     private function populatedPlan(int $actor): array
     {
         $client = DB::table('clients')->insertGetId(['coach_user_id' => $actor]);

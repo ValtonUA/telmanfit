@@ -63,6 +63,10 @@ PR; стара зелена перевірка не годиться. На opene
 - G4-I Model I: populated upgrade hashes, direct SQL selector negatives, decimal
   readonly resolver, fractional portions, frozen physical composition та root/selector
   concurrency; входять у Stage3/T4.2 runner без додаткового workflow.
+- T4.3 writer: ingredient/default/decimal, legacy та explicit A/1 B/7 C/3 C/4,
+  optimistic state/catalog snapshots, Livewire/ACL/fence/rollback, item-vs-week-delete,
+  concurrent edit/add/publication/conversion/UOM locks; Chromium search/add/edit/move/delete
+  у 1440/390/320 light/dark через штатний Stage3/4 runner.
 - AUTH-1 upstream digest/versions; AUTH-2–6 PHPUnit, HTTP, browser та concurrency;
   B3/B4 outbox/ACL, B5 retention/archive/restore faults, B6 budgets/restart/faults.
 - B6 виконується на **обох** PHP 8.4/8.5. Третій ідентичний прогін на Stage 1 PHP8.4
