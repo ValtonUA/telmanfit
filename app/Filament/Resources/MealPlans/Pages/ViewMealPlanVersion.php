@@ -64,6 +64,22 @@ class ViewMealPlanVersion extends ViewRecord
         ];
     }
 
+    public function mountAction(string $name, array $arguments = [], array $context = []): mixed
+    {
+        if (in_array($name, ['generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true)) {
+            $this->authorizeStructure();
+        }
+
+        return parent::mountAction($name, $arguments, $context);
+    }
+
+    public function callMountedAction(array $arguments = []): mixed
+    {
+        $this->authorizeStructure();
+
+        return parent::callMountedAction($arguments);
+    }
+
     private function editable(): bool
     {
         return Gate::allows('editStructure', $this->getRecord());

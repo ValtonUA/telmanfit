@@ -16,6 +16,14 @@ def run_meal_plans(page, base):
     output.mkdir(parents=True, exist_ok=True)
     published = base + '/admin/meal-plan-versions/' + str(f['version'])
     history = fixture('hash')
+
+    def submit(dialog, label):
+        with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
+            dialog.get_by_role('button', name=label, exact=True).click()
+        assert response.value.status == 200
+        page.wait_for_load_state('networkidle')
+        dialog.wait_for(state='hidden')
+
     for width in (1440, 390, 320):
         for theme in ('light', 'dark'):
             suffix = f'{width}-{theme}'
@@ -48,7 +56,7 @@ def run_meal_plans(page, base):
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
             dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-            dialog.get_by_role('button', name='Додати тиждень', exact=True).click()
+            submit(dialog, 'Додати тиждень')
             expect(page.get_by_text('Структуру збережено', exact=True)).to_be_visible()
             expect(page.get_by_text('Синтетичний прийом', exact=True)).to_have_count(7)
             page.reload()
@@ -59,27 +67,29 @@ def run_meal_plans(page, base):
             page.get_by_role('option', name='Тиждень 1 · День 1', exact=True).click()
             dialog.get_by_role('combobox', name='Тип прийому', exact=False).click()
             page.get_by_role('option', name='Синтетичний додатковий тип', exact=True).click()
-            dialog.get_by_role('button', name='Додати прийом', exact=True).click()
+            submit(dialog, 'Додати прийом')
             expect(page.get_by_text('Синтетичний додатковий тип', exact=True)).to_be_visible()
             page.get_by_role('button', name='Видалити порожній прийом', exact=True).click()
-            dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Видалити порожній прийом', exact=True))
+            dialog = page.get_by_role('alertdialog').filter(has=page.get_by_text('Видалити порожній прийом', exact=True))
             dialog.get_by_role('combobox', name='Прийом їжі', exact=False).click()
-            page.get_by_role('option', name='День 1 · Синтетичний додатковий тип', exact=True).click()
-            dialog.get_by_role('button', name='Видалити', exact=True).click()
+            with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST'):
+                page.get_by_role('option', name='День 1 · Синтетичний додатковий тип', exact=True).click()
+            submit(dialog, 'Видалити')
             expect(page.get_by_text('Синтетичний додатковий тип', exact=True)).to_have_count(0)
             page.get_by_role('button', name='Змінити прийом', exact=True).click()
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Змінити прийом', exact=True))
             dialog.get_by_role('combobox', name='Прийом їжі', exact=False).click()
-            page.get_by_role('option', name='День 1 · Синтетичний прийом', exact=True).click()
+            with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST'):
+                page.get_by_role('option', name='День 1 · Синтетичний прийом', exact=True).click()
             expect(dialog.get_by_label('Назва прийому (необов’язково)', exact=False)).to_have_value('')
             dialog.get_by_label('Назва прийому (необов’язково)', exact=False).fill('Меню ' + suffix)
             dialog.get_by_label('Порядок у дні', exact=False).fill('-1')
-            dialog.get_by_role('button', name='Зберегти', exact=True).click()
+            submit(dialog, 'Зберегти')
             expect(page.get_by_text('Меню ' + suffix, exact=True)).to_be_visible()
             page.get_by_role('button', name='Додати 7 днів', exact=True).click()
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
             dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
-            dialog.get_by_role('button', name='Додати тиждень', exact=True).click()
+            submit(dialog, 'Додати тиждень')
             expect(page.get_by_text('Синтетичний прийом', exact=True)).to_have_count(14)
             page.reload()
             assert page.url == draft_url

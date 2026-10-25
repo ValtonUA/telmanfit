@@ -153,6 +153,10 @@ class MealPlanStructureTest extends PostgresTestCase
         $history = $this->hash();
         $published = MealPlanVersion::findOrFail($f['version']);
         $this->assertFalse(Gate::allows('editStructure', $published));
+        foreach (['generateWeek', 'addMeal', 'editMeal', 'deleteMeal'] as $name) {
+            Livewire::test(ViewMealPlanVersion::class, ['record' => $published->id])->call('mountAction', $name)->assertForbidden();
+        }
+        Livewire::test(ViewMealPlanVersion::class, ['record' => $published->id])->call('callMountedAction')->assertForbidden();
         try {
             $this->writer->generate($this->actor, $published, ['start_day' => 8, 'meal_type_ids' => $this->types]);
             $this->fail('Published immutable');
