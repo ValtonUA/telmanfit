@@ -102,7 +102,7 @@ def run_meal_plans(page, base):
             page.screenshot(path=str(output / f'structure-{suffix}.png'), full_page=True)
             from meal_items import run_meal_items
             run_meal_items(page, base, draft_url, f, suffix, submit)
-            checks.append(suffix + ': T4.3 ingredient search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload')
+            checks.append(suffix + ': T4.3 ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload')
             version_id = int(draft_url.rsplit('/', 1)[1])
             page.get_by_role('button', name='Додати 7 днів', exact=True).click()
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
