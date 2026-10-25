@@ -78,9 +78,11 @@ def run_meal_plans(page, base):
             expect(page.get_by_text('Синтетичний додатковий тип', exact=True)).to_have_count(0)
             page.get_by_role('button', name='Змінити прийом', exact=True).click()
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Змінити прийом', exact=True))
+            expect(dialog.get_by_label('Назва прийому (необов’язково)', exact=False)).to_be_disabled()
             dialog.get_by_role('combobox', name='Прийом їжі', exact=False).click()
             with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST'):
                 page.get_by_role('option', name='День 1 · Синтетичний прийом', exact=True).click()
+            expect(dialog.get_by_label('Назва прийому (необов’язково)', exact=False)).to_be_enabled()
             expect(dialog.get_by_label('Назва прийому (необов’язково)', exact=False)).to_have_value('')
             dialog.get_by_label('Назва прийому (необов’язково)', exact=False).fill('Меню ' + suffix)
             dialog.get_by_label('Порядок у дні', exact=False).fill('-1')

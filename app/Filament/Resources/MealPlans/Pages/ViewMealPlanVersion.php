@@ -13,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -51,7 +52,7 @@ class ViewMealPlanVersion extends ViewRecord
                 ->schema(fn () => [
                     $this->mealSelector(),
                     Hidden::make('day_id')->required(), Hidden::make('expected')->required(),
-                    ...$this->mealFields(),
+                    ...$this->mealFields(editing: true),
                 ])->action(function (array $data, Action $action): void {
                     $this->command($action, fn () => app(MealPlanStructure::class)->saveMeal(auth()->user(), $this->getRecord(), $data, (int) $data['meal_id']));
                 }),
@@ -100,13 +101,24 @@ class ViewMealPlanVersion extends ViewRecord
         return $this->getRecord()->days()->orderBy('day_number')->get()->mapWithKeys(fn ($d) => [$d->id => 'Тиждень '.(intdiv($d->day_number - 1, 7) + 1).' · День '.$d->day_number])->all();
     }
 
-    private function mealFields(): array
+    private function mealFields(bool $editing = false): array
     {
-        return [
+        $fields = [
             Select::make('meal_type_id')->label('Тип прийому')->options(fn () => $this->types())->required()->native(false),
             TextInput::make('title')->label('Назва прийому (необов’язково)'),
             TextInput::make('sort_order')->label('Порядок у дні')->integer()->minValue(-32768)->maxValue(32767)->default(0)->required(),
         ];
+        if ($editing) {
+            foreach ($fields as $field) {
+                $field->disabled(fn (Get $get) => blank($get('expected')))
+                    ->extraFieldWrapperAttributes([
+                        'wire:loading.attr' => 'inert',
+                        'wire:target' => 'mountedActions.0.data.meal_id',
+                    ]);
+            }
+        }
+
+        return $fields;
     }
 
     private function mealSelector(): Select
