@@ -3,7 +3,7 @@
         $meals = $this->dayMeals();
         $editable = $this->editable();
         $expected = $editable ? app(\App\Services\MealPlans\MealItemWriter::class)->dayToken(auth()->user(), $this->getRecord(), $this->dayId) : '';
-        $catalog = $this->catalogRows();
+        $catalog = $editable ? $this->catalogRows() : collect();
     @endphp
     <div class="plan-editor" data-day-token="{{ $expected }}" x-data="{
         drag: null, busy: false, touch: null,

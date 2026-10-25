@@ -8,6 +8,11 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
     output = Path('docs/evidence/meal-plans')
     output.mkdir(parents=True, exist_ok=True)
 
+    def field_response(response, field):
+        return '/livewire/update' in response.url and any(
+            'mountedActions.0.data.' + field in component.get('updates', {})
+            for component in response.request.post_data_json.get('components', []))
+
     def open_action(label, danger=False):
         page.get_by_role('button', name='Позиції', exact=True).click()
         page.get_by_text(label, exact=True).click()
@@ -19,8 +24,9 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
         if label == 'Прийом їжі' and isinstance(option, str):
             option = re.compile('^' + re.escape(option) + '(?: · |$)')
         dialog.get_by_role('button' if label in ('Прийом їжі', 'Позиція') else 'combobox', name=label, exact=False).click()
+        field = {'Прийом їжі': 'meal_id', 'Позиція': 'item_id', 'Формат фізичної партії': 'recipe_batch_format_id', 'Поділ партії на порції': 'recipe_portion_divisor'}[label]
         try:
-            with page.expect_response(lambda r: '/livewire/update' in r.url):
+            with page.expect_response(lambda r: field_response(r, field)):
                 page.get_by_role('option', name=option, exact=True).click()
         except Exception:
             print('Item selector DOM: ' + page.locator('body').aria_snapshot()[-10000:], flush=True)
@@ -41,7 +47,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
         option = page.locator('[role=option][data-value="' + str(f['food']) + '"]')
         expect(option).to_have_text('Інгредієнт · Синтетичний інгредієнт')
         option.click()
-    with page.expect_response(lambda r: '/livewire/update' in r.url):
+    with page.expect_response(lambda r: field_response(r, 'quantity')):
         dialog.get_by_label('Споживана кількість', exact=False).fill('0.50')
         dialog.get_by_label('Порядок у прийомі', exact=False).click()
     expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('0.500000 ккал')
@@ -53,9 +59,14 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
 
     dialog = open_action('Змінити позицію')
     select(dialog, 'Позиція', re.compile(re.escape('День 1 · Синтетичний прийом · Синтетичний інгредієнт · 0.50 ')))
-    with page.expect_response(lambda r: '/livewire/update' in r.url):
-        dialog.get_by_label('Споживана кількість', exact=False).fill('1.25')
-        dialog.get_by_label('Порядок у прийомі', exact=False).click()
+    quantity = dialog.get_by_label('Споживана кількість', exact=False)
+    expect(quantity).to_be_enabled()
+    expect(quantity).to_have_value('0.50')
+    page.wait_for_function('(input) => !input.closest("[inert]")', arg=quantity.element_handle())
+    quantity.focus()
+    with page.expect_response(lambda r: field_response(r, 'quantity')):
+        quantity.fill('1.25')
+        quantity.blur()
     expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('1.250000 ккал')
     page.screenshot(path=str(output / f'item-edit-{suffix}.png'))
     submit(dialog, 'Зберегти')
@@ -89,7 +100,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
             page.get_by_role('option', name=re.compile('Рецепт · Синтетичний batch writer · версія 1')).click()
         select(dialog, 'Формат фізичної партії', format_name)
         select(dialog, 'Поділ партії на порції', divisor_name)
-        with page.expect_response(lambda r: '/livewire/update' in r.url):
+        with page.expect_response(lambda r: field_response(r, 'quantity')):
             dialog.get_by_label('Споживана кількість', exact=False).fill('0.50')
             dialog.get_by_label('Порядок у прийомі', exact=False).click()
         expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('Формат: ' + kind)

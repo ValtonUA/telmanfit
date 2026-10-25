@@ -8,6 +8,7 @@ use App\Models\MealItem;
 use App\Services\MealPlans\MealItemWriter;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -174,6 +175,9 @@ trait EditsMealItems
         ];
         if ($editing) {
             foreach ($fields as $field) {
+                if ($field instanceof Field && $field->getName() !== 'food_id') {
+                    $field->disabled(fn (Get $get) => blank($get('expected')));
+                }
                 if (! $field instanceof Hidden) {
                     $field->extraAttributes(['wire:loading.attr' => 'inert', 'wire:target' => 'mountedActions.0.data.item_id']);
                 }
