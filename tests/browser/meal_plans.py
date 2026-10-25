@@ -100,6 +100,9 @@ def run_meal_plans(page, base):
             expect(page.get_by_text('Меню ' + suffix, exact=True)).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             page.screenshot(path=str(output / f'structure-{suffix}.png'), full_page=True)
+            from meal_items import run_meal_items
+            run_meal_items(page, base, draft_url, f, suffix, submit)
+            checks.append(suffix + ': T4.3 ingredient search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload')
             version_id = int(draft_url.rsplit('/', 1)[1])
             page.get_by_role('button', name='Додати 7 днів', exact=True).click()
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
@@ -174,6 +177,15 @@ def run_meal_plans(page, base):
     structure_hash = fixture('structure-hash')
     assert page.context.request.post(base + '/admin/livewire/update', data=structure_payload, headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 419
     assert fixture('structure-hash') == structure_hash
+    page.goto(draft_url)
+    page.get_by_role('button', name='Позиції', exact=True).click()
+    page.get_by_text('Додати позицію', exact=True).click()
+    expect(page.get_by_role('heading', name='Додати позицію', exact=True)).to_be_visible()
+    item_raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()
+                    if 'mountedActions' in json.loads(e.get_attribute('wire:snapshot'))['data'])
+    item_payload = {'components': [{'snapshot': item_raw, 'updates': {}, 'calls': [{'method': 'callMountedAction', 'params': []}]}]}
+    assert page.context.request.post(base + '/admin/livewire/update', data=item_payload, headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 419
+    assert fixture('structure-hash') == structure_hash
     page.goto(base + '/admin/meal-plans/create')
     raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()
                if 'data' in json.loads(e.get_attribute('wire:snapshot'))['data'])
@@ -182,9 +194,9 @@ def run_meal_plans(page, base):
     headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
     count = fixture('count')
     assert page.context.request.post(base + '/admin/livewire/update', data=payload, headers=headers).status == 419
-    checks.append('Missing CSRF rejects signed week-delete/create 419; guest/MFA boundary shared with recipe browser')
+    checks.append('Missing CSRF rejects signed item/week-delete/create 419; guest/MFA boundary shared with recipe browser')
     (output / 'checks.json').write_text(json.dumps({'checks': checks}, ensure_ascii=False, indent=2) + '\n')
-    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash}
+    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload}
 
 
 def verify_meal_plan_revocation(page, base, state):
@@ -193,6 +205,8 @@ def verify_meal_plan_revocation(page, base, state):
     assert page.context.request.post(base + '/admin/livewire/update', data=state['payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     for path in ('/admin/meal-plans', '/admin/meal-plans/create', state['version'].removeprefix(base)):
         assert page.context.request.get(base + path).status == 403
+    state['item_payload']['_token'] = state['csrf']
+    assert page.context.request.post(base + '/admin/livewire/update', data=state['item_payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     state['structure_payload']['_token'] = state['csrf']
     assert page.context.request.post(base + '/admin/livewire/update', data=state['structure_payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     assert fixture('structure-hash') == state['structure_hash']
@@ -200,5 +214,5 @@ def verify_meal_plan_revocation(page, base, state):
     assert fixture('hash') == state['hash']
     result = Path('docs/evidence/meal-plans/checks.json')
     data = json.loads(result.read_text())
-    data['checks'].append('Revoked signed confirmed week-delete/create/HTTP 403, unchanged structure/plans/history/foods/assignments')
+    data['checks'].append('Revoked signed item/confirmed week-delete/create/HTTP 403, unchanged structure/plans/history/foods/assignments')
     result.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')

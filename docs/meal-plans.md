@@ -1,4 +1,4 @@
-# Раціони — контракт T4.1/T4.2 та G4-I
+# Раціони — контракт T4.1–T4.3 та Model I
 
 [Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
 [readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
@@ -14,8 +14,7 @@
 - `/admin/meal-plans/{record}`: назва, власник та посилання на **кожну точну версію**.
 - `/admin/meal-plan-versions/{record}`: ID, номер публікації, статус, дата та
   ієрархія днів → прийомів → позицій; тип прийому, food ID/тип, decimal quantity,
-  одиниця та збережені nullable грами. Це перегляд збережених значень без
-  перерахунку nutrition або тлумачення batch food як A/1.
+  одиниця та збережені nullable грами. КБЖВ споживаної кількості читаються штатним Model I resolver; batch food не тлумачиться як A/1.
 
 Після створення відкривається єдина нова чернетка. Порожній стан явно пояснює,
 що вона ще не готова до публікації. Відкриття/reload не створює наступної чернетки.
@@ -110,13 +109,13 @@ FK RESTRICT та immutable/UNIQUE guards не змінені. Конкурент
 
 ## Свідомо закриті команди
 
-Meal item writer (T4.3), Publish (T4.4), призначення/заміна
+Publish (T4.4), призначення/заміна
 (T4.5), CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
 Повторення/копіювання заповнених тижнів (Issue #61) не реалізовано.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
 G4-I реалізує окремий forward-only schema/readonly контракт Model I за
-[Issue #63](https://github.com/ValtonUA/telmanfit/issues/63); writer T4.3 ще відсутній.
+[Issue #63](https://github.com/ValtonUA/telmanfit/issues/63); writer T4.3 використовує цей контракт без зміни схеми.
 [Proposal §11/§13](proposals/stage-3-recipe-batch-editor.md#11-контракт-stage-4-food-формат-порція-і-фізичне-приготування)
 уточнено цією авторизацією; selectors не входили до T4.2. DEC-4A потрібне перед T4.5.
 T1.5 та DEC-3T не блокують
@@ -171,13 +170,12 @@ Legacy version визначається унікальним food, жодног�
 Спочатку множення на quantity, потім ділення на divisor й одне HalfUp округлення
 до 6 знаків. C/3 і C/4 мають один format ID та різні показники споживання.
 Відсутній item, невідомий format, неповні selectors чи нечислові nutrients —
-`DomainException`, без A/1 fallback. Старий viewer продовжує показувати збережені
-поля без нового обчислення nutrition.
+`DomainException`, без A/1 fallback. Viewer показує збережені поля та readonly КБЖВ через той самий resolver.
 
 `recipe_batch_quantities` описує **цілу фізичну партію**: зміна спожитої
 кількості/divisor не змінює її кількостей, кроків або обладнання. Майбутні nutrition
 і shopping consumers масштабують за `quantity/divisor`; cooking цілої партії — ні.
-У G4-I немає shopping list, scheduler, item writer чи нового meal editor.
+G4-I не містить shopping list чи scheduler. Команди T4.3 описані нижче.
 
 `MealItemSelectorsTest` перевіряє непорожній synthetic upgrade з SHA256 snapshots
 історії, legacy nutrition, ingredient/A/1/B/7/C/3/C/4, 0.5 порції, SQL NULL matrix,
@@ -186,3 +184,49 @@ Legacy version визначається унікальним food, жодног�
 decimal strings. `meal-item-selector-concurrency.php` доводить реальні lock waits
 в обох порядках selector/root і відхилення update/delete/downgrade без deadlock.
 Вони входять у штатний Stage3/T4.2 runner та Full CI; browser UI для G4-I не змінено.
+
+
+## Writer позицій T4.3
+
+`MealItemWriter` — єдині команди `save`, `move`, `delete` для точної draft version.
+Filament на тій самій сторінці версії має меню «Позиції»: пошук наявного
+інгредієнта/опублікованої версії, додавання, редагування, явне перенесення між
+прийомами/днями цієї версії та видалення з confirmation/cancel. Порожній каталог
+не генерує seed. Продукт наявної позиції незмінний; його заміна потребує явних
+add/delete. Однаковий sort_order стабільно впорядковується за ID.
+
+Ingredient використовує default conversion, якщо вона є, інакше g; одиницю можна
+обрати явно. Quantity і grams — positive numeric(7,2), decimal strings/Brick Math;
+quantity × актуальний factor округлюється HalfUp до 2 знаків, overflow і нуль після
+округлення відхиляються. Legacy — exact published food, serving і NULL selectors/grams.
+Batch потребує явних version/format/divisor: A/1, B/7, C/3 або C/4. UI пояснює
+частку фізичної партії й споживану quantity (зокрема 0.5). Readonly preview і
+persisted summary використовують один `MealItemResolver`, без JS nutrition чи A fallback.
+`preview` додає лише derived SQL row до тих самих joins/перевірок resolver, без INSERT.
+
+Policy `editItems` та Service повторно перевіряють чинного admin і draft.
+`MealPlanStructure::withinDraft` спільний з T4.2/UX-4D: runtime fence → actor →
+exact version FOR UPDATE, далі days → meals → items за ID. Cross-version/plan IDs
+відхиляються під lock. Рецептурний root/ingredient SHARE береться перед UOM за ID;
+published formats читаються під root fence без інверсії child locks.
+Ingredient root lock захищає conversion phantoms чинними SQL guards. Каталог,
+default/conversions/UOM і frozen recipe metadata мають actor/version HMAC snapshot;
+зміни після вибору вимагають повторного вибору/перевірки. Перед успіхом виконуються
+наявні deferred SQL guards та fresh-role/fence check. Автоматичного retry немає.
+
+Add порівнює HMAC стану прийому й усіх його items, тому подвійний submit відхиляється.
+Edit/move/delete порівнюють expected стан item; stale форми не стирають новішу правку.
+Move зберігає точний food/selector/grams; delete видаляє лише item. Week snapshots UX-4D
+включають актуальні items, тому add/edit/move/delete роблять старе підтвердження
+невалідним. Published history, legacy NULL selectors, recipes, assignments і каталоги
+ці команди не переписують. Session/MFA/CSRF межа залишається штатною Filament.
+
+`MealItemWriterTest` перевіряє decimal/default/UOM, legacy та чотири batch порції,
+preview/reload, stale/retry, forged/cross-version IDs, ACL/fence, deferred rollback,
+Livewire та недійсне старе підтвердження UX-4D. `meal-item-writer-concurrency.php`
+перевіряє незалежні PG-сесії й реальні lock waits для edit/double add,
+item-vs-week-delete в обох порядках, write-vs-publish та conversion/UOM change.
+`tests/browser/meal_items.py` проходить search/empty/add/edit/move/delete/cancel/reload
+у Chromium 1440/390/320 light/dark разом із чинними MFA/CSRF/revocation регресіями.
+Фінальний week/day DnD UX-4E (#62), repeat week (#61), Publish і assignments
+залишаються окремими задачами. Схема, feature flags і реальні БД не змінюються.

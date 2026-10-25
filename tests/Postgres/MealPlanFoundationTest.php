@@ -35,6 +35,7 @@ class MealPlanFoundationTest extends PostgresTestCase
     {
         parent::setUp();
         $this->installAuthSchema();
+        $this->installMealItemSchema();
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic plan admin', 'role' => 'admin']));
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));

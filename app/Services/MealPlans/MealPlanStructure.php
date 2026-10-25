@@ -30,7 +30,7 @@ final class MealPlanStructure
     /** Явний номер першого дня робить retry того самого блоку ідемпотентним. */
     public function generate(User $actor, MealPlanVersion $version, array $input): void
     {
-        $this->write($actor, $version, function (MealPlanVersion $locked) use ($input): void {
+        $this->withinDraft($actor, $version, function (MealPlanVersion $locked) use ($input): void {
             $data = Validator::make($input, [
                 'start_day' => ['required', 'integer', 'min:1', 'max:32761'],
                 'meal_type_ids' => ['required', 'array', 'min:1'],
@@ -71,7 +71,7 @@ final class MealPlanStructure
 
     public function saveMeal(User $actor, MealPlanVersion $version, array $input, ?int $mealId = null): void
     {
-        $this->write($actor, $version, function (MealPlanVersion $locked) use ($input, $mealId): void {
+        $this->withinDraft($actor, $version, function (MealPlanVersion $locked) use ($input, $mealId): void {
             $data = Validator::make($input, [
                 'day_id' => ['required', 'integer'],
                 'meal_type_id' => ['required', 'integer'],
@@ -106,7 +106,7 @@ final class MealPlanStructure
 
     public function deleteMeal(User $actor, MealPlanVersion $version, int $dayId, int $mealId, string $expected): void
     {
-        $this->write($actor, $version, function (MealPlanVersion $locked) use ($dayId, $mealId, $expected): void {
+        $this->withinDraft($actor, $version, function (MealPlanVersion $locked) use ($dayId, $mealId, $expected): void {
             $day = $locked->days()->whereKey($dayId)->lockForUpdate()->first();
             $meal = $day?->meals()->whereKey($mealId)->lockForUpdate()->first();
             if (! $meal || ! hash_equals(self::token($meal), $expected)) {
@@ -140,7 +140,7 @@ final class MealPlanStructure
     /** Окремий серверний grant видається тільки для актуального confirmation snapshot. */
     public function confirmWeekDeletion(User $actor, MealPlanVersion $version, array $input): array
     {
-        return $this->write($actor, $version, function (MealPlanVersion $locked) use ($actor, $input): array {
+        return $this->withinDraft($actor, $version, function (MealPlanVersion $locked) use ($actor, $input): array {
             $snapshot = $this->lockedWeek($actor, $locked, $input);
             if ($snapshot['item_count'] === 0) {
                 $this->invalid('week', 'Тиждень порожній. Оновіть сторінку перед видаленням.');
@@ -152,7 +152,7 @@ final class MealPlanStructure
 
     public function deleteWeek(User $actor, MealPlanVersion $version, array $input): void
     {
-        $this->write($actor, $version, function (MealPlanVersion $locked) use ($actor, $input): void {
+        $this->withinDraft($actor, $version, function (MealPlanVersion $locked) use ($actor, $input): void {
             $snapshot = $this->lockedWeek($actor, $locked, $input);
             if ($snapshot['item_count'] > 0 && (! is_string($input['confirmation'] ?? null)
                 || ! hash_equals($this->confirmationToken($actor, $locked, $snapshot['expected']), $input['confirmation']))) {
@@ -218,17 +218,20 @@ final class MealPlanStructure
         return hash_hmac('sha256', 'delete-week-confirmation:'.json_encode([$actor->id, $version->id, $expected], JSON_THROW_ON_ERROR), config('app.key'));
     }
 
-    private function write(User $actor, MealPlanVersion $version, Closure $command): mixed
+    public function withinDraft(User $actor, MealPlanVersion $version, Closure $command, ?Closure $beforeCommit = null): mixed
     {
         abort_unless(self::allowed($actor, $version), 403);
 
-        return DB::transaction(function () use ($actor, $version, $command): mixed {
+        return DB::transaction(function () use ($actor, $version, $command, $beforeCommit): mixed {
             DB::table('auth_security_runtime')->where('id', 1)->sharedLock()->first();
             User::whereKey($actor->getKey())->sharedLock()->firstOrFail();
             $locked = MealPlanVersion::whereKey($version->getKey())->where('meal_plan_id', $version->meal_plan_id)->lockForUpdate()->firstOrFail();
             abort_unless(self::allowed($actor, $locked), 403);
             $result = $command($locked);
             DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+            if ($beforeCommit !== null) {
+                $beforeCommit($locked);
+            }
             abort_unless(self::allowed($actor, $locked), 403);
             DB::statement('SET CONSTRAINTS ALL DEFERRED');
 

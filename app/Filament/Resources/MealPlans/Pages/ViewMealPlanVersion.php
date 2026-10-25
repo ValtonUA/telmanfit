@@ -21,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 
 class ViewMealPlanVersion extends ViewRecord
 {
+    use EditsMealItems;
+
     protected static string $resource = MealPlanVersionResource::class;
 
     public function getTitle(): string
@@ -31,6 +33,7 @@ class ViewMealPlanVersion extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ...$this->itemActions(),
             ...$this->weekDeletionActions(),
             Action::make('generateWeek')->label('Додати 7 днів')->modalSubmitActionLabel('Додати тиждень')->authorize(fn () => $this->editable())
                 ->modalHeading('Додати наступний семиденний тиждень')
@@ -69,6 +72,9 @@ class ViewMealPlanVersion extends ViewRecord
 
     public function mountAction(string $name, array $arguments = [], array $context = []): mixed
     {
+        if (in_array($name, ['addItem', 'editItem', 'moveItem', 'deleteItem'], true)) {
+            Gate::authorize('editItems', $this->getRecord());
+        }
         if (in_array($name, ['generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
             $this->authorizeStructure();
         }
