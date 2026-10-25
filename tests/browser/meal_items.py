@@ -38,7 +38,9 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         search.fill('Синтетичний інгредієнт')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
-        page.get_by_role('option', name='Інгредієнт · Синтетичний інгредієнт', exact=True).click()
+        option = page.locator('[role=option][data-value="' + str(f['food']) + '"]')
+        expect(option).to_have_text('Інгредієнт · Синтетичний інгредієнт')
+        option.click()
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         dialog.get_by_label('Споживана кількість', exact=False).fill('0.50')
         dialog.get_by_label('Порядок у прийомі', exact=False).click()
