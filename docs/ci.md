@@ -80,29 +80,38 @@ PR; стара зелена перевірка не годиться. На opene
   exclusion probes у готовому образі, MFA/OTP/CSRF/fence, persistence та cleanup.
 - Docs guard із PR-base і регресійні тести CI виконуються також усередині Full.
 
-Кешуються лише завантаження Composer і npm, прив’язані до lock hash; vendor,
+Кешуються завантаження Composer і npm, прив’язані до lock hash; vendor,
 node_modules, browser profiles, PG volumes і cold Docker layers не кешуються.
+Chromium-тести Stage1 запускають PHP через `tests/browser/php-server.sh`: OPcache
+повторно використовує скомпільований байткод лише протягом життя одного synthetic
+HTTP-сервера. Laravel bootstrap, middleware, session/CSRF, SQL та бізнес-операції
+виконуються на кожний запит. Немає persistent worker/application state, file cache,
+preload або JIT; timestamp validation увімкнено. Launcher відмовляє поза testing /
+TELMANFIT_PG_TEST, на не-loopback адресі або без активного OPcache. Зупинка сервера
+знищує кеш. Кеш байткоду не експортується між jobs/PR і не торкається cold Compose.
+PG-кластери залишаються окремими для recipe, B5, baseline/auth, B3/B4 та G4;
+міграції, SQL76, усі повторні PHPUnit-набори й concurrency/upgrade/reset докази збережені.
+Деталі вимірювань і відхилені варіанти — [CI-COST-2](evidence/ci-cost-2/report.md).
 `npm ci --ignore-scripts` замінює mutable install, Composer install не виконує
 plugins/scripts, а package discovery та потрібний Stage1 `filament:upgrade` запускаються явно. Actions pinned до повних
 commit SHA перевірених upstream tags. Усі workflows мають contents: read,
 checkout persist-credentials: false; secrets не успадковуються, pull_request_target
 не використовується. GH_TOKEN лише read token для pinned AUTH-1 public blobs.
-Synthetic PG/docker створюються незміненими runners із власним cleanup.
+Synthetic PG/docker створюються з чинними isolation guards і власним cleanup;
+`CI_STAGE1_TIMING` додає тривалості pull, cluster/setup, SQL, PHPUnit, concurrency,
+Chromium і total разом із cleanup. Recipe та baseline/auth stdout зберігаються
+в `stage1-pg-logs` поряд із чинними B5/B3/B4 outputs.
 
 ## Межі merge-захисту
 
-На preflight інтеграція отримала HTTP403 `Resource not accessible by integration`
-для GET branch protection; master має protected=false, rulesets порожні. Приватність
-репозиторію не змінюється. Поточний токен не дозволяє налаштувати/підтвердити
-серверний required gate. AGENTS + machine checker — **обов’язковий fallback для
-агентів**, але людина/admin технічно може його обійти. Це причина зберігати
-CI-COST-1 частково виконаним, доки власник не налаштує серверний захист.
-
-Коли з’явиться адміністративний доступ, додати required checks `Full PR gate`,
-`Fast PR checks`, `Docs links, roadmap and PR impact` від GitHub Actions, strict
-up-to-date branches, заборону bypass/force pushes/deletions для master. Зберігати
-machine checker як додатковий захист SHA/run-attempt/job coverage. Workflow-зміни
-потребують предметного review: PR-код не є сам собі довіреним verifier.
+Read-only preflight CI-COST-2 підтвердив активний ruleset `CI-COST-1`
+(id 25788875): required `Full PR gate`, `Fast PR checks`,
+`Docs links, roadmap and PR impact` від GitHub Actions (integration15368), strict
+up-to-date branches, PR requirement, заборона deletion/non-fast-forward.
+Історична недоступність branch protection у CI-COST-1 більше не описує поточний
+ruleset. Налаштування захисту не змінюються цим PR; machine checker залишається
+додатковою перевіркою SHA/run-attempt/job coverage. Приватність зберігається.
+Workflow-зміни потребують предметного review: PR-код не є сам собі довіреним verifier.
 Навіть SHA-locked merge не дає атомарної блокади одночасної зміни base без
 серверного strict protection; перед merge перевіряти base, а після конфліктів — новий Full.
 
@@ -110,7 +119,7 @@ machine checker як додатковий захист SHA/run-attempt/job cover
 
 [Звіт before/after і сценарії 5/10 commits](evidence/ci-cost-1/report.md).
 [Виміряний baseline](evidence/ci-cost-1/before.json) містить run/job SHA, GitHub URLs,
-started/completed timestamps, усі steps і відповідь timing API. Відтворення:
+started/completed timestamps, усі steps і історичну відповідь timing API. Відтворення:
 
 ```sh
 python3 scripts/ci/measure.py <run-id> [<run-id> ...] > /tmp/ci-measurements.json
@@ -118,6 +127,9 @@ python3 -m unittest discover -s tests/ci -v
 python3 -m unittest discover -s tests/docs -v
 python3 scripts/docs_guard.py --pr-base <base-sha>
 ```
+
+Поточний `measure.py` читає лише run і exact-attempt jobs/steps; Billing/timing API
+не викликається за рішенням власника Issue #68.
 
 Job-min = сума тривалостей **усіх** jobs; паралелізація сама не дає економії.
 `rounded_ubuntu_minutes_estimate` — округлення кожного job вгору, а не підтверджений

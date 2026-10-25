@@ -21,6 +21,16 @@
 
 ## Докази й перевірки
 
+CI-COST-2 додає процесний OPcache лише для synthetic Stage1 Chromium HTTP-серверів,
+окремі setup/group timings і збережені recipe/baseline stdout artifacts. SQL fixtures,
+міграції, test methods/assertions, PG ізоляція, обидва PHP runtime та cold Compose
+збережені. Legacy `week-fill` fixture явно обирає `legacy_v1`, щоб фізичний порядок
+published batch/legacy rows не змінював тестовий сценарій. Browser orchestration
+очікує завершення Filament overlay animations перед меню/mobile overflow assertion.
+[Виміри й обмеження](evidence/ci-cost-2/report.md); статус — [roadmap](roadmap.md).
+Результат Full на фінальному SHA записується в описі PR після запуску.
+
+
 `ClientProfilesTest` перевіряє SQL-відмову будь-якого UPDATE завершеної анкети
 (зокрема `updated_at`, legacy `id`, no-op), незмінність всього рядка після відмови,
 редагування/завершення чернетки та дозволений client cascade. Це доповнення PR #34;

@@ -5,6 +5,13 @@ cd "$(dirname "$0")/../.."
 for tool in docker php python3; do command -v "$tool" >/dev/null; done
 php scripts/check-php-runtime.php
 umask 077
+# Метрики orchestration; жодних credentials, fixture contents або зміни сценаріїв.
+run_started=$SECONDS
+phase_started=$SECONDS
+stage1_mark() {
+    printf 'CI_STAGE1_TIMING phase=%s seconds=%s\n' "$1" "$((SECONDS - phase_started))"
+    phase_started=$SECONDS
+}
 endpoint=$(docker context inspect --format '{{.Endpoints.docker.Host}}')
 [[ -z ${DOCKER_HOST:-} && -z ${DOCKER_CONTEXT:-} && $endpoint == unix://* ]]
 work=$(mktemp -d /tmp/telmanfit-stage1.XXXXXXXX)
@@ -17,6 +24,7 @@ cleanup() {
     rm -f -- "$work/socket/.s.PGSQL.5432" "$work/socket/.s.PGSQL.5432.lock"
     rm -f -- "$work/snapshot.dump" "$work/maintenance.json" "$work/b6-resources.jsonl" "$work/restart.json"
     rmdir -- "$work/socket" "$work" || code=1
+    printf 'CI_STAGE1_TIMING phase=total_with_cleanup seconds=%s exit=%s\n' "$((SECONDS - run_started))" "$code"
     exit "$code"
 }
 trap cleanup EXIT
@@ -27,6 +35,7 @@ chmod 777 "$work/socket"
 # Той самий офіційний pin, що й у погодженому G4; жодних мереж чи портів.
 image='postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc'
 docker pull "$image"
+stage1_mark immutable_image_pull
 pg_command=(-c 'unix_socket_directories=/var/run/postgresql,/run/telmanfit-pg')
 if [[ ${AUTH6B6_ONLY:-0} == 1 ]]; then
     # PID1 лишається живим під час реального postmaster restart; tmpfs не unmount.
@@ -61,6 +70,7 @@ docker exec "$container" psql -X -U postgres -d "$DB_DATABASE" -v ON_ERROR_STOP=
     -c 'CREATE ROLE telmanfit_notice_writer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
     -c 'CREATE ROLE telmanfit_notice_dispatcher NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;' \
     -c 'GRANT telmanfit_notice_writer, telmanfit_notice_dispatcher TO telmanfit_test_runner;'
+stage1_mark isolated_cluster_roles_database
 if [[ ${AUTH6B6_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
     php tests/pg/auth6b5-bootstrap.php
@@ -154,8 +164,10 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
     baseline_paths+=(--path="$file")
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
+stage1_mark baseline_migrations
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit -c phpunit.pgsql.xml --filter 'RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    stage1_mark recipe_phpunit
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
     php tests/pg/batch-editor-concurrency.php
@@ -169,7 +181,11 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/meal-item-writer-concurrency.php
     php tests/pg/meal-plan-day-concurrency.php
     php tests/pg/recipe-cover-concurrency.php
-    if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then bash tests/browser/recipe-batch-in-context.sh; fi
+    stage1_mark recipe_concurrency
+    if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then
+        bash tests/browser/recipe-batch-in-context.sh
+        stage1_mark recipe_browser
+    fi
     exit
 fi
 if [[ ${CLIENT_PROFILES_ONLY:-0} == 1 ]]; then
@@ -191,7 +207,9 @@ for path in sorted(Path('tests/pg/out').glob('t0*.out')):
 print('SQL: ' + ' '.join(f'{key}={value}' for key, value in counts.items()))
 assert counts == {'PASS': 76, 'FAIL': 0, 'GAP': 0}, counts
 PY
+stage1_mark sql_baseline
 vendor/bin/phpunit -c phpunit.pgsql.xml --display-all-issues
+stage1_mark full_pg_phpunit
 # Основний конфіг перемикає на SQLite; PostgreSQL-набір має окремий конфіг.
 DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --display-all-issues
 vendor/bin/pint --test
@@ -205,21 +223,27 @@ php tests/pg/auth2-concurrency.php
 
 vendor/bin/phpunit -c phpunit.auth3.xml --display-all-issues
 php tests/pg/auth3-concurrency.php
+stage1_mark auth3_tests_concurrency
 if [[ ${AUTH3_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth3-in-context.sh
+    stage1_mark auth3_browser
 fi
 
 vendor/bin/phpunit -c phpunit.auth4.xml --display-all-issues
 
 php tests/pg/auth4-concurrency.php
+stage1_mark auth4_tests_concurrency
 if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth4-in-context.sh
+    stage1_mark auth4_browser
 fi
 
 vendor/bin/phpunit -c phpunit.auth5.xml --display-all-issues
 php tests/pg/auth5-concurrency.php
+stage1_mark auth5_tests_concurrency
 if [[ ${AUTH5_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth5-in-context.sh
+    stage1_mark auth5_browser
 fi
 
 vendor/bin/phpunit -c phpunit.auth6.xml --display-all-issues

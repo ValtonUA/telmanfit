@@ -10,9 +10,18 @@ def fixture(action, *args):
     return subprocess.check_output(['php', 'tests/browser/meal-plan-fixture.php', action, *map(str, args)], text=True)
 
 
+def settle_overlays(page):
+    # visible ще не означає завершення Alpine enter/leave: вкладене меню може
+    # закриватися, а mobile modal тимчасово збільшувати scrollWidth.
+    page.wait_for_function("""() => [...document.querySelectorAll('.fi-dropdown, .fi-modal')]
+        .every(el => el.getAnimations({subtree: true}).every(a => a.playState !== 'running'))""")
+
+
 def management(page, label):
+    settle_overlays(page)
     if not page.get_by_text(label, exact=True).is_visible():
         page.get_by_role('button', name='Керування', exact=True).click()
+        settle_overlays(page)
     page.get_by_text(label, exact=True).click()
 
 
@@ -133,6 +142,7 @@ def run_meal_plans(page, base):
             dialog = page.get_by_role('alertdialog').filter(has=page.get_by_text('Видалити тиждень', exact=True))
             expect(dialog.get_by_text('Позицій: 2.', exact=False)).to_be_visible()
             expect(dialog.get_by_text('Дію неможливо скасувати.', exact=False)).to_be_visible()
+            settle_overlays(page)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             page.screenshot(path=str(output / f'week-confirm-{suffix}.png'))
             submit(dialog, 'Скасувати')

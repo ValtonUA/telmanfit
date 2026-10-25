@@ -8,7 +8,7 @@ export PAO_DISABLE=1
 BATCH_BROWSER_VERSION=$(php tests/browser/recipe-batch-fixture.php)
 export BATCH_BROWSER_VERSION
 log=$(mktemp /tmp/telmanfit-batch-http.XXXXXXXX)
-php -S 127.0.0.1:8097 -t public tests/browser/recipe-batch-router.php >"$log" 2>&1 &
+bash tests/browser/php-server.sh 127.0.0.1:8097 -t public tests/browser/recipe-batch-router.php >"$log" 2>&1 &
 server=$!
 cleanup() {
     kill "$server" 2>/dev/null || true

@@ -1,0 +1,114 @@
+2026-10-25T18:13:53.6514971Z Cache restored from key: node-cache-Linux-x64-npm-ca337fd2733c53e429ca61639db989f115b866a479dc300afc016c52c035c173
+2026-10-25T18:13:54.6453218Z Cache restored from key: composer-Linux-e216fe8cb8ea537fc30421c739774a46f18441f0f413dd96ba69868aefc0748f
+2026-10-25T18:15:03.9202265Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:15:03.9219639Z Status: Downloaded newer image for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:15:53.1102813Z Time: 00:46.968, Memory: 107.00 MB
+2026-10-25T18:15:53.1132951Z [30;42mOK (142 tests, 2464 assertions)[0m
+2026-10-25T18:18:00.0377432Z Meal items Chromium: 1440-light ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+2026-10-25T18:18:30.8253994Z UX-4E Chromium 1440-light: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+2026-10-25T18:18:45.5140060Z PR67 presentation Chromium 1440-light: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+2026-10-25T18:20:11.5961371Z Meal items Chromium: 1440-dark ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+2026-10-25T18:20:42.6537715Z UX-4E Chromium 1440-dark: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+2026-10-25T18:20:56.7829429Z PR67 presentation Chromium 1440-dark: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+2026-10-25T18:22:15.4702454Z Meal items Chromium: 390-light ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+2026-10-25T18:22:46.9434813Z UX-4E Chromium 390-light: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+2026-10-25T18:22:59.8172300Z PR67 presentation Chromium 390-light: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+2026-10-25T18:24:19.8437947Z Meal items Chromium: 390-dark ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+2026-10-25T18:24:51.2724084Z UX-4E Chromium 390-dark: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+2026-10-25T18:25:04.2161418Z PR67 presentation Chromium 390-dark: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+2026-10-25T18:26:23.7278496Z Meal items Chromium: 320-light ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+2026-10-25T18:26:53.8212903Z UX-4E Chromium 320-light: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+2026-10-25T18:27:06.7916724Z PR67 presentation Chromium 320-light: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+2026-10-25T18:28:26.9519927Z Meal items Chromium: 320-dark ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+2026-10-25T18:28:58.0215495Z UX-4E Chromium 320-dark: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+2026-10-25T18:29:10.7164780Z PR67 presentation Chromium 320-dark: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+2026-10-25T18:29:45.9246257Z Catalog Chromium: 1440-light PASS
+2026-10-25T18:30:04.7471985Z Catalog Chromium: 1440-dark PASS
+2026-10-25T18:30:23.2543184Z Catalog Chromium: 390-light PASS
+2026-10-25T18:30:41.9513312Z Catalog Chromium: 390-dark PASS
+2026-10-25T18:31:00.2070559Z Catalog Chromium: 320-light PASS
+2026-10-25T18:31:18.7483147Z Catalog Chromium: 320-dark PASS
+2026-10-25T18:32:58.9202867Z Recipe editor browser PASS: 19 checks
+2026-10-25T18:32:59.5038311Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:32:59.5040431Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:33:04.5211900Z Time: 00:02.484, Memory: 60.50 MB
+2026-10-25T18:33:04.5213068Z [30;42mOK (41 tests, 392 assertions)[0m
+2026-10-25T18:33:14.0627532Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:33:14.0630167Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:33:16.9024036Z SQL: PASS=76 FAIL=0 GAP=0
+2026-10-25T18:34:14.0313219Z Time: 00:56.950, Memory: 105.00 MB
+2026-10-25T18:34:14.0314439Z [30;42mOK (194 tests, 3436 assertions)[0m
+2026-10-25T18:34:29.5687454Z Time: 00:01.350, Memory: 67.00 MB
+2026-10-25T18:34:29.5688801Z [30;42mOK (12 tests, 131 assertions)[0m
+2026-10-25T18:34:44.6137969Z Time: 00:14.441, Memory: 73.00 MB
+2026-10-25T18:34:44.6139275Z [30;42mOK (25 tests, 129 assertions)[0m
+2026-10-25T18:35:07.1180213Z Time: 00:03.048, Memory: 69.00 MB
+2026-10-25T18:35:07.1181289Z [30;42mOK (30 tests, 181 assertions)[0m
+2026-10-25T18:35:41.7849908Z Time: 00:17.848, Memory: 65.00 MB
+2026-10-25T18:35:41.7851418Z [30;42mOK (19 tests, 131 assertions)[0m
+2026-10-25T18:40:26.4437294Z Time: 00:02.746, Memory: 61.00 MB
+2026-10-25T18:40:26.4438634Z [30;42mOK (5 tests, 359 assertions)[0m
+2026-10-25T18:40:55.3227262Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:40:55.3230689Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:40:59.3673299Z Time: 00:01.388, Memory: 67.00 MB
+2026-10-25T18:40:59.3692094Z [30;42mOK (12 tests, 131 assertions)[0m
+2026-10-25T18:41:09.7313493Z Time: 00:10.186, Memory: 65.00 MB
+2026-10-25T18:41:09.7314579Z [30;42mOK (22 tests, 213 assertions)[0m
+2026-10-25T18:41:16.7679980Z Time: 00:06.867, Memory: 60.50 MB
+2026-10-25T18:41:16.7681080Z [30;42mOK (16 tests, 128 assertions)[0m
+2026-10-25T18:41:37.0462710Z Time: 00:18.706, Memory: 73.00 MB
+2026-10-25T18:41:37.0484842Z [30;42mOK (25 tests, 129 assertions)[0m
+2026-10-25T18:41:40.3442996Z Time: 00:03.129, Memory: 69.00 MB
+2026-10-25T18:41:40.3444156Z [30;42mOK (30 tests, 181 assertions)[0m
+2026-10-25T18:41:53.6705600Z Time: 00:13.167, Memory: 65.00 MB
+2026-10-25T18:41:53.6733895Z [30;42mOK (19 tests, 131 assertions)[0m
+2026-10-25T18:41:56.6132464Z Time: 00:02.767, Memory: 61.00 MB
+2026-10-25T18:41:56.6162951Z [30;42mOK (5 tests, 359 assertions)[0m
+2026-10-25T18:42:31.2833439Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:42:31.2834519Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T18:42:35.9183383Z PDO connectivity: OK (private Unix socket; telmanfit_test / telmanfit_test_runner / telmanfit_test_runner)
+2026-10-25T18:42:43.6040453Z OK (15 tests, 93 assertions)
+
+
+job 121139618982
+2026-10-25T10:09:38.4267543Z Cache restored from key: node-cache-Linux-x64-npm-ca337fd2733c53e429ca61639db989f115b866a479dc300afc016c52c035c173
+2026-10-25T10:09:40.2762857Z Cache restored from key: composer-Linux-e216fe8cb8ea537fc30421c739774a46f18441f0f413dd96ba69868aefc0748f
+2026-10-25T10:10:42.3831998Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:10:42.3842124Z Status: Downloaded newer image for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:15:53.9491128Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:15:53.9492634Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:16:03.7707605Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:16:03.7708287Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:22:11.9540473Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:22:11.9542478Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:23:21.5677739Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T10:23:21.5679198Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+
+job 121152680597
+2026-10-25T11:13:50.4184346Z Cache restored from key: node-cache-Linux-x64-npm-ca337fd2733c53e429ca61639db989f115b866a479dc300afc016c52c035c173
+2026-10-25T11:13:52.2028150Z Cache restored from key: composer-Linux-e216fe8cb8ea537fc30421c739774a46f18441f0f413dd96ba69868aefc0748f
+2026-10-25T11:15:06.6749568Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:15:06.6757775Z Status: Downloaded newer image for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:25:49.5372480Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:25:49.5392635Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:26:01.2515240Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:26:01.2517180Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:32:46.8413631Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:32:46.8415983Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:34:08.5169559Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T11:34:08.5171030Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+
+job 121209009917
+2026-10-25T15:23:33.2818145Z Cache restored from key: node-cache-Linux-x64-npm-ca337fd2733c53e429ca61639db989f115b866a479dc300afc016c52c035c173
+2026-10-25T15:23:35.0326722Z Cache restored from key: composer-Linux-e216fe8cb8ea537fc30421c739774a46f18441f0f413dd96ba69868aefc0748f
+2026-10-25T15:24:55.3095215Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:24:55.3100037Z Status: Downloaded newer image for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:38:37.7765486Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:38:37.7770682Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:38:50.4094173Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:38:50.4095879Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:45:50.4858237Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:45:50.4859000Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:47:23.6053412Z Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+2026-10-25T15:47:23.6054709Z Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+

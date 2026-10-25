@@ -13,7 +13,7 @@ auth4_work=$(mktemp -d /tmp/telmanfit-auth4-XXXXXXXX)
 export AUTH4_SYNTHETIC_MAILBOX="$auth4_work/mailbox"
 export AUTH4_SERVER_LOG="$auth4_work/server.log"
 php tests/browser/auth4-fixture.php
-php -S 127.0.0.1:8094 -t public server.php >"$AUTH4_SERVER_LOG" 2>&1 &
+bash tests/browser/php-server.sh 127.0.0.1:8094 -t public server.php >"$AUTH4_SERVER_LOG" 2>&1 &
 server=$!
 cleanup() {
     kill "$server" 2>/dev/null || true
