@@ -38,7 +38,7 @@ class MealPlanVersionResource extends Resource
             TextEntry::make('status')->label('Статус')->badge()->formatStateUsing(fn ($state) => self::statusLabel($state)),
             TextEntry::make('published_at')->label('Дата публікації')->placeholder('Ще не опублікована'),
             TextEntry::make('boundary')->label('Режим перегляду')->state(fn ($record) => $record->status === 'draft'
-                ? 'Чернетка ще не готова до публікації. Додайте семиденний тиждень і налаштуйте прийоми. Позицій ще немає; їх редактор і Publish будуть окремими етапами.'
+                ? 'Чернетка ще не готова до публікації. Додайте семиденний тиждень і налаштуйте прийоми. Редактор позицій і Publish будуть окремими етапами.'
                 : 'Опублікована версія — лише читання. Історія та призначення зберігаються.'),
             RepeatableEntry::make('days')->label('Дні → прийоми їжі → позиції')->placeholder('Порожня чернетка: днів ще немає.')->schema([
                 TextEntry::make('week')->label('Тиждень')->state(fn ($record) => intdiv($record->day_number - 1, 7) + 1),
