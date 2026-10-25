@@ -168,7 +168,8 @@ class WorkflowTests(unittest.TestCase):
     def test_full_preserves_existing_regressions(self):
         text = self.workflows["stage1.yml"]
         self.assertIn("python -m unittest discover -s tests/browser -p 'test_*.py' -v", text)
-        for command in ("RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1 bash tests/pg/run-stage1.sh", "AUTH6B5_ONLY=1 tests/pg/run-stage1.sh", "AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh", "AUTH6B_ONLY=1 tests/pg/run-stage1.sh", "bash tests/pg/test-runner.sh", "bash tests/pg/run-isolated-pg.sh", "bash experiments/auth1/run.sh"):
+        self.assertIn("python3 scripts/ci/stage1_groups.py", text)
+        for command in ("bash tests/pg/test-runner.sh", "bash tests/pg/run-isolated-pg.sh", "bash experiments/auth1/run.sh"):
             self.assertIn(command, text)
         self.assertIn("php artisan filament:upgrade --ansi", text)
         self.assertNotIn("AUTH6B6_ONLY", text)
@@ -179,7 +180,7 @@ class WorkflowTests(unittest.TestCase):
         # SQLite тести під TELMANFIT_PG_TEST мають інші synthetic bindings,
         # тому їх не можна визнати дублем matrix лише за назвами методів.
         runner = (ROOT / "tests/pg/run-stage1.sh").read_text()
-        self.assertIn("DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --display-all-issues", runner)
+        self.assertIn('DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test "${phpunit_args[@]}" --display-all-issues', runner)
         compose = self.workflows["local-compose.yml"]
         for command in ("docker compose build --pull --no-cache", "synthetic-context-exclusion-probe", "Reject host credentials", "TELMANFIT_FILAMENT_THEME_BROWSER=1 python tests/browser/local_compose.py", "docker compose down --volumes --remove-orphans"):
             self.assertIn(command, compose)

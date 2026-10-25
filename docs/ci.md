@@ -95,9 +95,23 @@ test-only commit hooks. Відсутній hook/failed
 commit блокують очікування; selector assertion доводить реальні hook events.
 Повторний static Pint у PG runner прибрано: його зберігають обидва required PHP
 matrix jobs і Fast. SQLite tests під synthetic PG bindings збережені.
-Три Chromium regression тести readiness запускаються у Stage1 після Playwright
+Chromium regression тести readiness та реального cancellation cleanup запускаються у Stage1 після Playwright
 install. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
 MFA/OTP timer/cooldown перевірки збережені.
+`scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
+Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
+jobs: GitHub рахує wall time одного зайнятого runner, а не суму worker durations.
+Composer/npm/Playwright і immutable Docker layers готуються один раз на job.
+Workers мають різні disposable PG/socket, VIEW_COMPILED_PATH, PHPUnit cache,
+HTTP ports (recipe8090; auth8093–8097), stdout files і process groups. PG mutable
+state не ділиться; SQLite85 у synthetic context і обидва PG142/194 збережені.
+Parent і workers відмовляють для remote Docker. Усі чотири exit0/completed/success
+обов'язкові; missing/failed/cancelled/pending/skipped блокує orchestrator. При
+помилці/сигналі siblings завершуються; fallback перевіряє випадковий ownership
+label і прибирає тільки власні контейнери. Знайдений leftover навіть після recovery
+робить результат failure. AUTH1 і його GH_TOKEN лишаються окремим наступним кроком.
+`tests/pg/out/groups.json` містить точний SHA, UTC/seconds/status кожного worker і
+загальний час orchestration; worker seconds не видаються за billed job-min.
 PG-кластери залишаються окремими для recipe, B5, baseline/auth, B3/B4 та G4;
 міграції, SQL76, усі повторні PHPUnit-набори й concurrency/upgrade/reset докази збережені.
 Деталі вимірювань і відхилені варіанти — [CI-COST-2](evidence/ci-cost-2/report.md).
@@ -108,8 +122,9 @@ checkout persist-credentials: false; secrets не успадковуються, 
 не використовується. GH_TOKEN лише read token для pinned AUTH-1 public blobs.
 Synthetic PG/docker створюються з чинними isolation guards і власним cleanup;
 `CI_STAGE1_TIMING` додає тривалості pull, cluster/setup, SQL, PHPUnit, concurrency,
-Chromium і total разом із cleanup. Recipe та baseline/auth stdout зберігаються
-в `stage1-pg-logs` поряд із чинними B5/B3/B4 outputs.
+Chromium і total разом із cleanup. Чотири worker stdout і `groups.json` зберігаються
+в `stage1-pg-logs` поряд із чинними SQL outputs. Exit codes перевіряються напряму,
+без pipeline, що міг би приховати failure.
 
 ## Межі merge-захисту
 

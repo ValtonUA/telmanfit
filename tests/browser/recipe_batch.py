@@ -12,7 +12,7 @@ import time
 from playwright.sync_api import sync_playwright, expect
 from readiness import TRACKER, metrics as readiness_metrics
 
-base = 'http://127.0.0.1:8097'
+base = 'http://127.0.0.1:8090'
 url = base + '/admin/recipe-batches?version=' + os.environ['BATCH_BROWSER_VERSION']
 output = Path('docs/evidence/recipe-batches')
 output.mkdir(parents=True, exist_ok=True)

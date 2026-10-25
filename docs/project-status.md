@@ -21,7 +21,8 @@
 
 ## Докази й перевірки
 
-CI-COST-2 додає процесний OPcache лише для synthetic Stage1 Chromium HTTP-серверів,
+CI-COST-2 додає bounded виконання по дві ізольовані PG/browser групи в одному job,
+процесний OPcache лише для synthetic Stage1 Chromium HTTP-серверів,
 окремі setup/group timings і збережені recipe/baseline stdout artifacts. SQL fixtures,
 міграції, test methods/assertions, PG ізоляція, обидва PHP runtime та cold Compose
 збережені. Legacy `week-fill` fixture явно обирає `legacy_v1`, щоб фізичний порядок
@@ -31,6 +32,9 @@ published batch/legacy rows не змінював тестовий сценар�
 Після timeout першого Full додано navigation `load` без додаткової network silence,
 actual Livewire render readiness, три Chromium negative/async тести та hook-event
 assertion; прибрано лише повторний static Pint, збережений у required matrix.
+Workers мають private compiled views/PHPUnit cache та окремі loopback ports;
+fail-fast/signal/owned-container recovery перевірено негативними tests і реальним
+PG18 cancellation probe. Нова кількість billed jobs не додається.
 Результат Full на фінальному SHA записується в описі PR після запуску.
 
 
