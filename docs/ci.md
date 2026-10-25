@@ -6,11 +6,21 @@ PHP syntax, Compose config, Pint, Unit/Feature на SQLite, обидві fronten
 посилання/roadmap і docs-impact **від PR base до точного head**, включно з видаленнями.
 Workflow/CI scripts теж потребують canonical docs або обґрунтованого Docs-Impact.
 
+## Бюджет GitHub-hosted CI й дозвіл на запуск
+
+**Будь-який GitHub-hosted Full PR, rerun чи workflow_dispatch потребує окремого явного дозволу власника на конкретний запуск.** Перед запитом повідом PR, фінальний head SHA, причину, доступний залишок квоти (якщо перевірений) і прогноз **сумарних runner-хвилин усіх jobs**; паралельність не робить їх безкоштовними. Невдалий або скасований запуск не дозволяє автоматичний retry. Дозвіл на один SHA або попереднє «виконай Full» не поширюється на повтори.
+
+Fast PR та Documentation health автоматично запускаються на кожний push до відкритого PR і на push у master. **Перед першим push** власник погоджує кількість очікуваних hosted запусків і оцінку їхніх витрат; до цього виконувати локальні перевірки на disposable synthetic даних. Не пушити проміжні зміни тільки заради CI. Без погодження — залишити `pending push/CI`, не обходити protected required checks.
+
+Послідовність: (1) завершити зміни й локальні тести; (2) погодити витрати автоматичних Fast/Docs та push; (3) зафіксувати точний head SHA, перевірити залишок бюджету; (4) отримати **окремий дозвіл** на один Full; (5) тільки тоді застосувати `request_full.py`; (6) один змістовний read-only status-check; якщо `pending` — завершити агентний прогін із URL; (7) після failure/cancellation звернутися по новий дозвіл. Жодного нескінченного polling чи повторюваного status narration.
+
+Брак бюджету не є підставою знижувати Full-gate або позначати PR merge-ready. Редагування Billing, платні fallback і self-hosted runners — окремі рішення власника. Вимоги до exact SHA, усіх 6 Full jobs та trusted `pre_merge.py` залишаються незмінними.
+
 ## Запуск Full на фінальному head
 
 1. Оновити гілку так, щоб актуальний master був її предком. Переконатися, що
    Fast PR і Documentation health успішні на потрібному SHA.
-2. Запустити із довіреного checkout:
+2. **Після окремого дозволу власника на цей Full та head SHA** запустити із довіреного checkout:
 
    ```sh
    python3 scripts/ci/request_full.py <PR> --repo ValtonUA/telmanfit
