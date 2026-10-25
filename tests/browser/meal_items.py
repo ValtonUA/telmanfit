@@ -40,7 +40,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
     search = dialog.get_by_role('combobox', name=re.compile('Продукт або опублікований рецепт.*Пошук'))
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         search.fill('No-such-synthetic-food-64')
-    expect(page.get_by_role('option')).to_have_count(0)
+    expect(page.locator('[role=option]')).to_have_count(0)
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         search.fill('Синтетичний інгредієнт')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
@@ -80,6 +80,8 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
     expect(dialog.get_by_text('Дію неможливо скасувати.', exact=False)).to_be_visible()
     page.screenshot(path=str(output / f'item-delete-{suffix}.png'))
     submit(dialog, 'Скасувати')
+    if page.viewport_size['width'] < 1280:
+        page.locator('.plan-mobile-picker select').select_option(label='День 2')
     expect(page.get_by_text('1.25', exact=True).first).to_be_visible()
     dialog = open_action('Видалити позицію', True)
     select(dialog, 'Позиція', re.compile(re.escape('День 2 · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
