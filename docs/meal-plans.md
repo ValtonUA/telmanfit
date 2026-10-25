@@ -1,4 +1,4 @@
-# Раціони — контракт T4.1
+# Раціони — контракт T4.1/T4.2
 
 [Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
 [readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
@@ -19,7 +19,7 @@
 
 Після створення відкривається єдина нова чернетка. Порожній стан явно пояснює,
 що вона ще не готова до публікації. Відкриття/reload не створює наступної чернетки.
-Published і legacy показуються лише для читання. Зміна назви чи власника наявного
+Published показуються лише для читання; наявні legacy-позиції не переписуються. Зміна назви чи власника наявного
 плану також закрита: окреме правило зміни metadata published plan не затверджене.
 
 ## Серверні межі та дані
@@ -32,7 +32,8 @@ food/FK і replacement links не дозволені для mass assignment. Р�
 супроводу, foods, рецепти та призначення не змінюються.
 
 `MealPlanPolicy` дозволяє лише admin list/view/create. Policy нижніх сутностей
-дозволяє admin читання; create/update/delete/replicate закриті. Штатні middleware
+дозволяє admin читання; універсальні create/update/delete/replicate закриті. Окрема
+здатність `editStructure` дозволена лише для чинної точної draft version. Штатні middleware
 панелі забезпечують session/MFA/CSRF, з повторною авторизацією Livewire-запитів.
 Сервіс не створює сесію й не обходить ці middleware.
 
@@ -43,9 +44,38 @@ assignment/client/version/creator/replacement/replaces. Допоміжна `Food
 не генеруються; `created_at`/дати незмінного типу, numeric — `decimal:2`, без float.
 Наявні partial UNIQUE, immutable guards та EXCLUDE збережені без зміни SQL/міграцій.
 
+## Редагування структури T4.2
+
+На тій самій сторінці точної версії admin явно додає наступні 7 днів:
+`1…7`, `8…14`, `15…21` тощо. Відкриття й reload лише читають дані. Типи треба
+обрати з чинного `meal_types`, впорядкованого `sort_order, id`; автоматичних
+припущень про коди чи ID немає. Порожній довідник показує пояснення і блокує
+генерацію. Неповну/розірвану legacy-структуру сервіс не ремонтує автоматично.
+Межа номера дня — чинний SQL `smallint`, без нового продуктового ліміту тижнів.
+
+Дії «Додати прийом», «Змінити прийом», «Видалити порожній прийом» вибирають день
+або прийом **цієї версії**. Доступні чинний тип, необов’язкова назва та signed
+smallint порядок (однаковий порядок стабільно сортується за ID). Тип у дні унікальний.
+День може тимчасово залишитися без прийомів; UI показує порожній стан, Publish
+не реалізовано. Прийом із позиціями видаляти заборонено; позиції не змінюються.
+Номери днів не редагуються і самі дні не видаляються, тому семиденний каркас
+залишається безперервним. Розширені операції перестановки/видалення днів потребують
+окремого UX-рішення, якщо знадобляться; це не блокує зміну вмісту дня.
+
+`MealPlanStructure` перевіряє Policy/свіжого admin та recovery/restore fence,
+тримає actor shared lock → runtime fence shared lock → exact version FOR UPDATE
+→ days → meals → type shared locks. Після блокування повторно перевіряє draft;
+після команд — deferred guards і свіжу роль до commit. Жодного переходу на latest.
+Сервіс не змінює parent/owner/status/publication/assignments або історичні snapshots.
+Повтор запиту явного блоку `start_day` є no-op, навіть якщо його прийоми вже
+відредаговані; паралельні кліки серіалізуються на версії. Append не торкається
+попередніх тижнів. Редагування/видалення порівнює hash початкових полів прийому
+під lock, тому stale форма не стирає новішу правку. Повтор add з тим самим типом
+відхиляється без змін. Немає нових таблиць, міграцій, довідників або feature flags.
+
 ## Свідомо закриті команди
 
-Генератор днів (T4.2), meal item writer (T4.3), Publish (T4.4), призначення/заміна
+Meal item writer (T4.3), Publish (T4.4), призначення/заміна
 (T4.5), CoW (T4.6), Delete/replicate/archive та CRUD довідника meal types відсутні.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
@@ -54,7 +84,7 @@ assignment/client/version/creator/replacement/replaces. Допоміжна `Food
 A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredient — NULL.
 [Proposal §11/§13](proposals/stage-3-recipe-batch-editor.md#11-контракт-stage-4-food-формат-порція-і-фізичне-приготування)
 ще містить формулювання «для погодження»; gate #54 задає напрям, але це не дозвіл
-додавати selectors у T4.1. DEC-4A потрібне перед T4.5. T1.5 та DEC-3T не блокують
+додавати selectors у T4.2. DEC-4A потрібне перед T4.5. T1.5 та DEC-3T не блокують
 цей synthetic foundation. Production activation — окремий go/no-go.
 
 ## Перевірки
@@ -64,11 +94,17 @@ A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredien
   relations, atomic create, deferred late fault rollback, name/owner validation,
   прямий Livewire, fresh-role ACL, SQL unique/immutable/exclusion negatives,
   populated legacy recipe/ingredient plans та hash незмінності історії.
+- `tests/Postgres/MealPlanStructureTest.php`: 7/14/21 днів, типи/порядок, retries,
+  rollback deferred faults, порожній довідник, stale/forged/cross-version IDs,
+  SQL UNIQUE, immutable history, fresh-role/fence та прямі Filament actions.
+- `tests/pg/meal-plan-structure-concurrency.php`: незалежні PG-сесії з доведеним
+  lock wait; double/retry, edit-vs-generate, stale edit та revoked role.
 - `tests/pg/meal-plan-concurrency.php`: окремий процес, доведене очікування locks,
   duplicate draft / immutable detail / overlap відмови; два атомарні незалежні
   створення без lost write. Входить у штатний recipe/Stage4 runner.
 - `tests/browser/meal_plans.py`: справжня MFA-сесія, create/list/search/detail,
-  точна published hierarchy та порожня чернетка, 1440/390/320 light/dark,
+  точна published hierarchy, порожня чернетка, генерація/редагування/append/reload,
+  1440/390/320 light/dark,
   overflow, CSRF 419, revoked signed Livewire/HTTP 403 та незмінна історія.
   Виконується разом із Stage 3 catalog/recipe регресіями; synthetic screenshots
   і checks зберігаються як CI artifacts у `meal-plans/`.

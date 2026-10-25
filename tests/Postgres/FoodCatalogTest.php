@@ -174,9 +174,9 @@ class FoodCatalogTest extends PostgresTestCase
         $page->assertRedirect();
         Livewire::test(EditIngredient::class, ['record' => $record->id])->fillForm(['name' => 'Змінено у Filament'])->call('save')->assertHasNoFormErrors();
         $this->assertSame('Змінено у Filament', $record->fresh()->name);
-        $mounted = Livewire::test(EditIngredient::class, ['record' => $record->id]);
+        $mounted = Livewire::test(EditIngredient::class, ['record' => $record->id])->fillForm(['name' => 'Заборонено']);
         DB::table('users')->where('id', $this->actor->id)->update(['role' => 'coach']);
-        $mounted->fillForm(['name' => 'Заборонено'])->call('save')->assertNotFound();
+        $mounted->call('save')->assertForbidden();
         foreach ([false, true] as $flag) {
             config(['recipes.batch_editor_enabled' => $flag]);
             foreach (['coach', 'client'] as $role) {

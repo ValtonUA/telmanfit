@@ -38,13 +38,15 @@ class MealPlanVersionResource extends Resource
             TextEntry::make('status')->label('Статус')->badge()->formatStateUsing(fn ($state) => self::statusLabel($state)),
             TextEntry::make('published_at')->label('Дата публікації')->placeholder('Ще не опублікована'),
             TextEntry::make('boundary')->label('Режим перегляду')->state(fn ($record) => $record->status === 'draft'
-                ? 'Чернетка ще не готова до публікації. Генерація днів і редагування позицій будуть окремими етапами.'
+                ? 'Чернетка ще не готова до публікації. Додайте семиденний тиждень і налаштуйте прийоми. Позицій ще немає; їх редактор і Publish будуть окремими етапами.'
                 : 'Опублікована версія — лише читання. Історія та призначення зберігаються.'),
             RepeatableEntry::make('days')->label('Дні → прийоми їжі → позиції')->placeholder('Порожня чернетка: днів ще немає.')->schema([
+                TextEntry::make('week')->label('Тиждень')->state(fn ($record) => intdiv($record->day_number - 1, 7) + 1),
                 TextEntry::make('day_number')->label('День'),
                 RepeatableEntry::make('meals')->label('Прийоми їжі')->placeholder('Прийомів їжі ще немає.')->schema([
                     TextEntry::make('type.title')->label('Тип прийому їжі'),
                     TextEntry::make('title')->label('Назва прийому')->placeholder('Без додаткової назви'),
+                    TextEntry::make('sort_order')->label('Порядок'),
                     RepeatableEntry::make('items')->label('Позиції')->placeholder('Позицій ще немає.')->schema([
                         TextEntry::make('food.label')->label('Позиція'),
                         TextEntry::make('food_id')->label('Food ID (точне історичне посилання)'),

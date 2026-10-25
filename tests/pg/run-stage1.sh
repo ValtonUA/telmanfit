@@ -155,7 +155,7 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit -c phpunit.pgsql.xml --filter 'RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest' --display-all-issues
+    vendor/bin/phpunit -c phpunit.pgsql.xml --filter 'RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest' --display-all-issues
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
     php tests/pg/batch-editor-concurrency.php
@@ -163,6 +163,7 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/legacy-conversion-concurrency.php
     php tests/pg/food-catalog-concurrency.php
     php tests/pg/meal-plan-concurrency.php
+    php tests/pg/meal-plan-structure-concurrency.php
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then bash tests/browser/recipe-batch-in-context.sh; fi
     exit
 fi

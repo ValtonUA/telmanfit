@@ -12,7 +12,7 @@
 | 1 | PostgreSQL: 37 бізнес-таблиць | Частково | Міграції/тести виконані; T1.5 seed-довідники ще не погоджені |
 | 2 | Картки клієнтів і auth | Частково | Картки готові; auth controlled/local/testing, production OFF; перший робочий екран анкети, решта питань пізніше |
 | **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; C3 merged #51; D: merged #53, Completion Audit #54; T1.5 окремо** |
-| 4 | Раціони і призначення | Частково | T4.1 foundation; далі T4.2, окремий schema/API gate перед T4.3 та DEC-4A перед T4.5 |
+| 4 | Раціони і призначення | Частково | T4.1/T4.2 foundation і структура; далі schema/API gate і T4.3; DEC-4A перед T4.5 |
 | 5 | Клієнтський кабінет | Частково | Auth/security shell є, харчового функціоналу немає |
 | 6 | Метрики, звіти, фото | Заплановано | Після клієнтів; окремі контракти за потреби |
 | 7 | Комунікація | Заплановано | Після базового прогресу |
@@ -95,14 +95,14 @@
 | T3.4 | [C1: новий draft із published A/B/C](recipe-batches.md#нова-версія-abc-pr-c1), frozen clone/ID remap, повторний review, одна чернетка/CAS та незмінність старих `food_id`/призначень (BR-F-16, BR-X-01). C3: явна атомарна legacy draft conversion та окрема нова версія для published legacy, forward SQL guard, snapshots/hashes/rollback/concurrency/browser докази; змерджено #51. | Виконано |
 | T3.5 | [C2: персональна CoW-копія published A/B/C](recipe-batches.md#персональна-копія-abc-c2): новий recipe/owner/parent/draft, спільний C1 clone, lineage/ACL, Filament confirm, PG/concurrency/Chromium; feature flag OFF. | Виконано |
 
-**Stage 3 audit:** [PR D #53 merged](https://github.com/ValtonUA/telmanfit/pull/53), ядро acceptance Issue #37 підтверджене [completion audit / Stage 4 gate #54](https://github.com/ValtonUA/telmanfit/issues/54). T3.3 лишається частково через DEC-3T; T1.5 та production activation не завершені. Наступна реалізація — T4.2, без передчасного meal item writer.
+**Stage 3 audit:** [PR D #53 merged](https://github.com/ValtonUA/telmanfit/pull/53), ядро acceptance Issue #37 підтверджене [completion audit / Stage 4 gate #54](https://github.com/ValtonUA/telmanfit/issues/54). T3.3 лишається частково через DEC-3T; T1.5 та production activation не завершені. Наступна реалізація — T4.3 після окремого Model I gate.
 
 ### Stage 4 — Раціони та призначення
 
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
 | T4.1 | [Сім Eloquent-моделей та Filament foundation](meal-plans.md): admin list/create/view, атомарний plan+draft, exact-version read-only hierarchy; без нижніх writers. | Виконано |
-| T4.2 | Автогенерація 7-денних тижнів і стандартних прийомів їжі з можливістю редагування (BR-P-01, BR-P-03). | Заплановано |
+| T4.2 | [Генерація послідовних 7-денних тижнів, вибір чинних типів, редагування/видалення порожніх прийомів](meal-plans.md); exact draft, locks/retry/stale guards (BR-P-01, BR-P-03). | Виконано |
 | T4.3 | Meal item writer: ingredient/UOM/grams та explicit recipe A/1 B/7 C/3 C/4. Перед реалізацією — окремий forward-only Model I schema/API контракт і guards, без backfill; [gate #54](https://github.com/ValtonUA/telmanfit/issues/54). | Заплановано |
 | T4.4 | Транзакційний сервіс публікації плану: перевірка тижнів, заповненості днів/прийомів, грамування (BR-P-01…BR-P-06). | Заплановано |
 | T4.5 | Призначення версії клієнту: атомарна заміна дат, `replaced_by_assignment_id`, подія в `client_events` (BR-P-08, BR-P-11). | Заплановано |
@@ -189,6 +189,7 @@
 | DEC-3T | Джерело duration, ідентичність timer та формат часу для timer token; у чинних таблицях є лише текст кроку | Очікує рішення | Перед timer tokens; решту B2 не блокує, час/температура не масштабуються |
 | DEC-3B | Явний refresh із diff, GET read-only; accepted snapshot для Save/Publish, manual quantity/UOM зберігаються; §17 і Issue #37 | Виконано | Базові команди PR B1; решта editor slice за T3.2–T3.3 |
 | DEC-2A | Для першого екрана затверджено гнучкий JSON без попереднього повного контракту; решта запитань переноситься поступово з Google-форми. | Частково | Розширювати разом із UI, без блокування інших модулів |
+| UX-4D | Чи потрібні перестановка/видалення самих днів поза редагуванням їхніх прийомів? T4.2 зберігає безперервний семиденний каркас, видаляє лише порожні прийоми. | Очікує рішення | Лише перед розширенням операцій із днями; T4.2 не блокує |
 | DEC-4A | Дострокове завершення/заміна призначення та `replaced_by_assignment_id` | Очікує рішення | Перед Stage 4 assignment workflow |
 | DEC-9A | Безпечне повторне MFA enrollment останнього admin після B5 restore | Очікує рішення | Перед Stage 9 / production |
 

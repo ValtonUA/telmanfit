@@ -16,7 +16,12 @@ if (($argv[1] ?? '') === 'seed') {
         }
     };
     $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
-    echo json_encode(DB::transaction(fn () => $fixture->make($actor->id)));
+    echo json_encode(DB::transaction(function () use ($fixture, $actor): array {
+        $data = $fixture->make($actor->id);
+        $data['extra_type'] = DB::table('meal_types')->insertGetId(['code' => 'synthetic-structure-browser-'.bin2hex(random_bytes(4)), 'title' => 'Синтетичний додатковий тип']);
+
+        return $data;
+    }));
     exit;
 }
 if (($argv[1] ?? '') === 'hash') {
@@ -31,6 +36,14 @@ if (($argv[1] ?? '') === 'hash') {
         'client_meal_plan_assignments' => ['meal_plan_version_id', $versions], 'foods' => ['id', $foods],
         'ingredients' => ['food_id', $foods], 'recipe_versions' => ['food_id', $foods]] as $table => [$column, $ids]) {
         $state[$table] = DB::table($table)->whereIn($column, $ids)->orderBy('id')->get()->all();
+    }
+    echo hash('sha256', json_encode($state));
+    exit;
+}
+if (($argv[1] ?? '') === 'structure-hash') {
+    $state = [];
+    foreach (['meal_plan_days', 'meals', 'meal_items'] as $table) {
+        $state[$table] = DB::table($table)->orderBy('id')->get()->all();
     }
     echo hash('sha256', json_encode($state));
     exit;
