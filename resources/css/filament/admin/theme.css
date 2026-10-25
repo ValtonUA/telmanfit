@@ -51,3 +51,55 @@
 .batch-editor { min-width: 0; overflow-wrap: anywhere; }
 .batch-editor .fi-input-wrp, .batch-editor label { min-width: 0; }
 .batch-editor .batch-textarea { width: 100%; min-height: 6rem; padding: .5rem .75rem; background: transparent; }
+
+/* UX-4E: точний тиждень та день, без локального дублювання серверного стану. */
+.plan-editor { min-width: 0; color: #263b33; overflow-wrap: anywhere; }
+.dark .plan-editor { color: #e4eee8; }
+.plan-editor h2 { font-size: 1.1rem; font-weight: 650; margin-bottom: .8rem; }
+.plan-editor h3 { font-weight: 650; margin-bottom: .5rem; }
+.plan-muted { color: #52665b; font-size: .85rem; }
+.dark .plan-muted { color: #b1c4b8; }
+.plan-toolbar, .plan-controls { display: flex; gap: .65rem; align-items: center; flex-wrap: wrap; }
+.plan-toolbar { justify-content: space-between; margin-bottom: 1rem; }
+.plan-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .65rem; margin-top: 1rem; }
+.plan-day, .plan-meal, .plan-catalog { min-width: 0; border: 1px solid #cddbd2; background: #fafcf9; border-radius: .8rem; padding: .8rem; }
+.dark :is(.plan-day, .plan-meal, .plan-catalog) { background: #17251f; border-color: #3d5447; }
+.plan-day { display: flex; flex-direction: column; }
+.plan-day-body { flex: 1; }
+.plan-day-body section { margin-bottom: 1rem; }
+.plan-day-body li { margin-bottom: .65rem; min-width: 0; }
+.plan-day-body small { display: block; }
+.plan-truncate { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-day-cta { margin-top: .8rem; white-space: normal; width: 100%; font-size: .78rem; }
+.plan-mobile-picker { display: none; }
+.plan-empty { padding: 1.5rem; border: 1px dashed #789683; border-radius: .8rem; margin: 1rem 0; }
+.plan-day-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.25rem; margin-top: 1.25rem; align-items: start; }
+.plan-meal { margin-bottom: 1rem; }
+.plan-item, .plan-catalog-item { border: 1px solid #d0ddd5; border-radius: .6rem; background: #fff; padding: .75rem; margin: .75rem 0; }
+.dark :is(.plan-item, .plan-catalog-item) { background: #21332a; border-color: #465b4e; }
+.plan-item-title { display: flex; gap: .5rem; align-items: start; }
+.plan-item-title strong { min-width: 0; }
+.plan-drag-handle { cursor: grab; touch-action: none; flex: 0 0 auto; min-width: 2.75rem; min-height: 2.75rem; border: 1px solid #789683; border-radius: .4rem; }
+.plan-editor :is(button, a, select, input):focus-visible { outline: 3px solid #9a6b21; outline-offset: 3px; }
+.plan-select { display: block; width: 100%; min-width: 0; max-width: 100%; border: 1px solid #789683; border-radius: .4rem; padding: .6rem; background: #fff; color: #263b33; margin: .3rem 0 .7rem; }
+.dark .plan-select { background: #17251f; color: #e4eee8; }
+.plan-drop-ready { outline: 2px dashed #789683; }
+.plan-drop-hint { font-size: .8rem; color: #52665b; padding-top: .7rem; }
+.dark .plan-drop-hint { color: #b1c4b8; }
+.plan-move { flex: 1 1 10rem; }
+.plan-read-link { text-decoration: underline; margin-top: 1rem; }
+@media (width < 80rem) {
+    .plan-week { display: block; }
+    .plan-mobile-picker { display: block; }
+    .plan-day:not(.plan-selected-day) { display: none; }
+}
+@media (width < 48rem) {
+    .plan-day-layout { grid-template-columns: minmax(0, 1fr); }
+    .plan-controls > * { max-width: 100%; }
+    .plan-toolbar nav { align-items: stretch; }
+    .plan-toolbar nav .fi-btn { flex: 1 1 8rem; white-space: normal; }
+}
+.plan-day-cta.fi-btn { background: #356248; color: #fff; }
+.plan-day-cta.fi-btn:hover { background: #274e38; color: #fff; }
+.dark .plan-day-cta.fi-btn { background: #aac9b4; color: #14261b; }
+.dark .plan-day-cta.fi-btn:hover { background: #c4dccb; color: #14261b; }

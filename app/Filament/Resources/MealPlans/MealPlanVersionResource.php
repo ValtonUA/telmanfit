@@ -4,8 +4,6 @@ namespace App\Filament\Resources\MealPlans;
 
 use App\Domain\MealPlans\MealItemKind;
 use App\Models\MealPlanVersion;
-use App\Services\MealPlans\MealItemResolver;
-use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -48,44 +46,12 @@ class MealPlanVersionResource extends Resource
             TextEntry::make('version_number')->label('Номер публікації')->placeholder('Ще не опублікована'),
             TextEntry::make('status')->label('Статус')->badge()->formatStateUsing(fn ($state) => self::statusLabel($state)),
             TextEntry::make('published_at')->label('Дата публікації')->placeholder('Ще не опублікована'),
-            TextEntry::make('boundary')->label('Режим перегляду')->state(fn ($record) => $record->status === 'draft'
-                ? 'Чернетка ще не готова до публікації. Додайте семиденний тиждень і налаштуйте прийоми. Позиції редагуються через меню «Позиції». Publish буде окремим етапом.'
-                : 'Опублікована версія — лише читання. Історія та призначення зберігаються.'),
-            RepeatableEntry::make('days')->label('Дні → прийоми їжі → позиції')->placeholder('Порожня чернетка: днів ще немає.')->schema([
-                TextEntry::make('week')->label('Тиждень')->state(fn ($record) => intdiv($record->day_number - 1, 7) + 1),
-                TextEntry::make('day_number')->label('День'),
-                RepeatableEntry::make('meals')->label('Прийоми їжі')->placeholder('Прийомів їжі ще немає.')->schema([
-                    TextEntry::make('type.title')->label('Тип прийому їжі'),
-                    TextEntry::make('title')->label('Назва прийому')->placeholder('Без додаткової назви'),
-                    TextEntry::make('sort_order')->label('Порядок'),
-                    RepeatableEntry::make('items')->label('Позиції')->placeholder('Позицій ще немає.')->schema([
-                        TextEntry::make('food.label')->label('Позиція'),
-
-                        TextEntry::make('food.food_type')->label('Тип позиції'),
-                        TextEntry::make('quantity')->label('Кількість'),
-                        TextEntry::make('nutrition')->label('КБЖВ споживаної кількості')->state(function ($record): string {
-                            try {
-                                $p = app(MealItemResolver::class)->resolve($record);
-                                $n = $p->nutrition;
-
-                                return self::portionLabel($p->kind).' · '.$n['kcal'].' ккал · Б '.$n['protein'].' · Ж '.$n['fat'].' · В '.$n['carbs'];
-                            } catch (\DomainException) {
-                                return 'Розрахунок недоступний: перевірте збережену позицію.';
-                            }
-                        }),
-                        TextEntry::make('uom.label')->label('Одиниця'),
-                        TextEntry::make('resolved_quantity_grams')->label('Збережені грами')->placeholder('Не застосовується'),
-                    ])->columns(1)->contained(),
-                ])->columns(1)->contained(),
-            ])->columns(1)->contained()->columnSpanFull(),
         ])->columns(1);
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['plan', 'days' => fn ($q) => $q->orderBy('day_number'),
-            'days.meals' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'), 'days.meals.type',
-            'days.meals.items' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'), 'days.meals.items.food.ingredient', 'days.meals.items.uom']);
+        return parent::getEloquentQuery()->with('plan');
     }
 
     public static function getIndexUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?Model $tenant = null, bool $shouldGuessMissingParameters = false): string
@@ -95,6 +61,6 @@ class MealPlanVersionResource extends Resource
 
     public static function getPages(): array
     {
-        return ['view' => Pages\ViewMealPlanVersion::route('/{record}')];
+        return ['view' => Pages\ViewMealPlanVersion::route('/{record}'), 'day' => Pages\EditMealPlanDay::route('/{record}/days/{day}')];
     }
 }

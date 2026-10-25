@@ -13,8 +13,9 @@
   клієнт за перевіреним ID. Універсальний план має `owner_client_id=NULL`.
 - `/admin/meal-plans/{record}`: назва, власник та посилання на **кожну точну версію**.
 - `/admin/meal-plan-versions/{record}`: ID, номер публікації, статус, дата та
-  ієрархія днів → прийомів → позицій; тип прийому, food ID/тип, decimal quantity,
-  одиниця та збережені nullable грами. КБЖВ споживаної кількості читаються штатним Model I resolver; batch food не тлумачиться як A/1.
+  [семиденний огляд UX-4E](#редактор-тижня-й-дня-ux-4e) із compact meals/items та day CTA.
+- `/admin/meal-plan-versions/{record}/days/{day}`: exact-day editor усіх прийомів,
+  каталог/порції/DnD та серверний Model I preview; published — readonly.
 
 Після створення відкривається єдина нова чернетка. Порожній стан явно пояснює,
 що вона ще не готова до публікації. Відкриття/reload не створює наступної чернетки.
@@ -189,7 +190,8 @@ decimal strings. `meal-item-selector-concurrency.php` доводить реал�
 ## Writer позицій T4.3
 
 `MealItemWriter` — єдині команди `save`, `move`, `delete` для точної draft version.
-Filament на тій самій сторінці версії має меню «Позиції»: пошук наявного
+Filament day editor та доступне fallback меню «Позиції» на сторінці версії:
+пошук наявного
 інгредієнта/опублікованої версії, додавання, редагування, явне перенесення між
 прийомами/днями цієї версії та видалення з confirmation/cancel. Порожній каталог
 не генерує seed. Продукт наявної позиції незмінний; його заміна потребує явних
@@ -232,3 +234,59 @@ item-vs-week-delete в обох порядках, write-vs-publish та conversi
 у Chromium 1440/390/320 light/dark разом із чинними MFA/CSRF/revocation регресіями.
 Фінальний week/day DnD UX-4E (#62), repeat week (#61), Publish і assignments
 залишаються окремими задачами. Схема, feature flags і реальні БД не змінюються.
+
+## Редактор тижня й дня UX-4E
+
+Основний екран exact version — семиденний огляд `?week=N`. Він завантажує
+позиції лише вибраного тижня; GET/reload не створюють днів або позицій. На desktop
+від 1280 px сім колонок розташовані одночасно, на 390/320 px перемикається один
+день. Показуються порядкові «День N», без календарної прив’язки. У колонці лише
+заповнені прийоми, компактні назви й порції та одна нижня CTA «Заповнити день» /
+«Редагувати день». Порожні налаштовані прийоми приховані лише в огляді.
+
+`/admin/meal-plan-versions/{record}/days/{day}` — єдина full-width Filament
+сторінка всіх прийомів exact дня. URL перевіряється на сервері та повторно при
+Livewire hydration; day ID locked. Ліворуч також видно порожні прийоми, праворуч —
+серверний пошук/фільтр ingredient або exact published recipe, по 12 результатів,
+без сотень зображень. Форма показує серверний Model I preview. Quantity та UOM
+під час додавання з каталогу порожні; A/1, B/7, C/3, C/4 обираються явно.
+
+Sidebar повністю згортається на desktop лише для цих двох сторінок.
+Native HTML Drag API для миші та Pointer API з ручкою для touch — тонкий Alpine
+адаптер. Каталог → прийом відкриває штатний Filament modal; до підтвердження немає
+запису. `food_id` відокремлений від persisted `meal_item.id`. Перенесення на позицію
+вставляє перед нею, на заголовок/вільне місце прийому — в кінець. DOM не переставляє
+позиції оптимістично: успіх повертає канонічний серверний порядок, validation/conflict
+залишає актуальний стан та notification. Доступні select «Додати до прийому»,
+select перенесення, кнопки «Вище»/«Нижче» й штатне меню «Позиції» для
+редагування/confirmation видалення. Це також клавіатурний та touch fallback.
+
+`MealItemWriter::place` — мінімальне розширення чинної writer boundary: exact
+version → day → source/target meals та optional before item, HMAC snapshot дня
+(actor/version/MVCC revision/вміст), спільні recovery/actor/version/hierarchy locks,
+перевірка свіжої ролі й deferred guards. Порядок до команди стабільний за
+`sort_order, id`; цільовий і початковий прийоми перенумеровуються атомарно від 0,
+з перевіркою smallint. Identity food/recipe/format/divisor, quantity та UOM не
+змінюються. Stale/repeated drop, чужий день/версія, видалений тиждень, ABA та
+конкурентні move/delete відхиляються без часткового запису.
+
+Усі інші дії використовують T4.3 `save/move/delete` і T4.2
+`saveMeal/deleteMeal`. Сторінка дня додатково перевіряє, що аргументи кожної
+команди належать саме її дню. Після save сторінка перечитує цей день, а «До огляду
+тижня» повертає на тиждень його поточного порядкового номера. Генерація та
+UX-4D видалення тижнів залишаються в огляді; попередні forms — доступний fallback
+поверх тих самих сервісів. Другого основного редактора немає.
+
+Published має readonly огляд і сторінку дня, без каталогу, drag handles чи edit CTA;
+прямі Livewire write calls відхиляються Policy/Service. Схема SQL01–14, залежності,
+робочі БД, feature flags та призначення не змінюються. Repeat weeks #61,
+Publish/assignment/CoW і production activation залишаються окремими задачами.
+
+Перевірки: `MealPlanDayEditorTest`, незалежний
+`tests/pg/meal-plan-day-concurrency.php` (доведені PG lock waits),
+`tests/browser/day_editor.py` у штатному Stage3/4 runner. Chromium перевіряє
+1440/390/320 light/dark, щільний і порожній тиждень, exact navigation,
+copy/cancel/confirm, mouse drag, trusted Chromium touch/Pointer input, keyboard/buttons, explicit
+A/B/C порції, persistence та overflow. Browser artifacts зберігаються разом із
+T4.1–T4.3 у `meal-plans/`; Chromium touch emulation не замінює ручну перевірку
+фізичного touchscreen пристрою. Результати й CI належать конкретному head SHA.

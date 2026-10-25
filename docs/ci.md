@@ -67,6 +67,10 @@ PR; стара зелена перевірка не годиться. На opene
   optimistic state/catalog snapshots, Livewire/ACL/fence/rollback, item-vs-week-delete,
   concurrent edit/add/publication/conversion/UOM locks; Chromium search/add/edit/move/delete
   у 1440/390/320 light/dark через штатний Stage3/4 runner.
+- UX-4E: точний week/day editor, атомарне перенесення/сортування, stale/ABA та
+  concurrent move/delete/week/publish/role/fence; Chromium щільний/порожній тиждень,
+  mouse DnD, Pointer adapter, доступні кнопки та явні A/B/C у 1440/390/320 light/dark.
+  Нові сценарії входять у чинний Stage3/4 runner без додаткових jobs/dependencies.
 - AUTH-1 upstream digest/versions; AUTH-2–6 PHPUnit, HTTP, browser та concurrency;
   B3/B4 outbox/ACL, B5 retention/archive/restore faults, B6 budgets/restart/faults.
 - B6 виконується на **обох** PHP 8.4/8.5. Третій ідентичний прогін на Stage 1 PHP8.4

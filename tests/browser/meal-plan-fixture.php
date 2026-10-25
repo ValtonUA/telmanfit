@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\User;
+use App\Services\MealPlans\MealItemWriter;
+use App\Services\MealPlans\MealPlanFoundation;
+use App\Services\MealPlans\MealPlanStructure;
 use Illuminate\Support\Facades\DB;
 use Tests\MealPlans\PlanFixture;
 use Tests\Recipes\BatchFixture;
@@ -33,6 +36,36 @@ if (($argv[1] ?? '') === 'seed') {
 
         return $data;
     }));
+    exit;
+}
+if (($argv[1] ?? '') === 'editor-seed') {
+    $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
+    $writer = app(MealItemWriter::class);
+    $structure = app(MealPlanStructure::class);
+    $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Синтетичний UX-4E · повний тиждень'])->versions()->sole();
+    $types = DB::table('meal_types')->whereIn('id', [(int) $argv[2], (int) $argv[3]])->pluck('id')->all();
+    foreach ([1, 8] as $start) {
+        $structure->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => $types]);
+    }
+    $denseFood = DB::transaction(function (): int {
+        $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
+        DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Тестова вівсяна каша з ягодами, горіхами та натуральним йогуртом — довга назва для щільного огляду', 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
+
+        return $food;
+    });
+    foreach ($version->days()->where('day_number', '<=', 7)->with('meals')->get() as $day) {
+        foreach ($day->meals as $meal) {
+            foreach (['1.00', '2.50', '3.75'] as $order => $quantity) {
+                $food = $order === 1 ? $denseFood : (int) $argv[4];
+                $catalog = $writer->catalog($actor, $version, $food);
+                $writer->save($actor, $version, ['meal_id' => $meal->id, 'food_id' => $food, 'quantity' => $quantity, 'uom_id' => $catalog['default'], 'sort_order' => $order,
+                    'expected' => $writer->mealToken($actor, $version, $meal->id), 'catalog_expected' => $catalog['token']]);
+            }
+        }
+    }
+    $days = $version->days()->orderBy('day_number')->get();
+    $day = $days->first();
+    echo json_encode(['version' => $version->id, 'day' => $day->id, 'day8' => $days[7]->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
     exit;
 }
 if (($argv[1] ?? '') === 'hash') {
