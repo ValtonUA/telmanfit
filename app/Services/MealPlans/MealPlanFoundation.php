@@ -32,14 +32,18 @@ final class MealPlanFoundation
             if (($input['owner_client_id'] ?? null) === '') {
                 $input['owner_client_id'] = null;
             }
+            if (! array_key_exists('week_start_weekday', $input)) {
+                $input['week_start_weekday'] = 1;
+            }
             $data = Validator::make($input, [
                 'title' => ['required', 'string'],
+                'week_start_weekday' => ['required', 'integer', 'between:1,7'],
                 'owner_client_id' => ['nullable', 'integer', Rule::exists('clients', 'id')],
             ])->validate();
             if (isset($data['owner_client_id'])) {
                 Client::whereKey($data['owner_client_id'])->sharedLock()->firstOrFail();
             }
-            $plan = new MealPlan(['title' => $data['title']]);
+            $plan = new MealPlan(['title' => $data['title'], 'week_start_weekday' => $data['week_start_weekday']]);
             $plan->owner_client_id = $data['owner_client_id'] ?? null;
             $plan->save();
             $version = new MealPlanVersion;

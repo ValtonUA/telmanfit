@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\User;
+use App\Services\MealPlans\MealItemWriter;
+use App\Services\MealPlans\MealPlanFoundation;
+use App\Services\MealPlans\MealPlanStructure;
 use Illuminate\Support\Facades\DB;
 use Tests\MealPlans\PlanFixture;
 use Tests\Recipes\BatchFixture;
@@ -33,6 +36,47 @@ if (($argv[1] ?? '') === 'seed') {
 
         return $data;
     }));
+    exit;
+}
+if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed'], true)) {
+    $polish = $argv[1] === 'polish-seed';
+    $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
+    $writer = app(MealItemWriter::class);
+    $structure = app(MealPlanStructure::class);
+    $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Синтетичний UX-4E · повний тиждень', 'week_start_weekday' => $polish ? 2 : 1])->versions()->sole();
+    $types = DB::table('meal_types')->whereIn('id', [(int) $argv[2], (int) $argv[3]])->pluck('id')->all();
+    foreach ([1, 8] as $start) {
+        $structure->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => $types]);
+    }
+    $denseFood = DB::transaction(function (): int {
+        $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
+        DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Тестова вівсяна каша з ягодами, горіхами та натуральним йогуртом — довга назва для щільного огляду', 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
+
+        return $food;
+    });
+    $brokenFood = null;
+    if ($polish) {
+        DB::table('ingredients')->where('food_id', $denseFood)->update(['image_url' => 'https://images.example.com/cover.png']);
+        $brokenFood = DB::transaction(function (): int {
+            $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
+            DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Тестове недоступне фото', 'image_url' => 'https://images.example.com/broken.png', 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
+
+            return $food;
+        });
+    }
+    foreach ($version->days()->where('day_number', '<=', 7)->with('meals')->get() as $day) {
+        foreach ($day->meals as $meal) {
+            foreach (($polish && $day->day_number === 1 ? array_fill(0, 20, '2.50') : ['1.00', '2.50', '3.75']) as $order => $quantity) {
+                $food = $polish ? [$denseFood, $brokenFood, (int) $argv[4]][$order % 3] : ($order === 1 ? $denseFood : (int) $argv[4]);
+                $catalog = $writer->catalog($actor, $version, $food);
+                $writer->save($actor, $version, ['meal_id' => $meal->id, 'food_id' => $food, 'quantity' => $quantity, 'uom_id' => $catalog['default'], 'sort_order' => $order,
+                    'expected' => $writer->mealToken($actor, $version, $meal->id), 'catalog_expected' => $catalog['token']]);
+            }
+        }
+    }
+    $days = $version->days()->orderBy('day_number')->get();
+    $day = $days->first();
+    echo json_encode(['photo_food' => $denseFood, 'broken_food' => $brokenFood, 'version' => $version->id, 'day' => $day->id, 'day8' => $days[7]->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
     exit;
 }
 if (($argv[1] ?? '') === 'hash') {
@@ -81,6 +125,10 @@ if (($argv[1] ?? '') === 'structure-hash') {
         $state[$table] = DB::table($table)->orderBy('id')->get()->all();
     }
     echo hash('sha256', json_encode($state));
+    exit;
+}
+if (($argv[1] ?? '') === 'plan-weekday') {
+    echo DB::table('meal_plans')->join('meal_plan_versions as v', 'v.meal_plan_id', '=', 'meal_plans.id')->where('v.id', (int) $argv[2])->value('week_start_weekday');
     exit;
 }
 if (($argv[1] ?? '') === 'count') {

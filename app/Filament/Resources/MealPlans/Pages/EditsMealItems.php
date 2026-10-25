@@ -4,11 +4,12 @@ namespace App\Filament\Resources\MealPlans\Pages;
 
 use App\Filament\Resources\MealPlans\MealPlanVersionResource;
 use App\Models\Food;
-use App\Models\Meal;
 use App\Models\MealItem;
 use App\Services\MealPlans\MealItemWriter;
+use App\Support\Presentation\MealPlanDisplay;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -23,14 +24,16 @@ use Illuminate\Validation\ValidationException;
 /** UI лише збирає аргументи спільних серверних команд. */
 trait EditsMealItems
 {
-    private function itemActions(): array
+    protected function itemActions(): array
     {
         $allowed = fn () => Gate::allows('editItems', $this->getRecord());
         $actions = [Action::make('addItem')->label('Додати позицію')->modalSubmitActionLabel('Додати')->authorize($allowed)
+            ->fillForm(fn (array $arguments) => $this->catalogForm($arguments))
             ->schema(fn () => [
                 $this->itemMealSelector()->afterStateUpdated(function ($state, Set $set): void {
                     Gate::authorize('editItems', $this->getRecord());
                     $set('expected', $state ? app(MealItemWriter::class)->mealToken(auth()->user(), $this->getRecord(), (int) $state) : null);
+                    $set('sort_order', $state ? min(32767, (int) $this->mealsQuery()->find($state)?->items()->max('sort_order') + 1) : 0);
                 }),
                 Hidden::make('expected')->required(),
                 ...$this->itemFields(),
@@ -38,11 +41,13 @@ trait EditsMealItems
                 $this->command($action, fn () => app(MealItemWriter::class)->save(auth()->user(), $this->getRecord(), $data));
             }),
             Action::make('editItem')->label('Змінити позицію')->modalSubmitActionLabel('Зберегти')->authorize($allowed)
+                ->fillForm(fn (array $arguments) => $this->existingItemForm($arguments))
                 ->schema(fn () => [$this->itemSelector(), Hidden::make('meal_id')->required(), Hidden::make('expected')->required(), ...$this->itemFields(true)])
                 ->action(function (array $data, Action $action): void {
                     $this->command($action, fn () => app(MealItemWriter::class)->save(auth()->user(), $this->getRecord(), $data, (int) $data['item_id']));
                 }),
             Action::make('moveItem')->label('Перенести позицію')->modalSubmitActionLabel('Перенести')->authorize($allowed)
+                ->fillForm(fn (array $arguments) => $this->existingItemForm($arguments))
                 ->schema(fn () => [$this->itemSelector(), Hidden::make('expected')->required(), $this->itemMealSelector(), $this->itemOrder()])
                 ->action(function (array $data, Action $action): void {
                     $this->command($action, fn () => app(MealItemWriter::class)->move(auth()->user(), $this->getRecord(), (int) $data['item_id'], (int) $data['meal_id'], (int) $data['sort_order'], $data['expected']));
@@ -50,6 +55,7 @@ trait EditsMealItems
             Action::make('deleteItem')->label('Видалити позицію')->color('danger')->authorize($allowed)
                 ->requiresConfirmation()->modalHeading('Видалити позицію')->modalDescription('Позицію буде видалено з цієї чернетки. Дію неможливо скасувати. Продукт і рецепт збережуться в каталозі.')
                 ->modalSubmitActionLabel('Видалити позицію')->modalCancelActionLabel('Скасувати')
+                ->fillForm(fn (array $arguments) => $this->existingItemForm($arguments))
                 ->schema(fn () => [$this->itemSelector(), Hidden::make('expected')->required()])
                 ->action(function (array $data, Action $action): void {
                     $this->command($action, fn () => app(MealItemWriter::class)->delete(auth()->user(), $this->getRecord(), (int) $data['item_id'], $data['expected']));
@@ -59,23 +65,39 @@ trait EditsMealItems
         return [ActionGroup::make($actions)->label('Позиції')->button()->visible($allowed)];
     }
 
-    private function itemMealSelector(): Select
+    protected function existingItemForm(array $arguments): array
+    {
+        if (! isset($arguments['item'])) {
+            return [];
+        }
+        $item = $this->versionItems()->findOrFail((int) $arguments['item']);
+
+        return $item->getAttributes() + ['item_id' => $item->id, 'expected' => MealItemWriter::token($item),
+            'catalog_expected' => $this->itemCatalog($item->food_id)['token']];
+    }
+
+    protected function catalogForm(array $arguments): array
+    {
+        return ['quantity' => '1.00', 'sort_order' => 0];
+    }
+
+    protected function itemMealSelector(): Select
     {
         return Select::make('meal_id')->label('Прийом їжі')->required()->native(false)->searchable()->preload()->live()
-            ->options(fn () => Meal::whereHas('day', fn ($q) => $q->where('meal_plan_version_id', $this->getRecord()->id))->with(['day', 'type'])->get()
+            ->options(fn () => $this->mealsQuery()->with(['day', 'type'])->get()
                 ->sortBy([['day.day_number', 'asc'], ['sort_order', 'asc'], ['id', 'asc']])
-                ->mapWithKeys(fn ($m) => [$m->id => 'День '.$m->day->day_number.' · '.$m->type->title.($m->title ? ' · '.$m->title : '')])->all());
+                ->mapWithKeys(fn ($m) => [$m->id => $this->dayLabel($m->day->day_number).' · '.$m->type->title.($m->title ? ' · '.$m->title : '')])->all());
     }
 
-    private function versionItems(): Builder
+    protected function versionItems(): Builder
     {
-        return MealItem::whereHas('meal.day', fn ($q) => $q->where('meal_plan_version_id', $this->getRecord()->id));
+        return MealItem::whereIn('meal_id', $this->mealsQuery()->select('id'));
     }
 
-    private function itemSelector(): Select
+    protected function itemSelector(): Select
     {
         return Select::make('item_id')->label('Позиція')->required()->searchable()->preload()->native(false)->live()
-            ->options(fn () => $this->versionItems()->with(['food', 'meal.day', 'meal.type', 'uom'])->orderBy('id')->get()->mapWithKeys(fn ($i) => [$i->id => 'День '.$i->meal->day->day_number.' · '.$i->meal->type->title.' · '.$i->food->label.' · '.$i->quantity.' '.$i->uom->label])->all())
+            ->options(fn () => $this->versionItems()->with(['food', 'meal.day', 'meal.type', 'uom'])->orderBy('id')->get()->mapWithKeys(fn ($i) => [$i->id => $this->dayLabel($i->meal->day->day_number).' · '.$i->meal->type->title.' · '.$i->food->label.' · '.$i->quantity.' '.$i->uom->label])->all())
             ->afterStateUpdated(function ($state, Set $set): void {
                 Gate::authorize('editItems', $this->getRecord());
                 $item = $this->versionItems()->find($state);
@@ -87,7 +109,7 @@ trait EditsMealItems
             });
     }
 
-    private function itemCatalog(mixed $food): ?array
+    protected function itemCatalog(mixed $food): ?array
     {
         if (! $food || ! ctype_digit((string) $food)) {
             return null;
@@ -96,7 +118,7 @@ trait EditsMealItems
         return app(MealItemWriter::class)->catalog(auth()->user(), $this->getRecord(), (int) $food);
     }
 
-    private function foodChoice(Food $food): string
+    protected function foodChoice(Food $food): string
     {
         if ($food->food_type === 'ingredient') {
             return 'Інгредієнт · '.$food->label;
@@ -106,12 +128,12 @@ trait EditsMealItems
         return 'Рецепт · '.$food->label.' · версія '.$version?->version_number.' · '.$version?->published_at;
     }
 
-    private function itemOrder(): TextInput
+    protected function itemOrder(): TextInput
     {
         return TextInput::make('sort_order')->label('Порядок у прийомі')->integer()->minValue(-32768)->maxValue(32767)->default(0)->required();
     }
 
-    private function itemFields(bool $editing = false): array
+    protected function itemFields(bool $editing = false): array
     {
         $fields = [
             Select::make('food_id')->label('Продукт або опублікований рецепт')->native(false)->searchable()->preload()->live()->required()
@@ -125,13 +147,13 @@ trait EditsMealItems
                 ->afterStateUpdated(function ($state, Set $set): void {
                     $catalog = $this->itemCatalog($state);
                     $set('catalog_expected', $catalog['token'] ?? null);
-                    $set('uom_id', $catalog['default'] ?? null);
+                    $set('uom_id', $this->dayScope() ? null : ($catalog['default'] ?? null));
                     foreach (['recipe_version_id', 'recipe_batch_format_id', 'recipe_portion_divisor'] as $field) {
                         $set($field, null);
                     }
                 }),
             Hidden::make('catalog_expected')->required(),
-            TextInput::make('quantity')->label('Споживана кількість')->default('1.00')->required()->live(onBlur: true)
+            TextInput::make('quantity')->label('Споживана кількість')->default($this->dayScope() ? null : '1.00')->required()->live(onBlur: true)
                 ->helperText('Додатне число, до двох знаків після крапки. Для рецепта — кількість порцій, наприклад 0.5.'),
             Select::make('uom_id')->label('Одиниця')->native(false)->required()->live()
                 ->options(fn (Get $get) => ($this->itemCatalog($get('food_id'))['units'] ?? collect())->pluck('label', 'id')->all())
@@ -161,7 +183,7 @@ trait EditsMealItems
                     $portion = app(MealItemWriter::class)->preview(auth()->user(), $this->getRecord(), $get());
                     $n = $portion->nutrition;
 
-                    return 'На споживану кількість: '.$n['kcal'].' ккал · Б '.$n['protein'].' г · Ж '.$n['fat'].' г · В '.$n['carbs'].' г. Формат: '.MealPlanVersionResource::portionLabel($portion->kind);
+                    return 'На споживану кількість: '.MealPlanDisplay::nutrition($n).'. Формат: '.MealPlanVersionResource::portionLabel($portion->kind);
                 } catch (ValidationException) {
                     return 'Оберіть продукт, одиницю, кількість і, для batch рецепта, явний формат та поділ. Тут з’явиться серверний розрахунок КБЖВ.';
                 }
@@ -169,6 +191,9 @@ trait EditsMealItems
         ];
         if ($editing) {
             foreach ($fields as $field) {
+                if ($field instanceof Field && $field->getName() !== 'food_id') {
+                    $field->disabled(fn (Get $get) => blank($get('expected')));
+                }
                 if (! $field instanceof Hidden) {
                     $field->extraAttributes(['wire:loading.attr' => 'inert', 'wire:target' => 'mountedActions.0.data.item_id']);
                 }

@@ -38,6 +38,7 @@ class FoodCatalogTest extends PostgresTestCase
         foreach (glob(database_path('migrations/2026_10_24_0[123]0000_*.php')) as $file) {
             (require $file)->up();
         }
+        (require database_path('migrations/2026_10_25_020000_add_plan_presentation.php'))->up();
         $this->writer = app(CatalogWriter::class);
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic catalog admin', 'role' => 'admin']));
         $this->actingAs($this->actor);

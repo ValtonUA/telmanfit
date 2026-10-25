@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Catalog;
 
 use App\Models\Catalog\Ingredient;
 use App\Services\Catalog\CatalogWriter;
+use App\Support\Presentation\PublicImageUrl;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
@@ -58,6 +59,8 @@ abstract class CatalogResource extends Resource
             $fields[] = match ($field) {
                 'ingredient_category_id' => static::category($field, 'ingredient_categories'),
                 'kitchen_equipment_category_id' => static::category($field, 'kitchen_equipment_categories'),
+                'image_url' => TextInput::make($field)->label('Фото: публічний HTTPS URL')->nullable()->maxLength(2048)->rules([new PublicImageUrl])
+                    ->helperText('Необов’язково. Вставте посилання з дозволеного домену або залиште порожнім.'),
                 'kind' => Select::make($field)->label('Тип одиниці')->options(static::kinds())->required(),
                 'code' => TextInput::make($field)->label('Код')->required()
                     ->disabled(fn (?Model $record) => $record !== null)->dehydrated()
@@ -111,6 +114,9 @@ abstract class CatalogResource extends Resource
         $columns = [TextColumn::make('id')->label('ID')->sortable()];
         $filters = [];
         foreach ($model->getFillable() as $field) {
+            if ($field === 'image_url') {
+                continue;
+            }
             if (str_ends_with($field, '_category_id')) {
                 $source = $field === 'ingredient_category_id' ? 'ingredient_categories' : 'kitchen_equipment_categories';
                 $filters[] = SelectFilter::make($field)->label('Категорія')->options(fn () => DB::table($source)->orderBy('name')->pluck('name', 'id')->all());

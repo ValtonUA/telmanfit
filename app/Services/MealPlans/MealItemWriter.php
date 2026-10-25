@@ -146,6 +146,59 @@ final class MealItemWriter
         });
     }
 
+    /** Snapshot усього exact дня: захищає drop/reorder, у тому числі ABA та видалення тижня. */
+    public function dayToken(User $actor, MealPlanVersion $version, int $dayId): string
+    {
+        Gate::forUser($actor)->authorize('editItems', $version);
+        $day = $version->days()->whereKey($dayId)->first();
+        if (! $day) {
+            $this->invalid('day', 'День видалено або він належить іншій версії. Оновіть огляд.');
+        }
+        $meals = DB::table('meals')->where('meal_plan_day_id', $dayId)->orderBy('id')->get();
+        $items = DB::table('meal_items')->whereIn('meal_id', $meals->pluck('id'))->orderBy('id')->get();
+
+        return hash_hmac('sha256', json_encode([$actor->id, $version->id, $this->versionRevision($version),
+            $day->getAttributes(), $meals->all(), $items->all()], JSON_THROW_ON_ERROR), config('app.key'));
+    }
+
+    /** Атомарна вставка перед beforeId (NULL — у кінець); порядок 0…n, ties початково за ID. */
+    public function place(User $actor, MealPlanVersion $version, int $dayId, int $itemId, int $mealId, ?int $beforeId, string $expected): void
+    {
+        Gate::forUser($actor)->authorize('editItems', $version);
+        app(MealPlanStructure::class)->withinDraft($actor, $version, function ($locked) use ($actor, $dayId, $itemId, $mealId, $beforeId, $expected): void {
+            $meals = $this->lockHierarchy($locked)->where('meal_plan_day_id', $dayId);
+            if (! hash_equals($this->dayToken($actor, $locked, $dayId), $expected)) {
+                $this->invalid('expected', 'День змінився. Перечитайте дані та повторіть дію.');
+            }
+            $item = MealItem::whereIn('meal_id', $meals->pluck('id'))->whereKey($itemId)->first();
+            if (! $item || ! $meals->contains('id', $mealId)) {
+                $this->invalid('meal_id', 'Позиція й обидва прийоми мають належати цьому точному дню.');
+            }
+            $target = MealItem::where('meal_id', $mealId)->where('id', '<>', $itemId)->orderBy('sort_order')->orderBy('id')->get();
+            if ($beforeId !== null && ! $target->contains('id', $beforeId)) {
+                $this->invalid('before_id', 'Позицію призначення змінено або вона належить іншому прийому.');
+            }
+            $offset = $beforeId === null ? $target->count() : $target->search(fn ($row) => $row->id === $beforeId);
+            $target->splice($offset, 0, [$item]);
+            if ($target->count() > 32768) {
+                $this->invalid('sort_order', 'Порядок перевищує межі smallint.');
+            }
+            $sourceId = $item->meal_id;
+            foreach ($target as $order => $row) {
+                $row->meal_id = $mealId;
+                $row->sort_order = $order;
+                $row->save();
+            }
+            if ($sourceId !== $mealId) {
+                foreach (MealItem::where('meal_id', $sourceId)->orderBy('sort_order')->orderBy('id')->get() as $order => $row) {
+                    $row->sort_order = $order;
+                    $row->save();
+                }
+            }
+            $this->touchDraft($locked);
+        });
+    }
+
     private function versionRevision(MealPlanVersion $version): string
     {
         return DB::table('meal_plan_versions')->where('id', $version->id)->selectRaw('xmin::text AS revision')->sole()->revision;

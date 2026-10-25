@@ -6,6 +6,7 @@ use App\Filament\Resources\MealPlans\MealPlanVersionResource;
 use App\Models\Meal;
 use App\Models\MealType;
 use App\Services\MealPlans\MealPlanStructure;
+use App\Support\Presentation\MealPlanDisplay;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
@@ -16,21 +17,82 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Enums\Width;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Url;
 
 class ViewMealPlanVersion extends ViewRecord
 {
     use EditsMealItems;
 
+    protected string $view = 'filament.meal-plans.week';
+
+    #[Url]
+    public int $week = 1;
+
+    public function getMaxContentWidth(): Width
+    {
+        return Width::Full;
+    }
+
+    public function selectedWeek(): Collection
+    {
+        $total = $this->weekCount();
+        $number = max(1, min($this->week, max(1, $total)));
+
+        return $this->getRecord()->days()->whereBetween('day_number', [($number - 1) * 7 + 1, $number * 7])
+            ->orderBy('day_number')->with(['meals' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
+                'meals.type', 'meals.items' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
+                'meals.items.food.ingredient', 'meals.items.uom'])->get();
+    }
+
+    public function weekCount(): int
+    {
+        return (int) ceil(($this->getRecord()->days()->max('day_number') ?? 0) / 7);
+    }
+
+    public function selectWeek(int $number): void
+    {
+        $this->week = max(1, min($number, max(1, $this->weekCount())));
+    }
+
+    protected function dayScope(): ?int
+    {
+        return null;
+    }
+
+    protected function mealsQuery(): Builder
+    {
+        return Meal::whereHas('day', fn ($q) => $q->where('meal_plan_version_id', $this->getRecord()->id))
+            ->when($this->dayScope(), fn ($q, $day) => $q->where('meal_plan_day_id', $day));
+    }
+
     protected static string $resource = MealPlanVersionResource::class;
 
     public function getTitle(): string
     {
-        return 'Версія раціону #'.$this->getRecord()->getKey();
+        return $this->getRecord()->plan->title;
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Версія #'.$this->getRecord()->id;
+    }
+
+    public function dayLabel(int $number): string
+    {
+        return MealPlanDisplay::day($number, $this->getRecord()->plan->week_start_weekday);
     }
 
     protected function getHeaderActions(): array
+    {
+        return [ActionGroup::make($this->managementActions())->label('Керування')->button()->color('gray')];
+    }
+
+    protected function managementActions(): array
     {
         return [
             ...$this->itemActions(),
@@ -89,7 +151,7 @@ class ViewMealPlanVersion extends ViewRecord
         return parent::callMountedAction($arguments);
     }
 
-    private function weekDeletionActions(): array
+    protected function weekDeletionActions(): array
     {
         if (! $this->editable()) {
             return [];
@@ -121,27 +183,27 @@ class ViewMealPlanVersion extends ViewRecord
         return [ActionGroup::make($actions)->label('Видалити тиждень')->button()->color('danger')];
     }
 
-    private function editable(): bool
+    protected function editable(): bool
     {
         return Gate::allows('editStructure', $this->getRecord());
     }
 
-    private function authorizeStructure(): void
+    protected function authorizeStructure(): void
     {
         Gate::authorize('editStructure', $this->getRecord());
     }
 
-    private function types(): array
+    protected function types(): array
     {
         return MealType::orderBy('sort_order')->orderBy('id')->pluck('title', 'id')->all();
     }
 
-    private function days(): array
+    protected function days(): array
     {
-        return $this->getRecord()->days()->orderBy('day_number')->get()->mapWithKeys(fn ($d) => [$d->id => 'Тиждень '.(intdiv($d->day_number - 1, 7) + 1).' · День '.$d->day_number])->all();
+        return $this->getRecord()->days()->when($this->dayScope(), fn ($q, $day) => $q->whereKey($day))->orderBy('day_number')->get()->mapWithKeys(fn ($d) => [$d->id => 'Тиждень '.(intdiv($d->day_number - 1, 7) + 1).' · '.$this->dayLabel($d->day_number)])->all();
     }
 
-    private function mealFields(bool $editing = false): array
+    protected function mealFields(bool $editing = false): array
     {
         $fields = [
             Select::make('meal_type_id')->label('Тип прийому')->options(fn () => $this->types())->required()->native(false),
@@ -161,15 +223,15 @@ class ViewMealPlanVersion extends ViewRecord
         return $fields;
     }
 
-    private function mealSelector(): Select
+    protected function mealSelector(): Select
     {
         return Select::make('meal_id')->label('Прийом їжі')->required()->native(false)->live()
-            ->options(fn () => Meal::whereHas('day', fn ($q) => $q->where('meal_plan_version_id', $this->getRecord()->id))->with(['day', 'type'])
+            ->options(fn () => $this->mealsQuery()->with(['day', 'type'])
                 ->get()->sortBy([['day.day_number', 'asc'], ['sort_order', 'asc'], ['id', 'asc']])
-                ->mapWithKeys(fn ($m) => [$m->id => 'День '.$m->day->day_number.' · '.$m->type->title.($m->title ? ' · '.$m->title : '')])->all())
+                ->mapWithKeys(fn ($m) => [$m->id => $this->dayLabel($m->day->day_number).' · '.$m->type->title.($m->title ? ' · '.$m->title : '')])->all())
             ->afterStateUpdated(function ($state, Set $set): void {
                 $this->authorizeStructure();
-                $meal = Meal::whereHas('day', fn ($q) => $q->where('meal_plan_version_id', $this->getRecord()->id))->find($state);
+                $meal = $this->mealsQuery()->find($state);
                 foreach (['day_id' => $meal?->meal_plan_day_id, 'meal_type_id' => $meal?->meal_type_id,
                     'title' => $meal?->title, 'sort_order' => $meal?->sort_order,
                     'expected' => $meal ? MealPlanStructure::token($meal) : null] as $key => $value) {
@@ -178,13 +240,26 @@ class ViewMealPlanVersion extends ViewRecord
             });
     }
 
-    private function command(Action $action, callable $operation): void
+    protected function command(Action $action, callable $operation): void
     {
-        $this->withStructureValidation($action, $operation);
+        $this->withStructureValidation($action, function () use ($operation): void {
+            if ($this->dayScope()) {
+                $data = $this->mountedActions[0]['data'] ?? [];
+                if (isset($data['day_id'])) {
+                    abort_unless((int) $data['day_id'] === $this->dayScope(), 404);
+                }
+                foreach (['meal_id', 'item_id'] as $field) {
+                    if (isset($data[$field])) {
+                        abort_unless(($field === 'meal_id' ? $this->mealsQuery() : $this->versionItems())->whereKey($data[$field])->exists(), 404);
+                    }
+                }
+            }
+            $operation();
+        });
         $this->done();
     }
 
-    private function withStructureValidation(Action $action, callable $operation): mixed
+    protected function withStructureValidation(Action $action, callable $operation): mixed
     {
         $this->authorizeStructure();
         try {
@@ -202,10 +277,10 @@ class ViewMealPlanVersion extends ViewRecord
         }
     }
 
-    private function done(): void
+    protected function done(): void
     {
         $this->getRecord()->refresh();
         Notification::make()->title('Структуру збережено')->success()->send();
-        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord()]), navigate: false);
+        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), ...($this->week > 1 ? ['week' => $this->week] : [])]), navigate: false);
     }
 }

@@ -464,3 +464,20 @@ child locks не додаються. Published root/descendants і планов�
 
 Readonly resolver і decimal scale/округлення описані в [meal-plans.md](meal-plans.md#model-i-g4-i-selectors-та-readonly-resolver).
 Фізичний склад партії не змінюється від обраного divisor; shopping/cooking writer відсутній.
+
+## Презентаційні поля SQL15 (Issue #62 / PR #67)
+
+`meal_plans.week_start_weekday SMALLINT NOT NULL DEFAULT 1 CHECK (1..7)` —
+обов'язковий «Початок тижня» при створенні, ISO Пн=1 … Нд=7; UI типово Пн.
+Значення незмінне після створення (DB trigger, редактора немає). Для існуючих
+планів погоджено default=1; дні, позиції, призначення та nutrition не backfill-яться.
+День N має weekday `((week_start_weekday + N - 2) % 7) + 1`; це не календарна дата
+призначення. Поля anchor у версіях немає.
+
+`ingredients.image_url` і `recipes.image_url` — nullable text, mutable cover metadata.
+Логічна обкладинка recipe спільна для всіх його exact published versions; title
+і nutrition беруться з вибраної exact version. Cover не належить recipe_versions,
+foods або meal_items, не замінює `recipe_directions.image_url`. SQL15 виключає лише
+новий ingredient image_url із `recipe_batch_source_hash`, зберігаючи попередній hash
+і всі інші залежності. URL перевіряється Laravel exact HTTPS host allowlist;
+порожній allowlist дозволяє всю роботу без фото. [Операційний контракт](meal-plans.md#зображення-та-початок-тижня-sql15).

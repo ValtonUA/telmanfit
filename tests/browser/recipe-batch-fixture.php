@@ -13,12 +13,12 @@ set_exception_handler(function (Throwable $e) {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
 });
-if (($argv[1] ?? '') === 'source-state') {
+if (in_array($argv[1] ?? '', ['source-state', 'source-state-json'], true)) {
     $state = [];
     foreach (['recipe_versions', 'recipe_components', 'recipe_ingredients', 'recipe_batch_formats', 'recipe_batch_quantities', 'recipe_kitchen_equipment', 'recipe_batch_equipment', 'recipe_directions'] as $table) {
-        $state[$table] = DB::table($table)->where($table === 'recipe_versions' ? 'id' : 'recipe_version_id', getenv('BATCH_BROWSER_VERSION'))->get()->all();
+        $state[$table] = DB::table($table)->where($table === 'recipe_versions' ? 'id' : 'recipe_version_id', getenv('BATCH_BROWSER_VERSION'))->orderByRaw('to_jsonb('.$table.')::text')->get()->all();
     }
-    echo hash('sha256', json_encode($state));
+    echo $argv[1] === 'source-state-json' ? json_encode($state) : hash('sha256', json_encode($state));
     exit;
 }
 if (in_array($argv[1] ?? '', ['catalog-change', 'catalog-change-again'], true)) {

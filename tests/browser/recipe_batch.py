@@ -281,6 +281,7 @@ with sync_playwright() as p:
     expect(page.get_by_role('button', name='Створити нову версію A/B/C', exact=True)).to_be_visible()
     assert page.locator('.batch-editor fieldset').count() == 0
     before = subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
+    source_rows_before = json.loads(subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state-json'], text=True))
     published_tab = context.new_page()
     published_tab.goto(url)
     page.once('dialog', lambda dialog: dialog.accept())
@@ -371,6 +372,8 @@ with sync_playwright() as p:
     # Для персонального published дозволений тільки його owner; вибір знову порожній.
     expect(published_tab.get_by_label('Клієнт для копії', exact=True)).to_have_value('')
     assert published_tab.get_by_label('Клієнт для копії', exact=True).locator('option').count() == 2
+    source_rows_after = json.loads(subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state-json'], text=True))
+    assert source_rows_before == source_rows_after, {table: {'before': source_rows_before[table], 'after': source_rows_after[table]} for table in source_rows_before if source_rows_before[table] != source_rows_after[table]}
     assert before == subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
     checks.append('C2: explicit owner/confirm/cancel, redirect, remap, frozen→Refresh/manual review, duplicate rejection, publish/reload; original unchanged; 1440/390/320 light/dark action+editor')
     published_tab.close()

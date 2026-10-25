@@ -140,7 +140,7 @@ class MealPlanFoundationTest extends PostgresTestCase
         $before = $this->historyHash();
         Livewire::test(ListMealPlans::class)->searchTable($p->title)->assertCanSeeTableRecords([$p]);
         Livewire::test(ViewMealPlan::class, ['record' => $p->id])->assertSuccessful();
-        Livewire::test(ViewMealPlanVersion::class, ['record' => $v->id])->assertSuccessful()->assertSee('100.10')->assertSee('Опублікована');
+        Livewire::test(ViewMealPlanVersion::class, ['record' => $v->id])->assertSuccessful()->assertSee('100.1')->assertSee('Опублікована');
         $this->assertSame($before, $this->historyHash());
     }
 

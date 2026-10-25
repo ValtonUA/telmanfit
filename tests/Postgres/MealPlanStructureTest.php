@@ -88,7 +88,7 @@ class MealPlanStructureTest extends PostgresTestCase
         $this->assertSame(0, DB::table('meals')->where('meal_type_id', $this->types[2])->count());
         $this->assertSame(0, DB::table('meal_items')->count());
         $before = $this->hash();
-        Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id])->assertSee('Тиждень')->assertSee('Власна назва');
+        Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id])->assertSee('Тиждень')->assertDontSee('Власна назва');
         $this->assertSame($before, $this->hash());
     }
 

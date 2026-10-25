@@ -7,6 +7,7 @@ use App\Domain\MealPlans\MealItemPortion;
 use App\Models\MealItem;
 use DomainException;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /** Readonly: один SQL snapshot, exact food/version/format, без latest або recalculation. */
@@ -32,19 +33,43 @@ final class MealItemResolver
         return $this->read(DB::query()->fromSub($row, 'm'));
     }
 
+    public function resolveMany(array $ids): Collection
+    {
+        if ($ids === []) {
+            return collect();
+        }
+
+        return $this->joined(DB::table('meal_items as m')->whereIn('m.id', $ids))->get()->mapWithKeys(function ($row): array {
+            try {
+                return [$row->id => $this->portion($row)];
+            } catch (DomainException) {
+                return [$row->id => null];
+            }
+        });
+    }
+
     private function read(Builder $query): MealItemPortion
     {
-        $r = $query->join('foods as f', 'f.id', '=', 'm.food_id')
+        return $this->portion($this->joined($query)->first());
+    }
+
+    private function joined(Builder $query): Builder
+    {
+        return $query->join('foods as f', 'f.id', '=', 'm.food_id')
             ->join('uoms as u', 'u.id', '=', 'm.uom_id')
             ->leftJoin('ingredients as i', 'i.food_id', '=', 'f.id')
             ->leftJoin('ingredient_uoms as iu', fn ($join) => $join->on('iu.ingredient_id', '=', 'i.id')->on('iu.uom_id', '=', 'm.uom_id'))
             ->leftJoin('recipe_versions as v', 'v.food_id', '=', 'f.id')
             ->leftJoin('recipe_batch_formats as b', 'b.id', '=', 'm.recipe_batch_format_id')
-            ->first(['m.*', 'f.food_type', 'u.code as uom_code', 'i.id as ingredient_id',
+            ->select(['m.*', 'f.food_type', 'u.code as uom_code', 'i.id as ingredient_id',
                 'v.id as version_id', 'v.status', 'v.editor_contract', 'b.recipe_version_id as format_version_id', 'b.code as format_code',
                 'iu.ingredient_id as permitted_ingredient_id', 'i.kcal_per_100g', 'i.protein_per_100g', 'i.fat_per_100g', 'i.carbs_per_100g',
                 'v.kcal_per_serving', 'v.protein_per_serving', 'v.fat_per_serving', 'v.carbs_per_serving',
                 'b.kcal_total', 'b.protein_total', 'b.fat_total', 'b.carbs_total']);
+    }
+
+    private function portion(?object $r): MealItemPortion
+    {
         if ($r === null) {
             throw new DomainException('Позицію не знайдено.');
         }

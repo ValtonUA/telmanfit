@@ -300,3 +300,16 @@ format/version, draft version або невідповідна UOM/grams відх
 Обчислення decimal, одне HalfUp округлення результату до 6 знаків; жодного
 проміжного округлення порції чи fallback на A/1. Приготування цілої фізичної партії
 використовує весь її frozen склад незалежно від divisor. Старі рядки не backfill-яться.
+
+### Презентація раціонів — SQL15
+
+- «Початок тижня» обов'язковий при створенні plan: ISO 1..7, default Пн=1;
+  незмінний після створення (CHECK/NOT NULL + trigger). Існуючі плани отримують
+  погоджений default=1 без змін порядкових днів або frozen даних.
+- Nullable logical covers належать лише ingredients/recipes. Зміна cover
+  дозволена свіжому admin через CAS/locks; опубліковані версії й nutrition
+  незмінні. Step images не використовуються як cover.
+- Фото — лише browser HTTPS до exact явно дозволених hosts; сервер не
+  завантажує URL. Немає host/URL або фото зламане — компактний placeholder.
+- Округлення лише презентаційне: exact decimal HALF_UP, kcal 0 знаків, Б/Ж/В 1;
+  від'ємні, float, scientific та інші неканонічні значення відхиляються fail-closed.

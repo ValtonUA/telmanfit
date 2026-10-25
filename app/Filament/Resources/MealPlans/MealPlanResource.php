@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MealPlans;
 
 use App\Models\Client;
 use App\Models\MealPlan;
+use App\Support\Presentation\MealPlanDisplay;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -34,6 +35,8 @@ class MealPlanResource extends Resource
     {
         return $schema->components([
             TextInput::make('title')->label('Назва')->required(),
+            Select::make('week_start_weekday')->label('Початок тижня')->options(MealPlanDisplay::WEEKDAYS)->default(1)->required()
+                ->helperText('Порядок днів у шаблоні; значення незмінне після створення. Це не дата призначення клієнтові.'),
             Select::make('owner_client_id')->label('Власник (необов’язково)')
                 ->options(fn () => Client::with('user')->orderBy('id')->get()->mapWithKeys(fn (Client $client) => [
                     $client->id => '#'.$client->id.' — '.($client->user?->full_name ?: 'Без акаунта'),
@@ -61,6 +64,7 @@ class MealPlanResource extends Resource
     {
         return $schema->components([
             TextEntry::make('title')->label('Назва'),
+            TextEntry::make('week_start_weekday')->label('Початок тижня')->formatStateUsing(fn ($state) => MealPlanDisplay::WEEKDAYS[$state]),
             TextEntry::make('owner_client_id')->label('Власник')->formatStateUsing(fn ($state) => 'Клієнт #'.$state)->placeholder('Універсальний'),
             RepeatableEntry::make('versions')->label('Точні версії')->schema([
                 TextEntry::make('id')->label('ID версії')->url(fn ($record) => MealPlanVersionResource::getUrl('view', ['record' => $record])),

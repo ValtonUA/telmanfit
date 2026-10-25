@@ -19,7 +19,7 @@ class MealPlanModelsTest extends TestCase
             $this->assertSame('id', $model->getKeyName());
             $this->assertSame('int', $model->getKeyType());
             $this->assertTrue($model->getIncrementing());
-            $this->assertSame($model instanceof MealPlan ? ['title'] : [], $model->getFillable());
+            $this->assertSame($model instanceof MealPlan ? ['title', 'week_start_weekday'] : [], $model->getFillable());
             foreach (['id', 'status', 'version_number', 'published_at', 'replaced_by_assignment_id', 'food_id', 'owner_client_id', 'parent_meal_plan_id', 'meal_plan_id'] as $field) {
                 $this->assertFalse($model->isFillable($field));
             }
