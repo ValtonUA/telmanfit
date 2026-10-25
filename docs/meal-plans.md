@@ -1,4 +1,4 @@
-# Раціони — контракт T4.1/T4.2
+# Раціони — контракт T4.1/T4.2 та G4-I
 
 [Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
 [readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
@@ -115,12 +115,11 @@ Meal item writer (T4.3), Publish (T4.4), призначення/заміна
 Повторення/копіювання заповнених тижнів (Issue #61) не реалізовано.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
-Перед T4.3 потрібен окремий forward-only schema/API контракт Model I:
-`recipe_version_id`, `recipe_batch_format_id`, `recipe_portion_divisor`, явні
-A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredient — NULL.
+G4-I реалізує окремий forward-only schema/readonly контракт Model I за
+[Issue #63](https://github.com/ValtonUA/telmanfit/issues/63); writer T4.3 ще відсутній.
 [Proposal §11/§13](proposals/stage-3-recipe-batch-editor.md#11-контракт-stage-4-food-формат-порція-і-фізичне-приготування)
-ще містить формулювання «для погодження»; gate #54 задає напрям, але це не дозвіл
-додавати selectors у T4.2. DEC-4A потрібне перед T4.5. T1.5 та DEC-3T не блокують
+уточнено цією авторизацією; selectors не входили до T4.2. DEC-4A потрібне перед T4.5.
+T1.5 та DEC-3T не блокують
 цей synthetic foundation. Production activation — окремий go/no-go.
 
 ## Перевірки
@@ -152,3 +151,38 @@ A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredien
 Локальне відтворення: `RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1 bash tests/pg/run-stage1.sh`.
 Runner використовує лише нову disposable PG18, network none, без зовнішніх портів,
 синтетичні дані та cleanup. Повний CI і machine gate — [ci.md](ci.md).
+
+## Model I G4-I: selectors та readonly resolver
+
+[Issue #63](https://github.com/ValtonUA/telmanfit/issues/63) авторизує окремий
+forward-only [SQL 14](14_meal_item_selectors.sql), byte-identical до
+[виконуваного модуля](../database/sql/meal_plans/00_selectors.sql). Nullable поля
+та composite FK/guards наведені в [Entity Catalog](entity-catalog.md#g4-i--точні-selectors-позиції-раціону).
+SQL 01–13, історичні plans/assignments/foods/recipes/items не змінюються.
+
+`MealItemResolver::resolve(int|MealItem)` — внутрішній readonly контракт, без
+нового публічного endpoint або UI. Він завжди перечитує persisted item за ID,
+одним SQL snapshot приєднує точні food, published version, format, UOM та ingredient.
+Повертає readonly `MealItemPortion`: foodId, enum kind, recipeVersionId, formatId,
+divisor, quantity та nutrition (`kcal/protein/fat/carbs` decimal strings scale 6).
+Legacy version визначається унікальним food, жодного `latest`; batch — тільки
+повна явна трійка. Ingredient використовує historical resolved grams і чинні
+`*_per_100g`, legacy — frozen `*_per_serving`, batch — frozen format `*_total`.
+Спочатку множення на quantity, потім ділення на divisor й одне HalfUp округлення
+до 6 знаків. C/3 і C/4 мають один format ID та різні показники споживання.
+Відсутній item, невідомий format, неповні selectors чи нечислові nutrients —
+`DomainException`, без A/1 fallback. Старий viewer продовжує показувати збережені
+поля без нового обчислення nutrition.
+
+`recipe_batch_quantities` описує **цілу фізичну партію**: зміна спожитої
+кількості/divisor не змінює її кількостей, кроків або обладнання. Майбутні nutrition
+і shopping consumers масштабують за `quantity/divisor`; cooking цілої партії — ні.
+У G4-I немає shopping list, scheduler, item writer чи нового meal editor.
+
+`MealItemSelectorsTest` перевіряє непорожній synthetic upgrade з SHA256 snapshots
+історії, legacy nutrition, ingredient/A/1/B/7/C/3/C/4, 0.5 порції, SQL NULL matrix,
+чужі й неопубліковані версії/formats, UOM/grams, immutable history, deferred rollback
+та explicit reader failure. `MealItemPortionTest` перевіряє точність і скінченні
+decimal strings. `meal-item-selector-concurrency.php` доводить реальні lock waits
+в обох порядках selector/root і відхилення update/delete/downgrade без deadlock.
+Вони входять у штатний Stage3/T4.2 runner та Full CI; browser UI для G4-I не змінено.

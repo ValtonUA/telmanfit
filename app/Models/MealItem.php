@@ -20,7 +20,7 @@ class MealItem extends Model
 
     protected function casts(): array
     {
-        return ['quantity' => 'decimal:2', 'resolved_quantity_grams' => 'decimal:2', 'sort_order' => 'integer'];
+        return ['quantity' => 'decimal:2', 'resolved_quantity_grams' => 'decimal:2', 'sort_order' => 'integer', 'recipe_version_id' => 'integer', 'recipe_batch_format_id' => 'integer', 'recipe_portion_divisor' => 'integer'];
     }
 
     public function meal(): BelongsTo

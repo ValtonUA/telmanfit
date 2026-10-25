@@ -60,6 +60,9 @@ PR; стара зелена перевірка не годиться. На opene
   семиденних блоків, редагування структури, retry/stale/PG negatives,
   UX-4D: empty/no-modal, filled confirmation/cancel, stable anchor/retry, middle-week renumber та history hashes;
   реальні delete-vs-append/delete-vs-raw-item INSERT locks і Chromium light/dark 1440/390/320; [контракт](meal-plans.md).
+- G4-I Model I: populated upgrade hashes, direct SQL selector negatives, decimal
+  readonly resolver, fractional portions, frozen physical composition та root/selector
+  concurrency; входять у Stage3/T4.2 runner без додаткового workflow.
 - AUTH-1 upstream digest/versions; AUTH-2–6 PHPUnit, HTTP, browser та concurrency;
   B3/B4 outbox/ACL, B5 retention/archive/restore faults, B6 budgets/restart/faults.
 - B6 виконується на **обох** PHP 8.4/8.5. Третій ідентичний прогін на Stage 1 PHP8.4
