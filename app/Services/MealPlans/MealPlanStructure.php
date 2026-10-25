@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
-/** Команди T4.2: actor → recovery fence → exact version → days → meals → types. */
+/** Команди T4.2: recovery fence → actor → exact version → days → meals → types. */
 final class MealPlanStructure
 {
     public static function allowed(User $actor, MealPlanVersion $version): bool
@@ -122,8 +122,8 @@ final class MealPlanStructure
     {
         abort_unless(self::allowed($actor, $version), 403);
         DB::transaction(function () use ($actor, $version, $command): void {
-            User::whereKey($actor->getKey())->sharedLock()->firstOrFail();
             DB::table('auth_security_runtime')->where('id', 1)->sharedLock()->first();
+            User::whereKey($actor->getKey())->sharedLock()->firstOrFail();
             $locked = MealPlanVersion::whereKey($version->getKey())->where('meal_plan_id', $version->meal_plan_id)->lockForUpdate()->firstOrFail();
             abort_unless(self::allowed($actor, $locked), 403);
             $command($locked);

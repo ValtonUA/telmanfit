@@ -65,8 +65,9 @@ smallint порядок (однаковий порядок стабільно с
 окремого UX-рішення, якщо знадобляться; це не блокує зміну вмісту дня.
 
 `MealPlanStructure` перевіряє Policy/свіжого admin та recovery/restore fence,
-тримає actor shared lock → runtime fence shared lock → exact version FOR UPDATE
-→ days → meals → type shared locks. Після блокування повторно перевіряє draft;
+тримає runtime fence shared lock → actor shared lock → exact version FOR UPDATE
+→ days → meals → type shared locks. Runtime перед actor узгоджений із restore,
+який блокує runtime перед оновленням users. Після блокування повторно перевіряє draft;
 після команд — deferred guards і свіжу роль до commit. Жодного переходу на latest.
 Сервіс не змінює parent/owner/status/publication/assignments або історичні snapshots.
 Повтор запиту явного блоку `start_day` є no-op, навіть якщо його прийоми вже
@@ -100,7 +101,8 @@ A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredien
   rollback deferred faults, порожній довідник, stale/forged/cross-version IDs,
   SQL UNIQUE, immutable history, fresh-role/fence та прямі Filament actions.
 - `tests/pg/meal-plan-structure-concurrency.php`: незалежні PG-сесії з доведеним
-  lock wait; double/retry, edit-vs-generate, stale edit та revoked role.
+  lock wait; double/retry, edit-vs-generate, stale edit, revoked role та runtime
+  fence-vs-writer без інверсії locks.
 - `tests/pg/meal-plan-concurrency.php`: окремий процес, доведене очікування locks,
   duplicate draft / immutable detail / overlap відмови; два атомарні незалежні
   створення без lost write. Входить у штатний recipe/Stage4 runner.

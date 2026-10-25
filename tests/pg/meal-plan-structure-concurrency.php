@@ -27,11 +27,11 @@ if (($argv[1] ?? '') === 'worker') {
         } else {
             $writer->generate($actor, $version, $data['generate']);
         }
-        exit($data['case'] === 'revoke' || $data['case'] === 'stale' ? 2 : 0);
+        exit(in_array($data['case'], ['revoke', 'fence', 'stale'], true) ? 2 : 0);
     } catch (ValidationException) {
         exit($data['case'] === 'stale' ? 0 : 3);
     } catch (HttpException $e) {
-        exit($data['case'] === 'revoke' && $e->getStatusCode() === 403 ? 0 : 4);
+        exit(in_array($data['case'], ['revoke', 'fence'], true) && $e->getStatusCode() === 403 ? 0 : 4);
     }
 }
 $actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic structure concurrency', 'role' => 'admin']));
@@ -40,7 +40,7 @@ $file = tempnam(sys_get_temp_dir(), 'telmanfit-structure-concurrency-');
 chmod($file, 0600);
 $worker = null;
 try {
-    foreach (['double', 'retry', 'edit-generate', 'stale', 'revoke'] as $case) {
+    foreach (['double', 'retry', 'edit-generate', 'stale', 'fence', 'revoke'] as $case) {
         $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Конкурентна структура '.$case])->versions()->sole();
         $generate = ['start_day' => 1, 'meal_type_ids' => [$type]];
         if ($case !== 'double') {
@@ -58,6 +58,9 @@ try {
             $writer->generate($actor, $version, $generate);
         } elseif ($case === 'edit-generate' || $case === 'stale') {
             $writer->saveMeal($actor, $version, array_replace($edit, ['title' => 'Збережена правка']), $meal->id);
+        } elseif ($case === 'fence') {
+            DB::table('auth_security_runtime')->where('id', 1)->lockForUpdate()->first();
+            DB::table('auth_security_runtime')->where('id', 1)->update(['state' => 'recovery_required']);
         } else {
             DB::table('users')->where('id', $actor->id)->update(['role' => 'coach']);
         }
@@ -78,6 +81,10 @@ try {
         if (! $waiting) {
             throw new RuntimeException('Не доведено lock wait: '.$case);
         }
+        if ($case === 'fence') {
+            // Restore бере runtime, потім users. Writer не має тримати actor під час очікування runtime.
+            DB::table('users')->where('id', $actor->id)->update(['auth_version' => DB::raw('auth_version+1')]);
+        }
         DB::commit();
         $out = stream_get_contents($pipes[1]);
         $err = stream_get_contents($pipes[2]);
@@ -88,6 +95,9 @@ try {
         if ($code !== 0) {
             throw new RuntimeException('Worker '.$case.' failed '.$code.': '.$out.$err);
         }
+        if ($case === 'fence') {
+            DB::table('auth_security_runtime')->where('id', 1)->update(['state' => 'ready']);
+        }
         $days = $case === 'edit-generate' ? 14 : 7;
         if ($version->days()->count() !== $days || Meal::whereHas('day', fn ($q) => $q->where('meal_plan_version_id', $version->id))->count() !== $days) {
             throw new RuntimeException('Partial/duplicate structure: '.$case);
@@ -96,7 +106,7 @@ try {
             throw new RuntimeException('Lost edit: '.$case);
         }
     }
-    echo "Meal plan structure concurrency PASS: double/retry/edit-generate/stale/revoked role; independent PG sessions and proven lock waits, no partial/duplicate/lost writes.\n";
+    echo "Meal plan structure concurrency PASS: double/retry/edit-generate/stale/recovery fence/revoked role; independent PG sessions and proven lock waits, no partial/duplicate/lost writes.\n";
 } finally {
     while (DB::transactionLevel() > 0) {
         DB::rollBack();
