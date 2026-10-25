@@ -233,12 +233,24 @@ Full на остаточному head. Перший timeout і скасован�
 
 
 
+## Окремий невдалий Full до PG workers
+
+Run40240313945 на37490507 зупинився на cleanup-fixture: Chromium не записав
+PID marker за10с. Інші jobs одразу скасовано, витрати збережено окремо в
+[browser-startup-failed-full.json](browser-startup-failed-full.json), це не after success.
+Startup budget fixture збільшено до45с при browser launch timeout30с;
+додано атомарний PID marker, worker/driver diagnostics та гарантований reap.
+Перевірки cancellation, exit143 і відсутності живих Chromium descendants збережено.
+Локально після правки:4 browser tests і35 CI tests — PASS. Точну причину hosted
+startup delay попередній fixture не зберіг; нова діагностика усуває цю прогалину.
+
 ## Усі змінені файли
 
 - `.github/workflows/stage1.yml`
 - `docs/ci.md`
 - `docs/evidence/ci-cost-2/baseline-log-excerpts.txt`
 - `docs/evidence/ci-cost-2/before.json`
+- `docs/evidence/ci-cost-2/browser-startup-failed-full.json`
 - `docs/evidence/ci-cost-2/cancelled-intermediate-full.json`
 - `docs/evidence/ci-cost-2/container-recovery-probe.json`
 - `docs/evidence/ci-cost-2/corrected-local-checks.json`
