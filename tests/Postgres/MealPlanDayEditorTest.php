@@ -207,6 +207,17 @@ class MealPlanDayEditorTest extends PostgresTestCase
         $this->assertSame(8, $day->fresh()->day_number);
     }
 
+    public function test_day_save_keeps_catalog_context_without_redirect(): void
+    {
+        $editor = Livewire::test(EditMealPlanDay::class, ['record' => $this->version->id, 'day' => $this->day])
+            ->set('search', 'Синтетичний')->set('catalogType', 'ingredient');
+        $editor->mountAction('addItem', ['food' => $this->f['food'], 'meal' => $this->meal, 'expected' => $this->snapshot()])
+            ->set('mountedActions.0.data.quantity', '0.50')->set('mountedActions.0.data.uom_id', $this->f['g'])
+            ->callMountedAction()->assertHasNoActionErrors()->assertNoRedirect()
+            ->assertSet('search', 'Синтетичний')->assertSet('catalogType', 'ingredient');
+        $this->assertSame('0.50', MealItem::where('meal_id', $this->meal)->sole()->quantity);
+    }
+
     public function test_catalog_search_filter_and_pagination_stay_server_side(): void
     {
         for ($n = 1; $n <= 15; $n++) {

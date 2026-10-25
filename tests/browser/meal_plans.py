@@ -19,7 +19,7 @@ def run_meal_plans(page, base):
     history = fixture('hash')
 
     def submit(dialog, label):
-        with (page.expect_navigation(wait_until='networkidle') if label != 'Скасувати' else nullcontext()):
+        with (page.expect_navigation(wait_until='networkidle') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
             with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
                 dialog.get_by_role('button', name=label, exact=True).click()
         assert response.value.status == 200

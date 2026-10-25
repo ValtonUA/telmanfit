@@ -130,7 +130,9 @@ def run_day_editor(page, base, f, suffix, submit):
         submit(dialog, 'Додати')
         expect(source.get_by_text(label + ' · ', exact=False)).to_be_visible()
         page.reload()
-    assert page.url == day_url
+    assert page.url.split('?')[0] == day_url.split('?')[0]
+    expect(page.get_by_label('Пошук каталогу', exact=False)).to_have_value('Синтетичний batch writer')
+    expect(page.get_by_label('Тип каталогу', exact=False)).to_have_value('recipe_version')
     page.get_by_role('link', name='До огляду тижня', exact=True).click()
     expect(page.get_by_text('Тиждень 1 / 2', exact=True)).to_be_visible()
     print('UX-4E Chromium ' + suffix + ': dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS', flush=True)

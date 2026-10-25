@@ -142,6 +142,6 @@ class EditMealPlanDay extends ViewMealPlanVersion
     protected function done(): void
     {
         Notification::make()->success()->title('Зміни дня збережено')->send();
-        $this->redirect(MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $this->dayId]), navigate: false);
+        $this->getRecord()->refresh();
     }
 }
