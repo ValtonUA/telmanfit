@@ -59,10 +59,8 @@ smallint порядок (однаковий порядок стабільно с
 Поля редагування недоступні до завантаження обраного прийому; під час його
 повторного вибору взаємодія з полями заблокована до відповіді Livewire, щоб пізнє
 заповнення не стерло щойно введений текст. День може тимчасово залишитися без прийомів; UI показує порожній стан, Publish
-не реалізовано. Прийом із позиціями видаляти заборонено; позиції не змінюються.
-Номери днів не редагуються і самі дні не видаляються, тому семиденний каркас
-залишається безперервним. Розширені операції перестановки/видалення днів потребують
-окремого UX-рішення, якщо знадобляться; це не блокує зміну вмісту дня.
+не реалізовано. Окремий прийом із позиціями видаляти заборонено. Окремі дні не
+переставляються й не видаляються; для повних тижнів діє погоджений UX-4D нижче.
 
 `MealPlanStructure` перевіряє Policy/свіжого admin та recovery/restore fence,
 тримає runtime fence shared lock → actor shared lock → exact version FOR UPDATE
@@ -76,10 +74,45 @@ smallint порядок (однаковий порядок стабільно с
 під lock, тому stale форма не стирає новішу правку. Повтор add з тим самим типом
 відхиляється без змін. Немає нових таблиць, міграцій, довідників або feature flags.
 
+## Видалення тижнів UX-4D
+
+[Issue #60](https://github.com/ValtonUA/telmanfit/issues/60) погоджує видалення
+**будь-якого повного семиденного тижня точної чернетки**: першого, середнього,
+останнього або єдиного. Меню «Видалити тиждень» показує актуальні номери та
+кількість `meal_items`. Наявність автоматичних `meals` без позицій означає
+**порожній** тиждень: вибір виконує видалення відразу, без warning/confirm-модалу.
+За ≥1 позиції відкривається confirmation із фактичною кількістю, попередженням
+про незворотне видалення всіх позицій/прийомів і зсув наступних тижнів; кнопки
+«Скасувати» / «Видалити тиждень». Cancel та перегляд не пишуть дані.
+
+Запит містить стабільний anchor (ID першого дня) і HMAC snapshot усіх семи днів,
+прийомів та позицій, прив’язаний до actor і version. Номер тижня не є ключем
+команди. Заповнений тиждень додатково потребує окремого серверного confirmation
+HMAC поточного snapshot; `confirmed=true`, підміна count/anchor/version або
+повторення старого запиту не дають права видаляти сусідній тиждень. Під version
+FOR UPDATE повторно читаються й блокуються дні → прийоми → позиції, звіряється
+підпис і **фактичний** item count. Нові/змінені позиції чи прийоми, або зміщення
+днів після іншого видалення, вимагають оновлення сторінки та нового підтвердження.
+Read-only підписані snapshots не змінюють БД; при конкурентному читанні будь-яка
+неузгодженість відхиляється повторною перевіркою під lock.
+
+Транзакція явно видаляє лише вибрані `meal_items → meals → meal_plan_days` цієї
+чернетки. Наступні дні оновлюються по одному **в зростаючому порядку**: номер мінус
+7, без конфлікту з негайним UNIQUE. Їхні ID, прийоми та вміст зберігаються; після
+єдиного тижня лишається 0 днів. Версія, foods, ingredients, recipes/recipe_versions,
+інші плани, призначення й журнали не змінюються. Published та розірвані legacy
+структури не редагуються/не ремонтуються цією командою. Recovery fence → actor →
+version lock order, fresh-role check, deferred guards і rollback спільні з T4.2.
+FK RESTRICT та immutable/UNIQUE guards не змінені. Конкурентний прямий INSERT
+позиції серіалізується також через FOR UPDATE на meal та його FK key-share:
+нова позиція вимагає fresh confirmation або INSERT відхиляється після DELETE,
+а orphan/тихого видалення непідтвердженої позиції немає.
+
 ## Свідомо закриті команди
 
 Meal item writer (T4.3), Publish (T4.4), призначення/заміна
-(T4.5), CoW (T4.6), Delete/replicate/archive та CRUD довідника meal types відсутні.
+(T4.5), CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
+Повторення/копіювання заповнених тижнів (Issue #61) не реалізовано.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
 Перед T4.3 потрібен окремий forward-only schema/API контракт Model I:
@@ -100,6 +133,8 @@ A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredien
 - `tests/Postgres/MealPlanStructureTest.php`: 7/14/21 днів, типи/порядок, retries,
   rollback deferred faults, порожній довідник, stale/forged/cross-version IDs,
   SQL UNIQUE, immutable history, fresh-role/fence та прямі Filament actions.
+- `tests/Postgres/MealPlanWeekDeletionTest.php`: 7/14/21/28 днів, перший/середній/останній/єдиний тиждень, stable IDs/content, signed confirmation, cancel/forgery/retry/stale, ACL/fence, deferred rollback та history hashes.
+- `tests/pg/meal-plan-week-deletion-concurrency.php`: реальні delete-vs-append і delete-vs-прямий INSERT item в обох порядках, double/filled replay, stale edit, доведені lock waits та відсутність сусіднього видалення/deadlocks.
 - `tests/pg/meal-plan-structure-concurrency.php`: незалежні PG-сесії з доведеним
   lock wait; double/retry, edit-vs-generate, stale edit, revoked role та runtime
   fence-vs-writer без інверсії locks.
@@ -108,6 +143,7 @@ A/1, B/7, C/3, C/4 та guards; історія без backfill, legacy/ingredien
   створення без lost write. Входить у штатний recipe/Stage4 runner.
 - `tests/browser/meal_plans.py`: справжня MFA-сесія, create/list/search/detail,
   точна published hierarchy, порожня чернетка, генерація/редагування/append/reload,
+  UX-4D modal/no-modal, cancel/confirm, middle-week renumber зі stable IDs,
   1440/390/320 light/dark,
   overflow, CSRF 419, revoked signed Livewire/HTTP 403 та незмінна історія.
   Виконується разом із Stage 3 catalog/recipe регресіями; synthetic screenshots

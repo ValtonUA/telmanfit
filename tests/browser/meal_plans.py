@@ -1,12 +1,13 @@
 """T4.1/T4.2: штатний Filament, точна версія, readonly history, responsive та CSRF/revocation."""
 import json
+from contextlib import nullcontext
 import subprocess
 from pathlib import Path
 from playwright.sync_api import expect
 
 
-def fixture(action):
-    return subprocess.check_output(['php', 'tests/browser/meal-plan-fixture.php', action], text=True)
+def fixture(action, *args):
+    return subprocess.check_output(['php', 'tests/browser/meal-plan-fixture.php', action, *map(str, args)], text=True)
 
 
 def run_meal_plans(page, base):
@@ -18,8 +19,9 @@ def run_meal_plans(page, base):
     history = fixture('hash')
 
     def submit(dialog, label):
-        with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
-            dialog.get_by_role('button', name=label, exact=True).click()
+        with (page.expect_navigation(wait_until='networkidle') if label != 'Скасувати' else nullcontext()):
+            with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
+                dialog.get_by_role('button', name=label, exact=True).click()
         assert response.value.status == 200
         page.wait_for_load_state('networkidle')
         dialog.wait_for(state='hidden')
@@ -98,6 +100,50 @@ def run_meal_plans(page, base):
             expect(page.get_by_text('Меню ' + suffix, exact=True)).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             page.screenshot(path=str(output / f'structure-{suffix}.png'), full_page=True)
+            version_id = int(draft_url.rsplit('/', 1)[1])
+            page.get_by_role('button', name='Додати 7 днів', exact=True).click()
+            dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
+            dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
+            submit(dialog, 'Додати тиждень')
+            before_delete = json.loads(fixture('week-fill', version_id, 8))
+            page.reload()
+            page.get_by_role('button', name='Видалити тиждень', exact=True).click()
+            page.get_by_text('Тиждень 2 · Позицій: 2', exact=True).click()
+            dialog = page.get_by_role('alertdialog').filter(has=page.get_by_text('Видалити тиждень', exact=True))
+            expect(dialog.get_by_text('Позицій: 2.', exact=False)).to_be_visible()
+            expect(dialog.get_by_text('Дію неможливо скасувати.', exact=False)).to_be_visible()
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.screenshot(path=str(output / f'week-confirm-{suffix}.png'))
+            submit(dialog, 'Скасувати')
+            assert json.loads(fixture('week-state', version_id)) == before_delete
+            page.get_by_role('button', name='Видалити тиждень', exact=True).click()
+            page.get_by_text('Тиждень 2 · Позицій: 2', exact=True).click()
+            dialog = page.get_by_role('alertdialog').filter(has=page.get_by_text('Видалити тиждень', exact=True))
+            submit(dialog, 'Видалити тиждень')
+            after_delete = json.loads(fixture('week-state', version_id))
+            expected_days = [dict(d, day_number=d['day_number'] - (7 if d['day_number'] > 14 else 0))
+                             for d in before_delete['days'] if not 8 <= d['day_number'] <= 14]
+            assert after_delete['days'] == expected_days
+            kept_ids = {d['id'] for d in expected_days}
+            assert after_delete['meals'] == [m for m in before_delete['meals'] if m['meal_plan_day_id'] in kept_ids]
+            assert after_delete['items'] == []
+            expect(page.get_by_text('Синтетичний прийом', exact=True)).to_have_count(14)
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.screenshot(path=str(output / f'week-renumbered-{suffix}.png'), full_page=True)
+            page.get_by_role('button', name='Видалити тиждень', exact=True).click()
+            with page.expect_navigation(wait_until='networkidle'):
+                with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
+                    page.get_by_text('Тиждень 2 · Порожній', exact=True).click()
+            assert response.value.status == 200
+            page.wait_for_load_state('networkidle')
+            expect(page.get_by_role('alertdialog')).to_have_count(0)
+            expect(page.get_by_role('dialog')).to_have_count(0)
+            expect(page.get_by_text('Синтетичний прийом', exact=True)).to_have_count(7)
+            assert [d['day_number'] for d in json.loads(fixture('week-state', version_id))['days']] == list(range(1, 8))
+            page.get_by_role('button', name='Додати 7 днів', exact=True).click()
+            dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
+            dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
+            submit(dialog, 'Додати тиждень')
             page.goto(base + '/admin/meal-plans')
             search = page.get_by_role('searchbox', name='Пошук', exact=True)
             with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST'):
@@ -109,7 +155,7 @@ def run_meal_plans(page, base):
             page.get_by_role('link', name='Перегляд', exact=True).click()
             expect(page.get_by_text('Ще не опублікована', exact=True)).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-            checks.append(suffix + ': create/list/search/plan/exact version/generate 7/edit/append 14/reload/published hierarchy, no overflow')
+            checks.append(suffix + ': create/list/search/plan/exact version/generate/edit/append 21/filled week cancel+confirm/middle renumber stable IDs/empty week no modal/reload/published hierarchy, no overflow')
             print('Meal plans Chromium: ' + suffix + ' PASS', flush=True)
     # Нові чернетки очікувані; історичні дані незмінні, перевіряються окремо нижче.
     page.goto(published)
@@ -117,8 +163,11 @@ def run_meal_plans(page, base):
     page.reload()
     assert fixture('hash') == before
     assert history == before  # створення drafts зберегло історичні rows
+    fixture('week-fill', version_id, 1)
     page.goto(draft_url)
-    page.get_by_role('button', name='Додати 7 днів', exact=True).click()
+    page.get_by_role('button', name='Видалити тиждень', exact=True).click()
+    page.get_by_text('Тиждень 1 · Позицій: 2', exact=True).click()
+    expect(page.get_by_role('alertdialog').get_by_text('Позицій: 2.', exact=False)).to_be_visible()
     structure_raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()
                          if 'mountedActions' in json.loads(e.get_attribute('wire:snapshot'))['data'])
     structure_payload = {'components': [{'snapshot': structure_raw, 'updates': {}, 'calls': [{'method': 'callMountedAction', 'params': []}]}]}
@@ -133,7 +182,7 @@ def run_meal_plans(page, base):
     headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
     count = fixture('count')
     assert page.context.request.post(base + '/admin/livewire/update', data=payload, headers=headers).status == 419
-    checks.append('Missing CSRF rejected 419; guest/MFA boundary shared with recipe browser')
+    checks.append('Missing CSRF rejects signed week-delete/create 419; guest/MFA boundary shared with recipe browser')
     (output / 'checks.json').write_text(json.dumps({'checks': checks}, ensure_ascii=False, indent=2) + '\n')
     return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash}
 
@@ -151,5 +200,5 @@ def verify_meal_plan_revocation(page, base, state):
     assert fixture('hash') == state['hash']
     result = Path('docs/evidence/meal-plans/checks.json')
     data = json.loads(result.read_text())
-    data['checks'].append('Revoked signed Livewire create/HTTP 403, unchanged plans/history/foods/assignments')
+    data['checks'].append('Revoked signed confirmed week-delete/create/HTTP 403, unchanged structure/plans/history/foods/assignments')
     result.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')

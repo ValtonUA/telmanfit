@@ -7,6 +7,7 @@ use App\Models\Meal;
 use App\Models\MealType;
 use App\Services\MealPlans\MealPlanStructure;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -30,6 +31,7 @@ class ViewMealPlanVersion extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ...$this->weekDeletionActions(),
             Action::make('generateWeek')->label('Додати 7 днів')->modalSubmitActionLabel('Додати тиждень')->authorize(fn () => $this->editable())
                 ->modalHeading('Додати наступний семиденний тиждень')
                 ->modalDescription('Створюються лише дні й обрані прийоми. Позицій немає; публікація ще недоступна. Повторний запит того самого тижня не дублює дані.')
@@ -67,7 +69,7 @@ class ViewMealPlanVersion extends ViewRecord
 
     public function mountAction(string $name, array $arguments = [], array $context = []): mixed
     {
-        if (in_array($name, ['generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true)) {
+        if (in_array($name, ['generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
             $this->authorizeStructure();
         }
 
@@ -79,6 +81,38 @@ class ViewMealPlanVersion extends ViewRecord
         $this->authorizeStructure();
 
         return parent::callMountedAction($arguments);
+    }
+
+    private function weekDeletionActions(): array
+    {
+        if (! $this->editable()) {
+            return [];
+        }
+        $weeks = app(MealPlanStructure::class)->weekDeletionSnapshots(auth()->user(), $this->getRecord());
+        if ($weeks === []) {
+            return [];
+        }
+        $actions = [];
+        foreach ($weeks as $week) {
+            $actions[] = Action::make('deleteWeek'.$week['anchor'])
+                ->label('Тиждень '.$week['week_number'].' · '.($week['item_count'] === 0 ? 'Порожній' : 'Позицій: '.$week['item_count']))
+                ->color('danger')->authorize(fn () => $this->editable())
+                ->arguments(['anchor' => $week['anchor'], 'expected' => $week['expected'], 'item_count' => $week['item_count']])
+                ->modalHidden(fn (array $arguments) => (int) ($arguments['item_count'] ?? -1) === 0)
+                ->requiresConfirmation(fn (array $arguments) => (int) ($arguments['item_count'] ?? 0) > 0)
+                ->modalHeading('Видалити тиждень')
+                ->modalDescription(fn (array $arguments) => 'Позицій: '.($arguments['item_count'] ?? 0).'. Увага! Ви збираєтеся видалити тиждень, у якому є додані страви/продукти. Буде видалено всі позиції та прийоми цього тижня. Наступні тижні змістяться на один. Дію неможливо скасувати.')
+                ->modalSubmitActionLabel('Видалити тиждень')->modalCancelActionLabel('Скасувати')
+                ->schema([Hidden::make('confirmation')])
+                ->fillForm(fn (array $arguments, Action $action) => (int) ($arguments['item_count'] ?? 0) > 0
+                    ? $this->withStructureValidation($action, fn () => app(MealPlanStructure::class)->confirmWeekDeletion(auth()->user(), $this->getRecord(), $arguments))
+                    : [])
+                ->action(function (array $data, array $arguments, Action $action): void {
+                    $this->command($action, fn () => app(MealPlanStructure::class)->deleteWeek(auth()->user(), $this->getRecord(), array_merge($arguments, ['confirmation' => $data['confirmation'] ?? null])));
+                });
+        }
+
+        return [ActionGroup::make($actions)->label('Видалити тиждень')->button()->color('danger')];
     }
 
     private function editable(): bool
@@ -140,9 +174,15 @@ class ViewMealPlanVersion extends ViewRecord
 
     private function command(Action $action, callable $operation): void
     {
+        $this->withStructureValidation($action, $operation);
+        $this->done();
+    }
+
+    private function withStructureValidation(Action $action, callable $operation): mixed
+    {
         $this->authorizeStructure();
         try {
-            $operation();
+            return $operation();
         } catch (ValidationException $exception) {
             $path = $this->getMountedActionSchema(mountedAction: $action)->getStatePath();
             $errors = [];
@@ -154,7 +194,6 @@ class ViewMealPlanVersion extends ViewRecord
 
             throw ValidationException::withMessages($errors);
         }
-        $this->done();
     }
 
     private function done(): void
