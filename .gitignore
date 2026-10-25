@@ -54,3 +54,4 @@ id_rsa*
 # T4.1 browser evidence зберігається як GitHub Actions artifacts.
 /docs/evidence/meal-plans/*.png
 /docs/evidence/meal-plans/checks.json
+/docs/evidence/meal-plans/presentation-checks.json

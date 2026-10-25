@@ -41,6 +41,7 @@ if (! Schema::hasTable('auth_security_runtime')) {
 }
 DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL,
     'last_reconciled_at' => now(), 'issuance_not_before' => now(), 'state' => 'ready']);
+(require database_path('migrations/2026_10_25_020000_add_plan_presentation.php'))->up();
 $actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic plan concurrency', 'role' => 'admin']));
 $fixture = new class
 {

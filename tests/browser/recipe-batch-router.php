@@ -18,5 +18,5 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 require __DIR__.'/../pg/auth2-guard.php';
-config(['recipes.batch_editor_enabled' => true]);
+config(['recipes.batch_editor_enabled' => true, 'presentation.image_hosts' => ['images.example.com']]);
 $app->handleRequest(Request::capture());

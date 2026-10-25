@@ -94,4 +94,4 @@ Published — readonly. Атомарний `MealItemWriter::place` з signed day
 Нові PG/Livewire, independent concurrency та responsive Chromium тести входять
 у чинний Stage3/4 runner. [Контракт](meal-plans.md#редактор-тижня-й-дня-ux-4e)
 описує поведінку й обмеження; actual CI слід перевіряти на head PR.
-Схема, залежності, feature flags, production/Telmanfit_dev не змінені.
+Допрацювання PR #67 додає погоджений forward SQL15: create-only weekday у plan та nullable logical covers ingredients/recipes; порожній image allowlist не блокує роботу. SQL01–14, залежності, feature flags, production/Telmanfit_dev не змінені. Остаточні докази — на head PR.

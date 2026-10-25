@@ -60,6 +60,7 @@ Table ingredients [headercolor: #0F766E] {
   food_id integer [not null, unique]
   food_type food_type_enum [not null, default: 'ingredient']
   name text [not null]
+  image_url text [note: 'Змінюване публічне HTTPS фото; точний allowlist hosts у Laravel; nullable, поза frozen nutrition.']
   ingredient_category_id smallint
   kcal_per_100g numeric(7,2) [not null]
   protein_per_100g numeric(7,2) [not null]
@@ -85,6 +86,7 @@ Table ingredient_uoms [headercolor: #0F766E] {
 Table recipes [headercolor: #7C3AED] {
   id integer [pk]
   title text [not null]
+  image_url text [note: 'Спільна змінювана обкладинка всіх exact versions; фото recipe_directions окремі.']
   recipe_category_id smallint
   parent_recipe_id integer
   owner_client_id integer
@@ -196,6 +198,7 @@ Table recipe_kitchen_equipment [headercolor: #D97706] {
 Table meal_plans [headercolor: #2563EB] {
   id integer [pk]
   title text [not null]
+  week_start_weekday smallint [not null, default: 1, note: 'ISO 1..7; обов’язкове при створенні, незмінне DB trigger. Існуючим планам погоджено Пн=1.']
   parent_meal_plan_id integer
   owner_client_id integer
   created_at timestamptz [not null]

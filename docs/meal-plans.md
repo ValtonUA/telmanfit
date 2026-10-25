@@ -242,7 +242,7 @@ Repeat week (#61), Publish і assignments залишаються окремим�
 Основний екран exact version — семиденний огляд `?week=N`. Він рендерить
 позиції лише вибраного тижня; GET/reload не створюють днів або позицій. На desktop
 від 1280 px сім колонок розташовані одночасно, на 390/320 px перемикається один
-день. Показуються порядкові «День N», без календарної прив’язки. У колонці лише
+день. Показуються «День N (weekday)» за початком тижня плану, без календарної дати. У колонці лише
 заповнені прийоми, компактні назви й порції та одна нижня CTA «Заповнити день» /
 «Редагувати день». Порожні налаштовані прийоми приховані лише в огляді.
 
@@ -259,8 +259,8 @@ Native HTML Drag API для миші та Pointer API з ручкою для tou
 запису. `food_id` відокремлений від persisted `meal_item.id`. Перенесення на позицію
 вставляє перед нею, на заголовок/вільне місце прийому — в кінець. DOM не переставляє
 позиції оптимістично: успіх повертає канонічний серверний порядок, validation/conflict
-залишає актуальний стан та notification. Доступні select «Додати до прийому»,
-select перенесення, кнопки «Вище»/«Нижче» й штатне меню «Позиції» для
+залишає актуальний стан та notification. Доступні кнопка «Додати» з вибором прийому в modal,
+select перенесення й кнопки «Вище»/«Нижче» в меню «⋯», штатне меню «Позиції» у «Керування» для
 редагування/confirmation видалення. Це також клавіатурний та touch fallback.
 
 `MealItemWriter::place` — мінімальне розширення чинної writer boundary: exact
@@ -279,8 +279,9 @@ version → day → source/target meals та optional before item, HMAC snapshot
 UX-4D видалення тижнів залишаються в огляді; попередні forms — доступний fallback
 поверх тих самих сервісів. Другого основного редактора немає.
 
+Header показує назву плану, а version/status — другорядно; actions згруповано в «Керування».
 Published має readonly огляд і сторінку дня, без каталогу, drag handles чи edit CTA;
-прямі Livewire write calls відхиляються Policy/Service. Схема SQL01–14, залежності,
+прямі Livewire write calls відхиляються Policy/Service. SQL01–14 не переписані; погоджений forward SQL15 описано нижче. Залежності,
 робочі БД, feature flags та призначення не змінюються. Repeat weeks #61,
 Publish/assignment/CoW і production activation залишаються окремими задачами.
 
@@ -292,3 +293,41 @@ copy/cancel/confirm, mouse drag, trusted Chromium touch/Pointer input, keyboard/
 A/B/C порції, persistence та overflow. Browser artifacts зберігаються разом із
 T4.1–T4.3 у `meal-plans/`; Chromium touch emulation не замінює ручну перевірку
 фізичного touchscreen пристрою. Результати й CI належать конкретному head SHA.
+
+## Зображення та початок тижня SQL15
+
+Останнє уточнення власника PR #67 має пріоритет: required create select
+«Початок тижня» з Пн за замовчуванням зберігається в
+`meal_plans.week_start_weekday` (ISO 1..7), а не у версії. DB забороняє
+зміну після створення; Day 1/8 показують обраний weekday, assignment date окрема.
+Forward migration `2026_10_25_020000_add_plan_presentation.php` виконує
+`database/sql/presentation/00_plan_media.sql`, ідентичний `15_plan_presentation.sql`.
+Existing plans default=1 погоджено явно; days/items/frozen snapshots не змінюються.
+
+`ingredients.image_url` / `recipes.image_url` nullable. Ingredient edit та action
+«Обкладинка рецепта» у «Керування» draft day editor (пошук логічного рецепта), а також на recipe editor зберігають URL; дія доступна без увімкнення batch feature flag. свіжі admin ACL, recovery
+fence, locks і CAS захищають write. Cover recipe спільний для всіх exact versions.
+Не використовуються images кроків. Фото не входить у nutrition source hash,
+тому додавання колонки та заміна cover не змушують Refresh.
+
+`PUBLIC_IMAGE_HOSTS` — comma-separated **точні** публічні DNS hosts, без scheme,
+path, wildcard. Типово порожній: весь editor працює без фото. Реальний R2 host
+невідомий і не потрібний для цього PR; не слід підставляти вигаданий R2 URL.
+Після окремо погодженого налаштування дозволяються тільки HTTPS URL до цих hosts,
+без userinfo, port, fragment, IP/private names або SVG/HTML/XML. Сервер не
+виконує fetch/proxy/upload. Browser без referrer, lazy/async, object-fit та sizes.
+Для NULL/untrusted/broken фото — компактний текст/placeholder; week не лишає
+порожніх фото-прямокутників. Day thumb 56–64 px, desktop catalog 2-column grid з компактним 64px placeholder,
+week photo full-width 4:3 з дворядковим підписом.
+
+R2 key може лишатися стабільним при overwrite. Видимість нового файлу залежить
+від CDN/browser TTL; власник storage окремо визначає Cache-Control/TTL та за
+потреби виконує Cloudflare purge. Цей PR не змінює bucket, об'єкти, credentials,
+TTL чи purge і не переносить файли у Laravel storage. У тестах
+`https://images.example.com/…` перехоплюється Chromium route fixture без R2/network.
+
+`MealItemResolver::resolveMany` виконує ті самі exact joins/decimal calculations
+для всіх позицій одним SQL; labels/covers також одним lookup. Презентація
+округлює HALF_UP до kcal0/macro1 без float; resolver зберігає precision.
+`MealPlanPresentationTest` вимірює повний Livewire render 10/40 позицій,
+перевіряє незростання query count і точну відповідність scalar/bulk.

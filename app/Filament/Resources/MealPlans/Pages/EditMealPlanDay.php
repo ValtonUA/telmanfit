@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\MealPlans\Pages;
 
+use App\Filament\Actions\RecipeCoverAction;
 use App\Filament\Resources\MealPlans\MealPlanVersionResource;
 use App\Models\MealPlanDay;
+use App\Services\Catalog\CatalogWriter;
 use App\Services\MealPlans\MealItemWriter;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +58,12 @@ class EditMealPlanDay extends ViewMealPlanVersion
 
     public function getTitle(): string
     {
-        return 'День '.$this->day()->day_number.' · версія #'.$this->getRecord()->id;
+        return $this->getRecord()->plan->title;
+    }
+
+    public function getSubheading(): ?string
+    {
+        return $this->dayLabel($this->day()->day_number).' · версія #'.$this->getRecord()->id;
     }
 
     public function dayMeals(): Collection
@@ -99,11 +107,14 @@ class EditMealPlanDay extends ViewMealPlanVersion
 
     protected function getHeaderActions(): array
     {
-        $actions = parent::getHeaderActions();
+        $actions = $this->managementActions();
 
         return [Action::make('overview')->label('До огляду тижня')->url(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => intdiv($this->day()->day_number - 1, 7) + 1])),
-            ...array_values(array_filter($actions, fn ($a) => $a instanceof Action && in_array($a->getName(), ['addMeal', 'editMeal', 'deleteMeal'], true))),
-            ...$this->itemActions()];
+            ActionGroup::make([
+                ...array_values(array_filter($actions, fn ($a) => $a instanceof Action && in_array($a->getName(), ['addMeal', 'editMeal', 'deleteMeal'], true))),
+                ...$this->itemActions(),
+                RecipeCoverAction::make()->visible(fn () => $this->editable())->authorize(fn () => $this->editable() && CatalogWriter::allowed(auth()->user())),
+            ])->label('Керування')->button()->color('gray')];
     }
 
     protected function catalogForm(array $arguments): array
@@ -116,13 +127,13 @@ class EditMealPlanDay extends ViewMealPlanVersion
         if (! hash_equals($writer->dayToken(auth()->user(), $this->getRecord(), $this->dayId), (string) ($arguments['expected'] ?? ''))) {
             throw ValidationException::withMessages(['expected' => 'День змінився. Оновіть сторінку перед додаванням.']);
         }
-        $meal = $this->mealsQuery()->findOrFail((int) ($arguments['meal'] ?? 0));
+        $meal = isset($arguments['meal']) ? $this->mealsQuery()->findOrFail((int) $arguments['meal']) : null;
         $catalog = $writer->catalog(auth()->user(), $this->getRecord(), (int) $arguments['food']);
 
-        return ['meal_id' => $meal->id, 'food_id' => $catalog['food']->id,
-            'expected' => $writer->mealToken(auth()->user(), $this->getRecord(), $meal->id),
+        return ['meal_id' => $meal?->id, 'food_id' => $catalog['food']->id,
+            'expected' => $meal ? $writer->mealToken(auth()->user(), $this->getRecord(), $meal->id) : null,
             'catalog_expected' => $catalog['token'], 'quantity' => null, 'uom_id' => null,
-            'sort_order' => min(32767, (int) $meal->items()->max('sort_order') + 1),
+            'sort_order' => ($meal ? min(32767, (int) $meal->items()->max('sort_order') + 1) : 0),
             'recipe_version_id' => null, 'recipe_batch_format_id' => null, 'recipe_portion_divisor' => null];
     }
 
@@ -132,7 +143,7 @@ class EditMealPlanDay extends ViewMealPlanVersion
         Gate::authorize('editItems', $this->getRecord());
         try {
             app(MealItemWriter::class)->place(auth()->user(), $this->getRecord(), $this->dayId, $item, $meal, $before, $expected);
-            Notification::make()->success()->title('Позицію впорядковано')->send();
+            Notification::make('meal-plan-reorder')->duration(1800)->success()->title('Позицію впорядковано')->send();
         } catch (ValidationException $e) {
             Notification::make()->danger()->title('День змінився')->body(implode(' ', array_merge(...array_values($e->errors()))))->send();
         }

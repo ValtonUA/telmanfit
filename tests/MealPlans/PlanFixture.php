@@ -13,6 +13,7 @@ trait PlanFixture
             (require $file)->up();
         }
         (require database_path('migrations/2026_10_25_010000_add_meal_item_recipe_selectors.php'))->up();
+        (require database_path('migrations/2026_10_25_020000_add_plan_presentation.php'))->up();
     }
 
     private function populatedPlan(int $actor): array

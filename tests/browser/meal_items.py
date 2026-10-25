@@ -14,7 +14,8 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
             for component in response.request.post_data_json.get('components', []))
 
     def open_action(label, danger=False):
-        page.get_by_role('button', name='Позиції', exact=True).click()
+        from meal_plans import management
+        management(page, 'Позиції')
         page.get_by_text(label, exact=True).click()
         dialog = page.get_by_role('alertdialog' if danger else 'dialog').filter(has=page.get_by_text(label, exact=True))
         expect(dialog.get_by_role('heading', name=label, exact=True)).to_be_visible()
@@ -35,7 +36,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
         page.wait_for_load_state('networkidle')
 
     dialog = open_action('Додати позицію')
-    select(dialog, 'Прийом їжі', 'День 1 · Синтетичний прийом')
+    select(dialog, 'Прийом їжі', 'День 1 (Пн) · Синтетичний прийом')
     dialog.get_by_role('button', name='Продукт або опублікований рецепт', exact=False).click()
     search = dialog.get_by_role('combobox', name=re.compile('Продукт або опублікований рецепт.*Пошук'))
     with page.expect_response(lambda r: '/livewire/update' in r.url):
@@ -50,15 +51,15 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
     with page.expect_response(lambda r: field_response(r, 'quantity')):
         dialog.get_by_label('Споживана кількість', exact=False).fill('0.50')
         dialog.get_by_label('Порядок у прийомі', exact=False).click()
-    expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('0.500000 ккал')
+    expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('1 ккал')
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     page.screenshot(path=str(output / f'item-add-{suffix}.png'))
     submit(dialog, 'Додати')
     page.reload()
-    expect(page.get_by_text('0.50', exact=True).first).to_be_visible()
+    expect(page.get_by_text('0.5', exact=True).first).to_be_visible()
 
     dialog = open_action('Змінити позицію')
-    select(dialog, 'Позиція', re.compile(re.escape('День 1 · Синтетичний прийом · Синтетичний інгредієнт · 0.50 ')))
+    select(dialog, 'Позиція', re.compile(re.escape('День 1 (Пн) · Синтетичний прийом · Синтетичний інгредієнт · 0.50 ')))
     quantity = dialog.get_by_label('Споживана кількість', exact=False)
     expect(quantity).to_be_enabled()
     expect(quantity).to_have_value('0.50')
@@ -67,24 +68,24 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
     with page.expect_response(lambda r: field_response(r, 'quantity')):
         quantity.fill('1.25')
         quantity.blur()
-    expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('1.250000 ккал')
+    expect(dialog.get_by_text('На споживану кількість:', exact=False)).to_contain_text('1 ккал')
     page.screenshot(path=str(output / f'item-edit-{suffix}.png'))
     submit(dialog, 'Зберегти')
     dialog = open_action('Перенести позицію')
-    select(dialog, 'Позиція', re.compile(re.escape('День 1 · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
-    select(dialog, 'Прийом їжі', 'День 2 · Синтетичний прийом')
+    select(dialog, 'Позиція', re.compile(re.escape('День 1 (Пн) · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
+    select(dialog, 'Прийом їжі', 'День 2 (Вт) · Синтетичний прийом')
     dialog.get_by_label('Порядок у прийомі', exact=False).fill('-2')
     submit(dialog, 'Перенести')
     dialog = open_action('Видалити позицію', True)
-    select(dialog, 'Позиція', re.compile(re.escape('День 2 · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
+    select(dialog, 'Позиція', re.compile(re.escape('День 2 (Вт) · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
     expect(dialog.get_by_text('Дію неможливо скасувати.', exact=False)).to_be_visible()
     page.screenshot(path=str(output / f'item-delete-{suffix}.png'))
     submit(dialog, 'Скасувати')
     if page.viewport_size['width'] < 1280:
-        page.locator('.plan-mobile-picker select').select_option(label='День 2')
+        page.locator('.plan-mobile-picker select').select_option(label='День 2 (Вт)')
     expect(page.get_by_text('1.25', exact=True).first).to_be_visible()
     dialog = open_action('Видалити позицію', True)
-    select(dialog, 'Позиція', re.compile(re.escape('День 2 · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
+    select(dialog, 'Позиція', re.compile(re.escape('День 2 (Вт) · Синтетичний прийом · Синтетичний інгредієнт · 1.25 ')))
     submit(dialog, 'Видалити позицію')
     expect(page.get_by_text('1.25', exact=True)).to_have_count(0)
     for format_name, divisor_name, kind in [
@@ -94,7 +95,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
         ('C — половина тижневої партії', 'C/4 — одна четверта половини партії', 'C/4'),
     ]:
         dialog = open_action('Додати позицію')
-        select(dialog, 'Прийом їжі', 'День 1 · Синтетичний прийом')
+        select(dialog, 'Прийом їжі', 'День 1 (Пн) · Синтетичний прийом')
         dialog.get_by_role('button', name='Продукт або опублікований рецепт', exact=False).click()
         with page.expect_response(lambda r: '/livewire/update' in r.url):
             dialog.get_by_role('combobox', name=re.compile('Продукт або опублікований рецепт.*Пошук')).fill('Синтетичний batch writer')
@@ -112,7 +113,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
         page.reload()
         expect(page.get_by_text(kind + ' · ', exact=False)).to_be_visible()
         dialog = open_action('Видалити позицію', True)
-        select(dialog, 'Позиція', re.compile('День 1 · Синтетичний прийом · Синтетичний batch writer · 0.50'))
+        select(dialog, 'Позиція', re.compile(re.escape('День 1 (Пн) · Синтетичний прийом · Синтетичний batch writer · 0.50')))
         submit(dialog, 'Видалити позицію')
     assert page.url == version_url
     print('Meal items Chromium: ' + suffix + ' ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS', flush=True)

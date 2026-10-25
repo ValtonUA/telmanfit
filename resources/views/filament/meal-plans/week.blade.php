@@ -4,6 +4,9 @@
         $count = $this->weekCount();
         $weekNumber = $days->isEmpty() ? 1 : intdiv($days->first()->day_number - 1, 7) + 1;
         $editable = $this->editable();
+        $weekItems = $days->flatMap(fn ($d) => $d->meals->flatMap->items);
+        $cards = app(\App\Support\Presentation\FoodCards::class)->lookup($weekItems->pluck('food_id')->all());
+        $formats = \Illuminate\Support\Facades\DB::table('recipe_batch_formats')->whereIn('id', $weekItems->pluck('recipe_batch_format_id')->filter())->pluck('code', 'id');
     @endphp
     <div class="plan-editor" x-data="{ selectedDay: {{ $days->first()?->id ?? 0 }} }" x-init="$store.sidebar?.close()">
         <div class="plan-toolbar">
@@ -22,19 +25,27 @@
             <p class="plan-muted">Дні — порядкові номери у шаблоні. {{ $editable ? 'Чернетка ще не готова до публікації. Виберіть день, щоб налаштувати його меню.' : 'Опублікована версія — лише читання.' }}</p>
             <label class="plan-mobile-picker">Показати день
                 <select x-model.number="selectedDay" class="plan-select" wire:key="day-picker-{{ $weekNumber }}">
-                    @foreach ($days as $day)<option value="{{ $day->id }}">День {{ $day->day_number }}</option>@endforeach
+                    @foreach ($days as $day)<option value="{{ $day->id }}">{{ $this->dayLabel($day->day_number) }}</option>@endforeach
                 </select>
             </label>
             <div class="plan-week" wire:key="week-{{ $weekNumber }}" x-init="selectedDay = {{ $days->first()->id }}">
                 @foreach ($days as $day)
                     @php $items = $day->meals->sum(fn ($m) => $m->items->count()); @endphp
                     <article class="plan-day" data-day="{{ $day->id }}" :class="{ 'plan-selected-day': selectedDay === {{ $day->id }} }" wire:key="day-{{ $day->id }}">
-                        <h2>День {{ $day->day_number }}</h2>
+                        <h2>{{ $this->dayLabel($day->day_number) }}</h2>
                         <div class="plan-day-body">
                             @forelse ($day->meals->filter(fn ($m) => $m->items->isNotEmpty()) as $meal)
                                 <section><h3>{{ $meal->title ?: $meal->type->title }}</h3>
                                     <ul>@foreach ($meal->items as $item)
-                                        <li><span class="plan-truncate" title="{{ $item->food->label }}">{{ $item->food->label }}</span><small class="plan-muted"><span>{{ $item->quantity }}</span> {{ $item->uom->label }}@if($item->recipe_portion_divisor) · {{ ['single' => 'A', 'week' => 'B', 'half_week' => 'C'][\Illuminate\Support\Facades\DB::table('recipe_batch_formats')->where('id', $item->recipe_batch_format_id)->value('code')] ?? '' }}/{{ $item->recipe_portion_divisor }} · @endif</small></li>
+                                        @php $card = $cards[$item->food_id]; @endphp
+                                        <li class="plan-week-tile" x-data="{ broken: false }" x-init="$nextTick(() => { const img = $el.querySelector('img'); if (img?.complete && !img.naturalWidth) broken = true })" :class="{ 'plan-photo-tile': {{ $card['image'] ? 'true' : 'false' }} && !broken }">
+                                            @if ($card['image'])
+                                                <img src="{{ $card['image'] }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" sizes="(min-width:1280px) 14vw, 90vw" width="320" height="240" x-show="!broken" x-on:error="broken = true">
+                                            @endif
+                                            <div class="plan-week-caption"><span class="plan-truncate" tabindex="0" title="{{ $card['label'] }}">{{ $card['label'] }}</span>
+                                                <small><span>{{ \App\Support\Presentation\MealPlanDisplay::quantity($item->quantity) }}</span> {{ $item->uom->label }}@if($item->recipe_portion_divisor) · {{ ['single' => 'A', 'week' => 'B', 'half_week' => 'C'][$formats[$item->recipe_batch_format_id]] }}/{{ $item->recipe_portion_divisor }} · @endif</small>
+                                            </div>
+                                        </li>
                                     @endforeach</ul>
                                 </section>
                             @empty

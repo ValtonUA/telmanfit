@@ -4,6 +4,9 @@
         $editable = $this->editable();
         $expected = $editable ? app(\App\Services\MealPlans\MealItemWriter::class)->dayToken(auth()->user(), $this->getRecord(), $this->dayId) : '';
         $catalog = $editable ? $this->catalogRows() : collect();
+        $allItems = $meals->flatMap->items;
+        $cards = app(\App\Support\Presentation\FoodCards::class)->lookup($allItems->pluck('food_id')->merge($catalog->take(12)->pluck('id'))->all());
+        $portions = app(\App\Services\MealPlans\MealItemResolver::class)->resolveMany($allItems->pluck('id')->all());
     @endphp
     <div class="plan-editor" data-day-token="{{ $expected }}" x-data="{
         drag: null, busy: false, touch: null,
@@ -27,7 +30,7 @@
             else this.drag = null;
         }
     }" x-init="$store.sidebar?.close()" :aria-busy="busy" @dragend="drag = null" @pointercancel="if ($event.pointerType !== 'mouse') drag = null">
-        <p class="plan-muted" id="plan-drag-help">{{ $editable ? 'Перетягніть страву за ручку або скористайтеся кнопками й меню «Позиції». Додавання потребує підтвердження порції; зміни зберігаються відразу.' : 'Опублікований день — лише читання.' }}</p>
+        <p class="plan-muted" id="plan-drag-help">{{ $editable ? 'Перетягніть страву за ручку або скористайтеся меню «Дії позиції». Додавання потребує підтвердження порції; зміни зберігаються відразу.' : 'Опублікований день — лише читання.' }}</p>
         <div class="plan-day-layout">
             <section aria-labelledby="day-meals-heading">
                 <h2 id="day-meals-heading">Прийоми дня</h2>
@@ -35,27 +38,26 @@
                     <section class="plan-meal" data-drop-meal="{{ $meal->id }}" wire:key="meal-{{ $meal->id }}" @dragover.prevent @drop.prevent.stop="drop(Number($event.currentTarget.dataset.dropMeal))" :class="{ 'plan-drop-ready': drag && !busy }">
                         <h3>{{ $meal->title ?: $meal->type->title }}</h3>
                         @forelse ($meal->items as $item)
+                            @php $card = $cards[$item->food_id]; $portion = $portions[$item->id] ?? null; @endphp
                             <article class="plan-item" data-item="{{ $item->id }}" data-drop-meal="{{ $meal->id }}" data-before="{{ $item->id }}" wire:key="item-{{ $item->id }}" @dragover.prevent.stop @drop.prevent.stop="drop(Number($event.currentTarget.dataset.dropMeal), Number($event.currentTarget.dataset.before))">
-                                <div class="plan-item-title">
-                                    @if ($editable)<button type="button" class="plan-drag-handle" draggable="true" @dragstart="drag = { kind: 'item', id: {{ $item->id }} }; $event.dataTransfer.setData('text/plain', 'item:{{ $item->id }}')" @pointerdown="touchStart($event, 'item', {{ $item->id }})" @pointerup="touchEnd($event)" aria-label="Перетягнути {{ $item->food->label }}" aria-describedby="plan-drag-help">⠿</button>@endif
-                                    <strong>{{ $item->food->label }}</strong>
+                                @if ($editable)<button type="button" class="plan-drag-handle" draggable="true" @dragstart="drag = { kind: 'item', id: {{ $item->id }} }; $event.dataTransfer.setData('text/plain', 'item:{{ $item->id }}')" @pointerdown="touchStart($event, 'item', {{ $item->id }})" @pointerup="touchEnd($event)" aria-label="Перетягнути {{ $card['label'] }}" aria-describedby="plan-drag-help">⠿</button>@endif
+                                <x-food-cover :src="$card['image']" :label="$card['label']" />
+                                <div class="plan-item-copy"><strong class="plan-truncate" tabindex="0" title="{{ $card['label'] }}">{{ $card['label'] }}</strong>
+                                    <p>{{ \App\Support\Presentation\MealPlanDisplay::quantity($item->quantity) }} {{ $item->uom->label }}</p>
+                                    @if ($portion)<small class="plan-muted">{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::portionLabel($portion->kind) }} · {{ \App\Support\Presentation\MealPlanDisplay::nutrition($portion->nutrition) }}</small>@endif
                                 </div>
-                                <p>{{ $item->quantity }} {{ $item->uom->label }}</p>
-                                @php
-                                    try { $portion = app(\App\Services\MealPlans\MealItemResolver::class)->resolve($item); } catch (\DomainException) { $portion = null; }
-                                @endphp
-                                @if ($portion)<small class="plan-muted">{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::portionLabel($portion->kind) }} · {{ $portion->nutrition['kcal'] }} ккал · Б {{ $portion->nutrition['protein'] }} · Ж {{ $portion->nutrition['fat'] }} · В {{ $portion->nutrition['carbs'] }}</small>@endif
                                 @if ($editable)
-                                    <div class="plan-controls" wire:loading.attr="inert">
-                                        <x-filament::button color="gray" size="xs" :disabled="$loop->first" wire:click="placeItem({{ $item->id }}, {{ $meal->id }}, {{ $loop->first ? 'null' : $meal->items[$loop->index - 1]->id }}, '{{ $expected }}')" aria-label="Вище: {{ $item->food->label }}">↑ Вище</x-filament::button>
-                                        <x-filament::button color="gray" size="xs" :disabled="$loop->last" wire:click="placeItem({{ $item->id }}, {{ $meal->id }}, {{ $meal->items[$loop->index + 2]->id ?? 'null' }}, '{{ $expected }}')" aria-label="Нижче: {{ $item->food->label }}">↓ Нижче</x-filament::button>
-                                        <label class="plan-move">Перенести
-                                            <select class="plan-select" aria-label="Перенести {{ $item->food->label }}" @change="if ($event.target.value) { $wire.placeItem({{ $item->id }}, Number($event.target.value), null, $root.dataset.dayToken); $event.target.value = '' }">
-                                                <option value="">Оберіть прийом</option>
-                                                @foreach ($meals->where('id', '!=', $meal->id) as $target)<option value="{{ $target->id }}">{{ $target->title ?: $target->type->title }}</option>@endforeach
-                                            </select>
-                                        </label>
-                                    </div>
+                                    <details class="plan-item-menu"><summary aria-label="Дії позиції {{ $card['label'] }}" title="Дії позиції">⋯</summary>
+                                        <div class="plan-menu-panel" wire:loading.attr="inert">
+                                            <button type="button" @disabled($loop->first) wire:click="placeItem({{ $item->id }}, {{ $meal->id }}, {{ $loop->first ? 'null' : $meal->items[$loop->index - 1]->id }}, '{{ $expected }}')" aria-label="Вище: {{ $card['label'] }}">↑ Вище</button>
+                                            <button type="button" @disabled($loop->last) wire:click="placeItem({{ $item->id }}, {{ $meal->id }}, {{ $meal->items[$loop->index + 2]->id ?? 'null' }}, '{{ $expected }}')" aria-label="Нижче: {{ $card['label'] }}">↓ Нижче</button>
+                                            <label>Перенести<select class="plan-select" aria-label="Перенести {{ $card['label'] }}" @change="if ($event.target.value) { $wire.placeItem({{ $item->id }}, Number($event.target.value), null, $root.dataset.dayToken); $event.target.value = '' }">
+                                                <option value="">Оберіть прийом</option>@foreach ($meals->where('id', '!=', $meal->id) as $target)<option value="{{ $target->id }}">{{ $target->title ?: $target->type->title }}</option>@endforeach
+                                            </select></label>
+                                            <button type="button" wire:click="mountAction('editItem', { item: {{ $item->id }} })">Змінити</button>
+                                            <button type="button" wire:click="mountAction('deleteItem', { item: {{ $item->id }} })">Видалити</button>
+                                        </div>
+                                    </details>
                                 @endif
                             </article>
                         @empty
@@ -75,12 +77,14 @@
                     <div class="plan-catalog-list" wire:loading.class="opacity-50">
                         @forelse ($catalog->take(12) as $food)
                             <article class="plan-catalog-item" data-food="{{ $food->id }}" wire:key="food-{{ $food->id }}">
-                                <div class="plan-item-title"><button type="button" class="plan-drag-handle" draggable="true" @dragstart="drag = {kind: 'food', id: {{ $food->id }} }; $event.dataTransfer.setData('text/plain', 'food:{{ $food->id }}')" @pointerdown="touchStart($event, 'food', {{ $food->id }})" @pointerup="touchEnd($event)" aria-label="Перетягнути з каталогу {{ $food->label }}" aria-describedby="plan-drag-help">⠿</button><strong>{{ $food->label }}</strong></div>
-                                <small class="plan-muted">{{ $food->food_type === 'ingredient' ? 'Продукт · грами або чинні одиниці' : 'Точна опублікована версія '.$food->version_number.' · '.($food->editor_contract === 'batch_v1' ? 'явні A/1 · B/7 · C/3 · C/4' : 'legacy порція') }}</small>
-                                <label>Додати до прийому<select class="plan-select" aria-label="Додати {{ $food->label }}" @change="if ($event.target.value) { drag = {kind: 'food', id: {{ $food->id }} }; drop(Number($event.target.value)); $event.target.value = '' }" :disabled="busy">
-                                    <option value="">Оберіть прийом…</option>
-                                    @foreach ($meals as $meal)<option value="{{ $meal->id }}">{{ $meal->title ?: $meal->type->title }}</option>@endforeach
-                                </select></label>
+                                @php $card = $cards[$food->id]; @endphp
+                                <x-food-cover :src="$card['image']" :label="$food->label" variant="catalog" />
+                                <div class="plan-catalog-copy"><strong class="plan-truncate" title="{{ $food->label }}" tabindex="0">{{ $food->label }}</strong>
+                                    <small class="plan-muted">{{ $food->food_type === 'ingredient' ? 'Продукт' : 'Опублікована версія '.$food->version_number }}</small>
+                                </div>
+                                <div class="plan-catalog-actions"><button type="button" class="plan-drag-handle" draggable="true" @dragstart="drag = {kind: 'food', id: {{ $food->id }} }; $event.dataTransfer.setData('text/plain', 'food:{{ $food->id }}')" @pointerdown="touchStart($event, 'food', {{ $food->id }})" @pointerup="touchEnd($event)" aria-label="Перетягнути з каталогу {{ $food->label }}" aria-describedby="plan-drag-help">⠿</button>
+                                    <button type="button" class="plan-catalog-add" @click="$wire.mountAction('addItem', {food: {{ $food->id }}, expected: $root.dataset.dayToken})" :disabled="busy" aria-label="Додати {{ $food->label }}">+ Додати</button>
+                                </div>
                             </article>
                         @empty
                             <p class="plan-empty">Нічого не знайдено. Змініть пошук або фільтр.</p>

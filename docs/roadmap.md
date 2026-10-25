@@ -104,7 +104,7 @@
 | T4.1 | [Сім Eloquent-моделей та Filament foundation](meal-plans.md): admin list/create/view, атомарний plan+draft, exact-version read-only hierarchy; без нижніх writers. | Виконано |
 | T4.2 | [Генерація послідовних 7-денних тижнів, вибір чинних типів, редагування прийомів і видалення будь-якого повного тижня чернетки](meal-plans.md); exact draft, locks/retry/stale guards (BR-P-01, BR-P-03). | Виконано |
 | T4.3 | [Командний writer позицій](meal-plans.md#writer-позицій-t43): ingredient/UOM/grams, legacy, explicit A/1 B/7 C/3 C/4, CAS/locks/ACL та мінімальні Filament actions. UX-4E — окремий day/week UI нижче; repeat week (#61) — окремо. | Виконано |
-| UX-4E | [Єдиний week/day editor](meal-plans.md#редактор-тижня-й-дня-ux-4e): 7 колонок, mobile день, каталог, явні порції, DnD/keyboard fallback, атомарне сортування через writer. | Виконано |
+| UX-4E | [Єдиний week/day editor](meal-plans.md#редактор-тижня-й-дня-ux-4e): 7 колонок, mobile день, компактні photo cards/menus, create-only початок тижня (SQL15), каталог, явні порції, DnD/keyboard fallback, атомарне сортування через writer. | Виконано |
 | T4.4 | Транзакційний сервіс публікації плану: перевірка тижнів, заповненості днів/прийомів, грамування (BR-P-01…BR-P-06). | Заплановано |
 | T4.5 | Призначення версії клієнту: атомарна заміна дат, `replaced_by_assignment_id`, подія в `client_events` (BR-P-08, BR-P-11). | Заплановано |
 | T4.6 | Персональна копія плану (Copy-on-Write). | Заплановано |

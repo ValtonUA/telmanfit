@@ -16,11 +16,11 @@ class MealPlan extends Model
 
     protected $keyType = 'int';
 
-    protected $fillable = ['title'];
+    protected $fillable = ['title', 'week_start_weekday'];
 
     protected function casts(): array
     {
-        return ['created_at' => 'immutable_datetime'];
+        return ['created_at' => 'immutable_datetime', 'week_start_weekday' => 'integer'];
     }
 
     public function versions(): HasMany

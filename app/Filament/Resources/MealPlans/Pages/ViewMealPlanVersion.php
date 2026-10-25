@@ -6,6 +6,7 @@ use App\Filament\Resources\MealPlans\MealPlanVersionResource;
 use App\Models\Meal;
 use App\Models\MealType;
 use App\Services\MealPlans\MealPlanStructure;
+use App\Support\Presentation\MealPlanDisplay;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
@@ -73,10 +74,25 @@ class ViewMealPlanVersion extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Версія раціону #'.$this->getRecord()->getKey();
+        return $this->getRecord()->plan->title;
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Версія #'.$this->getRecord()->id;
+    }
+
+    public function dayLabel(int $number): string
+    {
+        return MealPlanDisplay::day($number, $this->getRecord()->plan->week_start_weekday);
     }
 
     protected function getHeaderActions(): array
+    {
+        return [ActionGroup::make($this->managementActions())->label('Керування')->button()->color('gray')];
+    }
+
+    protected function managementActions(): array
     {
         return [
             ...$this->itemActions(),
@@ -184,7 +200,7 @@ class ViewMealPlanVersion extends ViewRecord
 
     protected function days(): array
     {
-        return $this->getRecord()->days()->when($this->dayScope(), fn ($q, $day) => $q->whereKey($day))->orderBy('day_number')->get()->mapWithKeys(fn ($d) => [$d->id => 'Тиждень '.(intdiv($d->day_number - 1, 7) + 1).' · День '.$d->day_number])->all();
+        return $this->getRecord()->days()->when($this->dayScope(), fn ($q, $day) => $q->whereKey($day))->orderBy('day_number')->get()->mapWithKeys(fn ($d) => [$d->id => 'Тиждень '.(intdiv($d->day_number - 1, 7) + 1).' · '.$this->dayLabel($d->day_number)])->all();
     }
 
     protected function mealFields(bool $editing = false): array
@@ -212,7 +228,7 @@ class ViewMealPlanVersion extends ViewRecord
         return Select::make('meal_id')->label('Прийом їжі')->required()->native(false)->live()
             ->options(fn () => $this->mealsQuery()->with(['day', 'type'])
                 ->get()->sortBy([['day.day_number', 'asc'], ['sort_order', 'asc'], ['id', 'asc']])
-                ->mapWithKeys(fn ($m) => [$m->id => 'День '.$m->day->day_number.' · '.$m->type->title.($m->title ? ' · '.$m->title : '')])->all())
+                ->mapWithKeys(fn ($m) => [$m->id => $this->dayLabel($m->day->day_number).' · '.$m->type->title.($m->title ? ' · '.$m->title : '')])->all())
             ->afterStateUpdated(function ($state, Set $set): void {
                 $this->authorizeStructure();
                 $meal = $this->mealsQuery()->find($state);
