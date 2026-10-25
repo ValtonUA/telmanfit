@@ -105,7 +105,8 @@ if (in_array($argv[1] ?? '', ['week-state', 'week-fill'], true)) {
         $day = DB::table('meal_plan_days')->where('meal_plan_version_id', $version->id)->where('day_number', (int) ($argv[3] ?? 0))->sole();
         $meal = DB::table('meals')->where('meal_plan_day_id', $day->id)->orderBy('id')->first();
         $ingredientFood = DB::table('ingredients')->value('food_id');
-        $recipeFood = DB::table('recipe_versions')->where('status', 'published')->whereNotNull('food_id')->value('food_id');
+        // Цей fixture перевіряє legacy serving; batch має окремі explicit-selector сценарії.
+        $recipeFood = DB::table('recipe_versions')->where('status', 'published')->where('editor_contract', 'legacy_v1')->whereNotNull('food_id')->orderBy('id')->value('food_id');
         DB::transaction(function () use ($meal, $ingredientFood, $recipeFood): void {
             DB::table('meal_items')->insert([
                 ['meal_id' => $meal->id, 'food_id' => $ingredientFood, 'quantity' => '1.00', 'uom_id' => DB::table('uoms')->where('code', 'g')->value('id'), 'resolved_quantity_grams' => '1.00'],

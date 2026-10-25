@@ -1,0 +1,1148 @@
+[
+  {
+    "id": 40236880855,
+    "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855",
+    "name": "Full PR",
+    "event": "pull_request",
+    "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+    "conclusion": "cancelled",
+    "attempt": 1,
+    "jobs": [
+      {
+        "id": 121300238977,
+        "run_id": 40236880855,
+        "workflow_name": "Full PR",
+        "head_branch": "ci/issue-68-stage1-setup",
+        "run_url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/runs/40236880855",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOVSDcc88AAAAcPg7CgQ",
+        "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+        "url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/jobs/121300238977",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855/job/121300238977",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-25T21:44:14Z",
+        "started_at": "2026-10-25T21:44:16Z",
+        "completed_at": "2026-10-25T21:44:24Z",
+        "name": "Full documentation and base",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-25T21:44:18Z",
+            "completed_at": "2026-10-25T21:44:18Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-25T21:44:18Z",
+            "completed_at": "2026-10-25T21:44:20Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Require current base included in tested head",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-25T21:44:20Z",
+            "completed_at": "2026-10-25T21:44:20Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run python3 -m unittest discover -s tests/docs -p 'test_*.py' -v",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-25T21:44:20Z",
+            "completed_at": "2026-10-25T21:44:21Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run python3 -m unittest discover -s tests/ci -p 'test_*.py' -v",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-25T21:44:21Z",
+            "completed_at": "2026-10-25T21:44:21Z",
+            "seconds": 0
+          },
+          {
+            "name": "Documentation guard with actual PR base",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-25T21:44:21Z",
+            "completed_at": "2026-10-25T21:44:21Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-25T21:44:21Z",
+            "completed_at": "2026-10-25T21:44:22Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-25T21:44:22Z",
+            "completed_at": "2026-10-25T21:44:22Z",
+            "seconds": 0
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/121300238977",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_id": 1000000747,
+        "runner_name": "GitHub Actions 1000000747",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "seconds": 8.0,
+        "job_minutes": 0.13333333333333333,
+        "rounded_ubuntu_minutes_estimate": 1
+      },
+      {
+        "id": 121300238992,
+        "run_id": 40236880855,
+        "workflow_name": "Full PR",
+        "head_branch": "ci/issue-68-stage1-setup",
+        "run_url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/runs/40236880855",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOVSDcc88AAAAcPg7CkA",
+        "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+        "url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/jobs/121300238992",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855/job/121300238992",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "created_at": "2026-10-25T21:44:14Z",
+        "started_at": "2026-10-25T21:44:17Z",
+        "completed_at": "2026-10-25T21:51:19Z",
+        "name": "stage1 / PostgreSQL and browser regressions",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-25T21:44:18Z",
+            "completed_at": "2026-10-25T21:44:21Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-25T21:44:21Z",
+            "completed_at": "2026-10-25T21:44:23Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-25T21:44:23Z",
+            "completed_at": "2026-10-25T21:44:27Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-25T21:44:27Z",
+            "completed_at": "2026-10-25T21:44:30Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-25T21:44:30Z",
+            "completed_at": "2026-10-25T21:44:30Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-25T21:44:30Z",
+            "completed_at": "2026-10-25T21:44:32Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-10-25T21:44:32Z",
+            "completed_at": "2026-10-25T21:44:37Z",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-25T21:44:37Z",
+            "completed_at": "2026-10-25T21:44:37Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run php artisan filament:upgrade --ansi",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-25T21:44:37Z",
+            "completed_at": "2026-10-25T21:44:37Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-10-25T21:44:37Z",
+            "completed_at": "2026-10-25T21:44:38Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-10-25T21:44:38Z",
+            "completed_at": "2026-10-25T21:44:43Z",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run npm run build",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-25T21:44:43Z",
+            "completed_at": "2026-10-25T21:44:45Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-25T21:44:45Z",
+            "completed_at": "2026-10-25T21:44:47Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm run lint --prefix client",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14,
+            "started_at": "2026-10-25T21:44:47Z",
+            "completed_at": "2026-10-25T21:44:50Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-10-25T21:44:50Z",
+            "completed_at": "2026-10-25T21:44:53Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16,
+            "started_at": "2026-10-25T21:44:53Z",
+            "completed_at": "2026-10-25T21:44:53Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run pip install playwright==1.62.0",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17,
+            "started_at": "2026-10-25T21:44:53Z",
+            "completed_at": "2026-10-25T21:45:00Z",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run python -m playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18,
+            "started_at": "2026-10-25T21:45:00Z",
+            "completed_at": "2026-10-25T21:45:28Z",
+            "seconds": 28.0
+          },
+          {
+            "name": "Chromium render readiness regressions",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19,
+            "started_at": "2026-10-25T21:45:28Z",
+            "completed_at": "2026-10-25T21:45:53Z",
+            "seconds": 25.0
+          },
+          {
+            "name": "Stage 3 recipe batches, historical upgrade and concurrency",
+            "status": "completed",
+            "conclusion": "cancelled",
+            "number": 20,
+            "started_at": "2026-10-25T21:45:53Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 319.0
+          },
+          {
+            "name": "AUTH-6B B5 retention, archive ACL, restore faults and concurrency",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 21,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh | tee tests/pg/out/stage1.out",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 22,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 0
+          },
+          {
+            "name": "AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 23,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run bash tests/pg/test-runner.sh",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 24,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run bash tests/pg/run-isolated-pg.sh",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 25,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 0
+          },
+          {
+            "name": "AUTH-1 regression",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 26,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:12Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 27,
+            "started_at": "2026-10-25T21:51:12Z",
+            "completed_at": "2026-10-25T21:51:16Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 51,
+            "started_at": "2026-10-25T21:51:16Z",
+            "completed_at": "2026-10-25T21:51:16Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 52,
+            "started_at": "2026-10-25T21:51:16Z",
+            "completed_at": "2026-10-25T21:51:16Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 53,
+            "started_at": "2026-10-25T21:51:16Z",
+            "completed_at": "2026-10-25T21:51:16Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 54,
+            "started_at": "2026-10-25T21:51:16Z",
+            "completed_at": "2026-10-25T21:51:16Z",
+            "seconds": 0
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 55,
+            "started_at": "2026-10-25T21:51:16Z",
+            "completed_at": "2026-10-25T21:51:16Z",
+            "seconds": 0
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/121300238992",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_id": 1000000743,
+        "runner_name": "GitHub Actions 1000000743",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "seconds": 422.0,
+        "job_minutes": 7.033333333333333,
+        "rounded_ubuntu_minutes_estimate": 8
+      },
+      {
+        "id": 121300239037,
+        "run_id": 40236880855,
+        "workflow_name": "Full PR",
+        "head_branch": "ci/issue-68-stage1-setup",
+        "run_url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/runs/40236880855",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOVSDcc88AAAAcPg7CvQ",
+        "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+        "url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/jobs/121300239037",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855/job/121300239037",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-25T21:44:14Z",
+        "started_at": "2026-10-25T21:44:16Z",
+        "completed_at": "2026-10-25T21:45:50Z",
+        "name": "runtime / PHP 8.4.27 security",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-25T21:44:17Z",
+            "completed_at": "2026-10-25T21:44:18Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-25T21:44:18Z",
+            "completed_at": "2026-10-25T21:44:19Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-25T21:44:19Z",
+            "completed_at": "2026-10-25T21:44:22Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-25T21:44:22Z",
+            "completed_at": "2026-10-25T21:44:22Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run composer validate --strict",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-25T21:44:22Z",
+            "completed_at": "2026-10-25T21:44:22Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-25T21:44:22Z",
+            "completed_at": "2026-10-25T21:44:23Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-10-25T21:44:23Z",
+            "completed_at": "2026-10-25T21:44:26Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-25T21:44:26Z",
+            "completed_at": "2026-10-25T21:44:26Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run composer audit --locked --no-interaction",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-25T21:44:26Z",
+            "completed_at": "2026-10-25T21:44:27Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-10-25T21:44:27Z",
+            "completed_at": "2026-10-25T21:44:27Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-10-25T21:44:27Z",
+            "completed_at": "2026-10-25T21:44:29Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-25T21:44:29Z",
+            "completed_at": "2026-10-25T21:44:32Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run npm run build",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-25T21:44:32Z",
+            "completed_at": "2026-10-25T21:44:34Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14,
+            "started_at": "2026-10-25T21:44:34Z",
+            "completed_at": "2026-10-25T21:44:36Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-10-25T21:44:36Z",
+            "completed_at": "2026-10-25T21:44:38Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16,
+            "started_at": "2026-10-25T21:44:38Z",
+            "completed_at": "2026-10-25T21:45:39Z",
+            "seconds": 61.0
+          },
+          {
+            "name": "Run php artisan test --display-all-issues",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17,
+            "started_at": "2026-10-25T21:45:39Z",
+            "completed_at": "2026-10-25T21:45:40Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run php vendor/bin/pint --test",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18,
+            "started_at": "2026-10-25T21:45:40Z",
+            "completed_at": "2026-10-25T21:45:47Z",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19,
+            "started_at": "2026-10-25T21:45:47Z",
+            "completed_at": "2026-10-25T21:45:48Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 36,
+            "started_at": "2026-10-25T21:45:48Z",
+            "completed_at": "2026-10-25T21:45:48Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 37,
+            "started_at": "2026-10-25T21:45:48Z",
+            "completed_at": "2026-10-25T21:45:48Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 38,
+            "started_at": "2026-10-25T21:45:48Z",
+            "completed_at": "2026-10-25T21:45:48Z",
+            "seconds": 0
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 39,
+            "started_at": "2026-10-25T21:45:48Z",
+            "completed_at": "2026-10-25T21:45:48Z",
+            "seconds": 0
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/121300239037",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_id": 1000000745,
+        "runner_name": "GitHub Actions 1000000745",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "seconds": 94.0,
+        "job_minutes": 1.5666666666666667,
+        "rounded_ubuntu_minutes_estimate": 2
+      },
+      {
+        "id": 121300239042,
+        "run_id": 40236880855,
+        "workflow_name": "Full PR",
+        "head_branch": "ci/issue-68-stage1-setup",
+        "run_url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/runs/40236880855",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOVSDcc88AAAAcPg7Cwg",
+        "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+        "url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/jobs/121300239042",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855/job/121300239042",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-25T21:44:14Z",
+        "started_at": "2026-10-25T21:44:16Z",
+        "completed_at": "2026-10-25T21:50:08Z",
+        "name": "compose / Cold build and browser acceptance",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-25T21:44:17Z",
+            "completed_at": "2026-10-25T21:44:18Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-25T21:44:18Z",
+            "completed_at": "2026-10-25T21:44:19Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Record exact tested source",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-25T21:44:19Z",
+            "completed_at": "2026-10-25T21:44:19Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-25T21:44:19Z",
+            "completed_at": "2026-10-25T21:44:20Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run pip install playwright==1.62.0",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-25T21:44:20Z",
+            "completed_at": "2026-10-25T21:44:24Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run python -m playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-25T21:44:24Z",
+            "completed_at": "2026-10-25T21:44:46Z",
+            "seconds": 22.0
+          },
+          {
+            "name": "Validate standard Compose and cold build without overrides",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-10-25T21:44:46Z",
+            "completed_at": "2026-10-25T21:47:12Z",
+            "seconds": 146.0
+          },
+          {
+            "name": "Reject host credentials and database files in built image",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-25T21:47:12Z",
+            "completed_at": "2026-10-25T21:47:16Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "Start fresh isolated volumes",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-25T21:47:16Z",
+            "completed_at": "2026-10-25T21:47:39Z",
+            "seconds": 23.0
+          },
+          {
+            "name": "MFA, OTP, CSRF, fence and persistence in Chromium",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-10-25T21:47:39Z",
+            "completed_at": "2026-10-25T21:50:01Z",
+            "seconds": 142.0
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-10-25T21:50:01Z",
+            "completed_at": "2026-10-25T21:50:03Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Service status",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-25T21:50:03Z",
+            "completed_at": "2026-10-25T21:50:03Z",
+            "seconds": 0
+          },
+          {
+            "name": "Remove only this disposable CI stack",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-25T21:50:03Z",
+            "completed_at": "2026-10-25T21:50:06Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 25,
+            "started_at": "2026-10-25T21:50:06Z",
+            "completed_at": "2026-10-25T21:50:06Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 26,
+            "started_at": "2026-10-25T21:50:06Z",
+            "completed_at": "2026-10-25T21:50:06Z",
+            "seconds": 0
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 27,
+            "started_at": "2026-10-25T21:50:06Z",
+            "completed_at": "2026-10-25T21:50:06Z",
+            "seconds": 0
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/121300239042",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_id": 1000000744,
+        "runner_name": "GitHub Actions 1000000744",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "seconds": 352.0,
+        "job_minutes": 5.866666666666666,
+        "rounded_ubuntu_minutes_estimate": 6
+      },
+      {
+        "id": 121300239247,
+        "run_id": 40236880855,
+        "workflow_name": "Full PR",
+        "head_branch": "ci/issue-68-stage1-setup",
+        "run_url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/runs/40236880855",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOVSDcc88AAAAcPg7Djw",
+        "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+        "url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/jobs/121300239247",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855/job/121300239247",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-25T21:44:14Z",
+        "started_at": "2026-10-25T21:44:16Z",
+        "completed_at": "2026-10-25T21:46:09Z",
+        "name": "runtime / PHP 8.5.12 security",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-25T21:44:18Z",
+            "completed_at": "2026-10-25T21:44:19Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-10-25T21:44:19Z",
+            "completed_at": "2026-10-25T21:44:21Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-25T21:44:21Z",
+            "completed_at": "2026-10-25T21:44:24Z",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run php scripts/check-php-runtime.php",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-10-25T21:44:24Z",
+            "completed_at": "2026-10-25T21:44:24Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run composer validate --strict",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-10-25T21:44:24Z",
+            "completed_at": "2026-10-25T21:44:24Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-10-25T21:44:24Z",
+            "completed_at": "2026-10-25T21:44:25Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run composer install --no-interaction --prefer-dist --no-scripts --no-plugins",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-10-25T21:44:25Z",
+            "completed_at": "2026-10-25T21:44:29Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run composer check-platform-reqs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-10-25T21:44:29Z",
+            "completed_at": "2026-10-25T21:44:29Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run composer audit --locked --no-interaction",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-10-25T21:44:29Z",
+            "completed_at": "2026-10-25T21:44:30Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run php artisan package:discover --ansi",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-10-25T21:44:30Z",
+            "completed_at": "2026-10-25T21:44:30Z",
+            "seconds": 0
+          },
+          {
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-10-25T21:44:30Z",
+            "completed_at": "2026-10-25T21:44:32Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm ci --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-10-25T21:44:32Z",
+            "completed_at": "2026-10-25T21:44:36Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run npm run build",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-10-25T21:44:36Z",
+            "completed_at": "2026-10-25T21:44:38Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm ci --prefix client --ignore-scripts",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14,
+            "started_at": "2026-10-25T21:44:38Z",
+            "completed_at": "2026-10-25T21:44:40Z",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run npm run build --prefix client",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-10-25T21:44:40Z",
+            "completed_at": "2026-10-25T21:44:44Z",
+            "seconds": 4.0
+          },
+          {
+            "name": "AUTH-6B B6 PostgreSQL budgets on this PHP runtime",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16,
+            "started_at": "2026-10-25T21:44:44Z",
+            "completed_at": "2026-10-25T21:45:55Z",
+            "seconds": 71.0
+          },
+          {
+            "name": "Run php artisan test --display-all-issues",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17,
+            "started_at": "2026-10-25T21:45:55Z",
+            "completed_at": "2026-10-25T21:45:56Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run php vendor/bin/pint --test",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18,
+            "started_at": "2026-10-25T21:45:56Z",
+            "completed_at": "2026-10-25T21:46:05Z",
+            "seconds": 9.0
+          },
+          {
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19,
+            "started_at": "2026-10-25T21:46:05Z",
+            "completed_at": "2026-10-25T21:46:06Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 36,
+            "started_at": "2026-10-25T21:46:06Z",
+            "completed_at": "2026-10-25T21:46:06Z",
+            "seconds": 0
+          },
+          {
+            "name": "Post Run actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 37,
+            "started_at": "2026-10-25T21:46:06Z",
+            "completed_at": "2026-10-25T21:46:07Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 38,
+            "started_at": "2026-10-25T21:46:07Z",
+            "completed_at": "2026-10-25T21:46:07Z",
+            "seconds": 0
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 39,
+            "started_at": "2026-10-25T21:46:07Z",
+            "completed_at": "2026-10-25T21:46:07Z",
+            "seconds": 0
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/121300239247",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_id": 1000000746,
+        "runner_name": "GitHub Actions 1000000746",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "seconds": 113.0,
+        "job_minutes": 1.8833333333333333,
+        "rounded_ubuntu_minutes_estimate": 2
+      },
+      {
+        "id": 121301882426,
+        "run_id": 40236880855,
+        "workflow_name": "Full PR",
+        "head_branch": "ci/issue-68-stage1-setup",
+        "run_url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/runs/40236880855",
+        "run_attempt": 1,
+        "node_id": "CR_kwDOVSDcc88AAAAcPifWOg",
+        "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+        "url": "https://api.github.com/repos/ValtonUA/telmanfit/actions/jobs/121301882426",
+        "html_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40236880855/job/121301882426",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-25T21:51:19Z",
+        "started_at": "2026-10-25T21:51:21Z",
+        "completed_at": "2026-10-25T21:51:25Z",
+        "name": "Full PR gate",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-10-25T21:51:22Z",
+            "completed_at": "2026-10-25T21:51:23Z",
+            "seconds": 1.0
+          },
+          {
+            "name": "Reject every non-success dependency",
+            "status": "completed",
+            "conclusion": "failure",
+            "number": 2,
+            "started_at": "2026-10-25T21:51:23Z",
+            "completed_at": "2026-10-25T21:51:23Z",
+            "seconds": 0
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-10-25T21:51:23Z",
+            "completed_at": "2026-10-25T21:51:23Z",
+            "seconds": 0
+          }
+        ],
+        "check_run_url": "https://api.github.com/repos/ValtonUA/telmanfit/check-runs/121301882426",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_id": 1000000748,
+        "runner_name": "GitHub Actions 1000000748",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "seconds": 4.0,
+        "job_minutes": 0.06666666666666667,
+        "rounded_ubuntu_minutes_estimate": 1
+      }
+    ],
+    "billing": {
+      "queried": false,
+      "reason": "Owner instruction: job/step timestamps only"
+    }
+  }
+]

@@ -88,10 +88,10 @@ def run_plan_presentation(page, base, f, suffix):
         assert rect['y'] >= metrics[-1]['bottom'], rect
     page.evaluate('scrollTo(0,0)')
     page.get_by_role('link', name='До огляду тижня', exact=True).click()
-    page.go_back(wait_until='networkidle')
+    page.go_back(wait_until='load')
     expect(page.locator('.plan-item')).to_have_count(40)
     header('back')
-    page.go_forward(wait_until='networkidle')
+    page.go_forward(wait_until='load')
     page.get_by_role('button', name='Наступний тиждень', exact=True).click()
     expect(page.locator('.plan-mobile-picker option').filter(has_text='День 8 (Вт)')).to_have_count(1)
     page.goto(overview + '/days/' + str(state['day']))

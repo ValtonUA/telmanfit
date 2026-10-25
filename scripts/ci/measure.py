@@ -42,12 +42,11 @@ def main():
             job["rounded_ubuntu_minutes_estimate"] = math.ceil(job["job_minutes"]) if job["job_minutes"] is not None else None
             for step in job["steps"]:
                 step["seconds"] = seconds(step.get("started_at"), step.get("completed_at"))
-        # GitHub deprecated the run timing endpoint; report actual response, not invented billing.
-        billing = subprocess.run(["gh", "api", f"repos/{args.repo}/actions/runs/{run_id}/timing"], capture_output=True, text=True)
+        # Лише timestamps; Billing/timing API не викликаємо за рішенням власника.
         results.append({"id": run_id, "url": run["html_url"], "name": run["name"],
                         "event": run["event"], "head_sha": run["head_sha"],
                         "conclusion": run["conclusion"], "attempt": run["run_attempt"],
-                        "jobs": jobs, "timing_api": json.loads(billing.stdout) if billing.returncode == 0 else {"unavailable": billing.stdout.strip()}})
+                        "jobs": jobs, "billing": {"queried": False, "reason": "Owner instruction: job/step timestamps only"}})
     print(json.dumps(results, indent=2))
 
 

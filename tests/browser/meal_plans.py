@@ -4,15 +4,25 @@ from contextlib import nullcontext
 import subprocess
 from pathlib import Path
 from playwright.sync_api import expect
+from readiness import livewire_ready
 
 
 def fixture(action, *args):
     return subprocess.check_output(['php', 'tests/browser/meal-plan-fixture.php', action, *map(str, args)], text=True)
 
 
+def settle_overlays(page):
+    # visible ще не означає завершення Alpine enter/leave: вкладене меню може
+    # закриватися, а mobile modal тимчасово збільшувати scrollWidth.
+    page.wait_for_function("""() => [...document.querySelectorAll('.fi-dropdown, .fi-modal')]
+        .every(el => el.getAnimations({subtree: true}).every(a => a.playState !== 'running'))""")
+
+
 def management(page, label):
+    settle_overlays(page)
     if not page.get_by_text(label, exact=True).is_visible():
         page.get_by_role('button', name='Керування', exact=True).click()
+        settle_overlays(page)
     page.get_by_text(label, exact=True).click()
 
 
@@ -25,11 +35,11 @@ def run_meal_plans(page, base):
     history = fixture('hash')
 
     def submit(dialog, label):
-        with (page.expect_navigation(wait_until='networkidle') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
+        with (page.expect_navigation(wait_until='load') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
             with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
                 dialog.get_by_role('button', name=label, exact=True).click()
         assert response.value.status == 200
-        page.wait_for_load_state('networkidle')
+        livewire_ready(page)
         dialog.wait_for(state='hidden')
 
     for width in (1440, 390, 320):
@@ -133,6 +143,7 @@ def run_meal_plans(page, base):
             dialog = page.get_by_role('alertdialog').filter(has=page.get_by_text('Видалити тиждень', exact=True))
             expect(dialog.get_by_text('Позицій: 2.', exact=False)).to_be_visible()
             expect(dialog.get_by_text('Дію неможливо скасувати.', exact=False)).to_be_visible()
+            settle_overlays(page)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             page.screenshot(path=str(output / f'week-confirm-{suffix}.png'))
             submit(dialog, 'Скасувати')
@@ -154,11 +165,11 @@ def run_meal_plans(page, base):
             page.evaluate('scrollTo(0,0)')
             page.screenshot(path=str(output / f'week-renumbered-{suffix}.png'), full_page=True)
             management(page, 'Видалити тиждень')
-            with page.expect_navigation(wait_until='networkidle'):
+            with page.expect_navigation(wait_until='load'):
                 with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
                     page.get_by_text('Тиждень 2 · Порожній', exact=True).click()
             assert response.value.status == 200
-            page.wait_for_load_state('networkidle')
+            livewire_ready(page)
             expect(page.get_by_role('alertdialog')).to_have_count(0)
             expect(page.get_by_role('dialog')).to_have_count(0)
             expect(page.locator('.plan-day-cta')).to_have_count(7)

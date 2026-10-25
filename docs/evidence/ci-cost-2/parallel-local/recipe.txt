@@ -1,0 +1,83 @@
+PHP runtime policy OK: 8.4.27 (cli)
+docker.io/library/postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc: Pulling from library/postgres
+Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+docker.io/library/postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+CI_STAGE1_TIMING phase=immutable_image_pull seconds=1
+CREATE ROLE
+CREATE DATABASE
+CREATE ROLE
+CREATE ROLE
+GRANT ROLE
+CI_STAGE1_TIMING phase=isolated_cluster_roles_database seconds=3
+
+   INFO  Preparing database.  
+
+  Creating migration table ....................................... 5.54ms DONE
+
+   INFO  Running migrations.  
+
+  0001_01_01_000000_create_users_table .......................... 10.80ms DONE
+  0001_01_01_000001_create_cache_table ........................... 7.98ms DONE
+  0001_01_01_000002_create_jobs_table ............................ 7.85ms DONE
+  2026_10_21_000000_align_users_with_business_schema ............. 7.46ms DONE
+  2026_10_21_000100_enable_btree_gist ........................... 37.84ms DONE
+  2026_10_21_000200_create_nutrition_schema ..................... 46.05ms DONE
+  2026_10_21_000300_create_clients_schema ....................... 11.05ms DONE
+  2026_10_21_000400_create_progress_tracking_schema ............. 11.92ms DONE
+  2026_10_21_000500_create_fitness_messaging_schema ............. 11.97ms DONE
+
+CI_STAGE1_TIMING phase=baseline_migrations seconds=0
+Presentation upgrade/frozen hash=495783a76ca92dd77193c27b954b141567e5ba71a2fd4fc39434528b30773234 unchanged; source_hash=f221635f2c82213ada32373b2e133945 unchanged; exact shared covers + step images preserved
+Presentation benchmark items=10 scalar_queries=10 bulk_queries=1 bulk_ms=1.82 render_queries=265 render_ms=95.58
+Presentation benchmark items=40 scalar_queries=40 bulk_queries=1 bulk_ms=3.91 render_queries=265 render_ms=100.18
+{"tool":"phpunit","result":"passed","tests":142,"passed":142,"assertions":2464,"duration_ms":39860}
+CI_STAGE1_TIMING phase=recipe_phpunit seconds=40
+Batch concurrency: PASS; stale editor 40001, rollback retry, nutrition/UOM UPDATE and conversion INSERT waited for real PG locks.
+Batch UOM COMMIT/reopen: PASS; 6 auto/manual cases, independent PG connections and PHP reevaluation.
+Batch command concurrency PASS: real recipe lock wait; stale source/revision rollback; clone race leaves one draft; COMMIT/reopen/remap/CAS preserve source; C2 duplicate/source-owner/target-delete real lock waits reject stale copies.
+Pending source COMMIT/reload PASS: AUTO nutrition/conversion/unchanged + MANUAL conversion; explicit Refresh, rollback and server-only provenance.
+C3 concurrency PASS: real recipe locks, duplicate draft/published conversion, stale catalog/revision, COMMIT/reload.
+Food catalog concurrency PASS: real ingredient locks, CAS rejection, conversion phantom, UOM lock order, COMMIT/reload.
+Meal plan concurrency PASS: real lock waits; duplicate draft, immutable item, overlap rejected; parallel atomic creates committed without lost write.
+Meal plan structure concurrency PASS: double/retry/edit-generate/stale/recovery fence/revoked role; independent PG sessions and proven lock waits, no partial/duplicate/lost writes.
+Week deletion concurrency PASS: double/filled replay/delete-vs-append both orders/delete-vs-raw-item INSERT both orders/stale edit; independent PG sessions, proven locks, stable IDs, no adjacent deletion or deadlocks.
+Meal item selectors concurrency PASS: publication/root-vs-selector and selector-vs-format update/delete/downgrade; real lock waits, frozen data, no deadlock.
+Meal item writer concurrency PASS: concurrent edit/double add, item-vs-week deletion both orders, write-vs-publish, conversion/UOM changes, ABA add/edit/week replay; independent sessions, real lock waits, no partial writes/deadlocks.
+Day editor concurrency PASS: double drop, move/delete both orders, week deletion, ABA revision, publish, role and recovery fence; independent sessions and proven lock waits.
+Recipe cover concurrency PASS: independent connections, proven row lock waits, stale CAS and revoked role rejected, no lost update.
+CI_STAGE1_TIMING phase=recipe_concurrency seconds=21
+Meal items Chromium: 1440-light ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+UX-4E Chromium 1440-light: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+PR67 presentation Chromium 1440-light: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+Meal plans Chromium: 1440-light PASS
+Meal items Chromium: 1440-dark ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+UX-4E Chromium 1440-dark: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+PR67 presentation Chromium 1440-dark: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+Meal plans Chromium: 1440-dark PASS
+Meal items Chromium: 390-light ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+UX-4E Chromium 390-light: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+PR67 presentation Chromium 390-light: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+Meal plans Chromium: 390-light PASS
+Meal items Chromium: 390-dark ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+UX-4E Chromium 390-dark: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+PR67 presentation Chromium 390-dark: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+Meal plans Chromium: 390-dark PASS
+Meal items Chromium: 320-light ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+UX-4E Chromium 320-light: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+PR67 presentation Chromium 320-light: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+Meal plans Chromium: 320-light PASS
+Meal items Chromium: 320-dark ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/reload PASS
+UX-4E Chromium 320-dark: dense/empty/exact week, catalog search, copy cancel/confirm, mouse/pointer/button move/reorder, A/B/C explicit portions and reload PASS
+PR67 presentation Chromium 320-dark: 40 items, photos/null/broken, weekday 1/8, topbar initial/scroll/reorder/morph/back-forward PASS
+Meal plans Chromium: 320-dark PASS
+Catalog Chromium: 1440-light PASS
+Catalog Chromium: 1440-dark PASS
+Catalog Chromium: 390-light PASS
+Catalog Chromium: 390-dark PASS
+Catalog Chromium: 320-light PASS
+Catalog Chromium: 320-dark PASS
+Recipe editor browser PASS: 19 checks
+CI_BROWSER_READINESS {"calls": 379, "seconds": 97.99622578000526}
+CI_STAGE1_TIMING phase=recipe_browser seconds=783
+CI_STAGE1_TIMING phase=total_with_cleanup seconds=848 exit=0

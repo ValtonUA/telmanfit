@@ -1,0 +1,47 @@
+{
+  "base_sha": "a4b6444dcf905e79c83551965eb5fe19bd8af587",
+  "previous_head_sha": "377e59c1e31487fdd1c19e077de07f61d5411552",
+  "scope": "timeout correction; final candidate worktree",
+  "php": "8.4.27",
+  "playwright": "1.62.0",
+  "chromium": "154.0.8037.57",
+  "recipe_seconds": 825.381,
+  "phases_seconds": {
+    "immutable_image_pull": 0,
+    "isolated_cluster_roles_database": 5,
+    "baseline_migrations": 0,
+    "recipe_phpunit": 36,
+    "recipe_concurrency": 17,
+    "recipe_browser": 767,
+    "total_with_cleanup": 825
+  },
+  "browser_readiness": {
+    "calls": 379,
+    "seconds": 92.65563497801031
+  },
+  "checks": {
+    "recipe_pg": "142 PASS / 2464 assertions",
+    "concurrency": "all existing scripts PASS",
+    "chromium": "19 checks PASS,1440/390/320 light/dark",
+    "cleanup": "exit0",
+    "readiness_negative_async": "3 PASS",
+    "ci_regressions": "23 PASS",
+    "docs_guard": "PASS"
+  },
+  "source_sha256": {
+    "tests/browser/readiness.py": "162e07a39f6a5d21fbeca453dbb22b5d340a956f8a48e5e82f97a343a2e9bf0c",
+    "tests/browser/test_readiness.py": "add5cadd49bd1a5f56824fd3c25be86eddb2893191eef9589a57b69b87cda1f7",
+    "tests/browser/food_catalog.py": "2b1393d8497e08739fcb7a92229ac2a0e781ae124f52b0b72b585b313a4c81be",
+    "tests/browser/meal_items.py": "6b43035187bb89b195be38a098b2e5dc9870b0c3bcaf216653dca69c6f07c088",
+    "tests/browser/meal_plans.py": "9e9b7455fe1ea22513ede00bb4b320d1beb46f248147f75000d58d0bc82c6520",
+    "tests/browser/plan_presentation.py": "bb58d74f48dfe456f365dc6434da5a5a15dffcc8c691459804952fef7f694810",
+    "tests/browser/recipe_batch.py": "ab484bace8f13758cbe2e7c50b7a6ac9e811d2d1c283b260692edcb2e5c6fe80",
+    "tests/pg/run-stage1.sh": "272b3f5ea35dd36f91e826d8c9bec8b5a613743052688ef7831976372d0283ba",
+    ".github/workflows/stage1.yml": "74db53a2093854805e48f46dfefaa8dfea1cc2ec9718d0457888a790a0dbcd44",
+    "tests/ci/test_gate.py": "21e455e1fdafc546bc35b50356e4130a90384a8b06f8e579df381be6e75ba03d"
+  },
+  "incomplete_local_prototype": {
+    "seconds": 701.221,
+    "result": "failure at catalog redirect: extra RAF evaluate lost navigation context; removed before push; not savings baseline"
+  }
+}

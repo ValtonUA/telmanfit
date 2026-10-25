@@ -10,8 +10,9 @@ import struct
 import subprocess
 import time
 from playwright.sync_api import sync_playwright, expect
+from readiness import TRACKER, metrics as readiness_metrics
 
-base = 'http://127.0.0.1:8097'
+base = 'http://127.0.0.1:8090'
 url = base + '/admin/recipe-batches?version=' + os.environ['BATCH_BROWSER_VERSION']
 output = Path('docs/evidence/recipe-batches')
 output.mkdir(parents=True, exist_ok=True)
@@ -28,6 +29,7 @@ def otp(secret, offset=0):
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium'), args=['--no-sandbox'])
     context = browser.new_context(viewport={'width': 1440, 'height': 1000})
+    context.add_init_script(TRACKER)
     page = context.new_page()
     page.set_default_timeout(15000)
     errors = []
@@ -387,3 +389,4 @@ with sync_playwright() as p:
     browser.close()
 output.joinpath('checks.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, ensure_ascii=False, indent=2) + '\n')
 print('Recipe editor browser PASS: ' + str(len(checks)) + ' checks', flush=True)
+print('CI_BROWSER_READINESS ' + json.dumps(readiness_metrics), flush=True)

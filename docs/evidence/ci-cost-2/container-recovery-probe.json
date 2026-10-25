@@ -1,0 +1,7 @@
+{
+  "own_label_container_removed": true,
+  "different_group_container_preserved": true,
+  "network": "none",
+  "started": false,
+  "test": "actual label-scoped recovery; both containers synthetic and created by this probe"
+}

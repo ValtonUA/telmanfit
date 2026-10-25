@@ -51,17 +51,10 @@ jobs:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
-      - name: Stage 3 recipe batches, historical upgrade and concurrency
-        run: RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1 bash tests/pg/run-stage1.sh
-      - name: AUTH-6B B5 retention, archive ACL, restore faults and concurrency
-        shell: bash
-        run: |
-          mkdir -p tests/pg/out
-          AUTH6B5_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b5.out
-      - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh
-      - name: AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency
-        shell: bash
-        run: AUTH6B_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b.out
+      - name: Chromium render readiness regressions
+        run: python -m unittest discover -s tests/browser -p 'test_*.py' -v
+      - name: All isolated PostgreSQL and Chromium groups (two bounded workers)
+        run: python3 scripts/ci/stage1_groups.py
       - run: bash tests/pg/test-runner.sh
       - run: bash tests/pg/run-isolated-pg.sh
       - name: AUTH-1 regression
@@ -84,6 +77,7 @@ jobs:
           name: stage1-pg-logs
           path: |
             tests/pg/out/*.out
+            tests/pg/out/groups.json
             docs/evidence/meal-plans/*.png
             docs/evidence/meal-plans/checks.json
             docs/evidence/food-catalog/*.png

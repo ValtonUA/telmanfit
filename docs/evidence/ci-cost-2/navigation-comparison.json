@@ -1,0 +1,26 @@
+[
+  {
+    "sample": 0,
+    "wait_until": "load",
+    "seconds": 0.12819100500018976,
+    "complete_image": true
+  },
+  {
+    "sample": 0,
+    "wait_until": "networkidle",
+    "seconds": 0.5857980880000468,
+    "complete_image": true
+  },
+  {
+    "sample": 1,
+    "wait_until": "load",
+    "seconds": 0.08753708599942911,
+    "complete_image": true
+  },
+  {
+    "sample": 1,
+    "wait_until": "networkidle",
+    "seconds": 0.6210505409999314,
+    "complete_image": true
+  }
+]

@@ -1,0 +1,112 @@
+PHP runtime policy OK: 8.4.27 (cli)
+docker.io/library/postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc: Pulling from library/postgres
+Digest: sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+Status: Image is up to date for postgres@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+docker.io/library/postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+CI_STAGE1_TIMING phase=immutable_image_pull seconds=1
+CREATE ROLE
+CREATE DATABASE
+CREATE ROLE
+CREATE ROLE
+GRANT ROLE
+CI_STAGE1_TIMING phase=isolated_cluster_roles_database seconds=3
+
+   INFO  Preparing database.  
+
+  Creating migration table ....................................... 4.78ms DONE
+
+   INFO  Running migrations.  
+
+  0001_01_01_000000_create_users_table ........................... 5.64ms DONE
+  0001_01_01_000001_create_cache_table ........................... 5.74ms DONE
+  0001_01_01_000002_create_jobs_table ........................... 13.35ms DONE
+  2026_10_21_000000_align_users_with_business_schema ............. 7.80ms DONE
+  2026_10_21_000100_enable_btree_gist ........................... 57.62ms DONE
+  2026_10_21_000200_create_nutrition_schema ..................... 45.99ms DONE
+  2026_10_21_000300_create_clients_schema ....................... 12.40ms DONE
+  2026_10_21_000400_create_progress_tracking_schema ............. 14.90ms DONE
+  2026_10_21_000500_create_fitness_messaging_schema .............. 8.67ms DONE
+
+CI_STAGE1_TIMING phase=baseline_migrations seconds=0
+SQL: PASS=76 FAIL=0 GAP=0
+CI_STAGE1_TIMING phase=sql_baseline seconds=1
+Presentation upgrade/frozen hash=c809f6fa36e81899fe4c0a54f590a7e2bc9b2f3d72b9535586589c76ec76e98b unchanged; source_hash=467322dfaa9eb120e0b8797f2a5b8f2f unchanged; exact shared covers + step images preserved
+Presentation benchmark items=10 scalar_queries=10 bulk_queries=1 bulk_ms=1.38 render_queries=265 render_ms=77.68
+Presentation benchmark items=40 scalar_queries=40 bulk_queries=1 bulk_ms=4.12 render_queries=265 render_ms=105.19
+{"tool":"phpunit","result":"passed","tests":194,"passed":194,"assertions":3436,"duration_ms":48863}
+CI_STAGE1_TIMING phase=full_pg_phpunit seconds=49
+{"tool":"phpunit","result":"passed","tests":85,"passed":85,"assertions":348,"duration_ms":893}
+AUTH-2 empty upgrade/down: PASS
+AUTH-2 populated upgrade/down: PASS; усі старі рядки збережені
+AUTH-2 Laravel migrate: PASS
+{"tool":"phpunit","result":"passed","tests":12,"passed":12,"assertions":131,"duration_ms":1844}
+rollback precheck vs INSERT: PASS; ACCESS EXCLUSIVE lock перевірено
+challenge + session grant: PASS; B очікував PG row lock; рівно один переможець
+recovery + session grant: PASS; B очікував PG row lock; рівно один переможець
+TOTP cross-context accepted step: PASS; B очікував PG row lock; рівно один переможець
+invitation indefinite consume vs consume: PASS; B очікував PG row lock; рівно один переможець
+invitation expiring consume vs consume: PASS; B очікував PG row lock; рівно один переможець
+generation compare-and-swap: PASS; B очікував PG row lock; рівно один переможець
+revoke before sensitive request: PASS; застаріла version=0 відхиляється
+sensitive request before revoke: PASS; grant version=1 стає застарілим після bump=2
+TOTP acceptance rollback: PASS; B очікував PG row lock; rollback A дозволив B
+invitation indefinite revoke vs consume: PASS
+invitation expiring revoke vs consume: PASS
+resend vs old challenge: PASS; generation=1 відхилено після lock
+recovery rotation vs consume: PASS; старий batch відхилено
+AUTH-2 concurrency: 14 scenarios PASS; це транзакційний прототип, не production auth service
+{"tool":"phpunit","result":"passed","tests":25,"passed":25,"assertions":129,"duration_ms":25615}
+TOTP: two service processes, two blocked PG PIDs, exactly one winner PASS
+Recovery: two service processes, two blocked PG PIDs, exactly one winner PASS
+Gate business transaction vs logout-all: PG revoke waited for business write/commit; subsequent request 403 PASS
+CI_STAGE1_TIMING phase=auth3_tests_concurrency seconds=36
+{"status": "passed", "chromium": "154.0.8037.57", "checks": ["CSRF: POST without token = 419", "Password-only enrollment session: business HTTP and direct Livewire denied", "Enrollment secret JSON response forbidden = 406", "Enrollment confirmed: codes shown once; new full login required", "Fresh password + TOTP: Filament reached; session rotated; scoped HttpOnly cookie", "Authenticated real Filament Livewire update = 200", "Real Filament edit form: invalid coach retains field validation via Livewire 200", "Authorized HTTP/real Filament Livewire: missing record = 404; forbidden creation = 403", "auth_version bump: stale signed Livewire snapshot and HTTP business access = 403", "Repeat full login using one-time recovery as second factor succeeds", "Consumed recovery code rejected on repeat login", "Real unavailable PostgreSQL assurance relation: HTTP and signed Livewire = 503, fail closed", "Native Filament logout destroys session and returns to restricted login", "No TOTP secret, OTP or recovery codes in server/application logs"], "screenshots": "real Chromium; sensitive elements masked at capture"}
+CI_STAGE1_TIMING phase=auth3_browser seconds=16
+{"tool":"phpunit","result":"passed","tests":30,"passed":30,"assertions":181,"duration_ms":2577}
+AUTH4 OTP consume: two blocked PG PIDs, exactly one service winner PASS
+AUTH4 same invitation/flow complete: two blocked PG PIDs, one user/client/consume PASS
+AUTH4 same invitation/different flows: exactly one registration PASS
+AUTH4 two invitations/same normalized email: one user, loser invitation unconsumed PASS
+AUTH4 concurrent issuance/different flows and IPs: two neutral responses, exactly one delivery PASS
+CI_STAGE1_TIMING phase=auth4_tests_concurrency seconds=4
+AUTH4 synthetic browser fixtures ready
+{"result": "PASS", "chromium": "154.0.8037.57", "scenarios": ["Filament admin password+TOTP login", "action fresh password+TOTP and one-time HTML invitation display", "Filament revoke with fresh password and TOTP", "invitation fragment exchange", "encrypted database queue and synthetic mailbox", "registration pending and session rotation", "two independent cookies in one browser", "CSRF 419", "logout and guest 401", "passwordless repeat login without TOTP", "email OTP then restricted TOTP then full session", "auth_version revocation", "no OTP/token in logs"], "production_enabled": false}
+CI_STAGE1_TIMING phase=auth4_browser seconds=13
+{"tool":"phpunit","result":"passed","tests":19,"passed":19,"assertions":131,"duration_ms":20316}
+AUTH5 action proof / enrollment: two blocked PG PIDs, exactly one service winner PASS
+AUTH5 action proof / logout-all: exactly one version bump PASS
+AUTH5 new email OTP: exactly one confirmation, identity commit and audit PASS
+AUTH5 disable: exactly one version bump, ciphertext cleared, watermark preserved PASS
+AUTH5 reenrollment: exactly one new factor activation, watermark advanced PASS
+CI_STAGE1_TIMING phase=auth5_tests_concurrency seconds=23
+AUTH5 synthetic browser fixtures ready
+AUTH5 React registration, OTP errors/expiry/resend, CSRF and pending dashboard PASS
+AUTH5 React MFA enrollment/recovery/rotation/replacement/disable/reenrollment PASS
+AUTH5 React two real browsers, own revoke and logout-all PASS
+{"result": "PASS", "chromium": "154.0.8037.57", "scenarios": ["independent admin password+MFA session", "registration fragment removed once", "wrong and expired OTP", "real resend cooldown 60s", "pending is not active payment", "real CSRF 419", "forged action proof 403", "passwordless repeated login", "419 explicit retry and CSRF refresh", "Authenticator QR/manual enrollment and masked one-time recovery", "restricted OTP to full MFA session", "recovery login", "recovery regeneration", "factor replacement", "optional disable after fresh MFA", "new enrollment after disable", "opaque own session list", "revoke real parallel session", "logout-all invalidates both real browsers", "email change requires fresh current MFA and new email OTP", "503 central rate store fail closed", "422 and 429", "idle expiry"], "widths": [320, 390, 1440], "production_enabled": false, "synthetic_time_acceleration": "Known test delivery windows cleared between independent operations; registration resend waited actual 60s."}
+CI_STAGE1_TIMING phase=auth5_browser seconds=274
+{"tool":"phpunit","result":"passed","tests":5,"passed":5,"assertions":359,"duration_ms":2203}
+AUTH6 full parallel HTTP rotate/read-first PASS
+AUTH6 full parallel HTTP rotate/mutation-first PASS
+AUTH6 full parallel HTTP logout/read-first PASS
+AUTH6 full parallel HTTP logout/mutation-first PASS
+AUTH6 full parallel HTTP revoke/read-first PASS
+AUTH6 full parallel HTTP revoke/mutation-first PASS
+AUTH6 full parallel HTTP logout_all/read-first PASS
+AUTH6 full parallel HTTP logout_all/mutation-first PASS
+AUTH6 full parallel HTTP email/read-first PASS
+AUTH6 full parallel HTTP email/mutation-first PASS
+AUTH6 full parallel HTTP reauth/read-first PASS
+AUTH6 full parallel HTTP reauth/mutation-first PASS
+AUTH6 full parallel HTTP rotate-logout-action-first PASS
+AUTH6 full parallel HTTP rotate-logout-logout-first PASS
+AUTH6 full parallel HTTP reauth-logout-action-first PASS
+AUTH6 full parallel HTTP reauth-logout-logout-first PASS
+AUTH6 full parallel HTTP email-logout-action-first PASS
+AUTH6 full parallel HTTP email-logout-logout-first PASS
+AUTH6 full parallel HTTP revoke-logout-action-first PASS
+AUTH6 full parallel HTTP revoke-logout-logout-first PASS
+AUTH6 full parallel HTTP admin-read-first PASS
+AUTH6 full parallel HTTP admin-mutation-first PASS
+{"result": "PASS", "parallel_http": ["rotate/read-first", "rotate/mutation-first", "logout/read-first", "logout/mutation-first", "revoke/read-first", "revoke/mutation-first", "logout_all/read-first", "logout_all/mutation-first", "email/read-first", "email/mutation-first", "reauth/read-first", "reauth/mutation-first", "rotate-logout-action-first", "rotate-logout-logout-first", "reauth-logout-action-first", "reauth-logout-logout-first", "email-logout-action-first", "email-logout-logout-first", "revoke-logout-action-first", "revoke-logout-logout-first", "admin-read-first", "admin-mutation-first", "bounded lock timeout", "lock released after CSRF exception", "parallel session save preserves both writes"], "transport": "two independent HTTP servers and PG PIDs; same encrypted cookie; CSRF enabled", "lock_wait": "pg_stat_activity wait_event_type=Lock before barrier release", "response_order": "both application orders for Set-Cookie", "production_enabled": false}
+CI_STAGE1_TIMING phase=total_with_cleanup seconds=462 exit=0

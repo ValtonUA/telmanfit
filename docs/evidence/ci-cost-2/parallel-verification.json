@@ -1,0 +1,22 @@
+{
+  "worktree_based_on": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+  "local_positive_receipt": "parallel-local/groups.json",
+  "local_positive_shell_seconds": 956.282,
+  "local_cpu_quota": "200000/100000 = 2 CPU",
+  "ci_tests": "35 PASS",
+  "browser_readiness_and_actual_cancellation": "4 PASS",
+  "docs_tests": "7 PASS",
+  "actual_pg_cancellation": "PASS; no own containers or private work directory remain",
+  "actual_container_recovery": "PASS; own group only, different synthetic group preserved",
+  "note": "Positive run used identical group commands/flags/isolation; later defensive fault/metadata guards separately tested. Exact final head is verified by GitHub Full, not this local receipt.",
+  "final_source_sha256": {
+    "scripts/ci/stage1_groups.py": "8ea3d6215e84b28ac88a7903ad62fff2b5a966319e9f2f62e78c0ba5911753cf",
+    "tests/pg/run-stage1.sh": "dbdebb716da85c15e1393340c1efa250208b6c7c1eba11a6d2d7b462731ce1a1",
+    "tests/browser/recipe-batch-in-context.sh": "4e9f19c9fdea64d2f81efa59088edde4eb3e6f9ef1b33ac56e1b0d62e899cdca",
+    "tests/browser/recipe_batch.py": "379cea68a8bddeb2235981556561b711d00136b1c2e2f5a41a603541e6f4d394",
+    "tests/browser/test_readiness.py": "db4b04ca345db8a7da97c760ee227f81620e46259da04702a10a97d32c2885b8",
+    "tests/ci/test_stage1_groups.py": "9728aace1f4eddaa90430150524b9a518c05581c018aa7bd5ed66583cdd7726b",
+    "tests/ci/test_gate.py": "337c25e285b722cda65c228f6f7c49539eddae8e74763d5c392308b08d8dfcc0",
+    ".github/workflows/stage1.yml": "9e1c834b12465bffd7188d4ace77b23f07c80e0ef7abbe5dcf1b9d9fc560ba6a"
+  }
+}
