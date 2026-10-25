@@ -194,6 +194,19 @@ class MealPlanDayEditorTest extends PostgresTestCase
         $this->assertSame($physical, DB::table('recipe_batch_quantities')->orderBy('format_id')->get()->toJson());
     }
 
+    public function test_return_week_tracks_same_day_after_preceding_week_is_deleted(): void
+    {
+        $structure = app(MealPlanStructure::class);
+        foreach ([8, 15] as $start) {
+            $structure->generate($this->actor, $this->version, ['start_day' => $start, 'meal_type_ids' => [$this->f['type']]]);
+        }
+        $day = $this->version->days()->where('day_number', 15)->sole();
+        $editor = Livewire::test(EditMealPlanDay::class, ['record' => $this->version->id, 'day' => $day->id])->assertSet('week', 3);
+        $structure->deleteWeek($this->actor, $this->version, $structure->weekDeletionSnapshots($this->actor, $this->version)[0]);
+        $editor->call('$refresh')->assertSet('week', 2)->assertSet('dayId', $day->id)->assertSee('День 8');
+        $this->assertSame(8, $day->fresh()->day_number);
+    }
+
     public function test_catalog_search_filter_and_pagination_stay_server_side(): void
     {
         for ($n = 1; $n <= 15; $n++) {

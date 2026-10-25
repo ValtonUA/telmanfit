@@ -40,7 +40,7 @@ class EditMealPlanDay extends ViewMealPlanVersion
     public function hydrate(): void
     {
         parent::hydrate();
-        $this->day();
+        $this->week = intdiv($this->day()->day_number - 1, 7) + 1;
     }
 
     public function day(): MealPlanDay
@@ -101,7 +101,7 @@ class EditMealPlanDay extends ViewMealPlanVersion
     {
         $actions = parent::getHeaderActions();
 
-        return [Action::make('overview')->label('До огляду тижня')->url(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => $this->week])),
+        return [Action::make('overview')->label('До огляду тижня')->url(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => intdiv($this->day()->day_number - 1, 7) + 1])),
             ...array_values(array_filter($actions, fn ($a) => $a instanceof Action && in_array($a->getName(), ['addMeal', 'editMeal', 'deleteMeal'], true))),
             ...$this->itemActions()];
     }

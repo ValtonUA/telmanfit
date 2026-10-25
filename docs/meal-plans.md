@@ -234,12 +234,12 @@ Livewire та недійсне старе підтвердження UX-4D. `mea
 item-vs-week-delete в обох порядках, write-vs-publish та conversion/UOM change.
 `tests/browser/meal_items.py` проходить search/empty/add/edit/move/delete/cancel/reload
 у Chromium 1440/390/320 light/dark разом із чинними MFA/CSRF/revocation регресіями.
-Фінальний week/day DnD UX-4E (#62), repeat week (#61), Publish і assignments
-залишаються окремими задачами. Схема, feature flags і реальні БД не змінюються.
+Week/day DnD UX-4E (#62) реалізовано поверх цих команд, як описано нижче.
+Repeat week (#61), Publish і assignments залишаються окремими задачами. Схема, feature flags і реальні БД не змінюються.
 
 ## Редактор тижня й дня UX-4E
 
-Основний екран exact version — семиденний огляд `?week=N`. Він завантажує
+Основний екран exact version — семиденний огляд `?week=N`. Він рендерить
 позиції лише вибраного тижня; GET/reload не створюють днів або позицій. На desktop
 від 1280 px сім колонок розташовані одночасно, на 390/320 px перемикається один
 день. Показуються порядкові «День N», без календарної прив’язки. У колонці лише
