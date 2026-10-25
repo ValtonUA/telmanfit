@@ -194,6 +194,23 @@ class MealItemWriterTest extends PostgresTestCase
         $this->assertSame($before, DB::table('meal_items')->orderBy('id')->get()->toJson());
     }
 
+    public function test_old_forms_do_not_revive_after_content_is_restored(): void
+    {
+        $original = $this->input();
+        $structure = app(MealPlanStructure::class);
+        $week = $structure->weekDeletionSnapshots($this->actor, $this->version)[0];
+        $item = $this->writer->save($this->actor, $this->version, $original);
+        $this->writer->delete($this->actor, $this->version, $item->id, MealItemWriter::token($item));
+        $this->invalid(fn () => $this->writer->save($this->actor, $this->version, $original));
+        $this->invalid(fn () => $structure->deleteWeek($this->actor, $this->version, $week));
+        $item = $this->writer->save($this->actor, $this->version, $this->input());
+        $old = $this->input(item: $item);
+        $this->writer->save($this->actor, $this->version, array_replace($old, ['quantity' => '1.25']), $item->id);
+        $this->writer->save($this->actor, $this->version, $this->input(item: $item->fresh()), $item->id);
+        $this->assertSame('0.50', $item->fresh()->quantity);
+        $this->invalid(fn () => $this->writer->save($this->actor, $this->version, array_replace($old, ['quantity' => '2.00']), $item->id));
+    }
+
     public function test_dependency_change_in_deferred_guard_rolls_back_before_commit(): void
     {
         $input = $this->input();

@@ -23,14 +23,14 @@ if (($argv[1] ?? '') === 'worker') {
     $actor = User::findOrFail($data['actor']);
     $version = MealPlanVersion::findOrFail($data['version']);
     try {
-        if ($data['case'] === 'item-before-week') {
+        if (in_array($data['case'], ['item-before-week', 'aba-week'], true)) {
             $structure->deleteWeek($actor, $version, $data['snapshot']);
         } else {
             $writer->save($actor, $version, $data['input'], $data['item']);
         }
         exit(2);
     } catch (ValidationException) {
-        exit(in_array($data['case'], ['edit', 'double-add', 'item-before-week', 'week-before-item', 'conversion', 'uom'], true) ? 0 : 3);
+        exit(in_array($data['case'], ['edit', 'double-add', 'item-before-week', 'week-before-item', 'conversion', 'uom', 'aba-add', 'aba-edit', 'aba-week'], true) ? 0 : 3);
     } catch (HttpException $e) {
         exit($data['case'] === 'publish' && $e->getStatusCode() === 403 ? 0 : 4);
     }
@@ -49,13 +49,13 @@ $file = tempnam(sys_get_temp_dir(), 'telmanfit-item-writer-race-');
 chmod($file, 0600);
 $worker = null;
 try {
-    foreach (['edit', 'double-add', 'item-before-week', 'week-before-item', 'publish', 'conversion', 'uom'] as $case) {
+    foreach (['edit', 'double-add', 'item-before-week', 'week-before-item', 'publish', 'conversion', 'uom', 'aba-add', 'aba-edit', 'aba-week'] as $case) {
         $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Synthetic item race '.$case])->versions()->sole();
         $structure->generate($actor, $version, ['start_day' => 1, 'meal_type_ids' => [$type]]);
         $meal = $version->days()->orderBy('id')->first()->meals()->sole()->id;
         $input = ['meal_id' => $meal, 'food_id' => $food, 'quantity' => '0.50', 'uom_id' => $unit, 'sort_order' => 0,
             'expected' => $writer->mealToken($actor, $version, $meal), 'catalog_expected' => $writer->catalog($actor, $version, $food)['token']];
-        $item = $case === 'edit' ? $writer->save($actor, $version, $input) : null;
+        $item = in_array($case, ['edit', 'aba-edit'], true) ? $writer->save($actor, $version, $input) : null;
         if ($item) {
             $input['expected'] = MealItemWriter::token($item);
         }
@@ -63,8 +63,13 @@ try {
         $data = ['case' => $case, 'actor' => $actor->id, 'version' => $version->id, 'input' => $input, 'item' => $item?->id, 'snapshot' => $snapshot];
         file_put_contents($file, json_encode($data));
         DB::beginTransaction();
-        if (in_array($case, ['double-add', 'item-before-week', 'edit'], true)) {
-            $writer->save($actor, $version, array_replace($input, ['quantity' => '1.25']), $item?->id);
+        if (in_array($case, ['double-add', 'item-before-week', 'edit', 'aba-add', 'aba-edit', 'aba-week'], true)) {
+            $saved = $writer->save($actor, $version, array_replace($input, ['quantity' => '1.25']), $item?->id);
+            if (in_array($case, ['aba-add', 'aba-week'], true)) {
+                $writer->delete($actor, $version, $saved->id, MealItemWriter::token($saved));
+            } elseif ($case === 'aba-edit') {
+                $writer->save($actor, $version, array_replace($input, ['expected' => MealItemWriter::token($saved)]), $saved->id);
+            }
         } elseif ($case === 'week-before-item') {
             $structure->deleteWeek($actor, $version, $snapshot);
         } elseif ($case === 'publish') {
@@ -109,13 +114,13 @@ try {
         $ids = DB::table('meals')->whereIn('meal_plan_day_id', $version->days()->select('id'))->pluck('id');
         $count = DB::table('meal_items')->whereIn('meal_id', $ids)->count();
         $expected = match ($case) {
-            'edit', 'double-add', 'item-before-week' => 1, 'publish' => 7, default => 0
+            'edit', 'double-add', 'item-before-week', 'aba-edit' => 1, 'publish' => 7, default => 0
         };
         if ($count !== $expected) {
             throw new RuntimeException('Partial/lost writer result: '.$case);
         }
     }
-    echo "Meal item writer concurrency PASS: concurrent edit/double add, item-vs-week deletion both orders, write-vs-publish, conversion/UOM changes; independent sessions, real lock waits, no partial writes/deadlocks.\n";
+    echo "Meal item writer concurrency PASS: concurrent edit/double add, item-vs-week deletion both orders, write-vs-publish, conversion/UOM changes, ABA add/edit/week replay; independent sessions, real lock waits, no partial writes/deadlocks.\n";
 } finally {
     while (DB::transactionLevel() > 0) {
         DB::rollBack();

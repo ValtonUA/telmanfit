@@ -202,7 +202,8 @@ final class MealPlanStructure
 
     private function weekSnapshot(User $actor, MealPlanVersion $version, Collection $days, Collection $meals, Collection $items): array
     {
-        $payload = [$actor->id, $version->id, $days->all(), $meals->all(), $items->all()];
+        $revision = DB::table('meal_plan_versions')->where('id', $version->id)->selectRaw('xmin::text AS revision')->sole()->revision;
+        $payload = [$actor->id, $version->id, $revision, $days->all(), $meals->all(), $items->all()];
 
         return [
             'anchor' => $days->first()->id,

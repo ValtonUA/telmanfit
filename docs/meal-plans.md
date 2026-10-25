@@ -215,9 +215,11 @@ default/conversions/UOM і frozen recipe metadata мають actor/version HMAC 
 наявні deferred SQL guards та fresh-role/fence check. Автоматичного retry немає.
 
 Add порівнює HMAC стану прийому й усіх його items, тому подвійний submit відхиляється.
-Edit/move/delete порівнюють expected стан item; stale форми не стирають новішу правку.
-Move зберігає точний food/selector/grams; delete видаляє лише item. Week snapshots UX-4D
-включають актуальні items, тому add/edit/move/delete роблять старе підтвердження
+Edit/move/delete порівнюють expected стан item і PG MVCC revision точної версії; stale форми не стирають новішу правку.
+Move зберігає точний food/selector/grams; delete видаляє лише item. Кожен успішний item command виконує no-op UPDATE лише draft root: дані статусу
+не змінюються, а xmin оновлюється. Tokens і week snapshots включають цю MVCC revision,
+тому навіть add→delete чи edit A→B→A не оживляють стару форму/confirmation; нових колонок немає.
+Week snapshots UX-4D включають актуальні items, тому add/edit/move/delete роблять старе підтвердження
 невалідним. Published history, legacy NULL selectors, recipes, assignments і каталоги
 ці команди не переписують. Session/MFA/CSRF межа залишається штатною Filament.
 

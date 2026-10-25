@@ -19,7 +19,12 @@ final class MealItemWriter
 {
     public static function token(MealItem $item): string
     {
-        return hash('sha256', json_encode($item->getAttributes(), JSON_THROW_ON_ERROR));
+        $revision = DB::table('meal_items as i')->join('meals as m', 'm.id', '=', 'i.meal_id')
+            ->join('meal_plan_days as d', 'd.id', '=', 'm.meal_plan_day_id')
+            ->join('meal_plan_versions as v', 'v.id', '=', 'd.meal_plan_version_id')
+            ->where('i.id', $item->id)->selectRaw('i.xmin::text AS item_revision, v.xmin::text AS version_revision')->first();
+
+        return hash('sha256', json_encode([$item->getAttributes(), $revision], JSON_THROW_ON_ERROR));
     }
 
     /** Стан прийому для add: повторний submit не створює другу позицію. */
@@ -31,7 +36,7 @@ final class MealItemWriter
             $this->invalid('meal_id', 'Прийом не належить цій точній чернетці.');
         }
 
-        return hash_hmac('sha256', json_encode([$actor->id, $version->id, $meal,
+        return hash_hmac('sha256', json_encode([$actor->id, $version->id, $this->versionRevision($version), $meal,
             DB::table('meal_items')->where('meal_id', $mealId)->orderBy('id')->get()->all()], JSON_THROW_ON_ERROR), config('app.key'));
     }
 
@@ -101,6 +106,7 @@ final class MealItemWriter
                 $item->{$key} = $value;
             }
             $item->save();
+            $this->touchDraft($locked);
             // Канонічний Model I reader також перевіряє записаний exact selector до commit.
             app(MealItemResolver::class)->resolve($item);
 
@@ -126,6 +132,7 @@ final class MealItemWriter
             $item->meal_id = $mealId;
             $item->sort_order = $sortOrder;
             $item->save();
+            $this->touchDraft($locked);
         });
     }
 
@@ -135,7 +142,19 @@ final class MealItemWriter
         app(MealPlanStructure::class)->withinDraft($actor, $version, function ($locked) use ($itemId, $expected): void {
             $meals = $this->lockHierarchy($locked);
             $this->existing($meals->pluck('id')->all(), $itemId, $expected)->delete();
+            $this->touchDraft($locked);
         });
+    }
+
+    private function versionRevision(MealPlanVersion $version): string
+    {
+        return DB::table('meal_plan_versions')->where('id', $version->id)->selectRaw('xmin::text AS revision')->sole()->revision;
+    }
+
+    /** MVCC revision без нових колонок: навіть A→B→A не оживляє старі форми/confirmation. */
+    private function touchDraft(MealPlanVersion $version): void
+    {
+        DB::table('meal_plan_versions')->where('id', $version->id)->where('status', 'draft')->update(['status' => 'draft']);
     }
 
     private function existing(array $meals, int $id, string $expected): MealItem
