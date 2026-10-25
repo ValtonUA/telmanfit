@@ -28,6 +28,9 @@ CI-COST-2 додає процесний OPcache лише для synthetic Stage1
 published batch/legacy rows не змінював тестовий сценарій. Browser orchestration
 очікує завершення Filament overlay animations перед меню/mobile overflow assertion.
 [Виміри й обмеження](evidence/ci-cost-2/report.md); статус — [roadmap](roadmap.md).
+Після timeout першого Full додано navigation `load` без додаткової network silence,
+actual Livewire render readiness, три Chromium negative/async тести та hook-event
+assertion; прибрано лише повторний static Pint, збережений у required matrix.
 Результат Full на фінальному SHA записується в описі PR після запуску.
 
 

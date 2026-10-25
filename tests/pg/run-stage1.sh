@@ -212,7 +212,7 @@ vendor/bin/phpunit -c phpunit.pgsql.xml --display-all-issues
 stage1_mark full_pg_phpunit
 # Основний конфіг перемикає на SQLite; PostgreSQL-набір має окремий конфіг.
 DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --display-all-issues
-vendor/bin/pint --test
+# Той самий static Pint --test є в обох required PHP matrix jobs; без повторного lint тут.
 
 # AUTH-2 окремо після незмінених Stage 1/2 перевірок каталогу.
 php tests/pg/auth2-upgrade.php

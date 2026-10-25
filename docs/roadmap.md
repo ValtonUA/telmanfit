@@ -153,7 +153,7 @@
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
 | CI-COST-1 | [Два рівні CI](ci.md): Fast на кожному commit, явний Full на фінальному SHA, fail-closed pre-merge та вимірювання GitHub jobs; інтегровано через PR #42; активний strict ruleset `CI-COST-1` із трьома required checks підтверджено read-only preflight. | Виконано |
-| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1 та процесний PHP bytecode reuse для Chromium без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Фінальний Full і фактичний відсоток — в описі Draft PR, без merge. | Частково |
+| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1, процесний PHP bytecode reuse і navigation/render readiness Chromium без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Фінальний Full і фактичний відсоток — в описі Draft PR, без merge. | Частково |
 
 ### Stage 9 — Підготовка до запуску
 

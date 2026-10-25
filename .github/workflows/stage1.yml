@@ -51,6 +51,8 @@ jobs:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
+      - name: Chromium render readiness regressions
+        run: python -m unittest discover -s tests/browser -p 'test_*.py' -v
       - name: Stage 3 recipe batches, historical upgrade and concurrency
         shell: bash
         run: |

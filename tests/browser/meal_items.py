@@ -2,6 +2,7 @@
 import re
 from pathlib import Path
 from playwright.sync_api import expect
+from readiness import livewire_ready
 
 
 def run_meal_items(page, base, version_url, f, suffix, submit):
@@ -33,7 +34,8 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
             print('Item selector DOM: ' + page.locator('body').aria_snapshot()[-10000:], flush=True)
             page.screenshot(path=str(output / 'item-selector-error.png'))
             raise
-        page.wait_for_load_state('networkidle')
+        livewire_ready(page)
+        assert page.evaluate('window.__ciLivewire.started > 0 && window.__ciLivewire.rendered > 0')
 
     dialog = open_action('Додати позицію')
     select(dialog, 'Прийом їжі', 'День 1 (Пн) · Синтетичний прийом')

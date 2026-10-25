@@ -98,7 +98,55 @@ assertion. Не додано fixed sleeps, force clicks, retries бізнес-о
 animations або видалення assertions; зокрема реальний AUTH5 resend cooldown 60с збережено. Це зміна тільки підготовки
 synthetic даних, жоден business guard не послаблений. Before/after мають однаковий fixture.
 
+## Корекція після першого Full
+
+[Full40231766968](https://github.com/ValtonUA/telmanfit/actions/runs/40231766968)
+на `377e59c1e31487fdd1c19e077de07f61d5411552` завершився failure:
+Stage1 cancelled timeout1812с, gate failure; інші4 workers success.
+[Raw job/step durations](first-full-timeout.json). Це не billing/quota failure.
+PG142/2464 і194/3436, усі browser19 checks, B5, AUTH3/4/5 та B3/B4 пройшли;
+на AUTH1 уже надруковано15/93 PASS, але timeout скасував завершення job/post-steps.
+Цей failed run не є green after і не входить у success savings.
+Recipe1113с проти1086с before, default468с проти462с; сам OPcache не довів
+економії hosted run. Витрати невдалого Full наведено окремо, не приховано.
+
+Подальша корекція — navigation/render readiness orchestration Chromium.
+Мікровимір показав, що повторний `wait_for_load_state(networkidle)` після
+same-document AJAX є sticky і повертається за0.0004–0.0013с; припущення про500мс
+на кожний AJAX виявилося хибним і **не зараховується як економія**.
+Натомість повні навігації справді чекають зайві500мс після load:
+[два samples із delayed image](navigation-comparison.json) — load0.128/0.088с
+проти networkidle0.586/0.621с; в обох випадках image.complete/naturalWidth PASS.
+Submit redirects і back/forward тепер чекають повний `load`, а не додаткову
+network silence; CSS/images/scripts завантажуються, усі assertions збережені.
+
+Для same-document updates додано actual Livewire commit `onRender` readiness
+через чинний `commit/succeed` hook pinned Livewire4.4.8. Відсутній tracker або
+failed commit — timeout/failure, не fallback. Немає додаткового RAF/evaluate після
+wait: прототип із RAF виявив navigation-context race і відхилений локально до push.
+Додано assertion реальних started/rendered hook events у selectors і три Chromium
+regression тести async pending commits / failed commit / absent tracker.
+`CI_BROWSER_READINESS` рахує фактичні calls/time; його не видаємо за billed savings.
+
+Прибрано лише повторний static Pint із PG runner: той самий source tree і
+PHP8.4.27 перевіряє required matrix, плюс окремо PHP8.5.12 і Fast. Matrix/Full gate
+не дозволяють пропустити lint. Додано coverage regression assertion у tests/ci.
+SQLite85 під TELMANFIT_PG_TEST **залишено**: AppServiceProvider і
+LocalComposeEpochTest мають інші synthetic bindings — це не еквівалентний дубль.
+PG142/194, AUTH timer/MFA/cooldown, clean DB/upgrade докази не скорочено.
+Новий фінальний Full запускається після локального regression PASS як виправлення
+невдалого run; timeout30 не збільшується, required jobs не змінюються.
+
 ## Локальні й фінальні докази
+
+Виправлена версія: [summary](corrected-local-checks.json),
+[повний stdout](corrected-local-recipe.txt). PG142/2464, усі concurrency та
+Chromium19 checks у1440/390/320 light/dark PASS; total825с (shell825.381с),
+browser767с;379 actual readiness calls /92.656с очікування. Три negative/async
+Chromium tests і23 CI regressions PASS. Це локальний результат, не hosted job-min;
+попередні886.647с мали паралельні AUTH4/5 навантаження, тому різницю не видаємо
+за контрольований billed before/after або доказ≥25%.
+
 
 [Локальний summary](local-checks.json), [повний recipe stdout](local-recipe-after.txt).
 Підсумок after: PG142/2464, усі concurrency та Chromium19 checks у1440/390/320
@@ -136,15 +184,20 @@ Full на фінальному head. Це не створює нового commi
 Один GitHub sample не доводить стабільного відсотка на всіх hosted runners; додаткові
 платні exploratory Full не запускаються. Merge/auto-merge не дозволені.
 
+
 ## Усі змінені файли
 
 - `.github/workflows/stage1.yml`
 - `docs/ci.md`
 - `docs/evidence/ci-cost-2/baseline-log-excerpts.txt`
 - `docs/evidence/ci-cost-2/before.json`
+- `docs/evidence/ci-cost-2/corrected-local-checks.json`
+- `docs/evidence/ci-cost-2/corrected-local-recipe.txt`
+- `docs/evidence/ci-cost-2/first-full-timeout.json`
 - `docs/evidence/ci-cost-2/http-comparison.json`
 - `docs/evidence/ci-cost-2/local-checks.json`
 - `docs/evidence/ci-cost-2/local-recipe-after.txt`
+- `docs/evidence/ci-cost-2/navigation-comparison.json`
 - `docs/evidence/ci-cost-2/report.md`
 - `docs/project-status.md`
 - `docs/roadmap.md`
@@ -152,10 +205,17 @@ Full на фінальному head. Це не створює нового commi
 - `tests/browser/auth3-in-context.sh`
 - `tests/browser/auth4-in-context.sh`
 - `tests/browser/auth5-in-context.sh`
+- `tests/browser/food_catalog.py`
 - `tests/browser/meal-plan-fixture.php`
+- `tests/browser/meal_items.py`
 - `tests/browser/meal_plans.py`
 - `tests/browser/php-server.sh`
+- `tests/browser/plan_presentation.py`
+- `tests/browser/readiness.py`
 - `tests/browser/recipe-batch-in-context.sh`
+- `tests/browser/recipe_batch.py`
+- `tests/browser/test_readiness.py`
+- `tests/ci/test_gate.py`
 - `tests/ci/test_measure.py`
 - `tests/ci/test_php_server.py`
 - `tests/pg/run-stage1.sh`

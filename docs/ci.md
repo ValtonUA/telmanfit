@@ -89,6 +89,15 @@ HTTP-сервера. Laravel bootstrap, middleware, session/CSRF, SQL та бі�
 preload або JIT; timestamp validation увімкнено. Launcher відмовляє поза testing /
 TELMANFIT_PG_TEST, на не-loopback адресі або без активного OPcache. Зупинка сервера
 знищує кеш. Кеш байткоду не експортується між jobs/PR і не торкається cold Compose.
+Recipe browser orchestration чекає повний navigation `load` без зайвої network
+silence; same-document оновлення мають actual Livewire render readiness через
+test-only commit hooks. Відсутній hook/failed
+commit блокують очікування; selector assertion доводить реальні hook events.
+Повторний static Pint у PG runner прибрано: його зберігають обидва required PHP
+matrix jobs і Fast. SQLite tests під synthetic PG bindings збережені.
+Три Chromium regression тести readiness запускаються у Stage1 після Playwright
+install. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
+MFA/OTP timer/cooldown перевірки збережені.
 PG-кластери залишаються окремими для recipe, B5, baseline/auth, B3/B4 та G4;
 міграції, SQL76, усі повторні PHPUnit-набори й concurrency/upgrade/reset докази збережені.
 Деталі вимірювань і відхилені варіанти — [CI-COST-2](evidence/ci-cost-2/report.md).
