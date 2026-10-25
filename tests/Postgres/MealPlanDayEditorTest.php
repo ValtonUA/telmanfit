@@ -7,6 +7,7 @@ use App\Filament\Resources\MealPlans\Pages\ViewMealPlanVersion;
 use App\Models\MealItem;
 use App\Models\MealPlanVersion;
 use App\Models\User;
+use App\Services\MealPlans\MealItemResolver;
 use App\Services\MealPlans\MealItemWriter;
 use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
@@ -16,10 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\MealPlans\PlanFixture;
+use Tests\Recipes\BatchFixture;
 
 class MealPlanDayEditorTest extends PostgresTestCase
 {
-    use PlanFixture;
+    use BatchFixture, PlanFixture;
 
     private User $actor;
 
@@ -40,6 +42,7 @@ class MealPlanDayEditorTest extends PostgresTestCase
         parent::setUp();
         $this->installAuthSchema();
         $this->installMealItemSchema();
+        DB::table('uoms')->insert(['code' => 'g', 'kind' => 'mass', 'label' => 'gram']);
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic day admin', 'role' => 'admin']));
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -169,6 +172,47 @@ class MealPlanDayEditorTest extends PostgresTestCase
         $structure->deleteWeek($this->actor, $this->version, $snapshot + $structure->confirmWeekDeletion($this->actor, $this->version, $snapshot));
         $editor->call('placeItem', $a->id, $this->target, null, $expected)->assertNotFound();
         $this->assertNull($a->fresh());
+    }
+
+    public function test_place_preserves_exact_published_batch_portion_and_nutrition(): void
+    {
+        $batch = $this->batch();
+        $this->publish($batch['version']);
+        $food = DB::table('recipe_versions')->where('id', $batch['version'])->value('food_id');
+        $catalog = $this->writer->catalog($this->actor, $this->version, $food);
+        $item = $this->writer->save($this->actor, $this->version, ['meal_id' => $this->meal, 'food_id' => $food,
+            'quantity' => '0.50', 'uom_id' => $catalog['default'], 'sort_order' => 0,
+            'recipe_version_id' => $batch['version'], 'recipe_batch_format_id' => $batch['formats']['half_week'], 'recipe_portion_divisor' => 4,
+            'expected' => $this->writer->mealToken($this->actor, $this->version, $this->meal), 'catalog_expected' => $catalog['token']]);
+        $before = $item->getAttributes();
+        $resolver = app(MealItemResolver::class);
+        $nutrition = $resolver->resolve($item)->nutrition;
+        $physical = DB::table('recipe_batch_quantities')->orderBy('format_id')->get()->toJson();
+        $this->writer->place($this->actor, $this->version, $this->day, $item->id, $this->target, null, $this->snapshot());
+        $this->assertSame($before, array_replace($item->fresh()->getAttributes(), ['meal_id' => $this->meal]));
+        $this->assertSame($nutrition, $resolver->resolve($item->fresh())->nutrition);
+        $this->assertSame($physical, DB::table('recipe_batch_quantities')->orderBy('format_id')->get()->toJson());
+    }
+
+    public function test_catalog_search_filter_and_pagination_stay_server_side(): void
+    {
+        for ($n = 1; $n <= 15; $n++) {
+            $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
+            DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Synthetic editor pagination '.$n,
+                'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
+        }
+        $editor = Livewire::test(EditMealPlanDay::class, ['record' => $this->version->id, 'day' => $this->day])
+            ->set('search', 'Synthetic editor pagination');
+        $first = $editor->instance()->catalogRows()->take(12)->pluck('id');
+        $this->assertCount(13, $editor->instance()->catalogRows());
+        $editor->call('catalogNext', 1);
+        $second = $editor->instance()->catalogRows()->pluck('id');
+        $this->assertCount(3, $second);
+        $this->assertCount(0, $first->intersect($second));
+        $editor->set('catalogType', 'recipe_version')->assertSet('catalogPage', 1);
+        $this->assertCount(0, $editor->instance()->catalogRows());
+        $editor->set('search', '')->set('catalogType', 'ingredient');
+        $this->assertTrue($editor->instance()->catalogRows()->every(fn ($row) => $row->food_type === 'ingredient'));
     }
 
     public function test_late_sql_failure_rolls_back_all_renumbering(): void
