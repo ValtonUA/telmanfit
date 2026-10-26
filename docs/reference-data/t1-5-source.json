@@ -1,0 +1,609 @@
+{
+  "source_file": "T1.5 - початкові значення довідників.xlsx",
+  "import_status": "raw-source-only; not yet normalized to PostgreSQL",
+  "sheets": {
+    "ingredient_categories": {
+      "columns": [
+        "ingredient_category_id",
+        "name",
+        "description"
+      ],
+      "rows": [
+        [
+          "meat_poultry",
+          "М'ясо та птиця ",
+          "курка, індичка, яловичина, свинина, субпродукти"
+        ],
+        [
+          "fish_seafood",
+          "Риба та морепродукти",
+          "хек, лосось, тунець, креветки, кальмари"
+        ],
+        [
+          "vegetables_greens",
+          "Овочі та зелень",
+          "помідори, брокколі, шпинат, огірки, петрушка"
+        ],
+        [
+          "fruits_berries",
+          "Фрукти та ягоди",
+          "яблука, банани, полуниця, авокадо, чорниця"
+        ],
+        [
+          "grains_pasta",
+          "Крупи, каші та макарони",
+          "гречка, рис, вівсянка, макарони т/с"
+        ],
+        [
+          "legumes",
+          "Бобові ",
+          "сочевиця, нут, квасоля, горох"
+        ],
+        [
+          "dairy_cheese",
+          "Молочні продукти та сири",
+          "кисломолочний сир, фета, твердий сир, грецький йогурт, молоко"
+        ],
+        [
+          "eggs",
+          "Яйця",
+          "курячі, перепелині"
+        ],
+        [
+          "nuts_seeds",
+          "Горіхи та насіння",
+          "мигдаль, волоський горіх, кунжут"
+        ],
+        [
+          "bread_bakery",
+          "Хліб, випічка та хлібці",
+          "цільнозерновий хліб, лаваш, рисові хлібці"
+        ],
+        [
+          "oils_fats_sauces",
+          "Олії, жири та соуси",
+          "оливкова олія, вершкове масло, арахісова паста, гірчиця"
+        ],
+        [
+          "spices_additives",
+          "Спеції, приправи та спеціфічні добавки",
+          "сіль, перець, соєвий соус, протеїновий порошок, замінники цукру"
+        ],
+        [
+          "water",
+          "Вода",
+          "Проста вода"
+        ]
+      ]
+    },
+    "recipe_categories": {
+      "columns": [
+        "dish_category_id",
+        "name",
+        "description"
+      ],
+      "rows": [
+        [
+          "carbs",
+          "Вуглеводи",
+          "Вуглеводна основа (крупи, картопля, макарони)"
+        ],
+        [
+          "proteins",
+          "Білки",
+          "М'ясні, рибні страви, яйця, морепродукти"
+        ],
+        [
+          "vegetables",
+          "Салати та Овочі",
+          "Овочеві страви, легкі салати"
+        ],
+        [
+          "complex",
+          "Комплексні страви",
+          "Страви «все-в-одному», де білок і гарнір не розділити"
+        ],
+        [
+          "condiments",
+          "Соуси та заправки",
+          "Соуси, діпи та заправки до основних страв, салатів і закусок"
+        ]
+      ]
+    },
+    "uoms": {
+      "columns": [
+        "uom_id",
+        "symbol",
+        "name_1",
+        "name_2_4",
+        "name_5",
+        "name_frac"
+      ],
+      "rows": [
+        [
+          "gram",
+          "г",
+          "грам",
+          "грами",
+          "грамів",
+          "грама"
+        ],
+        [
+          "piece",
+          "шт",
+          "штука",
+          "штуки",
+          "штук",
+          "штуки"
+        ],
+        [
+          "millilitre",
+          "мл",
+          "мілілітр",
+          "мілілітри",
+          "мілілітрів",
+          "мілілітра"
+        ],
+        [
+          "litre",
+          "л",
+          "літр",
+          "літри",
+          "літрів",
+          "літра"
+        ],
+        [
+          "small_package",
+          "шт",
+          "маленька пачка",
+          "маленькі пачки",
+          "маленьких пачок",
+          "маленької пачки"
+        ],
+        [
+          "big_package",
+          "шт",
+          "велика пачка",
+          "великі пачки",
+          "великих пачок",
+          "великої пачки"
+        ],
+        [
+          "can",
+          "банка",
+          "банка",
+          "банки",
+          "банок",
+          "банки"
+        ],
+        [
+          "clove",
+          "зубчик",
+          "зубчик",
+          "зубчики",
+          "зубчиків",
+          "зубчика"
+        ],
+        [
+          "table_spoon",
+          "ст. л",
+          "столова ложка",
+          "столові ложки",
+          "столових ложок",
+          "столової ложки"
+        ],
+        [
+          "tea_spoon",
+          "ч. л",
+          "чайна ложка",
+          "чайні ложки",
+          "чайних ложок",
+          "чайної ложки"
+        ],
+        [
+          "pinch",
+          "дрібка",
+          "дрібка",
+          "дрібки",
+          "дрібок",
+          "дрібки"
+        ],
+        [
+          "sprig",
+          "гілка",
+          "гілочка",
+          "гілочки",
+          "гілочок",
+          "гілочки"
+        ],
+        [
+          "slice",
+          "слайс",
+          "слайс",
+          "слайси",
+          "слайсів",
+          "слайса"
+        ],
+        [
+          "cube",
+          "куб.",
+          "кубик",
+          "кубики",
+          "кубиків",
+          "кубика"
+        ],
+        [
+          "small_piece",
+          "шт",
+          "мала штука",
+          "малі штуки",
+          "малих штук",
+          "малої штуки"
+        ],
+        [
+          "medium_piece",
+          "шт",
+          "середня штука",
+          "середні штуки",
+          "середніх штук",
+          "середньої штуки"
+        ],
+        [
+          "large_piece",
+          "шт",
+          "велика штука",
+          "великі штуки",
+          "великих штук",
+          "великої штуки"
+        ],
+        [
+          "metre",
+          "м",
+          "метр",
+          "метри",
+          "метрів",
+          "метра"
+        ],
+        [
+          "centimetre",
+          "см",
+          "сантиметр",
+          "сантиметри",
+          "сантиметрів",
+          "сантиметра"
+        ]
+      ]
+    },
+    "kitchen_equipment": {
+      "columns": [
+        "equipment_id",
+        "name",
+        "image_url",
+        "category",
+        "default_uom_id"
+      ],
+      "rows": [
+        [
+          "pot",
+          "Каструля",
+          "https://assets.telmanfit.com.ua/equipment/pot.webp",
+          "cookware",
+          "litre"
+        ],
+        [
+          "saucepan",
+          "Сотейник",
+          "https://assets.telmanfit.com.ua/equipment/saucepan.webp",
+          "cookware",
+          "litre"
+        ],
+        [
+          "frying_pan",
+          "Сковорідка",
+          "https://assets.telmanfit.com.ua/equipment/frying_pan.webp",
+          "cookware",
+          "litre"
+        ],
+        [
+          "baking_tray",
+          "Деко",
+          "https://assets.telmanfit.com.ua/equipment/baking_tray.webp",
+          "cookware",
+          "piece"
+        ],
+        [
+          "baking_dish",
+          "Форма для запікання",
+          "https://assets.telmanfit.com.ua/equipment/baking_dish.webp",
+          "cookware",
+          "piece"
+        ],
+        [
+          "oven_rack",
+          "Решітка для духовки",
+          "https://assets.telmanfit.com.ua/equipment/oven_rack.webp",
+          "cookware",
+          "piece"
+        ],
+        [
+          "colander",
+          "Друшляк",
+          "https://assets.telmanfit.com.ua/equipment/colander.webp",
+          "cookware",
+          "piece"
+        ],
+        [
+          "steamer_insert",
+          "Вставка-пароварка",
+          "https://assets.telmanfit.com.ua/equipment/steamer_insert.webp",
+          "cookware",
+          "piece"
+        ],
+        [
+          "mixing_bowl",
+          "Миска",
+          "https://assets.telmanfit.com.ua/equipment/mixing_bowl.webp",
+          "prepware",
+          "litre"
+        ],
+        [
+          "small_bowl",
+          "Піала",
+          "https://assets.telmanfit.com.ua/equipment/small_bowl.webp",
+          "prepware",
+          "piece"
+        ],
+        [
+          "food_container",
+          "Контейнер",
+          "https://assets.telmanfit.com.ua/equipment/food_container.webp",
+          "prepware",
+          "litre"
+        ],
+        [
+          "food_vessel",
+          "Ємність",
+          "https://assets.telmanfit.com.ua/equipment/food_vessel.webp",
+          "prepware",
+          "litre"
+        ],
+        [
+          "stovetop",
+          "Плита",
+          "https://assets.telmanfit.com.ua/equipment/stovetop.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "oven",
+          "Духовка",
+          "https://assets.telmanfit.com.ua/equipment/oven.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "air_fryer",
+          "Аерогриль",
+          "https://assets.telmanfit.com.ua/equipment/air_fryer.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "multicooker",
+          "Мультиварка",
+          "https://assets.telmanfit.com.ua/equipment/multicooker.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "microwave",
+          "Мікрохвильовка",
+          "https://assets.telmanfit.com.ua/equipment/microwave.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "blender",
+          "Блендер стаціонарний",
+          "https://assets.telmanfit.com.ua/equipment/blender.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "immersion_blender",
+          "Блендер занурювальний",
+          "https://assets.telmanfit.com.ua/equipment/immersion_blender.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "contact_grill",
+          "Гриль контактний",
+          "https://assets.telmanfit.com.ua/equipment/contact_grill.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "sous_vide_circulator",
+          "Сувід циркулятор",
+          "https://assets.telmanfit.com.ua/equipment/sous_vide_circulator.webp",
+          "device",
+          "piece"
+        ],
+        [
+          "kitchen_scale",
+          "Кухонні ваги",
+          "https://assets.telmanfit.com.ua/equipment/kitchen_scale.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "jewelry_scales",
+          "Ювелірні ваги",
+          "https://assets.telmanfit.com.ua/equipment/jewelry_scales.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "chef_knife",
+          "Ніж",
+          "https://assets.telmanfit.com.ua/equipment/chef_knife.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "cutting_board",
+          "Обробна дошка",
+          "https://assets.telmanfit.com.ua/equipment/cutting_board.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "vegetable_peeler",
+          "Овочечистка",
+          "https://assets.telmanfit.com.ua/equipment/vegetable_peeler.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "kitchen_scissors",
+          "Ножиці",
+          "https://assets.telmanfit.com.ua/equipment/kitchen_scissors.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "whisk",
+          "Вінчик",
+          "https://assets.telmanfit.com.ua/equipment/whisk.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "spatula",
+          "Лопатка",
+          "https://assets.telmanfit.com.ua/equipment/spatula.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "tongs",
+          "Щипці",
+          "https://assets.telmanfit.com.ua/equipment/tongs.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "can_opener",
+          "Відкривачка",
+          "https://assets.telmanfit.com.ua/equipment/can_opener.webp",
+          "tool",
+          "piece"
+        ],
+        [
+          "parchment",
+          "Пергамент силіконізований",
+          "https://assets.telmanfit.com.ua/equipment/parchment.webp",
+          "consumable",
+          "metre"
+        ],
+        [
+          "foil",
+          "Фольга",
+          "https://assets.telmanfit.com.ua/equipment/foil.webp",
+          "consumable",
+          "metre"
+        ],
+        [
+          "heavy_duty_foil",
+          "Фольга потовщена",
+          "https://assets.telmanfit.com.ua/equipment/heavy_duty_foil.webp",
+          "consumable",
+          "metre"
+        ],
+        [
+          "roasting_sleeve",
+          "Рукав для запікання",
+          "https://assets.telmanfit.com.ua/equipment/roasting_sleeve.webp",
+          "consumable",
+          "metre"
+        ],
+        [
+          "paper_towels",
+          "Паперові рушники",
+          "https://assets.telmanfit.com.ua/equipment/paper_towels.webp",
+          "consumable",
+          "piece"
+        ],
+        [
+          "zip_bag_20x25",
+          "Зіп-пакет 20×25 см",
+          "https://assets.telmanfit.com.ua/equipment/zip_bag_20x25.webp",
+          "consumable",
+          "piece"
+        ],
+        [
+          "zip_bag_15x30",
+          "Зіп-пакет 15×30 см",
+          "https://assets.telmanfit.com.ua/equipment/zip_bag_15x30.webp",
+          "consumable",
+          "piece"
+        ]
+      ]
+    },
+    "meal_types": {
+      "columns": [
+        "meal_type_id",
+        "name",
+        "order_number"
+      ],
+      "rows": [
+        [
+          "breakfast_snack",
+          "Ранковий перекус",
+          1
+        ],
+        [
+          "breakfast",
+          "Сніданок",
+          2
+        ],
+        [
+          "lunch_snack",
+          "Обідній перекус",
+          3
+        ],
+        [
+          "lunch",
+          "Обід",
+          4
+        ],
+        [
+          "dinner_snack",
+          "Вечірній перекус",
+          5
+        ],
+        [
+          "dinner",
+          "Вечеря",
+          6
+        ],
+        [
+          "late_dinner_snack",
+          "Пізній вечірній перекус",
+          7
+        ],
+        [
+          "night_snack",
+          "Нічний перекус",
+          8
+        ],
+        [
+          "snack",
+          "Перекус",
+          20
+        ]
+      ]
+    }
+  }
+}
