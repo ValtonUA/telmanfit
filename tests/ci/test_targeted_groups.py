@@ -29,6 +29,7 @@ class TargetedGroupTests(unittest.TestCase):
         self.assertEqual(select_groups(["database/migrations/2026_create.php"]), ALL)
         self.assertEqual(select_groups(["tests/pg/new_suite.sql"]), ALL)
         self.assertEqual(select_groups(["tests/browser/new_feature.py"]), ALL)
+        self.assertEqual(select_groups(["tests/browser/test_readiness.py"]), ("baseline",))
         self.assertEqual(select_groups(["tests/browser/auth/login.py"]),
                          ("baseline", "b5", "b3"))
 

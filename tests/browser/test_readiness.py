@@ -1,5 +1,4 @@
 """Негативні й асинхронні Chromium перевірки test-only render readiness."""
-import shutil
 import os
 from pathlib import Path
 import subprocess
@@ -17,8 +16,7 @@ class ReadinessTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch(
-            executable_path=shutil.which('chromium'), args=['--no-sandbox'])
+        cls.browser = cls.playwright.chromium.launch(args=['--no-sandbox'])
 
     @classmethod
     def tearDownClass(cls):
@@ -79,12 +77,12 @@ class BrowserGroupCleanupTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
-            (work / 'browser.py').write_text('''import os,sys,json,subprocess,shutil,time
+            (work / 'browser.py').write_text('''import os,sys,json,subprocess,time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
  print('launching Chromium',flush=True)
- browser=p.chromium.launch(executable_path=shutil.which('chromium'),args=['--no-sandbox'],timeout=30000)
+ browser=p.chromium.launch(args=['--no-sandbox'],timeout=30000)
  print('Chromium launched',flush=True)
  page=browser.new_page();page.set_content('<p>synthetic cleanup probe</p>')
  print('synthetic page loaded',flush=True)

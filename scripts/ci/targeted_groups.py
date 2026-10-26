@@ -45,6 +45,8 @@ def select_groups(paths: list[str]) -> tuple[str, ...]:
             selected.update(("baseline", "b5", "b3"))
         elif normalized.startswith(("tests/pg/",)):
             selected.update(ALL)
+        elif normalized == "tests/browser/test_readiness.py":
+            selected.add("baseline")
         elif normalized.startswith(("tests/browser/auth",)):
             selected.update(("baseline", "b5", "b3"))
         elif normalized.startswith(("tests/browser/meal-plan", "tests/browser/recipe")):
