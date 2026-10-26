@@ -27,6 +27,8 @@ jobs:
         run: python3 -m unittest discover -s tests/docs -p 'test_*.py' -v
       - name: CI gate regression tests
         run: python3 -m unittest discover -s tests/ci -p 'test_*.py' -v
+      - name: Verify T1.5 owner-provided source data (read-only)
+        run: python3 scripts/validate_t15_source.py
       - name: Validate documentation links and roadmap status IDs
         run: python3 scripts/docs_guard.py
       - name: Require a documentation review for source changes
