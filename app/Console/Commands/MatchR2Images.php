@@ -120,6 +120,13 @@ final class MatchR2Images extends Command
 
     private function apply(array $plan, string $baseUrl): void
     {
+        $baseParts = parse_url($baseUrl);
+        if (! is_array($baseParts) || ($baseParts['scheme'] ?? '') !== 'https' || empty($baseParts['host'])
+            || isset($baseParts['user']) || isset($baseParts['pass']) || isset($baseParts['query']) || isset($baseParts['fragment']) || isset($baseParts['port'])) {
+            throw new RuntimeException('--public-base-url має бути HTTPS URL без credentials, query, fragment або port.');
+        }
+
+        $updates = [];
         foreach ($plan as $row) {
             if ($row['status'] !== 'confident') {
                 continue;
@@ -131,26 +138,34 @@ final class MatchR2Images extends Command
                 throw new RuntimeException('Base URL або згенероване посилання не проходить чинну HTTPS image allowlist.');
             }
 
-            $table = $row['type'] === 'kitchen_equipment' ? 'kitchen_equipment' : $row['type'];
-            $record = $row['record'];
-            if ($record['image_url'] === $url) {
-                $this->line('UNCHANGED '.$row['key'].' → '.$table.'#'.$record['id']);
-
-                continue;
-            }
-            if ($record['image_url'] !== null && $record['image_url'] !== '') {
-                $this->warn('CONFLICT existing image_url: '.$row['key'].' → '.$table.'#'.$record['id']);
-
-                continue;
-            }
-
-            $updated = DB::table($table)->where('id', $record['id'])->whereNull('image_url')->update(['image_url' => $url]);
-            if ($updated !== 1) {
-                $this->warn('CONFLICT concurrent or non-empty image_url: '.$row['key'].' → '.$table.'#'.$record['id']);
-            } else {
-                $this->line('APPLIED '.$row['key'].' → '.$table.'#'.$record['id']);
-            }
+            $updates[] = ['row' => $row, 'url' => $url];
         }
+
+        DB::transaction(function () use ($updates): void {
+            foreach ($updates as $update) {
+                $row = $update['row'];
+                $url = $update['url'];
+                $table = $row['type'] === 'kitchen_equipment' ? 'kitchen_equipment' : $row['type'];
+                $record = $row['record'];
+                if ($record['image_url'] === $url) {
+                    $this->line('UNCHANGED '.$row['key'].' → '.$table.'#'.$record['id']);
+
+                    continue;
+                }
+                if ($record['image_url'] !== null && $record['image_url'] !== '') {
+                    $this->warn('CONFLICT existing image_url: '.$row['key'].' → '.$table.'#'.$record['id']);
+
+                    continue;
+                }
+
+                $updated = DB::table($table)->where('id', $record['id'])->whereNull('image_url')->update(['image_url' => $url]);
+                if ($updated !== 1) {
+                    $this->warn('CONFLICT concurrent or non-empty image_url: '.$row['key'].' → '.$table.'#'.$record['id']);
+                } else {
+                    $this->line('APPLIED '.$row['key'].' → '.$table.'#'.$record['id']);
+                }
+            }
+        });
     }
 
     private function render(array $plan, bool $apply): void
