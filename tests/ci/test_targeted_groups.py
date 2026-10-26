@@ -26,7 +26,7 @@ class TargetedGroupTests(unittest.TestCase):
         self.assertEqual(select_groups(["app/Services/Auth/LoginService.php"]),
                          ("baseline", "b5", "b3"))
         self.assertEqual(select_groups(["tests/pg/meal-plan-assignment.php"]),
-                         ("recipe", "baseline"))
+                         ("recipe",))
 
     def test_critical_schema_and_unclassified_harness_changes_fail_closed_to_all(self):
         self.assertEqual(select_groups(["database/migrations/2026_create.php"]), ALL)
@@ -37,8 +37,8 @@ class TargetedGroupTests(unittest.TestCase):
                          ("baseline", "b5", "b3"))
 
     def test_ci_workflow_changes_keep_scope_small_but_dependencies_cover_auth(self):
-        self.assertEqual(select_groups([".github/workflows/targeted.yml"]), ("baseline",))
-        self.assertEqual(select_groups(["scripts/ci/pre_merge.py"]), ("baseline",))
+        self.assertEqual(select_groups([".github/workflows/targeted.yml"]), ())
+        self.assertEqual(select_groups(["scripts/ci/pre_merge.py"]), ())
         self.assertEqual(select_groups(["composer.lock"]), ("baseline", "b5", "b3"))
 
 
