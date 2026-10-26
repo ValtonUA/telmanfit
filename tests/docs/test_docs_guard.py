@@ -73,6 +73,12 @@ class DocsGuardTest(unittest.TestCase):
                     with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):
                         self.assertEqual(len(docs_guard.validate_pr_impact("base-sha")), 1)
 
+    def test_ci_document_is_canonical_for_ci_source_changes(self) -> None:
+        paths = ".github/workflows/targeted.yml\ndocs/ci.md\n"
+        with patch.object(docs_guard.subprocess, "check_output", return_value=paths):
+            with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):
+                self.assertEqual(docs_guard.validate_pr_impact("base-sha"), [])
+
     def test_deletions_are_in_pr_base_impact(self) -> None:
         with patch.object(docs_guard.subprocess, "check_output", return_value="app/Models/Removed.php\n") as diff:
             with patch.dict(docs_guard.os.environ, {"GITHUB_EVENT_PATH": ""}):

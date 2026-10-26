@@ -33,6 +33,10 @@ DB::transaction(function () {
         }
         (require database_path('migrations/2026_10_24_000000_revise_client_profiles.php'))->up();
     }
+    // Цей browser fixture підіймає базову схему без повного artisan migrate; PR каталогу додає це nullable поле окремою міграцією.
+    if (! Schema::hasColumn('kitchen_equipment', 'image_url')) {
+        (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
+    }
     DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     DB::table('users')->insert(['name' => 'Synthetic recipe author', 'role' => 'admin', 'email' => 'recipe-browser@example.invalid', 'password' => Hash::make('Synthetic-Recipe-Only!')]);
     $fixture = new class

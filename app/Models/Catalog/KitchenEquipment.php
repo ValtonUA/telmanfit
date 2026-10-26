@@ -10,5 +10,5 @@ class KitchenEquipment extends Model
 
     protected $table = 'kitchen_equipment';
 
-    protected $fillable = ['name', 'kitchen_equipment_category_id'];
+    protected $fillable = ['name', 'kitchen_equipment_category_id', 'image_url'];
 }

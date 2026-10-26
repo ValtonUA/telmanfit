@@ -73,7 +73,7 @@ PWA і Telegram Mini App використовують максимально о�
 |---|---|---|
 | Бізнес-схема | `01_nutrition_schema.sql`, `02_users_clients.sql`, `03_progress_tracking.sql`, `04_fitness_messaging.sql` | Продукти/рецепти, клієнти, прогрес, інвентар/повідомлення — 37 бізнес-таблиць |
 | Рецепти A/B/C | [11_recipe_batches.sql](11_recipe_batches.sql), [12_recipe_equipment.sql](12_recipe_equipment.sql), [13_recipe_legacy_conversion.sql](13_recipe_legacy_conversion.sql) | Forward-схема та guard-функції; виконувані джерела — `database/sql/recipes/` |
-| Презентація раціонів | [15_plan_presentation.sql](15_plan_presentation.sql) | Forward SQL15: immutable weekday plan, nullable logical covers, стабільний nutrition source hash; `database/sql/presentation/` |
+| Презентація та медіа каталогу | [15_plan_presentation.sql](15_plan_presentation.sql), [16_catalog_media.sql](16_catalog_media.sql) | Forward SQL15: immutable weekday plan і nullable covers; SQL16: nullable photo URL кухонного обладнання; `database/sql/presentation/` |
 | Профілі | `10_client_profiles.sql` | Forward-ревізія типізованих профілів; доповнює незмінні знімки Stage 1 |
 | Auth-таблиці | `05_auth_schema.sql` | Запрошення, сесії, MFA, резервні коди |
 | Auth recovery | `06_auth_recovery_schema.sql` | Технічна схема assisted recovery; **D3 operational із друзями відкладено** |
@@ -185,6 +185,7 @@ PWA і Telegram Mini App використовують максимально о�
 - У БД зберігається лише шлях: `client_progress_photos.storage_path`; бінарні дані — у сховищі Laravel (`FILESYSTEM_DISK=local`, приватна тека), фотографії не робляться публічними.
 - Доступ до фото, ретенція, перевірка завантажень і безпечне приватне зберігання — сервісні правила, не DDL ([03_progress_tracking.sql](03_progress_tracking.sql), блок «Application-side contracts»).
 - Інші медіа (зображення кроків рецепта — `recipe_directions.image_url`) посилаються на URL/шлях, а не на бінарні дані.
+- Публічні фото інгредієнтів, рецептів і кухонного обладнання зберігаються як `image_url`; Laravel перевіряє точний HTTPS host allowlist. R2 служить джерелом об'єктів, а CLI-зіставлення описано в [звіті й інструкції](r2-image-matching.md).
 
 ## 12. Конфігурація та середовища
 
