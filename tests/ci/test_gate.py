@@ -92,6 +92,15 @@ class GateTests(unittest.TestCase):
                     target["conclusion"] = status
                     self.assert_blocked(s)
 
+    def test_intentionally_skipped_targeted_regression_is_allowed(self):
+        s = green()
+        job = next(j for j in s["jobs"]["3"]
+                   if j["name"] == "regressions / PostgreSQL and browser regressions")
+        job["status"] = "completed"
+        job["conclusion"] = "skipped"
+        job["steps"] = []
+        self.assertTrue(gate.evaluate(s)["eligible"])
+
     def test_pending_cannot_inherit_success(self):
         s = green()
         s["runs"]["targeted.yml"][0]["status"] = "in_progress"
