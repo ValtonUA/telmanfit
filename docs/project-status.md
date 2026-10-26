@@ -8,6 +8,33 @@
 
 ## Підтверджені факти й межі
 
+### INFECTION-ENV
+
+Окремий [CLI Dockerfile](../docker/infection/Dockerfile) перевірено локально:
+PHP 8.5.12, PCOV 1.0.12, PHPUnit 12.5.40. PHPUnit повідомив
+`Runtime: PHP 8.5.12 with PCOV 1.0.12`; тільки `BatchEvaluatorTest` та
+`MealItemPortionTest`: **31 tests, 85 assertions, exit 0**.
+Справжній line coverage: `BatchEvaluator` — **75/77 (97.40%)**,
+`MealItemPortion` — **9/10 (90.00%)**. Загальне `app` — 84/5279 (1.59%);
+це результат лише цих двох наборів. Згенеровано Clover, PHP, PHPUnit XML і JUnit;
+локальний експорт — `.phpunit.cache/infection-env/` (не комітиться).
+Тести пройшли з `--network none --read-only --tmpfs /tmp`; окремий export-контейнер
+мав `NetworkMode=none`, `Mounts=[]`, exit 0 і був видалений після копіювання звітів.
+
+Packagist/Composer визначив стабільну Infection **0.35.8** (`php ^8.3`).
+Dry-run на копії чинного lock: **18 installs, 0 updates, 0 removals**,
+PHPUnit 12.5.40 збережено. Тимчасове встановлення з вимкненими scripts/plugins
+і `php vendor/bin/infection --version` підтвердили запуск 0.35.8;
+`composer --no-plugins check-platform-reqs` — PASS.
+Мутації та інтеграційний запуск PHPUnit через Infection не виконувалися;
+сумісність залежностей не є доказом проходження майбутнього пілота.
+Робочий app-image залишився
+`sha256:97a4bc5a90e29eaa682169af5f12a2782392e2f78c7370babf40bd103af1b86b`.
+Compose, робочі контейнери/volumes, PostgreSQL, MFA/auth і CI не змінено.
+[Команди та межі відтворення](infection-env.md).
+
+### Продуктові підсистеми
+
 | Підсистема | Реалізовано / перевірено | Не реалізовано / не підтверджено | Джерело |
 |---|---|---|---|
 | Backend і UI | Laravel 13, Filament 5, React 19/TypeScript/Vite; health API, SPA fallback і адмінка `/admin` | Каркас ще не означає готовий MVP | `composer.json`, `client/package.json`, `routes/`, [architecture.md](architecture.md) |

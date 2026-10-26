@@ -1,0 +1,13 @@
+**
+!composer.json
+!composer.lock
+!phpunit.xml
+!app/
+!app/**
+!tests/
+!tests/**
+!database/
+!database/factories/
+!database/factories/**
+!database/seeders/
+!database/seeders/**
