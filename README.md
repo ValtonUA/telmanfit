@@ -12,6 +12,7 @@
 | **Що вже реалізовано, а що лише спроєктовано** | [Project Status](docs/project-status.md) |
 | **Чому дев'ять SQL, одинадцять PHPUnit XML та папки evidence/screenshots** | [Архітектура, карта технічних файлів](docs/architecture.md#31-карта-технічних-файлів) |
 | **Локальна демонстрація у Windows/WSL2** | [Безпечний запуск на окремій PostgreSQL 18](docs/local-demo.md) |
+| **Як має працювати клієнтський вебзастосунок** | [Канонічний продуктовий і UX-контракт](docs/client-app.md) |
 | Як працює архітектура | [Architecture](docs/architecture.md) |
 | Бізнес-правила | [Business Rules](docs/business-rules.md) |
 | Таблиці й зв'язки | [Entity Catalog](docs/entity-catalog.md), [DBML](docs/database.dbml) |
