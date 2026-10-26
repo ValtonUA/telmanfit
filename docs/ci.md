@@ -60,6 +60,9 @@ PR; стара зелена перевірка не годиться. На opene
   семиденних блоків, редагування структури, retry/stale/PG negatives,
   UX-4D: empty/no-modal, filled confirmation/cancel, stable anchor/retry, middle-week renumber та history hashes;
   реальні delete-vs-append/delete-vs-raw-item INSERT locks і Chromium light/dark 1440/390/320; [контракт](meal-plans.md).
+- T4.4: publication preflight/atomic transition, exact Model I/history, SQL immutability,
+  PG/Livewire, independent-session lock waits та Chromium light/dark 1440/390/320
+  у чинній recipe групі; [контракт](meal-plans.md#публікація-точної-версії-t44).
 - G4-I Model I: populated upgrade hashes, direct SQL selector negatives, decimal
   readonly resolver, fractional portions, frozen physical composition та root/selector
   concurrency; входять у Stage3/T4.2 runner без додаткового workflow.

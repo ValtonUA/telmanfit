@@ -5,6 +5,7 @@ namespace App\Filament\Resources\MealPlans\Pages;
 use App\Filament\Resources\MealPlans\MealPlanVersionResource;
 use App\Models\Meal;
 use App\Models\MealType;
+use App\Services\MealPlans\MealPlanPublisher;
 use App\Services\MealPlans\MealPlanStructure;
 use App\Services\MealPlans\MealPlanWeekRepeater;
 use App\Support\Presentation\MealPlanDisplay;
@@ -100,12 +101,23 @@ class ViewMealPlanVersion extends ViewRecord
     protected function managementActions(): array
     {
         return [
+            Action::make('publishPlan')->label('Опублікувати')->authorize(fn () => Gate::allows('publish', $this->getRecord()))
+                ->requiresConfirmation()->modalHeading('Опублікувати версію раціону')
+                ->modalDescription('Перевірено всі тижні, дні, прийоми, позиції та грамування. Після публікації ця версія незмінна. Призначення клієнтам не змінюються.')
+                ->modalSubmitActionLabel('Опублікувати')->modalCancelActionLabel('Скасувати')
+                ->schema([Hidden::make('expected')->required()])
+                ->fillForm(fn (Action $action) => $this->withStructureValidation($action, fn () => ['expected' => app(MealPlanPublisher::class)->preview(auth()->user(), $this->getRecord())]))
+                ->action(function (array $data, Action $action): void {
+                    $this->withStructureValidation($action, fn () => app(MealPlanPublisher::class)->publish(auth()->user(), $this->getRecord(), $data['expected']));
+                    Notification::make()->success()->title('Версію раціону опубліковано')->send();
+                    $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord()]), navigate: false);
+                }),
             ...$this->itemActions(),
             ...$this->weekRepetitionActions(),
             ...$this->weekDeletionActions(),
             Action::make('generateWeek')->label('Додати 7 днів')->modalSubmitActionLabel('Додати тиждень')->authorize(fn () => $this->editable())
                 ->modalHeading('Додати наступний семиденний тиждень')
-                ->modalDescription('Створюються лише дні й обрані прийоми. Позицій немає; публікація ще недоступна. Повторний запит того самого тижня не дублює дані.')
+                ->modalDescription('Створюються лише дні й обрані прийоми. Позицій немає; перед публікацією заповніть усі прийоми. Повторний запит того самого тижня не дублює дані.')
                 ->fillForm(fn () => ['start_day' => $this->getRecord()->days()->count() + 1])
                 ->schema([
                     Hidden::make('start_day')->required(),
@@ -142,6 +154,9 @@ class ViewMealPlanVersion extends ViewRecord
     {
         if (in_array($name, ['addItem', 'editItem', 'moveItem', 'deleteItem'], true)) {
             Gate::authorize('editItems', $this->getRecord());
+        }
+        if ($name === 'publishPlan') {
+            Gate::authorize('publish', $this->getRecord());
         }
         if (in_array($name, ['repeatWeek', 'replaceWeeks', 'generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
             $this->authorizeStructure();

@@ -131,6 +131,9 @@ def run_meal_plans(page, base):
             from week_repetition import run_week_repetition
             repeat_payload = run_week_repetition(page, base, f, suffix, submit)
             checks.append(suffix + ": T4.3R deep copy, independent edit, replace confirm/cancel, stale guard")
+            from plan_publication import run_plan_publication
+            run_plan_publication(page, base, f, suffix, submit)
+            checks.append(suffix + ': T4.4 validation/cancel/stale/publish/reload/readonly')
             from plan_presentation import run_plan_presentation
             run_plan_presentation(page, base, f, suffix)
             page.goto(draft_url)
@@ -196,6 +199,18 @@ def run_meal_plans(page, base):
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             checks.append(suffix + ': create/list/search/plan/exact version/generate/edit/append 21/filled week cancel+confirm/middle renumber stable IDs/empty week no modal/reload/published hierarchy, no overflow')
             print('Meal plans Chromium: ' + suffix + ' PASS', flush=True)
+    # Окрема валідна draft confirmation лишається draft для CSRF/revocation probes.
+    publication_guard = json.loads(fixture('repeat-single-seed', f['type'], f['extra_type'], f['food']))
+    fixture('publication-fill', publication_guard['version'])
+    page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']))
+    management(page, 'Опублікувати')
+    expect(page.get_by_role('heading', name='Опублікувати версію раціону', exact=True)).to_be_visible()
+    publication_raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()
+                           if 'mountedActions' in json.loads(e.get_attribute('wire:snapshot'))['data'])
+    publication_payload = {'components': [{'snapshot': publication_raw, 'updates': {}, 'calls': [{'method': 'callMountedAction', 'params': []}]}]}
+    publication_before = fixture('week-state', publication_guard['version'])
+    assert page.context.request.post(base + '/admin/livewire/update', data=publication_payload, headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 419
+    assert fixture('week-state', publication_guard['version']) == publication_before
     # Нові чернетки очікувані; історичні дані незмінні, перевіряються окремо нижче.
     page.goto(published)
     before = fixture('hash')
@@ -230,9 +245,9 @@ def run_meal_plans(page, base):
     headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
     count = fixture('count')
     assert page.context.request.post(base + '/admin/livewire/update', data=payload, headers=headers).status == 419
-    checks.append('Missing CSRF rejects signed item/week-delete/create 419; guest/MFA boundary shared with recipe browser')
+    checks.append('Missing CSRF rejects signed publication/item/week-delete/create 419; guest/MFA boundary shared with recipe browser')
     (output / 'checks.json').write_text(json.dumps({'checks': checks, 'presentation': json.loads((output / 'presentation-checks.json').read_text())}, ensure_ascii=False, indent=2) + '\n')
-    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload}
+    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload, 'publication_payload': publication_payload, 'publication_version': publication_guard['version'], 'publication_before': publication_before}
 
 
 def verify_meal_plan_revocation(page, base, state):
@@ -241,6 +256,9 @@ def verify_meal_plan_revocation(page, base, state):
     assert page.context.request.post(base + '/admin/livewire/update', data=state['payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     for path in ('/admin/meal-plans', '/admin/meal-plans/create', state['version'].removeprefix(base)):
         assert page.context.request.get(base + path).status == 403
+    state['publication_payload']['_token'] = state['csrf']
+    assert page.context.request.post(base + '/admin/livewire/update', data=state['publication_payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
+    assert fixture('week-state', state['publication_version']) == state['publication_before']
     state['repeat_payload']['_token'] = state['csrf']
     assert page.context.request.post(base + '/admin/livewire/update', data=state['repeat_payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     state['item_payload']['_token'] = state['csrf']
@@ -252,5 +270,5 @@ def verify_meal_plan_revocation(page, base, state):
     assert fixture('hash') == state['hash']
     result = Path('docs/evidence/meal-plans/checks.json')
     data = json.loads(result.read_text())
-    data['checks'].append('Revoked signed item/confirmed week-delete/create/HTTP 403, unchanged structure/plans/history/foods/assignments')
+    data['checks'].append('Revoked signed publication/item/confirmed week-delete/create/HTTP 403, unchanged structure/plans/history/foods/assignments')
     result.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')

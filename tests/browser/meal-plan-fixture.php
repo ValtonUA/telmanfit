@@ -82,6 +82,22 @@ if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed', 'repe
     echo json_encode(['photo_food' => $denseFood, 'broken_food' => $brokenFood, 'version' => $version->id, 'day' => $day->id, 'day8' => $days->get(7)?->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
     exit;
 }
+if (($argv[1] ?? '') === 'publication-fill') {
+    $version = MealPlanVersion::where('status', 'draft')->findOrFail((int) $argv[2]);
+    $food = DB::table('ingredients')->value('food_id');
+    $g = DB::table('uoms')->where('code', 'g')->value('id');
+    DB::transaction(function () use ($version, $food, $g): void {
+        foreach ($version->days()->with('meals.items')->get() as $day) {
+            foreach ($day->meals as $meal) {
+                if ($meal->items->isEmpty()) {
+                    DB::table('meal_items')->insert(['meal_id' => $meal->id, 'food_id' => $food, 'quantity' => '1', 'uom_id' => $g, 'resolved_quantity_grams' => '1']);
+                }
+            }
+        }
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+    });
+    exit;
+}
 if (($argv[1] ?? '') === 'hash') {
     $state = [];
     $plans = DB::table('meal_plans')->where('title', 'Синтетичний історичний раціон')->pluck('id');
