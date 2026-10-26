@@ -177,6 +177,7 @@ Table kitchen_equipment_categories [headercolor: #D97706] {
 Table kitchen_equipment [headercolor: #D97706] {
   id smallint [pk]
   name text [not null, unique]
+  image_url text [note: 'Змінюване публічне HTTPS фото; точний allowlist hosts у Laravel; nullable.']
   kitchen_equipment_category_id smallint
 }
 

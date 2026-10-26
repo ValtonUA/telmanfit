@@ -8,14 +8,13 @@ import subprocess
 import sys
 
 REQUIRED = {
-    "full.yml": {
-        "stage1 / PostgreSQL and browser regressions",
-        "runtime / PHP 8.4.27 security", "runtime / PHP 8.5.12 security",
-        "compose / Cold build and browser acceptance",
-        "Full documentation and base", "Full PR gate",
-    },
     "fast.yml": {"Fast PR checks"},
     "docs-health.yml": {"Docs links, roadmap and PR impact"},
+    "targeted.yml": {
+        "Select required PostgreSQL/browser security coverage",
+        "regressions / PostgreSQL and browser regressions",
+        "Targeted PR checks",
+    },
 }
 
 
@@ -43,7 +42,7 @@ def evaluate(snapshot):
     if pr.get("auto_merge"):
         errors.append("Disable auto-merge; this fallback requires an explicit SHA-locked merge")
     if snapshot["comparison"]["status"] not in {"ahead", "identical"}:
-        errors.append("Current master is not included in tested head; update branch and repeat Full")
+        errors.append("Current master is not included in tested head; update branch and repeat required checks")
     evidence = {}
     for workflow, required in REQUIRED.items():
         runs = [r for r in snapshot["runs"].get(workflow, [])
@@ -56,12 +55,23 @@ def evaluate(snapshot):
             continue
         run = max(runs, key=lambda r: r["id"])
         jobs = snapshot["jobs"].get(str(run["id"]), [])
-        names = [j["name"] for j in jobs]
+        names = [
+            "regressions / PostgreSQL and browser regressions"
+            if (workflow == "targeted.yml" and j["name"] == "regressions"
+                and j["status"] == "completed" and j["conclusion"] == "skipped")
+            else j["name"]
+            for j in jobs
+        ]
         if run["status"] != "completed" or run["conclusion"] != "success":
             errors.append(f"{workflow}: latest run {run['id']} is not completed/success")
         if set(names) != required or len(names) != len(required):
             errors.append(f"{workflow}: missing/extra/duplicate jobs: {names}")
         for job in jobs:
+            if (workflow == "targeted.yml"
+                    and job["name"] in {"regressions", "regressions / PostgreSQL and browser regressions"}
+                    and job["status"] == "completed" and job["conclusion"] == "skipped"):
+                # Targeted gate proves the diff selected no PG/browser scope.
+                continue
             if (job["status"] != "completed" or job["conclusion"] != "success"
                     or job["head_sha"] != sha or job["run_attempt"] != run["run_attempt"]):
                 errors.append(f"{workflow}: invalid job {job['name']}")

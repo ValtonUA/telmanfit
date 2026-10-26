@@ -184,7 +184,7 @@ if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'R2ImageMatcherTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
@@ -200,6 +200,8 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/meal-plan-day-concurrency.php
     php tests/pg/meal-plan-week-repetition-concurrency.php
     php tests/pg/meal-plan-publication-concurrency.php
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
     php tests/pg/meal-plan-assignment-concurrency.php
     php tests/pg/recipe-cover-concurrency.php
     stage1_mark recipe_concurrency

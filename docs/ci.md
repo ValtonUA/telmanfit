@@ -1,53 +1,33 @@
-# CI: Fast PR і Full PR gate
+# CI: обов’язкові PR-перевірки без Full CI
 
-Fast PR + Documentation health запускаються для кожного оновлення PR до master
-і push master без path-фільтрів. Fast перевіряє runtime, Composer lock/platform/audit,
-PHP syntax, Compose config, Pint, Unit/Feature на SQLite, обидві frontend збірки та client lint. Docs перевіряє
-посилання/roadmap і docs-impact **від PR base до точного head**, включно з видаленнями.
-Workflow/CI scripts теж потребують canonical docs або обґрунтованого Docs-Impact.
+Кожен PR до `master` виконує три обов’язкові статуси: **Fast PR checks**,
+**Docs links, roadmap and PR impact** і **Targeted PR checks**. Full CI workflow
+та його ручний тригер вилучені. Жоден PR, зміна критичних файлів, label, push,
+schedule чи ручний запуск не запускає Full.
 
-## Запуск Full на фінальному head
+Fast перевіряє runtime, Composer lock/platform/audit, PHP syntax, Compose config,
+Pint, Unit/Feature на SQLite, обидві frontend збірки та client lint. Docs перевіряє
+посилання/roadmap і docs-impact **від PR base до точного head**, включно з
+видаленнями. Targeted залишає обов’язковий статус на кожному PR, але запускає PostgreSQL/browser і security набори лише за релевантним diff; документаційні, CI-only та нецільові зміни не піднімають їхнє важке оточення. Workflow має contents: read, без `pull_request_target` і secrets.
 
-1. Оновити гілку так, щоб актуальний master був її предком. Переконатися, що
-   Fast PR і Documentation health успішні на потрібному SHA.
-2. Запустити із довіреного checkout:
+`scripts/ci/pre_merge.py` перевіряє лише Fast, Docs і Targeted на точному PR head,
+поточну ancestry до master, найновіший run/attempt, усі jobs/steps, PR event і
+відсутність auto-merge. Він не читає змінені файли чи labels для вимоги Full.
+Після зміни head/base усі три required checks мають пройти на новому стані.
 
-   ```sh
-   python3 scripts/ci/request_full.py <PR> --repo ValtonUA/telmanfit
-   ```
+PostgreSQL і browser регресії запускай локальними runner-скриптами зі своїми
+ізольованими disposable базами й guards. Їхній локальний PASS — це локальний доказ,
+не GitHub CI на конкретному SHA. Не викликай повний CI workflow або Full suites у
+GitHub Actions.
 
-   Скрипт перевіряє Fast/docs на поточному SHA та завершення автоматичного Full
-   gate, тоді знімає/повертає `ci:full` через REST API. Він відмовляє при незавершених
-   runs або зміні head/base. Не ставити мітку відразу після push: GitHub не гарантує
-   порядок доставки synchronize/labeled, тому пізня автоматична подія може скасувати
-   запит. Якщо таке сталося, дочекатися Fast/docs та повторити request_full.py.
-   Мітку створює maintainer один раз: `gh label create ci:full --color 1d76db`.
+## Набори тестів для локального запуску
 
-3. Дочекатися Full PR: PostgreSQL/browser, PHP 8.4.27 і 8.5.12, cold Compose,
-   Full documentation and base та агрегатор Full PR gate мають бути success.
-4. Із довіреного reviewed checkout виконати:
+Ці suite-файли, раннери й reusable workflow-файли збережені для цільової локальної
+діагностики. GitHub Actions більше не викликає Full PostgreSQL/browser, PHP matrix
+чи cold Compose. На PR PostgreSQL/browser/security перевірки виконуються лише
+цільовими групами workflow `targeted.yml`; Fast/Docs лишаються окремими required checks.
 
-   ```sh
-   python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit
-   ```
 
-   Позитивний JSON `eligible: true` містить head/base SHA і посилання на runs.
-   Це перевірка CI, не дозвіл merge і не зміна Draft-статусу.
-5. Лише за окремою авторизацією merge: повторити перевірку безпосередньо перед
-   дією й передати її `head_sha` у `gh pr merge --match-head-commit <SHA>`.
-   Не використовувати auto-merge. При зміні master повторити Full після оновлення гілки.
-
-Новий commit **не запускає важкі suites автоматично**, навіть якщо `ci:full` лишилася.
-Він запускає дешевий негативний Full PR gate і скасовує попередній Full тієї самої
-PR; стара зелена перевірка не годиться. На opened/reopened/synchronize та сторонню
-мітку залежні Full jobs skipped, але агрегатор **failure**, тому зеленої підміни немає.
-Потрібно знову явно додати `ci:full`. Concurrency ізольовано номером PR та рівнем CI;
-події незалежних PR не скасовують одна одну. Скасування/помилка Full блокує gate;
-найновіший run/attempt має пріоритет над попереднім success на тому самому SHA.
-`workflow_dispatch` не використовується: labeled pull_request реально прив’язаний
-до head PR, а reusable workflows беруть точний `inputs.head`.
-
-## Збережене повне покриття
 
 - Stage 1 SQL baseline 76, PostgreSQL18/ICU/btree_gist, runner fail-closed tests,
   ізольований SQL/PDO runner, Stage 1/2/3 та profiles upgrade/regression.
@@ -60,14 +40,13 @@ PR; стара зелена перевірка не годиться. На opene
   семиденних блоків, редагування структури, retry/stale/PG negatives,
   UX-4D: empty/no-modal, filled confirmation/cancel, stable anchor/retry, middle-week renumber та history hashes;
   реальні delete-vs-append/delete-vs-raw-item INSERT locks і Chromium light/dark 1440/390/320; [контракт](meal-plans.md).
+- T4.5: exact published-version client assignment, atomic replacement/history, fresh admin/recovery fence,
+  owner/ACL/date checks, PG exclusion/locks/concurrency and confirmation/stale browser flows;
+  local reproduction: `MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`;
+  [контракт](meal-plans.md).
 - T4.4: publication preflight/atomic transition, exact Model I/history, SQL immutability,
   PG/Livewire, independent-session lock waits та Chromium light/dark 1440/390/320
   у чинній recipe групі; [контракт](meal-plans.md#публікація-точної-версії-t44).
-- T4.5: preview/confirmation, first assignment/replacement/history, stale, CSRF і
-  revocation перевіряються сервісом, PostgreSQL concurrency та Chromium у всіх шести
-  комбінаціях 1440/390/320 × light/dark. Це окремий workflow у Full не додає: browser
-  runner працює у baseline worker на порту 8098 паралельно з recipe групою; наявні
-  T4.1–T4.4 сценарії його кроки не дублюють. [Контракт](meal-plans.md).
 - G4-I Model I: populated upgrade hashes, direct SQL selector negatives, decimal
   readonly resolver, fractional portions, frozen physical composition та root/selector
   concurrency; входять у Stage3/T4.2 runner без додаткового workflow.
@@ -86,7 +65,7 @@ PR; стара зелена перевірка не годиться. На opene
   Pint, dependency audit та frontend build на обох runtime.
 - Стандартний Compose `build --pull --no-cache`, synthetic credential/database
   exclusion probes у готовому образі, MFA/OTP/CSRF/fence, persistence та cleanup.
-- Docs guard із PR-base і регресійні тести CI виконуються також усередині Full.
+- Docs guard із PR-base і регресійні тести CI виконуються в обов’язковому Documentation health.
 
 Кешуються завантаження Composer і npm, прив’язані до lock hash; vendor,
 node_modules, browser profiles, PG volumes і cold Docker layers не кешуються.
@@ -105,15 +84,13 @@ commit блокують очікування; selector assertion доводит�
 matrix jobs і Fast. SQLite tests під synthetic PG bindings збережені.
 Chromium regression тести readiness та реального cancellation cleanup запускаються у Stage1 після Playwright
 install. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
-MFA/OTP timer/cooldown перевірки збережені. Stage1 завантажує pinned Chromium без
-`--with-deps`: Ubuntu runner image вже містить системні Chromium-бібліотеки, а apt
-оновлення й додаткові шрифти не є потрібною частиною браузерного тесту.
+MFA/OTP timer/cooldown перевірки збережені.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
 Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
 jobs: GitHub рахує wall time одного зайнятого runner, а не суму worker durations.
 Composer/npm/Playwright і immutable Docker layers готуються один раз на job.
 Workers мають різні disposable PG/socket, VIEW_COMPILED_PATH, PHPUnit cache,
-HTTP ports (recipe8090; T4.5 assignment8098; auth8093–8097), stdout files і process groups. PG mutable
+HTTP ports (recipe8090; auth8093–8097), stdout files і process groups. PG mutable
 state не ділиться; SQLite85 у synthetic context і обидва PG142/194 збережені.
 Parent і workers відмовляють для remote Docker. Усі чотири exit0/completed/success
 обов'язкові; missing/failed/cancelled/pending/skipped блокує orchestrator. При
@@ -136,18 +113,7 @@ Chromium і total разом із cleanup. Чотири worker stdout і `groups
 в `stage1-pg-logs` поряд із чинними SQL outputs. Exit codes перевіряються напряму,
 без pipeline, що міг би приховати failure.
 
-## Межі merge-захисту
 
-Read-only preflight CI-COST-2 підтвердив активний ruleset `CI-COST-1`
-(id 25788875): required `Full PR gate`, `Fast PR checks`,
-`Docs links, roadmap and PR impact` від GitHub Actions (integration15368), strict
-up-to-date branches, PR requirement, заборона deletion/non-fast-forward.
-Історична недоступність branch protection у CI-COST-1 більше не описує поточний
-ruleset. Налаштування захисту не змінюються цим PR; machine checker залишається
-додатковою перевіркою SHA/run-attempt/job coverage. Приватність зберігається.
-Workflow-зміни потребують предметного review: PR-код не є сам собі довіреним verifier.
-Навіть SHA-locked merge не дає атомарної блокади одночасної зміни base без
-серверного strict protection; перед merge перевіряти base, а після конфліктів — новий Full.
 
 ## Вимірювання й перевірка
 
@@ -174,9 +140,8 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 фінального SHA додаються до опису PR, щоб не створювати новий неперевірений commit.
 
 
-Цільовий T4.5 runner без Stage1/Chromium full regression:
-`MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`.
-Запускає лише `MealPlanAssignmentTest`, assignment concurrency і assignment Chromium
-на новій disposable PG18 із cleanup. Без browser — опустити
-`MEAL_PLAN_ASSIGNMENT_BROWSER`. Ці ж перевірки інтегровані в чинну baseline Stage1
-групу Full; запуск Full для T4.5 відкладено до перевірки виправлення власником.
+## PR gate без Full CI
+
+Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: AUTH3–5 `baseline` запускається для auth/security/readiness змін; зміни рецептів і планів запускають лише `recipe`; `b5`/`b3` додаються для відповідного auth/security коду; міграції та невідомі PG/browser тести консервативно розширюють набір. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують unit regressions через Documentation health без PG/browser runner. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
+
+Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.

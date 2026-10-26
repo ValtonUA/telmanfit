@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Дві незалежні PG/Chromium групи на одному runner, без нових billed jobs."""
+import argparse
 import datetime as dt
 import json
 import os
@@ -119,8 +120,9 @@ def cleanup_containers(group):
     return ids
 
 
-def require_complete(results):
-    if set(results) != set(GROUPS) or any(
+def require_complete(results, expected_groups=None):
+    expected_groups = GROUPS if expected_groups is None else expected_groups
+    if set(results) != set(expected_groups) or any(
             item.get('status') != 'success' or item.get('exit_code') != 0
             or not item.get('completed_at') for item in results.values()):
         raise RuntimeError('Missing, failed or incomplete Stage1 group')
@@ -143,7 +145,27 @@ def interrupted(signum, _frame):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
+def select_groups(value):
+    names = list(GROUPS) if value == 'all' else value.split(',')
+    if (not names or len(set(names)) != len(names)
+            or any(name not in GROUPS for name in names)):
+        raise ValueError('--groups must be all or a comma-separated list of known groups')
+    selected = {name: GROUPS[name] for name in names}
+    phases = tuple(tuple(name for name in phase if name in selected)
+                   for phase in PHASES if any(name in selected for name in phase))
+    return selected, phases
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--groups', default='all',
+                        help='Comma-separated Stage1 groups, or all (default)')
+    args = parser.parse_args()
+    try:
+        selected, phases = select_groups(args.groups)
+    except ValueError as error:
+        parser.error(str(error))
+    selected_groups = list(selected)
     os.chdir(ROOT)
     os.umask(0o077)
     try:
@@ -162,24 +184,24 @@ def main():
     group = uuid.uuid4().hex
     summary = {'head_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
                'started_at': utc(), 'max_workers': 2,
-               'ownership_label': group,
-               'groups': {name: {'status': 'not_started'} for name in GROUPS}, 'status': 'failure'}
+               'ownership_label': group, 'selected_groups': selected_groups,
+               'groups': {name: {'status': 'not_started'} for name in selected}, 'status': 'failure'}
     started = time.monotonic()
     code = 1
     with tempfile.TemporaryDirectory(prefix='telmanfit-stage1-ci.', dir='/tmp') as directory:
         summary['private_work_root'] = directory
         (out / 'groups.json').write_text(json.dumps(summary, indent=2) + '\n')
         environments = {}
-        for name in GROUPS:
+        for name in selected:
             worker = Path(directory) / name
             for child in ['views', 'phpunit']:
                 (worker / child).mkdir(parents=True)
             environments[name] = worker_environment(name, worker, group)
         try:
-            for phase in PHASES:
+            for phase in phases:
                 run_phase({name: ['bash', 'tests/pg/run-stage1.sh'] for name in phase},
                           environments, logs, summary['groups'])
-            require_complete(summary['groups'])
+            require_complete(summary['groups'], selected)
             summary['status'] = 'success'
             code = 0
         except (RuntimeError, OSError, InterruptedError) as error:

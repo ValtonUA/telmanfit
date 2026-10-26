@@ -8,6 +8,10 @@ on:
       base:
         required: true
         type: string
+      groups:
+        required: false
+        type: string
+        default: all
 permissions:
   contents: read
 jobs:
@@ -53,23 +57,36 @@ jobs:
       - run: python -m playwright install chromium
       - name: Chromium render readiness regressions
         run: python -m unittest discover -s tests/browser -p 'test_*.py' -v
-      - name: All isolated PostgreSQL and Chromium groups (two bounded workers)
-        run: python3 scripts/ci/stage1_groups.py
-      - run: bash tests/pg/test-runner.sh
-      - run: bash tests/pg/run-isolated-pg.sh
+      - name: Selected isolated PostgreSQL and Chromium groups (two bounded workers)
+        run: python3 scripts/ci/stage1_groups.py --groups '${{ inputs.groups }}'
+      - name: Complete SQL schema suite
+        env:
+          GROUPS: ${{ inputs.groups }}
+        run: |
+          if [[ "$GROUPS" == all ]]; then
+            bash tests/pg/test-runner.sh
+            bash tests/pg/run-isolated-pg.sh
+          else
+            echo "Full-only SQL schema suites are not selected."
+          fi
       - name: AUTH-1 regression
         env:
+          GROUPS: ${{ inputs.groups }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
-            tail -2 tests/pg/out/auth1.out
-          else
-            python3 - <<'PYCODE'
+          if [[ "$GROUPS" == all ]]; then
+            if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
+              tail -2 tests/pg/out/auth1.out
+            else
+              python3 - <<'PYCODE'
           from pathlib import Path
           text = '\n'.join(Path('tests/pg/out/auth1.out').read_text().splitlines()[-30:])
           print('::error::AUTH-1 regression failed: ' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
           PYCODE
-            exit 1
+              exit 1
+            fi
+          else
+            echo "Full-only AUTH-1 upstream probe is not selected."
           fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
