@@ -147,7 +147,7 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
         $this->repeater->repeat($this->actor, $this->version, $this->input());
         $input = $this->input(2, 4);
         $preview = $this->repeater->preview($this->actor, $this->version, $input);
-        $this->assertSame([3 => 7, 4 => 7], $preview['filled']);
+        $this->assertSame([3 => ['meal_count' => 7, 'item_count' => 7], 4 => ['meal_count' => 7, 'item_count' => 7]], $preview['replacements']);
         foreach ([null, true, 'forged'] as $confirmation) {
             $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $input + ['confirmation' => $confirmation]));
         }
@@ -178,7 +178,9 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
         $ids = DB::table('meals')->whereIn('meal_plan_day_id', $days->slice(1, 6)->pluck('id'))->pluck('id');
         DB::table('meal_items')->whereIn('meal_id', $ids)->delete();
         DB::table('meals')->whereIn('id', $ids)->delete();
-        $this->repeater->repeat($this->actor, $this->version, $this->input());
+        $input = $this->input();
+        $input['confirmation'] = $this->repeater->preview($this->actor, $this->version, $input)['confirmation'];
+        $this->repeater->repeat($this->actor, $this->version, $input);
         $this->assertSame($this->week(1), $this->week(4));
         $input = $this->input();
         $s = app(MealPlanStructure::class);
@@ -219,7 +221,9 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
     {
         $this->generate(8);
         $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $this->input(2)));
-        $this->repeater->repeat($this->actor, $this->version, $this->input());
+        $input = $this->input();
+        $input['confirmation'] = $this->repeater->preview($this->actor, $this->version, $input)['confirmation'];
+        $this->repeater->repeat($this->actor, $this->version, $input);
         $input = $this->input();
         $input['confirmation'] = $this->repeater->preview($this->actor, $this->version, $input)['confirmation'];
         $target = $this->version->days()->where('day_number', 15)->sole()->meals()->sole();
@@ -238,6 +242,53 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
             }
         }
         $this->assertSame($before, $this->state());
+    }
+
+    public function test_every_existing_target_requires_confirmation_even_without_meals_or_items(): void
+    {
+        $this->assertSame([], $this->repeater->preview($this->actor, $this->version, $this->input())['replacements']);
+        $this->generate(8);
+        $this->generate(15);
+        $target = $this->version->days()->where('day_number', 8)->sole()->meals()->sole();
+        $structure = app(MealPlanStructure::class);
+        $otherType = DB::table('meal_types')->insertGetId(['code' => 'repeat-review-target', 'title' => 'Інший синтетичний тип']);
+        $structure->saveMeal($this->actor, $this->version, ['day_id' => $target->meal_plan_day_id,
+            'meal_type_id' => $otherType, 'title' => 'Авторська назва без страв', 'sort_order' => -12,
+            'expected' => MealPlanStructure::token($target)], $target->id);
+        // Навіть тиждень без жодного прийому не можна замінювати тихо.
+        DB::table('meals')->whereIn('meal_plan_day_id', $this->version->days()->where('day_number', '>=', 15)->pluck('id'))->delete();
+        $input = $this->input();
+        $preview = $this->repeater->preview($this->actor, $this->version, $input);
+        $this->assertSame([2 => ['meal_count' => 7, 'item_count' => 0], 3 => ['meal_count' => 0, 'item_count' => 0]], $preview['replacements']);
+        foreach ([null, true, 'forged'] as $confirmation) {
+            $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $input + ['confirmation' => $confirmation]));
+        }
+        $page = Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id]);
+        $before = $this->state();
+        $page->call('mountAction', 'repeatWeek')->set('mountedActions.0.data.total_weeks', 4)->call('callMountedAction')
+            ->assertActionMounted('replaceWeeks')
+            ->assertSet('repeatSummary', fn ($summary) => str_contains($summary, 'тиждень 2 — прийомів: 7, позицій: 0')
+                && str_contains($summary, 'тиждень 3 — прийомів: 0, позицій: 0'));
+        $this->assertSame($before, $this->state());
+        $page->call('unmountAction');
+        $this->assertSame($before, $this->state());
+        $page->call('mountAction', 'repeatWeek')->set('mountedActions.0.data.total_weeks', 4)->call('callMountedAction');
+        $target = $target->fresh();
+        $structure->saveMeal($this->actor, $this->version, ['day_id' => $target->meal_plan_day_id,
+            'meal_type_id' => $otherType, 'title' => 'Нова правка під час підтвердження', 'sort_order' => 5,
+            'expected' => MealPlanStructure::token($target)], $target->id);
+        $before = $this->state();
+        $page->call('callMountedAction')->assertHasActionErrors(['expected']);
+        $this->assertSame($before, $this->state());
+        $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $input + ['confirmation' => $preview['confirmation']]));
+        $fresh = $this->input();
+        $fresh['confirmation'] = $this->repeater->preview($this->actor, $this->version, $fresh)['confirmation'];
+        $page = Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id]);
+        $page->call('mountAction', 'repeatWeek')->set('mountedActions.0.data.total_weeks', 4)->call('callMountedAction')
+            ->call('callMountedAction')->assertRedirect();
+        $this->assertSame(28, $this->version->days()->count());
+        $this->assertNull($target->fresh());
+        $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $fresh));
     }
 
     public function test_day_editor_redirects_to_overview_after_replacing_its_own_day(): void

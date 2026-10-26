@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Meal;
+use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemWriter;
 use App\Services\MealPlans\MealPlanFoundation;
@@ -38,18 +40,18 @@ if (($argv[1] ?? '') === 'seed') {
     }));
     exit;
 }
-if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed'], true)) {
+if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed', 'repeat-single-seed'], true)) {
     $polish = $argv[1] === 'polish-seed';
     $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
     $writer = app(MealItemWriter::class);
     $structure = app(MealPlanStructure::class);
     $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Синтетичний UX-4E · повний тиждень', 'week_start_weekday' => $polish ? 2 : 1])->versions()->sole();
     $types = DB::table('meal_types')->whereIn('id', [(int) $argv[2], (int) $argv[3]])->pluck('id')->all();
-    foreach ([1, 8] as $start) {
+    foreach ($argv[1] === 'repeat-single-seed' ? [1] : [1, 8] as $start) {
         $structure->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => $types]);
     }
     // Repeat перевіряє копії наявного food, не додає однойменні результати у catalog pagination інших сценаріїв.
-    $denseFood = $argv[1] === 'repeat-seed' ? (int) $argv[4] : DB::transaction(function (): int {
+    $denseFood = in_array($argv[1], ['repeat-seed', 'repeat-single-seed'], true) ? (int) $argv[4] : DB::transaction(function (): int {
         $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
         DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Тестова вівсяна каша з ягодами, горіхами та натуральним йогуртом — довга назва для щільного огляду', 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
 
@@ -77,7 +79,7 @@ if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed'], true
     }
     $days = $version->days()->orderBy('day_number')->get();
     $day = $days->first();
-    echo json_encode(['photo_food' => $denseFood, 'broken_food' => $brokenFood, 'version' => $version->id, 'day' => $day->id, 'day8' => $days[7]->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
+    echo json_encode(['photo_food' => $denseFood, 'broken_food' => $brokenFood, 'version' => $version->id, 'day' => $day->id, 'day8' => $days->get(7)?->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
     exit;
 }
 if (($argv[1] ?? '') === 'hash') {
@@ -97,10 +99,20 @@ if (($argv[1] ?? '') === 'hash') {
     exit;
 }
 // Лише синтетичний disposable PG18 fixture; не є meal-item writer застосунку.
-if (in_array($argv[1] ?? '', ['week-state', 'week-fill'], true)) {
+if (in_array($argv[1] ?? '', ['week-state', 'week-fill', 'week-edit-empty'], true)) {
     $version = DB::table('meal_plan_versions')->where('id', (int) ($argv[2] ?? 0))->where('status', 'draft')->first();
     if (! $version) {
         throw new RuntimeException('Потрібна synthetic draft version');
+    }
+    if ($argv[1] === 'week-edit-empty') {
+        $day = DB::table('meal_plan_days')->where('meal_plan_version_id', $version->id)->where('day_number', (int) $argv[3])->sole();
+        $meal = Meal::where('meal_plan_day_id', $day->id)->orderBy('id')->firstOrFail();
+        if ($meal->items()->exists()) {
+            throw new RuntimeException('Потрібен synthetic прийом без позицій');
+        }
+        app(MealPlanStructure::class)->saveMeal(User::where('email', 'recipe-browser@example.invalid')->sole(),
+            MealPlanVersion::findOrFail($version->id), ['day_id' => $day->id, 'meal_type_id' => $meal->meal_type_id,
+                'title' => (string) $argv[4], 'sort_order' => (int) $argv[5], 'expected' => MealPlanStructure::token($meal)], $meal->id);
     }
     if ($argv[1] === 'week-fill') {
         $day = DB::table('meal_plan_days')->where('meal_plan_version_id', $version->id)->where('day_number', (int) ($argv[3] ?? 0))->sole();

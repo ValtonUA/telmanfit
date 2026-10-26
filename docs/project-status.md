@@ -118,10 +118,12 @@ Published — readonly. Атомарний `MealItemWriter::place` з signed day
 
 `MealPlanWeekRepeater` та Filament week/day action створюють незалежні фізичні
 копії семиденних блоків у точній draft version зі збереженням exact food/recipe
-selectors, кількостей/UOM/грамів і порядку. Двоетапна заміна заповнених цілей
-показує фактичні номери й counts; HMAC snapshot/grant, PostgreSQL row revisions,
+selectors, кількостей/UOM/грамів і порядку. Двоетапна заміна всіх наявних цільових тижнів, навіть за 0 позицій,
+показує фактичні номери та кількість прийомів/позицій; HMAC snapshot/grant, PostgreSQL row revisions,
 спільні locks/fence/fresh admin та deferred rollback захищають від retry,
-конкурентних правок і часткового запису. Поведінка часткового джерела й діапазонів —
+конкурентних правок і часткового запису. Регресія покриває редаговані прийоми
+без страв, cancel/confirm/stale та створення відсутніх цілей без зайвого діалогу.
+Поведінка часткового джерела й діапазонів —
 у [канонічному контракті](meal-plans.md#повторення-тижнів-у-чернетці-t43r).
 
 Автоматизовані докази: `MealPlanWeekRepetitionTest`,

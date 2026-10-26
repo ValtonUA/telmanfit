@@ -206,11 +206,11 @@ class ViewMealPlanVersion extends ViewRecord
                         ->options(fn () => collect(range(1, max(1, $this->weekCount())))->mapWithKeys(fn ($n) => [$n => 'Тиждень '.$n])->all()),
                     TextInput::make('total_weeks')->label('Кількість тижнів загалом')->integer()->minValue(2)->maxValue(4681)->required()->live(onBlur: true)
                         ->helperText(fn (Get $get) => (int) $get('total_weeks') > (int) $get('source_week')
-                            ? 'Тиждень '.($get('source_week') ?: 1).' → цільові тижні '.((int) $get('source_week') + 1).'–'.$get('total_weeks').'. Наприклад, 4 загалом = джерело 1 + 3 копії. Заповнені цілі потребують окремої згоди.'
+                            ? 'Тиждень '.($get('source_week') ?: 1).' → цільові тижні '.((int) $get('source_week') + 1).'–'.$get('total_weeks').'. Наприклад, 4 загалом = джерело 1 + 3 копії. Усі наявні цільові тижні потребують окремої згоди, навіть без позицій.'
                             : 'Укажіть загальну кількість, більшу за номер джерела і не меншу за наявну тривалість.'),
                 ])->action(function (array $data, Action $action): void {
                     $preview = $this->withStructureValidation($action, fn () => app(MealPlanWeekRepeater::class)->preview(auth()->user(), $this->getRecord(), $data));
-                    if ($preview['filled'] !== []) {
+                    if ($preview['replacements'] !== []) {
                         $this->replaceMountedAction('replaceWeeks', array_intersect_key($preview, array_flip(['source_week', 'total_weeks', 'expected'])));
 
                         return;
@@ -231,8 +231,8 @@ class ViewMealPlanVersion extends ViewRecord
             ->schema([Hidden::make('confirmation')])
             ->fillForm(function (array $arguments, Action $action): array {
                 $preview = $this->withStructureValidation($action, fn () => app(MealPlanWeekRepeater::class)->preview(auth()->user(), $this->getRecord(), $arguments));
-                $counts = collect($preview['filled'])->map(fn ($count, $week) => 'тиждень '.$week.': '.$count.' позицій')->implode('; ');
-                $this->repeatSummary = 'Джерело: тиждень '.$preview['source_week'].'. Цілі: '.($preview['source_week'] + 1).'–'.$preview['total_weeks'].'. Буде замінено: '.$counts.'. Вміст цільових тижнів буде повністю замінено незалежними копіями. Поточні правки цілей буде втрачено. Дію неможливо скасувати.';
+                $counts = collect($preview['replacements'])->map(fn ($counts, $week) => 'тиждень '.$week.' — прийомів: '.$counts['meal_count'].', позицій: '.$counts['item_count'])->implode('; ');
+                $this->repeatSummary = 'Джерело: тиждень '.$preview['source_week'].'. Цільовий діапазон: '.($preview['source_week'] + 1).'–'.$preview['total_weeks'].'. Наявні тижні, які буде замінено: '.$counts.'. Вміст цільових тижнів буде повністю замінено незалежними копіями. Поточні правки цілей буде втрачено. Дію неможливо скасувати.';
 
                 return ['confirmation' => $preview['confirmation']];
             })

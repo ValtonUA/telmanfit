@@ -24,18 +24,18 @@ final class MealPlanWeekRepeater
         return $this->structure->withinDraft($actor, $version, function ($locked) use ($actor, $input): array {
             [$state, $source, $total] = $this->validated($actor, $locked, $input);
             $targets = range($source + 1, $total);
-            $filled = [];
+            $replacements = [];
             foreach ($targets as $number) {
                 $ids = collect($state['days'])->whereBetween('day_number', [($number - 1) * 7 + 1, $number * 7])->pluck('id');
                 $meals = collect($state['meals'])->whereIn('meal_plan_day_id', $ids)->pluck('id');
-                $count = collect($state['items'])->whereIn('meal_id', $meals)->count();
-                if ($count > 0) {
-                    $filled[$number] = $count;
+                if ($ids->isNotEmpty()) {
+                    $replacements[$number] = ['meal_count' => $meals->count(),
+                        'item_count' => collect($state['items'])->whereIn('meal_id', $meals)->count()];
                 }
             }
 
             return ['source_week' => $source, 'total_weeks' => $total, 'expected' => $state['expected'],
-                'filled' => $filled, 'confirmation' => $filled === [] ? null : $this->grant($actor, $locked, $source, $total, $state['expected'])];
+                'replacements' => $replacements, 'confirmation' => $replacements === [] ? null : $this->grant($actor, $locked, $source, $total, $state['expected'])];
         });
     }
 
@@ -44,9 +44,9 @@ final class MealPlanWeekRepeater
         $this->structure->withinDraft($actor, $version, function ($locked) use ($actor, $input): void {
             [$state, $source, $total] = $this->validated($actor, $locked, $input);
             $preview = $this->preview($actor, $locked, $input);
-            if ($preview['filled'] !== [] && (! is_string($input['confirmation'] ?? null)
+            if ($preview['replacements'] !== [] && (! is_string($input['confirmation'] ?? null)
                 || ! hash_equals($preview['confirmation'], $input['confirmation']))) {
-                $this->invalid('confirmation', 'Заповнені цільові тижні потребують окремого явного підтвердження.');
+                $this->invalid('confirmation', 'Наявні цільові тижні потребують окремого явного підтвердження.');
             }
             $days = collect($state['days']);
             $meals = collect($state['meals']);
