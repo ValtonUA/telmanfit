@@ -69,15 +69,6 @@ with sync_playwright() as p:
     page.wait_for_url('**/admin')
     checks.append('Штатний password + MFA; guest editor недоступний')
 
-    if os.environ.get('FOOD_CATALOG_ONLY') == '1':
-        from food_catalog import run_catalog, verify_catalog_revocation
-        run_catalog(page, base)
-        verify_catalog_revocation(page, base)
-        assert not errors, errors
-        browser.close()
-        print('Food catalog PostgreSQL/browser PASS', flush=True)
-        raise SystemExit(0)
-
     def action(target, name, exact=True):
         with target.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
             target.get_by_role('button', name=name, exact=exact).click()
