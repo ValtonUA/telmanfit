@@ -52,7 +52,7 @@ Full CI вилучено; для PR обов’язкові Fast, Documentation 
 Інші пакети, Composer constraints та `composer audit --locked` не змінено.
 AUTH-1 зберігає точну перевірку встановлених версій; очікуваний Livewire оновлено
 до `v4.4.8` разом із lock. Історичні звіти/логи попередніх прогонів не переписано.
-На PR виконуються Fast, Documentation health і цільові auth/Filament/PostgreSQL/Chromium регресії workflow Targeted на актуальному head. PHP 8.4/8.5 matrix і cold Compose доступні лише для локальної діагностики; Full CI не запускається.
+На PR виконуються Fast і Documentation health; required Targeted обирає auth/Filament/PostgreSQL/Chromium регресії за diff та не піднімає PG/browser runner для нерелевантних змін. PHP 8.4/8.5 matrix і cold Compose доступні лише для локальної діагностики; Full CI не запускається.
 
 | Напрям | Де перевіряти | Межі |
 |---|---|---|
