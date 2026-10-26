@@ -30,6 +30,7 @@ use Livewire\Attributes\Url;
 class ViewMealPlanVersion extends ViewRecord
 {
     use EditsMealItems;
+    use PersonalPlanActions;
 
     protected string $view = 'filament.meal-plans.week';
 
@@ -101,6 +102,7 @@ class ViewMealPlanVersion extends ViewRecord
     protected function managementActions(): array
     {
         return [
+            $this->personalCopyAction(),
             Action::make('publishPlan')->label('Опублікувати')->authorize(fn () => Gate::allows('publish', $this->getRecord()))
                 ->requiresConfirmation()->modalHeading('Опублікувати версію раціону')
                 ->modalDescription('Перевірено всі тижні, дні, прийоми, позиції та грамування. Після публікації ця версія незмінна. Призначення клієнтам не змінюються.')
@@ -167,7 +169,9 @@ class ViewMealPlanVersion extends ViewRecord
 
     public function callMountedAction(array $arguments = []): mixed
     {
-        $this->authorizeStructure();
+        if (! in_array($this->mountedActions[0]['name'] ?? null, ['personalCopy', 'confirmPersonalCopy'], true)) {
+            $this->authorizeStructure();
+        }
 
         return parent::callMountedAction($arguments);
     }

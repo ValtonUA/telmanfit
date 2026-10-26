@@ -12,7 +12,7 @@
 | 1 | PostgreSQL: 37 бізнес-таблиць | Частково | Міграції/тести виконані; T1.5 seed-довідники ще не погоджені |
 | 2 | Картки клієнтів і auth | Частково | Картки готові; auth controlled/local/testing, production OFF; перший робочий екран анкети, решта питань пізніше |
 | **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; C3 merged #51; D: merged #53, Completion Audit #54; T1.5 окремо** |
-| 4 | Раціони і призначення | Частково | T4.1/T4.2 foundation і структура; G4-I selectors/readonly resolver і T4.3 writer; UX-4E week/day editor; T4.3R повторення тижнів; T4.4 публікація; T4.5 призначення за DEC-4A; далі T4.6 CoW |
+| 4 | Раціони і призначення | Виконано | T4.1–T4.6 (включно з Model I, UX-4E та T4.3R) реалізовано й перевірено; клієнтський перегляд призначеного раціону — Stage 5; production окремо |
 | 5 | Клієнтський кабінет | Частково | Auth/security shell є, харчового функціоналу немає |
 | 6 | Метрики, звіти, фото | Заплановано | Після клієнтів; окремі контракти за потреби |
 | 7 | Комунікація | Заплановано | Після базового прогресу |
@@ -108,7 +108,7 @@
 | T4.3R | [Повторення тижня у draft](meal-plans.md#повторення-тижнів-у-чернетці-t43r): незалежні deep copies 7 днів/прийомів/позицій, exact Model I, явне підтвердження всіх наявних цільових тижнів (навіть 0 позицій), snapshot/retry/locks/rollback; без Publish/assignment. | Виконано |
 | T4.4 | [Публікація exact draft](meal-plans.md#публікація-точної-версії-t44): повнота/грамування, Model I, atomic locks, stale/duplicate/immutable history, Filament, PG/Livewire/concurrency/Chromium (BR-P-01…07). | Виконано |
 | T4.5 | [Призначення exact published version клієнту за DEC-4A](meal-plans.md#призначення-клієнтам-t45-dec-4a): атомарні дати/заміна/подія, HMAC stale/replay, admin/owner ACL, Filament preview/confirm/history, PG/Livewire/concurrency/Chromium. | Виконано |
-| T4.6 | Персональна копія плану (Copy-on-Write). | Заплановано |
+| T4.6 | [Персональна копія exact published version](meal-plans.md#персональні-копії-t46): незалежний draft, lineage/owner, deep copy Model I, preview/confirm/replay/rollback та штатний editor/publish/assignment. | Виконано |
 
 ### Stage 5 — Клієнтський кабінет
 

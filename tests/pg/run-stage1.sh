@@ -175,6 +175,14 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 stage1_mark baseline_migrations
+if [[ ${MEAL_PLAN_COPY_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit -c phpunit.pgsql.xml --filter MealPlanCopyTest --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    php tests/pg/meal-plan-copy-concurrency.php
+    if [[ ${MEAL_PLAN_COPY_BROWSER:-0} == 1 ]]; then bash tests/browser/meal-plan-copy-in-context.sh; fi
+    exit
+fi
 if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanAssignmentTest --display-all-issues
     php tests/pg/meal-plan-assignment-concurrency.php
@@ -182,7 +190,7 @@ if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'R2ImageMatcherTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'R2ImageMatcherTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
@@ -199,11 +207,14 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/meal-plan-week-repetition-concurrency.php
     php tests/pg/meal-plan-publication-concurrency.php
     php tests/pg/meal-plan-assignment-concurrency.php
+    php tests/pg/meal-plan-copy-concurrency.php
     php tests/pg/recipe-cover-concurrency.php
     stage1_mark recipe_concurrency
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then
         bash tests/browser/recipe-batch-in-context.sh
         stage1_mark recipe_browser
+        bash tests/browser/meal-plan-copy-in-context.sh
+        stage1_mark meal_plan_copy_browser
     fi
     exit
 fi
