@@ -16,7 +16,11 @@ REQUIRED = {
     },
     "fast.yml": {"Fast PR checks"},
     "docs-health.yml": {"Docs links, roadmap and PR impact"},
-    "targeted.yml": {"Targeted PR checks"},
+    "targeted.yml": {
+        "Select required PostgreSQL/browser security coverage",
+        "regressions / PostgreSQL and browser regressions",
+        "Targeted PR checks",
+    },
 }
 ALWAYS_REQUIRED = {"fast.yml", "docs-health.yml", "targeted.yml"}
 FULL_TRIGGER_PREFIXES = (
