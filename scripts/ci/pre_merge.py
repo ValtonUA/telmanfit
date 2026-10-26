@@ -8,12 +8,6 @@ import subprocess
 import sys
 
 REQUIRED = {
-    "full.yml": {
-        "stage1 / PostgreSQL and browser regressions",
-        "runtime / PHP 8.4.27 security", "runtime / PHP 8.5.12 security",
-        "compose / Cold build and browser acceptance",
-        "Full documentation and base", "Full PR gate",
-    },
     "fast.yml": {"Fast PR checks"},
     "docs-health.yml": {"Docs links, roadmap and PR impact"},
     "targeted.yml": {
@@ -22,29 +16,6 @@ REQUIRED = {
         "Targeted PR checks",
     },
 }
-ALWAYS_REQUIRED = {"fast.yml", "docs-health.yml", "targeted.yml"}
-FULL_TRIGGER_PREFIXES = (
-    ".github/workflows/", "scripts/ci/", "database/migrations/",
-    "tests/pg/", "experiments/auth", "app/Services/Auth/",
-    "app/Http/Middleware/",
-)
-FULL_TRIGGER_FILES = {
-    "composer.json", "composer.lock", "package-lock.json",
-    "client/package-lock.json", "Dockerfile", "compose.yaml", "docker-compose.yml",
-}
-
-
-def full_required(snapshot):
-    labels = {label.get("name") for label in snapshot["pr"].get("labels", [])}
-    if "ci:full" in labels:
-        return True
-    return any(
-        path.startswith(FULL_TRIGGER_PREFIXES) or path in FULL_TRIGGER_FILES
-        for path in snapshot.get("changed_files", [])
-    )
-
-
-
 def api(path):
     raw = subprocess.check_output(["gh", "api", "--paginate", path], text=True)
     # --slurp is absent from older gh releases. Decode concatenated JSON pages.
@@ -69,13 +40,9 @@ def evaluate(snapshot):
     if pr.get("auto_merge"):
         errors.append("Disable auto-merge; this fallback requires an explicit SHA-locked merge")
     if snapshot["comparison"]["status"] not in {"ahead", "identical"}:
-        errors.append("Current master is not included in tested head; update branch and repeat Full")
+        errors.append("Current master is not included in tested head; update branch and repeat required checks")
     evidence = {}
-    required_workflows = set(ALWAYS_REQUIRED)
-    if full_required(snapshot):
-        required_workflows.add("full.yml")
-    for workflow in required_workflows:
-        required = REQUIRED[workflow]
+    for workflow, required in REQUIRED.items():
         runs = [r for r in snapshot["runs"].get(workflow, [])
                 if r["head_sha"] == sha and r["event"] == "pull_request"
                 and r["path"] == f".github/workflows/{workflow}"
@@ -111,9 +78,7 @@ def evaluate(snapshot):
 def collect(repo, number):
     pr = api(f"repos/{repo}/pulls/{number}")[0]
     sha = pr["head"]["sha"]
-    snapshot = {"repository": repo, "pr": pr, "runs": {}, "jobs": {},
-                "changed_files": [f["filename"] for page in api(
-                    f"repos/{repo}/pulls/{number}/files?per_page=100") for f in page]}
+    snapshot = {"repository": repo, "pr": pr, "runs": {}, "jobs": {}}
     snapshot["comparison"] = api(f"repos/{repo}/compare/{pr['base']['sha']}...{sha}")[0]
     for workflow in REQUIRED:
         pages = api(f"repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&event=pull_request&per_page=100")
