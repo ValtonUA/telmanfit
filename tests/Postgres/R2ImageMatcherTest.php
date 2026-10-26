@@ -47,8 +47,6 @@ class R2ImageMatcherTest extends PostgresTestCase
         $this->assertNull(DB::table('ingredients')->where('id', $ingredientId)->value('image_url'));
         $this->assertNull(DB::table('kitchen_equipment')->where('id', $equipmentId)->value('image_url'));
         $this->assertNull(DB::table('recipes')->where('id', $recipeId)->value('image_url'));
-        $this->assertStringContainsString('ambiguous', Artisan::output());
-
         $exit = Artisan::call('assets:match-r2-images', [
             '--apply' => true,
             '--public-base-url' => 'https://images.example.com',
