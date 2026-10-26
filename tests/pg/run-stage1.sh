@@ -176,7 +176,7 @@ done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 stage1_mark baseline_migrations
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'R2ImageMatcherTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
