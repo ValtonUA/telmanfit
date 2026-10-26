@@ -173,7 +173,7 @@
 | T9.4 | Регресійний прогін усіх тестів (backend + схема на PostgreSQL + SPA) і перевірка збірки `public/app`. | Заплановано |
 | T9.5 | Чек-ліст безпеки: приватність фото, маскування подій, обмеження доступу до API. | Заплановано |
 
-**Під час Stage 9:** Hyperhost VPS Старт (2 CPU/3 ГБ/45 ГБ), SendPulse SMTP та зовнішні копії Hyperhost обрані, але **не налаштовані**. Допустимий простій і до **24 годин втрати останніх змін** — погоджена ціль RPO, не підтверджений фактичний результат. D8.1 preflight merged [PR #24](https://github.com/ValtonUA/telmanfit/pull/24); D8.2 тільки [Draft PR #25](https://github.com/ValtonUA/telmanfit/pull/25), без сервера. До production потрібні PG-aware encrypted external backup, restore drill, незалежне last-admin recovery після B5 restore та B7 go/no-go. D3 recovery через друзів відкладено (Draft [PR #22](https://github.com/ValtonUA/telmanfit/pull/22)).
+**Під час Stage 9:** Hyperhost VPS Старт (2 CPU/3 ГБ/45 ГБ), SendPulse SMTP та зовнішні копії Hyperhost обрані, але **не налаштовані**. Допустимий простій і до **24 годин втрати останніх змін** — погоджена ціль RPO, не підтверджений фактичний результат. D8.1 preflight merged [PR #24](https://github.com/ValtonUA/telmanfit/pull/24); D8.2 лише documentation kit, без сервера. До production потрібні PG-aware encrypted external backup, restore drill, незалежне last-admin recovery після B5 restore та B7 go/no-go. D3 recovery через друзів відкладено; [D3 design](auth6-d3-design.md) не є operational approval.
 
 ## AUTH: реалізоване й незавершене
 
