@@ -213,6 +213,8 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then
         bash tests/browser/recipe-batch-in-context.sh
         stage1_mark recipe_browser
+        bash tests/browser/meal-plan-copy-in-context.sh
+        stage1_mark meal_plan_copy_browser
     fi
     exit
 fi

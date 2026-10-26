@@ -3,7 +3,9 @@
 namespace Tests\Postgres;
 
 use App\Filament\Resources\MealPlans\Pages\ViewMealPlanVersion;
+use App\Models\MealItem;
 use App\Models\User;
+use App\Services\MealPlans\MealItemWriter;
 use App\Services\MealPlans\MealPlanAssigner;
 use App\Services\MealPlans\MealPlanCopier;
 use App\Services\MealPlans\MealPlanPublisher;
@@ -32,7 +34,17 @@ class MealPlanCopyTest extends PostgresTestCase
         $owner = DB::table('clients')->insertGetId(['coach_user_id' => $actor->id]);
         $source = $this->assignmentVersion();
         $service = app(MealPlanCopier::class);
-        $before = DB::table('meal_items')->orderBy('id')->get()->toJson();
+        $assigner = app(MealPlanAssigner::class);
+        $otherOwner = DB::table('clients')->insertGetId(['coach_user_id' => $actor->id]);
+        foreach ([$owner, $otherOwner] as $client) {
+            $input = ['meal_plan_version_id' => $source, 'start_date' => today()->toDateString(),
+                'end_date' => $client === $owner ? today()->toDateString() : null,
+                'expected' => $assigner->snapshot($actor, $client)];
+            $assigner->assign($actor, $client, $input, $assigner->preview($actor, $client, $input)['confirmation']);
+        }
+        $before = $this->aggregateSnapshot($source);
+        $assignments = DB::table('client_meal_plan_assignments')->orderBy('id')->get();
+        $events = DB::table('client_events')->orderBy('id')->get();
         $preview = $service->preview($actor, $source, $owner);
         $copy = $service->copy($actor, $source, $owner, null, $preview['confirmation']);
         $this->assertSame('draft', $copy->status);
@@ -45,6 +57,24 @@ class MealPlanCopyTest extends PostgresTestCase
         foreach ($copy->days as $day) {
             $this->assertNotContains($day->id, DB::table('meal_plan_days')->where('meal_plan_version_id', $source)->pluck('id')->all());
         }
+        $this->assertSame($assignments->toJson(), DB::table('client_meal_plan_assignments')->orderBy('id')->get()->toJson());
+        $this->assertSame($events->toJson(), DB::table('client_events')->orderBy('id')->get()->toJson());
+        // Штатний writer змінює лише copied item; published aggregate і два клієнти незалежні.
+        $meal = $copy->days()->orderBy('day_number')->first()->meals()->sole();
+        $item = MealItem::where('meal_id', $meal->id)->sole();
+        $writer = app(MealItemWriter::class);
+        $catalog = $writer->catalog($actor, $copy, $item->food_id);
+        $edited = $writer->save($actor, $copy, [
+            'meal_id' => $meal->id, 'food_id' => $item->food_id, 'uom_id' => $item->uom_id,
+            'quantity' => '125.00', 'sort_order' => -2, 'expected' => MealItemWriter::token($item),
+            'catalog_expected' => $catalog['token'],
+        ], $item->id);
+        $this->assertSame('125.00', $edited->quantity);
+        $this->assertSame('125.00', $edited->resolved_quantity_grams);
+        $this->assertSame(-2, $edited->sort_order);
+        $this->assertSame($before, $this->aggregateSnapshot($source));
+        $this->assertSame($assignments->toJson(), DB::table('client_meal_plan_assignments')->orderBy('id')->get()->toJson());
+        $this->assertSame($events->toJson(), DB::table('client_events')->orderBy('id')->get()->toJson());
         try {
             $service->copy($actor, $source, $owner, null, $preview['confirmation']);
             $this->fail('Replay має бути відхилений');
@@ -53,11 +83,28 @@ class MealPlanCopyTest extends PostgresTestCase
         }
         $publisher = app(MealPlanPublisher::class);
         $publisher->publish($actor, $copy, $publisher->preview($actor, $copy));
-        $assigner = app(MealPlanAssigner::class);
-        $input = ['meal_plan_version_id' => $copy->id, 'start_date' => today()->toDateString(), 'expected' => $assigner->snapshot($actor, $owner)];
+        $this->assertSame($before, $this->aggregateSnapshot($source));
+        $this->assertSame($assignments->toJson(), DB::table('client_meal_plan_assignments')->orderBy('id')->get()->toJson());
+        $this->assertSame($events->toJson(), DB::table('client_events')->orderBy('id')->get()->toJson());
+        $input = ['meal_plan_version_id' => $copy->id, 'start_date' => today()->addDay()->toDateString(), 'expected' => $assigner->snapshot($actor, $owner)];
         $assigner->assign($actor, $owner, $input, $assigner->preview($actor, $owner, $input)['confirmation']);
-        $this->assertSame(1, DB::table('client_events')->count());
-        $this->assertSame($before, DB::table('meal_items')->whereIn('meal_id', DB::table('meals')->whereIn('meal_plan_day_id', DB::table('meal_plan_days')->where('meal_plan_version_id', $source)->select('id'))->select('id'))->orderBy('id')->get()->toJson());
+        $this->assertSame(3, DB::table('client_events')->count());
+        $this->assertSame($before, $this->aggregateSnapshot($source));
+        $this->assertSame($assignments->toJson(), DB::table('client_meal_plan_assignments')->whereIn('id', $assignments->pluck('id'))->orderBy('id')->get()->toJson());
+        $this->assertSame($events->toJson(), DB::table('client_events')->whereIn('id', $events->pluck('id'))->orderBy('id')->get()->toJson());
+    }
+
+    private function aggregateSnapshot(int $version): array
+    {
+        $root = DB::table('meal_plan_versions')->where('id', $version)->sole();
+        $days = DB::table('meal_plan_days')->where('meal_plan_version_id', $version)->orderBy('id')->get();
+        $meals = DB::table('meals')->whereIn('meal_plan_day_id', $days->pluck('id'))->orderBy('id')->get();
+
+        return [
+            'plan' => json_encode(DB::table('meal_plans')->where('id', $root->meal_plan_id)->sole(), JSON_THROW_ON_ERROR),
+            'version' => json_encode($root, JSON_THROW_ON_ERROR), 'days' => $days->toJson(), 'meals' => $meals->toJson(),
+            'items' => DB::table('meal_items')->whereIn('meal_id', $meals->pluck('id'))->orderBy('id')->get()->toJson(),
+        ];
     }
 
     public function test_sizes_lineage_acl_stale_and_sql_failure(): void

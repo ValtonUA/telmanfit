@@ -1,4 +1,4 @@
-# Раціони — контракт T4.1–T4.5 та Model I
+# Раціони — контракт T4.1–T4.6 та Model I
 
 [Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
 [readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
@@ -110,7 +110,8 @@ FK RESTRICT та immutable/UNIQUE guards не змінені. Конкурент
 
 ## Свідомо закриті команди
 
-CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
+Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
+Персональна CoW-копія published version описана в [T4.6](#персональні-копії-t46).
 Повторення заповнених тижнів у draft описано нижче; воно не публікує і не призначає раціон.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
@@ -537,3 +538,10 @@ parent. Копія підтримує чинні edit/repeat/publish і T4.5 ass
 `MEAL_PLAN_COPY_ONLY=1 MEAL_PLAN_COPY_BROWSER=1 bash tests/pg/run-stage1.sh`.
 Синтетичні дані, disposable PG18 без портів і мережі, cleanup. Перевірки:
 `MealPlanCopyTest`, `meal-plan-copy-concurrency.php`, `meal_plan_copy.py`.
+
+У required Targeted CI recipe-група виконує PG-тести, concurrency та окремий
+Chromium T4.6 після штатного recipe browser; помилка кожного сценарію блокує групу.
+Регресія незалежності спершу призначає source двом клієнтам, потім редагує copied
+item через `MealItemWriter` і публікує копію. На кожному кроці порівнює всі поля
+source plan/version/days/meals/items і попередні assignments/client_events;
+окреме подальше призначення копії також не переписує збережену історію.
