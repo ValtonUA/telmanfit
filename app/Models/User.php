@@ -7,6 +7,7 @@ use App\Services\Auth\Recovery\RecoveryGate;
 use App\Services\Auth\Restore\RestoreFence;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -16,9 +17,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -31,9 +32,33 @@ class User extends Authenticatable implements FilamentUser
 
     public const ROLE_COACH = 'coach';
 
+    /** Історичне name — лише fallback до підтвердження складових власником. */
+    public function getFullNameAttribute(): string
+    {
+        return self::displayName($this->getAttributes());
+    }
+
+    public static function displayName(array|object $user): string
+    {
+        $data = (array) $user;
+        $parts = trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? ''));
+
+        return $parts !== '' ? $parts : ($data['name'] ?? '');
+    }
+
+    public function getFilamentName(): string
+    {
+        return $this->full_name;
+    }
+
     public function client(): HasOne
     {
         return $this->hasOne(Client::class);
+    }
+
+    public function createdMealPlanAssignments(): HasMany
+    {
+        return $this->hasMany(ClientMealPlanAssignment::class, 'created_by');
     }
 
     public function coachedClients(): HasMany

@@ -28,9 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(prepend: [AdminSessionContext::class], append: [AdminMfaBoundary::class], replace: [StartSession::class => SerializedAuthSession::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontReportWhen(fn (Throwable $e) => request()->is('api/auth/*', 'api/me'));
+        $exceptions->dontReportWhen(fn (Throwable $e) => ClientAuthBoundary::covers(request()));
         $exceptions->render(function (Throwable $e, Request $request) {
-            if (! $request->is('api/auth/*', 'api/me')) {
+            if (! ClientAuthBoundary::covers($request)) {
                 return null;
             }
             if ($e instanceof AuthDenied) {

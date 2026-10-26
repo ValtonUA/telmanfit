@@ -10,6 +10,7 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
   const [step, setStep] = useState<'email' | 'otp' | 'name' | 'mfa'>('email')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [code, setCode] = useState('')
   const [method, setMethod] = useState('totp')
   const [flow, setFlow] = useState(invite?.flow_id)
@@ -22,7 +23,7 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [step])
   useEffect(() => {
-    const erase = () => flushSync(() => { setCode(''); setEmail(''); setName(''); setChallenge(undefined); setFlow(undefined) })
+    const erase = () => flushSync(() => { setCode(''); setEmail(''); setName(''); setLastName(''); setChallenge(undefined); setFlow(undefined) })
     window.addEventListener('pagehide', erase)
     return () => window.removeEventListener('pagehide', erase)
   }, [])
@@ -32,7 +33,7 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
   }, [expiry])
 
   async function authenticated() {
-    setCode(''); setEmail(''); setName(''); setChallenge(undefined); setFlow(undefined)
+    setCode(''); setEmail(''); setName(''); setLastName(''); setChallenge(undefined); setFlow(undefined)
     await csrf()
     onLogin(await api<Me>('me'))
   }
@@ -51,7 +52,7 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
         if (result.next === 'authenticated') await authenticated()
         else { setFlow(result.flow_id); setStep(result.next === 'registration_complete' ? 'name' : 'mfa') }
       }
-      if (step === 'name') { await api('auth/registration/complete', { flow_id: flow, name }); await authenticated() }
+      if (step === 'name') { await api('auth/registration/complete', { flow_id: flow, first_name: name, last_name: lastName }); await authenticated() }
       if (step === 'mfa') { await api('auth/mfa/verify', { flow_id: flow, method, code: submittedCode }); await authenticated() }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Не вдалося виконати запит.') }
     finally { setBusy(false) }
@@ -63,7 +64,7 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
     <p className="muted">{step === 'email' ? 'Надішлемо одноразовий код на вашу електронну адресу.' : step === 'otp' ? 'Введіть 8-значний код із листа. Він діє 5 хвилин.' : step === 'mfa' ? 'Підтвердьте вхід через Authenticator або одноразовий резервний код.' : 'Ім’я відображатиметься у вашому особистому кабінеті.'}</p>
     <form onSubmit={submit} aria-busy={busy}>
       {step === 'email' && <label>Електронна пошта<input type="email" name="email" autoComplete="email" maxLength={254} required value={email} onChange={event => setEmail(event.target.value)} /></label>}
-      {step === 'name' && <label>Ваше ім’я<input name="name" autoComplete="given-name" maxLength={255} required value={name} onChange={event => setName(event.target.value)} /></label>}
+      {step === 'name' && <><label>Ваше ім’я<input name="first_name" autoComplete="given-name" maxLength={255} required value={name} onChange={event => setName(event.target.value)} /></label><label>Ваше прізвище<input name="last_name" autoComplete="family-name" maxLength={255} required value={lastName} onChange={event => setLastName(event.target.value)} /></label></>}
       {step === 'mfa' && <label>Спосіб підтвердження<select value={method} onChange={event => { setMethod(event.target.value); setCode('') }}><option value="totp">Код Authenticator</option><option value="recovery_code">Резервний код</option></select></label>}
       {(step === 'otp' || step === 'mfa') && <label>{step === 'otp' ? 'Код із листа' : method === 'totp' ? 'Код Authenticator' : 'Резервний код'}<input name="code" type="text" inputMode={step === 'otp' || method === 'totp' ? 'numeric' : 'text'} autoComplete="one-time-code" spellCheck={false} autoCapitalize="none" maxLength={step === 'otp' ? 8 : method === 'totp' ? 6 : 128} required value={code} onChange={event => setCode(event.target.value)} /></label>}
       {error && <p role="alert" className="error">{error}</p>}

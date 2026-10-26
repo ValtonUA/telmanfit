@@ -1,0 +1,12 @@
+{
+  "run_id": 40106289386,
+  "job_id": 120908547195,
+  "head_sha": "43a51a6d3ee73e317e2e9ed6e442dcdf629a72ad",
+  "logs": [
+    "2026-10-24T15:17:30.2568411Z Documentation guard: PASS (canonical links, Stage/T/G, PR docs impact)",
+    "2026-10-24T15:17:30.5582187Z DOCS-ERROR: Source changes require a relevant docs/*.md update in the same PR, or a justified 'Docs-Impact: none — <20+ characters explaining why>' in the PR description. Changed: tests/ci/probe.php",
+    "2026-10-24T15:17:30.5586046Z Documentation guard: FAIL (1 errors)",
+    "2026-10-24T15:17:30.5641182Z ##[error]Process completed with exit code 1."
+  ],
+  "note": "Valid PHP Fast succeeded; PR-base docs-impact rejected the source change without canonical docs or waiver. PR closed without merge."
+}

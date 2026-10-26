@@ -9,6 +9,7 @@ use App\Filament\Resources\Clients\Pages\ListClients;
 use App\Filament\Resources\Clients\Pages\ViewClient;
 use App\Models\Client;
 use App\Models\User;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -144,6 +145,101 @@ class ClientResourceTest extends PostgresTestCase
             ->assertSuccessful()->assertSee('Distinctive client')->assertSee('Активний');
         Livewire::test(ViewClient::class, ['record' => $offline->id])
             ->assertSuccessful()->assertSee('Без акаунта');
+    }
+
+    public function test_search_by_coach_and_empty_results(): void
+    {
+        $assigned = Client::create(['coach_user_id' => $this->coach->id]);
+        $other = Client::create(['coach_user_id' => $this->admin->id]);
+
+        Livewire::test(ListClients::class)
+            ->searchTable('Coach')->assertCanSeeTableRecords([$assigned])->assertCanNotSeeTableRecords([$other])
+            ->searchTable('No matching synthetic client')->assertCountTableRecords(0)
+            ->searchTable('')->assertCanSeeTableRecords([$assigned, $other]);
+    }
+
+    public function test_name_parts_are_visible_searchable_and_sortable_in_filament(): void
+    {
+        $user = User::create(['first_name' => 'DistinctFirst', 'last_name' => 'DistinctLast']);
+        $client = Client::create(['user_id' => $user->id, 'coach_user_id' => $this->coach->id]);
+        Livewire::test(ListClients::class)->searchTable('DistinctLast')->assertCanSeeTableRecords([$client])
+            ->sortTable('user.full_name')->assertSee('DistinctFirst DistinctLast');
+        Livewire::test(ViewClient::class, ['record' => $client->id])->assertSee('DistinctFirst DistinctLast');
+        DB::table('client_onboardings')->insert(['client_id' => $client->id, 'answers' => '{}', 'completed_at' => now()]);
+        Livewire::test(ViewClient::class, ['record' => $client->id])->assertActionHidden('editFirstAnswers');
+    }
+
+    public function test_invitation_mode_preserves_account_when_edit_state_is_forged(): void
+    {
+        config(['auth4.enabled' => true]);
+        $account = $this->user('client');
+        $replacement = $this->user('client');
+        $linked = Client::create(['coach_user_id' => $this->coach->id, 'user_id' => $account->id]);
+        $unlinked = Client::create(['coach_user_id' => $this->coach->id]);
+
+        foreach ([$linked, $unlinked] as $client) {
+            $originalAccount = $client->user_id;
+            Livewire::test(EditClient::class, ['record' => $client->id])
+                ->assertFormFieldIsDisabled('user_id')
+                ->set('data.user_id', $replacement->id)
+                ->fillForm(['coach_user_id' => $this->admin->id, 'status' => 'paused'])
+                ->call('save')->assertHasNoFormErrors();
+            $this->assertSame($originalAccount, $client->refresh()->user_id);
+            $this->assertSame($this->admin->id, $client->coach_user_id);
+            $this->assertSame('paused', $client->status);
+            $this->assertNull($client->coaching_started_at);
+        }
+    }
+
+    public function test_delete_actions_are_unavailable_and_forged_calls_preserve_card(): void
+    {
+        $client = Client::create(['coach_user_id' => $this->coach->id]);
+        $this->assertFalse(Gate::allows('deleteAny', Client::class));
+        Livewire::test(ListClients::class)
+            ->assertActionDoesNotExist(TestAction::make('delete')->table($client))
+            ->assertActionDoesNotExist(TestAction::make('delete')->table()->bulk())
+            ->call('mountAction', 'delete', [], ['table' => true, 'recordKey' => (string) $client->id])
+            ->call('callMountedAction');
+        Livewire::test(EditClient::class, ['record' => $client->id])
+            ->assertActionDoesNotExist('delete')
+            ->call('mountAction', 'delete')->call('callMountedAction');
+        $this->assertSame(1, Client::whereKey($client->id)->count());
+    }
+
+    public function test_admin_can_edit_first_questionnaire_in_existing_client_card(): void
+    {
+        $client = Client::create(['coach_user_id' => $this->coach->id]);
+
+        Livewire::test(ViewClient::class, ['record' => $client->id])
+            ->assertActionExists('editFirstAnswers')
+            ->callAction('editFirstAnswers', [
+                'top_reasons' => 'Вечірній голод',
+                'workplace' => 'home',
+                'meals_per_day' => '3',
+            ]);
+
+        $row = DB::table('client_onboardings')->where('client_id', $client->id)->first();
+        $this->assertNotNull($row);
+        $answers = json_decode($row->answers, true);
+        $this->assertSame('Вечірній голод', $answers['top_reasons']);
+        $this->assertSame('home', $answers['workplace']);
+        $this->assertSame(3, $answers['meals_per_day']);
+        $this->assertNull($row->completed_at);
+        $this->assertSame('pending', $client->refresh()->status);
+
+        Livewire::test(ViewClient::class, ['record' => $client->id])
+            ->assertSee('Вечірній голод')
+            ->callAction('editFirstAnswers', [
+                'top_reasons' => 'Проблеми з режимом',
+                'workplace' => 'office',
+                'meals_per_day' => '2',
+            ]);
+
+        $this->assertSame(1, DB::table('client_onboardings')->where('client_id', $client->id)->count());
+        $changed = json_decode(DB::table('client_onboardings')->where('client_id', $client->id)->value('answers'), true);
+        $this->assertSame('Проблеми з режимом', $changed['top_reasons']);
+        $this->assertSame('office', $changed['workplace']);
+        $this->assertSame(2, $changed['meals_per_day']);
     }
 
     #[DataProvider('statuses')]

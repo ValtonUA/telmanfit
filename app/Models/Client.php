@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -52,6 +54,36 @@ class Client extends Model
                 'user_id.unique' => 'Цей акаунт уже має клієнтську картку.',
             ])->validate();
         });
+    }
+
+    public function ownedMealPlans(): HasMany
+    {
+        return $this->hasMany(MealPlan::class, 'owner_client_id');
+    }
+
+    public function mealPlanAssignments(): HasMany
+    {
+        return $this->hasMany(ClientMealPlanAssignment::class);
+    }
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(ClientProfile::class);
+    }
+
+    public function nutritionProfile(): HasOne
+    {
+        return $this->hasOne(ClientNutritionProfile::class);
+    }
+
+    public function activityProfile(): HasOne
+    {
+        return $this->hasOne(ClientActivityProfile::class);
+    }
+
+    public function settings(): HasOne
+    {
+        return $this->hasOne(ClientSetting::class);
     }
 
     public function user(): BelongsTo

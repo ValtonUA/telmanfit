@@ -1,0 +1,36 @@
+name: Documentation health
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: Docs links, roadmap and PR impact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Unit-test documentation guard
+        run: python3 -m unittest discover -s tests/docs -p 'test_*.py' -v
+      - name: CI gate regression tests
+        run: python3 -m unittest discover -s tests/ci -p 'test_*.py' -v
+      - name: Validate documentation links and roadmap status IDs
+        run: python3 scripts/docs_guard.py
+      - name: Require a documentation review for source changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 scripts/docs_guard.py --pr-base "$BASE_SHA"

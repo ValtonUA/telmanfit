@@ -25,6 +25,13 @@ main { width: min(100% - 36px, 880px); margin: 54px auto 80px; flex: 1; }
 .loading { text-align: center; }
 .dashboard > .card { margin-top: 24px; }
 .intro { margin-bottom: 36px; }
+.onboarding-preview { display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
+.onboarding-preview > div { flex: 1; min-width: 180px; }
+.onboarding-card { max-width: 680px; margin: 0 auto; }
+.onboarding-card form { display: grid; gap: 12px; margin-top: 24px; }
+.onboarding-card form label { font-weight: 650; margin-top: 10px; }
+.onboarding-card form textarea, .onboarding-card form select { width: 100%; }
+.onboarding-card form button { margin-top: 12px; }
 .security-preview { display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
 .security-preview > div { flex: 1; min-width: 180px; }
 .security-layout { display: grid; gap: 24px; }

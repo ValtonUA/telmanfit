@@ -1,0 +1,40 @@
+{
+  "checked_on": "2026-10-24",
+  "timezone": "Europe/Kyiv",
+  "source_base": "fe6d3ee7e7e79c3e78a072f262c445451562ba36",
+  "runtime": "PHP 8.5.12, PostgreSQL 18.6, Chromium 154.0.8037.57",
+  "database_boundary": "Новий disposable контейнер, network=none, без портів, synthetic-only; cleanup. Production і Telmanfit_dev не використовувалися.",
+  "sql_baseline": {"passed": 76, "failed": 0, "gap": 0},
+  "phpunit": {
+    "pgsql": {"passed": 51},
+    "default": {"passed": 47},
+    "auth2": {"passed": 12},
+    "auth3": {"passed": 25},
+    "auth4": {"passed": 30},
+    "auth5": {"passed": 19},
+    "auth6": {"passed": 5},
+    "focused_profiles": {"passed": 5, "assertions": 138}
+  },
+  "browser": {"auth3": "PASS", "auth4": "PASS", "auth5": "PASS", "widths": [320, 390, 1440]},
+  "other_checks": {"pint": "PASS", "react_lint": "PASS", "react_build": "PASS", "laravel_assets_build": "PASS", "docs_guard": "PASS"},
+  "data_preservation": [
+    "Повні старі users/clients збережені; імена не розбивалися, BIGINT/FK та nullable user_id незмінні",
+    "Харчова ціль перенесена до client_profiles зі збереженням legacy_goal та updated_at",
+    "Коректні дні перенесено JSONB → text[] у тому самому порядку; невалідний JSON збережено як legacy без припущень",
+    "JSON налаштувань збережено; нові калорії NULL, бо старих колонок не існувало",
+    "Onboarding id і JSONB-представлення відповідей збережено; нові PK client_id/json, archive guard",
+    "Рядки рецептів, раціонів, прогресу, обладнання й подій порівняно до/після; CHECK/PK/FK і cascade перевірено негативними тестами"
+  ],
+  "ci_initial_head": "5d8746c4b8abc8fd19e98d205cad72a88bcb45e1",
+  "ci_dependency_blocker": {
+    "workflow": "PHP runtime security",
+    "step": "composer audit --locked --no-interaction",
+    "package": "livewire/livewire 4.4.7",
+    "advisory": "GHSA-mhf7-xp6r-6qrc / PKSA-xhv3-nr94-h8db",
+    "reported_at": "2026-10-23T20:51:30+00:00",
+    "affected": ">=4.3.0,<4.4.8",
+    "resolution": "Окремо погодити оновлення Livewire до >=4.4.8 у межах сумісних constraints та повторити auth/Filament регресії. Lockfile і CI audit у цьому PR не змінювалися."
+  },
+  "ci_note": "Статуси всіх GitHub jobs перевіряються за актуальним PR head; цей файл фіксує локальні докази та причину першого audit failure, а не замінює GitHub Checks.",
+  "implementation_limits": ["Імена історичних користувачів nullable до уточнення", "Legacy JSON/інвентар збережено до погодженого перенесення", "Повний сценарій завершення анкети не визначений і не доданий", "Scheduler, розсилки, перерахунок КБЖВ та підбір рецептів/вправ не реалізовані"]
+}

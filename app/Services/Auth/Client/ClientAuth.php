@@ -9,6 +9,7 @@ use App\Services\Auth\SecretValue;
 use App\Support\Auth\AuditOutcome;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 final class ClientAuth
@@ -212,13 +213,16 @@ final class ClientAuth
         return $this->result($result);
     }
 
-    public function complete(string $id, string $name, string $deliveryEmail, string $binding, string $ip): SecretValue
+    public function complete(string $id, string $name, string $deliveryEmail, string $binding, string $ip, string $lastName): SecretValue
     {
+        Validator::make(['first_name' => $name, 'last_name' => $lastName], [
+            'first_name' => ['required', 'string', 'max:255'], 'last_name' => ['required', 'string', 'max:255'],
+        ])->validate();
         $allowed = $this->auth->transaction(fn () => $this->budget->take('complete:ip:'.$ip, 10, 60) && $this->budget->take('complete:flow:'.$id, 5, 900));
         if (! $allowed) {
             throw new AuthDenied('rate_limited', 429);
         }
-        $result = $this->auth->transaction(function () use ($id, $name, $deliveryEmail, $binding) {
+        $result = $this->auth->transaction(function () use ($id, $name, $deliveryEmail, $binding, $lastName) {
             $flow = $this->lockedFlow($id, $binding, 'primary_verified');
             if ($flow->purpose !== 'register' || CarbonImmutable::parse($flow->primary_verified_at)->addSeconds(300)->lessThanOrEqualTo($this->auth->now())) {
                 return new AuthDenied;
@@ -245,7 +249,8 @@ final class ClientAuth
             if (! DB::table('users')->where('id', $invitation->coach_user_id)->whereIn('role', ['admin', 'coach'])->exists()) {
                 return new AuthDenied('invitation_unavailable');
             }
-            $user = DB::table('users')->insertGetId(['name' => $name, 'email' => trim($deliveryEmail), 'email_normalized' => $normalized,
+            $user = DB::table('users')->insertGetId(['first_name' => trim($name), 'last_name' => trim($lastName),
+                'email' => trim($deliveryEmail), 'email_normalized' => $normalized,
                 'email_verified_at' => $this->auth->stamp(), 'role' => 'client', 'password' => null]);
             DB::table('clients')->insert(['user_id' => $user, 'coach_user_id' => $invitation->coach_user_id, 'status' => 'pending', 'coaching_started_at' => null]);
             if (DB::table('client_invitations')->where('id', $invitation->id)->whereNull('consumed_at')->whereNull('revoked_at')
