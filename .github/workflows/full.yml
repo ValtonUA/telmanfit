@@ -10,25 +10,25 @@ concurrency:
   cancel-in-progress: true
 jobs:
   stage1:
-    if: github.event.label.name == 'ci:full'
+    if: github.event.action == 'labeled' && github.event.label.name == 'ci:full'
     uses: ./.github/workflows/stage1.yml
     with:
       head: ${{ github.event.pull_request.head.sha }}
       base: ${{ github.event.pull_request.base.sha }}
   runtime:
-    if: github.event.label.name == 'ci:full'
+    if: github.event.action == 'labeled' && github.event.label.name == 'ci:full'
     uses: ./.github/workflows/php-runtime.yml
     with:
       head: ${{ github.event.pull_request.head.sha }}
       base: ${{ github.event.pull_request.base.sha }}
   compose:
-    if: github.event.label.name == 'ci:full'
+    if: github.event.action == 'labeled' && github.event.label.name == 'ci:full'
     uses: ./.github/workflows/local-compose.yml
     with:
       head: ${{ github.event.pull_request.head.sha }}
       base: ${{ github.event.pull_request.base.sha }}
   docs:
-    if: github.event.label.name == 'ci:full'
+    if: github.event.action == 'labeled' && github.event.label.name == 'ci:full'
     name: Full documentation and base
     runs-on: ubuntu-latest
     steps:
@@ -53,7 +53,11 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Reject every non-success dependency
+      - name: Leave optional Full idle when it was not explicitly requested by this event
+        if: github.event.action != 'labeled' || github.event.label.name != 'ci:full'
+        run: echo "Full CI was not requested for this PR event."
+      - name: Reject every non-success dependency after an explicit request
+        if: github.event.action == 'labeled' && github.event.label.name == 'ci:full'
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |

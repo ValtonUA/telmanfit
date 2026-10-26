@@ -146,11 +146,12 @@ class WorkflowTests(unittest.TestCase):
     def test_full_is_explicit_and_failed_dependencies_never_pass(self):
         text = self.workflows["full.yml"]
         self.assertIn("types: [opened, synchronize, reopened, labeled]", text)
-        self.assertEqual(text.count("if: github.event.label.name == 'ci:full'"), 4)
+        self.assertEqual(text.count("if: github.event.action == 'labeled' && github.event.label.name == 'ci:full'"), 5)
         self.assertIn("needs: [stage1, runtime, compose, docs]", text)
         self.assertIn("if: always()", text)
         self.assertIn("all(job['result'] == 'success' for job in results.values())", text)
         self.assertIn('git merge-base --is-ancestor "$BASE_SHA" HEAD', text)
+        self.assertIn("if: github.event.action != 'labeled' || github.event.label.name != 'ci:full'", text)
         self.assertIn('scripts/docs_guard.py --pr-base "$BASE_SHA"', text)
         for name in ("full.yml", "fast.yml", "docs-health.yml"):
             self.assertIn("cancel-in-progress: true", self.workflows[name])
