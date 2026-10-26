@@ -26,6 +26,7 @@ def run_catalog(page, base):
     expect(page.get_by_text('Довідник порожній або немає результатів', exact=True)).to_be_visible()
     checks.append('Порожній каталог: ручне створення без seeds')
 
+    responsive_rows = {}
     for width in (1440, 390, 320):
         for theme in ('light', 'dark'):
             suffix = f'{width}-{theme}'
@@ -38,7 +39,36 @@ def run_catalog(page, base):
                     search.fill('No matching synthetic category')
             expect(page.get_by_text('Довідник порожній або немає результатів', exact=True)).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            assert page.evaluate('document.documentElement.classList.contains("dark")') == (theme == 'dark')
             page.screenshot(path=str(output / f'empty-{suffix}.png'), full_page=True)
+            if theme == 'dark':
+                row = responsive_rows[width]
+                page.goto(row['food_url'])
+                expect(page.get_by_label('Назва', exact=False)).to_have_value(row['food_name'])
+                expect(page.get_by_label('Грамів в одиниці', exact=False)).to_have_value('30.00')
+                expect(page.get_by_label('За замовчуванням', exact=False)).to_be_checked()
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                assert page.evaluate('document.documentElement.classList.contains("dark")')
+                page.screenshot(path=str(output / f'ingredient-{suffix}.png'), full_page=True)
+
+                page.goto(row['equipment_url'])
+                expect(page.get_by_label('Назва', exact=False)).to_have_value(row['equipment_name'])
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                assert page.evaluate('document.documentElement.classList.contains("dark")')
+                page.screenshot(path=str(output / f'equipment-{suffix}.png'), full_page=True)
+
+                page.goto(base + '/admin/catalog/ingredients')
+                search = page.get_by_placeholder('Пошук')
+                with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST'):
+                    search.fill(row['food_name'])
+                expect(page.locator(r'[wire\:key*=".table.records."]')).to_have_count(1)
+                expect(page.get_by_text(row['food_name'], exact=True)).to_be_visible()
+                expect(page.get_by_role('button', name='Видалити', exact=True)).to_have_count(0)
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.screenshot(path=str(output / f'list-{suffix}.png'), full_page=True)
+                checks.append(f'{suffix}: dark responsive forms, search, immutable conversion/default display, no overflow/delete')
+                print('Catalog Chromium: ' + suffix + ' responsive PASS', flush=True)
+                continue
             # Категорії продуктів/рецептів/обладнання: створення і редагування.
             for slug in ('ingredient-categories', 'recipe-categories', 'kitchen-equipment-categories'):
                 page.goto(base + '/admin/catalog/' + slug + '/create')
@@ -73,7 +103,8 @@ def run_catalog(page, base):
             submit('Створити')
             page.wait_for_url('**/edit')
             food_url = page.url
-            page.get_by_label('Назва', exact=False).fill('Synthetic food edited ' + suffix)
+            food_name = 'Synthetic food edited ' + suffix
+            page.get_by_label('Назва', exact=False).fill(food_name)
             page.get_by_label('Грамів в одиниці', exact=False).fill('30.00')
             submit('Зберегти')
             page.reload()
@@ -89,7 +120,9 @@ def run_catalog(page, base):
             choose('Категорія (необов’язково)', f'Synthetic kitchen-equipment-categories edited {suffix}')
             submit('Створити')
             page.wait_for_url('**/edit')
-            page.get_by_label('Назва', exact=False).fill('Synthetic equipment edited ' + suffix)
+            equipment_url = page.url
+            equipment_name = 'Synthetic equipment edited ' + suffix
+            page.get_by_label('Назва', exact=False).fill(equipment_name)
             submit('Зберегти')
             page.reload()
             expect(page.get_by_label('Назва', exact=False)).to_have_value('Synthetic equipment edited ' + suffix)
@@ -108,6 +141,10 @@ def run_catalog(page, base):
             page.evaluate("window.scrollTo(0, 0)")
             page.screenshot(path=str(output / f'list-{suffix}.png'), full_page=True)
             page.goto(food_url)
+            responsive_rows[width] = {
+                'food_url': food_url, 'food_name': food_name,
+                'equipment_url': equipment_url, 'equipment_name': equipment_name,
+            }
             print('Catalog Chromium: ' + suffix + ' PASS', flush=True)
             checks.append(f'{suffix}: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete')
 
