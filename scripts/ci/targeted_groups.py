@@ -29,11 +29,11 @@ RECIPE_PREFIXES = (
 
 
 def select_groups(paths: list[str]) -> tuple[str, ...]:
-    selected = {"baseline"}  # PostgreSQL and browser security regression on every PR.
+    selected = set()  # Do not provision PostgreSQL/Chromium without a relevant diff.
     for path in paths:
         normalized = PurePosixPath(path).as_posix()
         if (normalized.startswith(SECURITY_PREFIXES)
-                or normalized in {"app/Models/User.php", "routes/auth.php"}):
+                or normalized in {"app/Models/User.php", "routes/auth.php", "config/auth.php"}):
             selected.update(("baseline", "b5", "b3"))
         if normalized.startswith(RECIPE_PREFIXES):
             selected.add("recipe")
@@ -57,8 +57,6 @@ def select_groups(paths: list[str]) -> tuple[str, ...]:
                           "client/package-lock.json", "Dockerfile", "compose.yaml",
                           "docker-compose.yml"}:
             selected.update(("baseline", "b5", "b3"))
-        if normalized.startswith(("app/", "routes/", "config/")):
-            selected.add("baseline")
     return tuple(group for group in ALL if group in selected)
 
 
