@@ -96,6 +96,7 @@ class GateTests(unittest.TestCase):
         s = green()
         job = next(j for j in s["jobs"]["3"]
                    if j["name"] == "regressions / PostgreSQL and browser regressions")
+        job["name"] = "regressions"
         job["status"] = "completed"
         job["conclusion"] = "skipped"
         job["steps"] = []
