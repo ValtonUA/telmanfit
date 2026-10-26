@@ -507,3 +507,33 @@ published version і дат. «Перевірити наслідки» відк�
 `meal_plan_assignments.py` — релевантні Chromium light/dark 1440/390/320,
 preview/cancel/confirm/history/stale та CSRF/revocation. Full CI запускається
 окремо після незалежного review власника.
+
+
+## Персональні копії T4.6
+
+FEASIBILITY: PASS: чинні owner/parent, draft та Model I дозволяють глибоку копію
+без міграцій. `MealPlanCopier` читає лише exact published source; створює новий
+logical plan із `owner_client_id`, `parent_meal_plan_id`, назвою та незмінним
+week_start_weekday, незалежний draft без номера/дати публікації. Кожен day/meal/item
+отримує новий PK і переприв’язаний FK. Food, quantity, UOM, grams, порядок та всі
+Model I selectors копіюються буквально, без resolution або створення рецептів.
+
+Межа транзакції: runtime SHARE → fresh actor SHARE → source version SHARE →
+lineage plans SHARE → owner FOR UPDATE. Published guards захищають дочірній вміст;
+lineage перевіряється на цикли, відсутніх предків та чужого власника. Персональний
+source дозволений лише тому самому власнику. HMAC confirmation охоплює actor,
+source, lineage, owner/xmin, назву й увесь вміст. Успіх змінює лише xmin клієнта
+через no-op updated_at, інвалідує старі confirmations; новий preview дозволяє ще
+одну явну копію без глобального ліміту. Deferred guards і fresh admin/fence
+перевіряються до commit. Помилка будь-якого дочірнього INSERT відкочує все.
+
+«Керування → Створити персональну копію» у published огляді: клієнт/назва →
+preview джерела, версії, днів/тижнів і власника → окреме підтвердження → штатний
+редактор draft. Cancel нічого не пише. Список/картка показують owner та logical
+parent. Копія підтримує чинні edit/repeat/publish і T4.5 assignment; автоматичного
+призначення, client_events або зміни статусу супроводу немає.
+
+Цільовий runner:
+`MEAL_PLAN_COPY_ONLY=1 MEAL_PLAN_COPY_BROWSER=1 bash tests/pg/run-stage1.sh`.
+Синтетичні дані, disposable PG18 без портів і мережі, cleanup. Перевірки:
+`MealPlanCopyTest`, `meal-plan-copy-concurrency.php`, `meal_plan_copy.py`.

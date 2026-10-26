@@ -51,6 +51,7 @@ class MealPlanResource extends Resource
             TextColumn::make('id')->label('ID')->sortable(),
             TextColumn::make('title')->label('Назва')->searchable()->wrap(),
             TextColumn::make('owner_client_id')->label('Власник')->formatStateUsing(fn ($state) => 'Клієнт #'.$state)->placeholder('Універсальний')->wrap(),
+            TextColumn::make('parent_meal_plan_id')->label('Джерело')->prefix('Раціон #')->placeholder('—'),
             TextColumn::make('versions.status')->label('Статуси версій')->badge()->formatStateUsing(fn ($state) => MealPlanVersionResource::statusLabel($state)),
             TextColumn::make('versions_count')->counts('versions')->label('Версій'),
         ])->filters([
@@ -66,6 +67,7 @@ class MealPlanResource extends Resource
             TextEntry::make('title')->label('Назва'),
             TextEntry::make('week_start_weekday')->label('Початок тижня')->formatStateUsing(fn ($state) => MealPlanDisplay::WEEKDAYS[$state]),
             TextEntry::make('owner_client_id')->label('Власник')->formatStateUsing(fn ($state) => 'Клієнт #'.$state)->placeholder('Універсальний'),
+            TextEntry::make('parent_meal_plan_id')->label('Логічний раціон-джерело')->placeholder('—'),
             RepeatableEntry::make('versions')->label('Точні версії')->schema([
                 TextEntry::make('id')->label('ID версії')->url(fn ($record) => MealPlanVersionResource::getUrl('view', ['record' => $record])),
                 TextEntry::make('version_number')->label('Номер публікації')->placeholder('Ще не опублікована'),
