@@ -95,7 +95,10 @@ class GroupTests(unittest.TestCase):
     def test_all_required_groups_two_bounded_phases(self):
         self.assertEqual(groups.PHASES, (('recipe', 'baseline'), ('b5', 'b3')))
         self.assertEqual(set(groups.GROUPS), {'recipe', 'baseline', 'b5', 'b3'})
-        self.assertEqual(groups.GROUPS['baseline'], {'AUTH3_BROWSER': '1', 'AUTH4_BROWSER': '1', 'AUTH5_BROWSER': '1'})
+        self.assertEqual(groups.GROUPS['baseline'], {
+            'AUTH3_BROWSER': '1', 'AUTH4_BROWSER': '1', 'AUTH5_BROWSER': '1',
+            'MEAL_PLAN_ASSIGNMENT_BROWSER': '1', 'ASSIGNMENT_BROWSER_PORT': '8098',
+        })
         self.assertEqual(groups.GROUPS['recipe'], {'RECIPE_BATCH_ONLY': '1', 'RECIPE_BATCH_BROWSER': '1'})
         self.assertEqual(groups.GROUPS['b5'], {'AUTH6B5_ONLY': '1'})
         self.assertEqual(groups.GROUPS['b3'], {'AUTH6B_ONLY': '1'})

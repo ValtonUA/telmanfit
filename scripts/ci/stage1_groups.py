@@ -16,7 +16,8 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 GROUPS = {
     'recipe': {'RECIPE_BATCH_ONLY': '1', 'RECIPE_BATCH_BROWSER': '1'},
-    'baseline': {'AUTH3_BROWSER': '1', 'AUTH4_BROWSER': '1', 'AUTH5_BROWSER': '1'},
+    'baseline': {'AUTH3_BROWSER': '1', 'AUTH4_BROWSER': '1', 'AUTH5_BROWSER': '1',
+                 'MEAL_PLAN_ASSIGNMENT_BROWSER': '1', 'ASSIGNMENT_BROWSER_PORT': '8098'},
     'b5': {'AUTH6B5_ONLY': '1'},
     'b3': {'AUTH6B_ONLY': '1'},
 }

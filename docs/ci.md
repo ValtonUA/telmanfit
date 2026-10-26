@@ -40,6 +40,10 @@ GitHub Actions.
   семиденних блоків, редагування структури, retry/stale/PG negatives,
   UX-4D: empty/no-modal, filled confirmation/cancel, stable anchor/retry, middle-week renumber та history hashes;
   реальні delete-vs-append/delete-vs-raw-item INSERT locks і Chromium light/dark 1440/390/320; [контракт](meal-plans.md).
+- T4.5: exact published-version client assignment, atomic replacement/history, fresh admin/recovery fence,
+  owner/ACL/date checks, PG exclusion/locks/concurrency and confirmation/stale browser flows;
+  local reproduction: `MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`;
+  [контракт](meal-plans.md).
 - T4.4: publication preflight/atomic transition, exact Model I/history, SQL immutability,
   PG/Livewire, independent-session lock waits та Chromium light/dark 1440/390/320
   у чинній recipe групі; [контракт](meal-plans.md#публікація-точної-версії-t44).

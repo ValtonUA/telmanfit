@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Clients;
 use App\Filament\Resources\Clients\Pages\CreateClient;
 use App\Filament\Resources\Clients\Pages\EditClient;
 use App\Filament\Resources\Clients\Pages\ListClients;
+use App\Filament\Resources\Clients\Pages\ManageMealPlanAssignments;
 use App\Filament\Resources\Clients\Pages\ViewClient;
 use App\Models\Client;
 use App\Models\User;
@@ -142,6 +143,7 @@ class ClientResource extends Resource
             'index' => ListClients::route('/'),
             'create' => CreateClient::route('/create'),
             'view' => ViewClient::route('/{record}'),
+            'assignments' => ManageMealPlanAssignments::route('/{record}/meal-plans'),
             'edit' => EditClient::route('/{record}/edit'),
         ];
     }
