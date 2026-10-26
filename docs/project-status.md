@@ -15,7 +15,7 @@
 | Авторизація | AUTH-3/4/5: Filament MFA, invitation, email OTP, client sessions, React auth/security; додаткові auth міграції та тести | **Controlled/default OFF**, не production; AUTH-6B B3–B6 лише guarded/synthetic, а не operational recovery | [auth3.md](auth3.md), [auth4.md](auth4.md), [auth5.md](auth5.md), [B3](auth6-b3.md)–[B6](auth6-b6.md) |
 | Харчові довідники | Filament resources продуктів, категорій продуктів/рецептів/обладнання, UOM та кухонного обладнання; додаткові conversions/default у формі продукту. Атомарний food+ingredient, decimal strings, незмінний UOM code/службова семантика, CAS, актуальна admin Policy і чинна session/MFA межа. Delete заборонений; каталог не переписує accepted/published recipe history | Немає seed/Excel, SKU/фасувань чи нової схеми; початкові значення потребують окремого погодження. Каталоги незалежні від прапорця редактора, без production rollout | [Контракт](food-catalog.md), `tests/Postgres/FoodCatalogTest.php`, `tests/pg/food-catalog-concurrency.php`, `tests/browser/food_catalog.py` |
 | Продукти/раціони | Additive batch-схема/guards, decimal A→B→C і чотири порції; атомарні Save/Refresh/Publish із signed preview/CAS/locks, read-only GET, pending provenance та explicit Refresh. Filament A/B/C, компоненти/ingredient та equipment tokens, stable equipment IDs, manual/review/reset, nullable min_value, ceil count/decimal volume, explicit adequacy ack, presets B exact/ceil/nearest. C1: clone published A/B/C у новий draft того самого recipe, нові child IDs/FK/tokens, frozen snapshots/policies, source lineage, скинуті review/adequacy acknowledgements; повторна публікація має новий food. C3: явний legacy preview/Refresh/confirm; draft переходить одноразово під SQL guard із originals у snapshots; GET/Save зберігають авторський порядок компонентів; published створює окремий draft того самого recipe без зміни source/food/планів. PG hash/rollback/concurrency та responsive Chromium перевірки — [докази C3](evidence/legacy-conversion/checks.json). C2: окрема personal recipe з owner/parent/source-version через спільний C1 clone; admin-only ACL, lineage, явний client/confirm, duplicate/concurrency/rollback; власна публікація без зміни history/assignments. PostgreSQL/Unit/Chromium перевірки — [контракт](recipe-batches.md) | Timer tokens потребують джерела duration (DEC-3T); G4-I selectors/readonly resolver описані окремо нижче; client/coach editor/self-service не реалізовано; feature flag OFF | [roadmap.md](roadmap.md), [business-rules.md](business-rules.md) |
-| Раціони T4.1–T4.3 | Сім Eloquent-моделей, атомарний plan+draft, admin Policy/Service, штатні Filament list/create/view та exact-version week/day editor; генерація 7/14/21… днів із чинними типами, редагування прийомів; UX-4D видаляє будь-який повний draft тиждень за stable anchor/confirmation, зберігає ID та вміст наступних тижнів при перенумерації; locks/retry/stale guards, SQL/схема незмінні | Publish, призначення, CoW закриті; окремі прийоми з позиціями та published history не видаляються; копіювання тижнів (#61) не реалізовано; production не активовано | [Контракт](meal-plans.md), `tests/Postgres/MealPlanFoundationTest.php`, `tests/Postgres/MealPlanStructureTest.php`, `tests/Postgres/MealPlanWeekDeletionTest.php`, `tests/pg/meal-plan-week-deletion-concurrency.php`, `tests/pg/meal-plan-concurrency.php`, `tests/pg/meal-plan-structure-concurrency.php`, `tests/browser/meal_plans.py` |
+| Раціони T4.1–T4.3 | Сім Eloquent-моделей, атомарний plan+draft, admin Policy/Service, штатні Filament list/create/view та exact-version week/day editor; генерація 7/14/21… днів із чинними типами, редагування прийомів; UX-4D видаляє будь-який повний draft тиждень за stable anchor/confirmation, зберігає ID та вміст наступних тижнів при перенумерації; locks/retry/stale guards, SQL/схема незмінні | Publish, призначення, CoW закриті; окремі прийоми з позиціями та published history не видаляються; повторення draft тижнів — T4.3R нижче; production не активовано | [Контракт](meal-plans.md), `tests/Postgres/MealPlanFoundationTest.php`, `tests/Postgres/MealPlanStructureTest.php`, `tests/Postgres/MealPlanWeekDeletionTest.php`, `tests/pg/meal-plan-week-deletion-concurrency.php`, `tests/pg/meal-plan-concurrency.php`, `tests/pg/meal-plan-structure-concurrency.php`, `tests/browser/meal_plans.py` |
 | Прогрес/комунікація | Відповідні таблиці запроєктовано та частково включено в бізнес-міграції | Немає реалізованих UI/API прогресу, бізнес-повідомлень і Telegram adapter | [roadmap.md](roadmap.md), [entity-catalog.md](entity-catalog.md) |
 | Інфраструктура | Hyperhost VPS Старт, SendPulse і зовнішні копії **обрані**; документаційний D8.1 preflight виконано | VPS/SMTP/backup restore не налаштовано й не доведено. Погоджений RPO до 24 год — ціль, не виміряний результат | [D8](auth6-d8-infrastructure.md), [D8.1](auth6-d8-preflight.md) |
 
@@ -94,7 +94,7 @@ Readonly preview і summary мають єдине серверне decimal яд�
 concurrency сценарії входять у штатний Stage3/4 runner; Chromium перевіряє 1440/390/320
 light/dark разом із чинною session/MFA/CSRF/revocation межею. Поведінка й перелік
 перевірок — у [канонічному контракті](meal-plans.md#writer-позицій-t43); фактичний CI
-перевіряти на head відповідного PR. Повторення тижнів, Publish/assignments/CoW,
+перевіряти на head відповідного PR. Повторення тижнів — окремий T4.3R нижче; Publish/assignments/CoW,
 seeds і production activation не реалізовані цим writer. Схема й feature flags незмінні.
 
 
@@ -112,3 +112,22 @@ Published — readonly. Атомарний `MealItemWriter::place` з signed day
 у чинний Stage3/4 runner. [Контракт](meal-plans.md#редактор-тижня-й-дня-ux-4e)
 описує поведінку й обмеження; actual CI слід перевіряти на head PR.
 Допрацювання PR #67 додає погоджений forward SQL15: create-only weekday у plan та nullable logical covers ingredients/recipes; порожній image allowlist не блокує роботу. SQL01–14, залежності, feature flags, production/Telmanfit_dev не змінені. Остаточні докази — на head PR.
+
+
+## Повторення тижнів T4.3R
+
+`MealPlanWeekRepeater` та Filament week/day action створюють незалежні фізичні
+копії семиденних блоків у точній draft version зі збереженням exact food/recipe
+selectors, кількостей/UOM/грамів і порядку. Двоетапна заміна заповнених цілей
+показує фактичні номери й counts; HMAC snapshot/grant, PostgreSQL row revisions,
+спільні locks/fence/fresh admin та deferred rollback захищають від retry,
+конкурентних правок і часткового запису. Поведінка часткового джерела й діапазонів —
+у [канонічному контракті](meal-plans.md#повторення-тижнів-у-чернетці-t43r).
+
+Автоматизовані докази: `MealPlanWeekRepetitionTest`,
+`tests/pg/meal-plan-week-repetition-concurrency.php`,
+`tests/browser/week_repetition.py`; вони включені в чинний Stage3/4 runner.
+Результати локального прогону та CI належать точному head SHA у PR.
+Нових таблиць/міграцій/залежностей немає. Published/історичні призначення,
+каталоги, feature flags, R2 та робочі середовища не змінюються. Публікація T4.4,
+призначення T4.5/DEC-4A і production activation залишаються окремими етапами.

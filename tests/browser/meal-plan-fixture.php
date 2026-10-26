@@ -38,7 +38,7 @@ if (($argv[1] ?? '') === 'seed') {
     }));
     exit;
 }
-if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed'], true)) {
+if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed'], true)) {
     $polish = $argv[1] === 'polish-seed';
     $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
     $writer = app(MealItemWriter::class);
@@ -48,7 +48,8 @@ if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed'], true)) {
     foreach ([1, 8] as $start) {
         $structure->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => $types]);
     }
-    $denseFood = DB::transaction(function (): int {
+    // Repeat перевіряє копії наявного food, не додає однойменні результати у catalog pagination інших сценаріїв.
+    $denseFood = $argv[1] === 'repeat-seed' ? (int) $argv[4] : DB::transaction(function (): int {
         $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
         DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Тестова вівсяна каша з ягодами, горіхами та натуральним йогуртом — довга назва для щільного огляду', 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
 

@@ -128,6 +128,9 @@ def run_meal_plans(page, base):
             checks.append(suffix + ': T4.3 ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload')
             from day_editor import run_day_editor
             run_day_editor(page, base, f, suffix, submit)
+            from week_repetition import run_week_repetition
+            repeat_payload = run_week_repetition(page, base, f, suffix, submit)
+            checks.append(suffix + ": T4.3R deep copy, independent edit, replace confirm/cancel, stale guard")
             from plan_presentation import run_plan_presentation
             run_plan_presentation(page, base, f, suffix)
             page.goto(draft_url)
@@ -229,7 +232,7 @@ def run_meal_plans(page, base):
     assert page.context.request.post(base + '/admin/livewire/update', data=payload, headers=headers).status == 419
     checks.append('Missing CSRF rejects signed item/week-delete/create 419; guest/MFA boundary shared with recipe browser')
     (output / 'checks.json').write_text(json.dumps({'checks': checks, 'presentation': json.loads((output / 'presentation-checks.json').read_text())}, ensure_ascii=False, indent=2) + '\n')
-    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload}
+    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload}
 
 
 def verify_meal_plan_revocation(page, base, state):
@@ -238,6 +241,8 @@ def verify_meal_plan_revocation(page, base, state):
     assert page.context.request.post(base + '/admin/livewire/update', data=state['payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     for path in ('/admin/meal-plans', '/admin/meal-plans/create', state['version'].removeprefix(base)):
         assert page.context.request.get(base + path).status == 403
+    state['repeat_payload']['_token'] = state['csrf']
+    assert page.context.request.post(base + '/admin/livewire/update', data=state['repeat_payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     state['item_payload']['_token'] = state['csrf']
     assert page.context.request.post(base + '/admin/livewire/update', data=state['item_payload'], headers={'X-Livewire': 'true', 'Accept': 'application/json'}).status == 403
     state['structure_payload']['_token'] = state['csrf']
