@@ -14,7 +14,7 @@ spec.loader.exec_module(gate)
 def green():
     sha = "a" * 40
     snapshot = {"repository": "ValtonUA/telmanfit", "pr": {
-        "number": 42, "state": "open", "auto_merge": None,
+        "number": 42, "state": "open", "auto_merge": None, "labels": [{"name": "ci:full"}],
         "base": {"ref": "master", "sha": "b" * 40},
         "head": {"sha": sha, "ref": "ci/example", "repo": {"full_name": "ValtonUA/telmanfit"}},
     }, "comparison": {"status": "ahead"}, "runs": {}, "jobs": {}}
@@ -39,9 +39,37 @@ class GateTests(unittest.TestCase):
     def test_final_head_positive_without_merging(self):
         self.assertTrue(gate.evaluate(green())["eligible"])
 
+    def test_full_is_optional_for_regular_changes_but_required_for_critical_paths(self):
+        s = green()
+        s["pr"]["labels"] = []
+        s["runs"].pop("full.yml")
+        self.assertTrue(gate.evaluate(s)["eligible"])
+        s["changed_files"] = [".github/workflows/targeted.yml"]
+        self.assert_blocked(s)
+
+    def test_targeted_check_is_required_and_fail_closed(self):
+        for status in ("failure", "cancelled", "skipped", None):
+            s = green()
+            run = s["runs"]["targeted.yml"][0]
+            run["conclusion"] = status
+            self.assert_blocked(s)
+
     def test_real_github_fixture_passes_then_stale_head_blocks(self):
         import json
         s = json.loads((ROOT / "docs/evidence/ci-cost-1/gate-fixture.json").read_text())
+        # The historical fixture predates the always-required targeted workflow.
+        fast = copy.deepcopy(s["runs"]["fast.yml"][0])
+        fast.update(id=999999, path=".github/workflows/targeted.yml")
+        s["runs"]["targeted.yml"] = [fast]
+        fast_job = copy.deepcopy(s["jobs"][str(s["runs"]["fast.yml"][0]["id"])][0])
+        target_jobs = []
+        for name in ("Select required PostgreSQL/browser security coverage",
+                     "regressions / PostgreSQL and browser regressions",
+                     "Targeted PR checks"):
+            job = copy.deepcopy(fast_job)
+            job["name"] = name
+            target_jobs.append(job)
+        s["jobs"]["999999"] = target_jobs
         self.assertTrue(gate.evaluate(s)["eligible"])
         s["pr"]["head"]["sha"] = "0" * 40
         self.assert_blocked(s)
@@ -113,7 +141,7 @@ class GateTests(unittest.TestCase):
             self.assertEqual(gate.api("endpoint"), [{"page": 1}, {"page": 2}])
 
     def test_fast_docs_and_auto_merge_are_mandatory(self):
-        for workflow in ("fast.yml", "docs-health.yml"):
+        for workflow in ("fast.yml", "docs-health.yml", "targeted.yml"):
             s = green()
             s["runs"][workflow] = []
             self.assert_blocked(s)
@@ -127,7 +155,7 @@ class WorkflowTests(unittest.TestCase):
         self.workflows = {p.name: p.read_text() for p in (ROOT / ".github/workflows").glob("*.yml")}
 
     def test_triggers_permissions_and_pins(self):
-        self.assertEqual(set(self.workflows), {"fast.yml", "full.yml", "docs-health.yml", "stage1.yml", "php-runtime.yml", "local-compose.yml"})
+        self.assertEqual(set(self.workflows), {"fast.yml", "full.yml", "docs-health.yml", "targeted.yml", "stage1.yml", "php-runtime.yml", "local-compose.yml"})
         for name, text in self.workflows.items():
             with self.subTest(name=name):
                 self.assertIn("permissions:\n  contents: read\n", text)
@@ -150,6 +178,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("needs: [stage1, runtime, compose, docs]", text)
         self.assertIn("if: always()", text)
         self.assertIn("all(job['result'] == 'success' for job in results.values())", text)
+        self.assertIn("if: github.event.label.name != 'ci:full'", text)
+        self.assertIn("if: github.event.label.name == 'ci:full'", text)
         self.assertIn('git merge-base --is-ancestor "$BASE_SHA" HEAD', text)
         self.assertIn('scripts/docs_guard.py --pr-base "$BASE_SHA"', text)
         for name in ("full.yml", "fast.yml", "docs-health.yml"):
@@ -161,6 +191,14 @@ class WorkflowTests(unittest.TestCase):
         for command in ("composer validate --strict", "composer audit --locked", "php artisan test --display-all-issues", "php vendor/bin/pint --test", "npm run lint --prefix client", "npm run build --prefix client", "npm run build"):
             self.assertIn(command, text)
         self.assertNotRegex(text, r"AUTH\d|docker compose build|run-stage1.sh|playwright install")
+        targeted = self.workflows["targeted.yml"]
+        self.assertIn("name: Targeted PR regressions", targeted)
+        self.assertIn("name: Targeted PR checks", targeted)
+        self.assertIn("needs: [scope, regressions]", targeted)
+        self.assertIn("groups: ${{ needs.scope.outputs.groups }}", targeted)
+        self.assertIn("groups", self.workflows["stage1.yml"])
+        self.assertIn("python -m playwright install chromium", self.workflows["stage1.yml"])
+        self.assertNotIn("install --with-deps chromium", self.workflows["stage1.yml"])
         docs = self.workflows["docs-health.yml"]
         self.assertIn('scripts/docs_guard.py --pr-base "$BASE_SHA"', docs)
         self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", docs)

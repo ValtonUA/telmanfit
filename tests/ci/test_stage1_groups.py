@@ -82,6 +82,16 @@ class GroupTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             groups.require_complete(green)
 
+    def test_selected_group_runs_only_its_bounded_phase(self):
+        selected, phases = groups.select_groups('recipe,b5')
+        self.assertEqual(tuple(selected), ('recipe', 'b5'))
+        self.assertEqual(phases, (('recipe',), ('b5',)))
+        self.assertEqual(set(groups.select_groups('all')[0]), set(groups.GROUPS))
+        with self.assertRaises(ValueError):
+            groups.select_groups('recipe,unknown')
+        with self.assertRaises(ValueError):
+            groups.select_groups('recipe,recipe')
+
     def test_all_required_groups_two_bounded_phases(self):
         self.assertEqual(groups.PHASES, (('recipe', 'baseline'), ('b5', 'b3')))
         self.assertEqual(set(groups.GROUPS), {'recipe', 'baseline', 'b5', 'b3'})

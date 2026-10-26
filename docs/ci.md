@@ -38,10 +38,10 @@ Workflow/CI scripts теж потребують canonical docs або обґру
    Не використовувати auto-merge. При зміні master повторити Full після оновлення гілки.
 
 Новий commit **не запускає важкі suites автоматично**, навіть якщо `ci:full` лишилася.
-Він запускає дешевий негативний Full PR gate і скасовує попередній Full тієї самої
-PR; стара зелена перевірка не годиться. На opened/reopened/synchronize та сторонню
-мітку залежні Full jobs skipped, але агрегатор **failure**, тому зеленої підміни немає.
-Потрібно знову явно додати `ci:full`. Concurrency ізольовано номером PR та рівнем CI;
+Він скасовує попередню Full того самого PR; стара зелена перевірка не годиться.
+Без події з міткою `ci:full` залежні Full jobs skipped, а агрегатор має успіх із
+позначкою «не запитано». Коли подія додає `ci:full`, агрегатор вимагає успіху
+кожної залежності. Concurrency ізольовано номером PR та рівнем CI;
 події незалежних PR не скасовують одна одну. Скасування/помилка Full блокує gate;
 найновіший run/attempt має пріоритет над попереднім success на тому самому SHA.
 `workflow_dispatch` не використовується: labeled pull_request реально прив’язаний
@@ -165,3 +165,16 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 не називати оцінку списаними хвилинами. Before/after і сценарії 5/10 commits
 публікуються у Draft PR після завершення реальних GitHub runs. Дані останнього
 фінального SHA додаються до опису PR, щоб не створювати новий неперевірений commit.
+
+
+## Щоденний targeted gate та ручний Full
+
+Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: група `baseline` із AUTH3–5 security сценаріями запускається завжди; зміни рецептів і планів додають `recipe`, security-код — `b5`/ `b3`; міграції та нецільові PG/browser тести розширюють набір до всіх груп. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують свої unit regressions через Documentation health плюс щоденний baseline. Невизначена або помилкова область зупиняє gate. Встановлення Chromium не завантажує системні пакети через повільний Ubuntu mirror.
+
+Full лишається повним набором PostgreSQL/browser, PHP 8.4/8.5, security та cold Compose, але запускається лише явним запитом через `ci:full`. Типовий привід — завершений Stage або критична зміна після review. Пропущені jobs не позначають звичайний PR як failed; якщо Full запитано, кожна залежність мусить завершитися успішно. Не додавати мітку під час розробки: вона скасує поточну Full спробу при новому commit, а старий результат не підтверджує новий SHA.
+
+`pre_merge.py` завжди перевіряє Fast, документацію та Targeted на тому самому PR head. Він додатково вимагає Full для запиту `ci:full` і критичних змін у workflow/CI, міграціях, security middleware/Auth, PostgreSQL harness або lock-файлах залежностей. `request_full.py` спершу чекає завершення швидких обов’язкових перевірок на незмінному head/base, а тоді запитує мітку.
+
+### Безпечне оновлення ruleset
+
+Перед увімкненням цієї політики на `master` перевірити, що новий workflow успішний на PR head і GitHub показує саме статус **Targeted PR checks** від Actions. Потім однією зміною ruleset замінити required `Full PR gate` на `Targeted PR checks`, зберігши required **Fast PR checks**, **Docs links, roadmap and PR impact**, strict up-to-date branches, PR requirement та заборони deletion/non-fast-forward. Перечитати ruleset і перевірити результуючий набір required checks до merge цього PR. Не видаляти старий gate окремим кроком до появи нового. Якщо ruleset неможливо прочитати й записати через адміністративний API, не обходити його: цей PR лишається Draft до ручного адміністративного переходу. Наявні правила тут не змінювалися.
