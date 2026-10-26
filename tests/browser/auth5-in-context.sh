@@ -12,7 +12,7 @@ umask 077
 auth5_work=$(mktemp -d /tmp/telmanfit-auth4-XXXXXXXX)
 export AUTH4_SYNTHETIC_MAILBOX="$auth5_work/mailbox" AUTH5_SERVER_LOG="$auth5_work/server.log"
 php tests/browser/auth5-fixture.php
-php -S 127.0.0.1:8095 -t public server.php >"$AUTH5_SERVER_LOG" 2>&1 &
+bash tests/browser/php-server.sh 127.0.0.1:8095 -t public server.php >"$AUTH5_SERVER_LOG" 2>&1 &
 server=$!
 cleanup() {
     kill "$server" 2>/dev/null || true

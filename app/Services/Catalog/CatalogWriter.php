@@ -9,6 +9,7 @@ use App\Models\Catalog\KitchenEquipmentCategory;
 use App\Models\Catalog\RecipeCategory;
 use App\Models\Catalog\Uom;
 use App\Models\User;
+use App\Support\Presentation\PublicImageUrl;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
@@ -65,6 +66,9 @@ final class CatalogWriter
                         throw ValidationException::withMessages(['catalog' => 'Довідник змінився. Перезавантажте форму та перегляньте зміни.']);
                     }
                 }
+                if ($record instanceof Ingredient && ($input['image_url'] ?? null) === '') {
+                    $input['image_url'] = null;
+                }
                 $data = Validator::make($input, $this->rules($record))->validate();
                 if ($record instanceof Uom) {
                     if ($record->exists && $data['code'] !== $record->code) {
@@ -111,6 +115,7 @@ final class CatalogWriter
         $rules = [];
         foreach ($record->getFillable() as $field) {
             $rules[$field] = match (true) {
+                $field === 'image_url' => ['nullable', new PublicImageUrl],
                 str_ends_with($field, '_per_100g') => ['required', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,4})(?:\.[0-9]{1,2})?\z/'],
                 str_ends_with($field, '_category_id') => ['nullable', 'integer'],
                 $field === 'kind' => ['required', Rule::in(['mass', 'volume', 'count', 'serving', 'other'])],

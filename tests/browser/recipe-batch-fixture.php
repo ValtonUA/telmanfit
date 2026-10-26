@@ -13,12 +13,12 @@ set_exception_handler(function (Throwable $e) {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
 });
-if (($argv[1] ?? '') === 'source-state') {
+if (in_array($argv[1] ?? '', ['source-state', 'source-state-json'], true)) {
     $state = [];
     foreach (['recipe_versions', 'recipe_components', 'recipe_ingredients', 'recipe_batch_formats', 'recipe_batch_quantities', 'recipe_kitchen_equipment', 'recipe_batch_equipment', 'recipe_directions'] as $table) {
-        $state[$table] = DB::table($table)->where($table === 'recipe_versions' ? 'id' : 'recipe_version_id', getenv('BATCH_BROWSER_VERSION'))->get()->all();
+        $state[$table] = DB::table($table)->where($table === 'recipe_versions' ? 'id' : 'recipe_version_id', getenv('BATCH_BROWSER_VERSION'))->orderByRaw('to_jsonb('.$table.')::text')->get()->all();
     }
-    echo hash('sha256', json_encode($state));
+    echo $argv[1] === 'source-state-json' ? json_encode($state) : hash('sha256', json_encode($state));
     exit;
 }
 if (in_array($argv[1] ?? '', ['catalog-change', 'catalog-change-again'], true)) {
@@ -32,6 +32,10 @@ DB::transaction(function () {
             (require $file)->up();
         }
         (require database_path('migrations/2026_10_24_000000_revise_client_profiles.php'))->up();
+    }
+    // Цей browser fixture підіймає базову схему без повного artisan migrate; PR каталогу додає це nullable поле окремою міграцією.
+    if (! Schema::hasColumn('kitchen_equipment', 'image_url')) {
+        (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
     }
     DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     DB::table('users')->insert(['name' => 'Synthetic recipe author', 'role' => 'admin', 'email' => 'recipe-browser@example.invalid', 'password' => Hash::make('Synthetic-Recipe-Only!')]);

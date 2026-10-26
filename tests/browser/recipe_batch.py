@@ -10,8 +10,9 @@ import struct
 import subprocess
 import time
 from playwright.sync_api import sync_playwright, expect
+from readiness import TRACKER, metrics as readiness_metrics
 
-base = 'http://127.0.0.1:8097'
+base = 'http://127.0.0.1:8090'
 url = base + '/admin/recipe-batches?version=' + os.environ['BATCH_BROWSER_VERSION']
 output = Path('docs/evidence/recipe-batches')
 output.mkdir(parents=True, exist_ok=True)
@@ -28,6 +29,7 @@ def otp(secret, offset=0):
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium'), args=['--no-sandbox'])
     context = browser.new_context(viewport={'width': 1440, 'height': 1000})
+    context.add_init_script(TRACKER)
     page = context.new_page()
     page.set_default_timeout(15000)
     errors = []
@@ -47,7 +49,13 @@ with sync_playwright() as p:
         page.wait_for_url('**/admin/auth/challenge')
 
     assert context.request.get(url).status in (302, 403)
+    guest = browser.new_context()
+    for path in ('/admin/meal-plans', '/admin/meal-plans/create'):
+        assert guest.request.get(base + path).status in (302, 403)
+    guest.close()
     primary()
+    for path in ('/admin/meal-plans', '/admin/meal-plans/create'):
+        assert context.request.get(base + path).status in (302, 403)
     page.get_by_role('button', name='Створити ключ Authenticator').click()
     secret = page.locator('#totp-secret').inner_text()
     if time.time() % 30 >= 26:
@@ -68,6 +76,9 @@ with sync_playwright() as p:
         expect(target.locator('.batch-editor fieldset')).not_to_be_disabled()
         if name == 'Оновити preview':
             expect(target.get_by_text('Preview готовий. Збереження та публікація — окремі явні дії.', exact=True)).to_be_visible()
+
+    from meal_plans import run_meal_plans, verify_meal_plan_revocation
+    meal_plan_browser_state = run_meal_plans(page, base)
 
     from food_catalog import run_catalog
     run_catalog(page, base)
@@ -272,6 +283,7 @@ with sync_playwright() as p:
     expect(page.get_by_role('button', name='Створити нову версію A/B/C', exact=True)).to_be_visible()
     assert page.locator('.batch-editor fieldset').count() == 0
     before = subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
+    source_rows_before = json.loads(subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state-json'], text=True))
     published_tab = context.new_page()
     published_tab.goto(url)
     page.once('dialog', lambda dialog: dialog.accept())
@@ -362,13 +374,19 @@ with sync_playwright() as p:
     # Для персонального published дозволений тільки його owner; вибір знову порожній.
     expect(published_tab.get_by_label('Клієнт для копії', exact=True)).to_have_value('')
     assert published_tab.get_by_label('Клієнт для копії', exact=True).locator('option').count() == 2
+    source_rows_after = json.loads(subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state-json'], text=True))
+    assert source_rows_before == source_rows_after, {table: {'before': source_rows_before[table], 'after': source_rows_after[table]} for table in source_rows_before if source_rows_before[table] != source_rows_after[table]}
     assert before == subprocess.check_output(['php', 'tests/browser/recipe-batch-fixture.php', 'source-state'], text=True)
     checks.append('C2: explicit owner/confirm/cancel, redirect, remap, frozen→Refresh/manual review, duplicate rejection, publish/reload; original unchanged; 1440/390/320 light/dark action+editor')
     published_tab.close()
     from food_catalog import verify_catalog_revocation
+    from meal_plans import fixture as plan_fixture
+    meal_plan_browser_state['count'] = plan_fixture('count')
     verify_catalog_revocation(page, base)
+    verify_meal_plan_revocation(page, base, meal_plan_browser_state)
     checks.append("PR D: CSRF 419, revoked signed Livewire/HTTP 403, unchanged catalog hash")
     assert not errors, errors
     browser.close()
 output.joinpath('checks.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, ensure_ascii=False, indent=2) + '\n')
 print('Recipe editor browser PASS: ' + str(len(checks)) + ' checks', flush=True)
+print('CI_BROWSER_READINESS ' + json.dumps(readiness_metrics), flush=True)

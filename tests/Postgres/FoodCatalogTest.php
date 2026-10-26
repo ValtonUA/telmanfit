@@ -38,6 +38,8 @@ class FoodCatalogTest extends PostgresTestCase
         foreach (glob(database_path('migrations/2026_10_24_0[123]0000_*.php')) as $file) {
             (require $file)->up();
         }
+        (require database_path('migrations/2026_10_25_020000_add_plan_presentation.php'))->up();
+        (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
         $this->writer = app(CatalogWriter::class);
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic catalog admin', 'role' => 'admin']));
         $this->actingAs($this->actor);
@@ -174,9 +176,9 @@ class FoodCatalogTest extends PostgresTestCase
         $page->assertRedirect();
         Livewire::test(EditIngredient::class, ['record' => $record->id])->fillForm(['name' => 'Змінено у Filament'])->call('save')->assertHasNoFormErrors();
         $this->assertSame('Змінено у Filament', $record->fresh()->name);
-        $mounted = Livewire::test(EditIngredient::class, ['record' => $record->id]);
+        $mounted = Livewire::test(EditIngredient::class, ['record' => $record->id])->fillForm(['name' => 'Заборонено']);
         DB::table('users')->where('id', $this->actor->id)->update(['role' => 'coach']);
-        $mounted->fillForm(['name' => 'Заборонено'])->call('save')->assertNotFound();
+        $mounted->call('save')->assertForbidden();
         foreach ([false, true] as $flag) {
             config(['recipes.batch_editor_enabled' => $flag]);
             foreach (['coach', 'client'] as $role) {

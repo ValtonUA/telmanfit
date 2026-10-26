@@ -1,0 +1,43 @@
+{
+  "head_sha": "692393e5fce3dc52e0ed6acce6ce7e5d39c324c5",
+  "started_at": "2026-10-25T21:55:22.895173+00:00",
+  "max_workers": 2,
+  "groups": {
+    "recipe": {
+      "started_at": "2026-10-25T21:55:22.896044+00:00",
+      "status": "success",
+      "pid": 33886,
+      "completed_at": "2026-10-25T22:09:30.750039+00:00",
+      "seconds": 847.8545572330004,
+      "exit_code": 0
+    },
+    "baseline": {
+      "started_at": "2026-10-25T21:55:22.896352+00:00",
+      "status": "success",
+      "pid": 33887,
+      "completed_at": "2026-10-25T22:03:04.650487+00:00",
+      "seconds": 461.7544653950008,
+      "exit_code": 0
+    },
+    "b5": {
+      "started_at": "2026-10-25T22:09:30.751075+00:00",
+      "status": "success",
+      "pid": 42108,
+      "completed_at": "2026-10-25T22:09:46.332062+00:00",
+      "seconds": 15.58144865200029,
+      "exit_code": 0
+    },
+    "b3": {
+      "started_at": "2026-10-25T22:09:30.751484+00:00",
+      "status": "success",
+      "pid": 42109,
+      "completed_at": "2026-10-25T22:11:19.132312+00:00",
+      "seconds": 108.38122233900049,
+      "exit_code": 0
+    }
+  },
+  "status": "success",
+  "recovered_containers": [],
+  "completed_at": "2026-10-25T22:11:19.142691+00:00",
+  "seconds": 956.2475130499997
+}

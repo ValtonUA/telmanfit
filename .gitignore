@@ -50,3 +50,8 @@ id_rsa*
 
 # Локальні browser artifacts не експортуються без окремої згоди.
 /docs/evidence/local-compose/*.png
+
+# T4.1 browser evidence зберігається як GitHub Actions artifacts.
+/docs/evidence/meal-plans/*.png
+/docs/evidence/meal-plans/checks.json
+/docs/evidence/meal-plans/presentation-checks.json

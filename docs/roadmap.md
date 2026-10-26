@@ -11,8 +11,8 @@
 | 0 | Рішення та gates | Частково | Закривати лише питання, що блокують конкретний модуль |
 | 1 | PostgreSQL: 37 бізнес-таблиць | Частково | Міграції/тести виконані; T1.5 seed-довідники ще не погоджені |
 | 2 | Картки клієнтів і auth | Частково | Картки готові; auth controlled/local/testing, production OFF; перший робочий екран анкети, решта питань пізніше |
-| **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; C3 merged #51; D: керування каталогами у Draft PR; далі Completion Audit; T1.5 окремо** |
-| 4 | Раціони і призначення | Заплановано | Після Stage 3 |
+| **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; C3 merged #51; D: merged #53, Completion Audit #54; T1.5 окремо** |
+| 4 | Раціони і призначення | Частково | T4.1/T4.2 foundation і структура; G4-I selectors/readonly resolver і T4.3 writer; UX-4E week/day editor; T4.3R повторення тижнів; T4.4 публікація; DEC-4A перед T4.5 |
 | 5 | Клієнтський кабінет | Частково | Auth/security shell є, харчового функціоналу немає |
 | 6 | Метрики, звіти, фото | Заплановано | Після клієнтів; окремі контракти за потреби |
 | 7 | Комунікація | Заплановано | Після базового прогресу |
@@ -93,18 +93,20 @@
 | T3.2 | [PR B1: атомарні Save/Refresh/Publish, locks/CAS, accepted diff і signed preview](recipe-batches.md). B2 додає stable equipment ID, manual/review, ceil count, nullable параметри та обов’язковий adequacy ack. Транзакційний сервіс публікації рецепта: створення `foods`, перевірка інгредієнтів, UOM і грамування, розрахунок КБЖВ на 1 порцію, `version_number`, `published_at`, блокування рядка версії (BR-F-09, BR-F-14). PR D перевіряє зміни каталогів між preview і Save/Publish без зміни frozen history. | Виконано |
 | T3.3 | [PR B1: одна Filament сторінка A/B/C, pending/reload, manual/reset/review, ingredient tokens, компоненти та auto equipment](recipe-batches.md). Chromium 1440/390/320 light/dark, дві вкладки та stale source. B2 додає manual equipment, explicit presets B, equipment tokens, наслідки видалення й catalog empty states. C1 додає створення нової версії та редагування штатним A/B/C editor. C2 додає персональні копії з явним owner/confirm. C3 додає окремі legacy preview/confirm/cancel та redirect до штатного editor. PR D додає українські catalog forms, пошук/фільтри/пагінацію, empty states і ручні conversions/default. Timer token — DEC-3T. | Частково |
 | T3.4 | [C1: новий draft із published A/B/C](recipe-batches.md#нова-версія-abc-pr-c1), frozen clone/ID remap, повторний review, одна чернетка/CAS та незмінність старих `food_id`/призначень (BR-F-16, BR-X-01). C3: явна атомарна legacy draft conversion та окрема нова версія для published legacy, forward SQL guard, snapshots/hashes/rollback/concurrency/browser докази; змерджено #51. | Виконано |
-| T3.5 | [C2: персональна CoW-копія published A/B/C](recipe-batches.md#персональна-копія-abc-c2): новий recipe/owner/parent/draft, спільний C1 clone, lineage/ACL, Filament confirm, PG/concurrency/Chromium; feature flag OFF. | Частково |
+| T3.5 | [C2: персональна CoW-копія published A/B/C](recipe-batches.md#персональна-копія-abc-c2): новий recipe/owner/parent/draft, спільний C1 clone, lineage/ACL, Filament confirm, PG/concurrency/Chromium; feature flag OFF. | Виконано |
 
-**Наступний крок Stage 3:** review PR D (Draft, без merge), потім **окремий Stage 3 Completion Audit** T3.1–T3.5: звірити acceptance Issue #37, визначити gate для Stage 4. C1/C2/C3 вже змерджені (#47/#50/#51); автоматично закривати Stage 3 чи Issue #37 не можна. Production activation не дозволена, feature flag `recipes.batch_editor_enabled` залишається OFF. T1.5 та DEC-3T лишаються окремими рішеннями; ядро перевіряється на g і synthetic UOM. BR-F-11: explicit Refresh із diff, без auto overwrite manual. [Мінімальні рішення для ручного наповнення каталогів](food-catalog.md#тести-та-межа-даних) не є seed. Відсутність контракту анкети T2.4 не блокує рецепти.
+**Stage 3 audit:** [PR D #53 merged](https://github.com/ValtonUA/telmanfit/pull/53), ядро acceptance Issue #37 підтверджене [completion audit / Stage 4 gate #54](https://github.com/ValtonUA/telmanfit/issues/54). T3.3 лишається частково через DEC-3T; T1.5 та production activation не завершені. G4-I Model I реалізовано окремо; T4.3 writer використовує цей gate; UX-4E реалізовано поверх writer; T4.3R повторення тижнів реалізовано; T4.4 публікація реалізована.
 
 ### Stage 4 — Раціони та призначення
 
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
-| T4.1 | Моделі `MealPlan`, `MealPlanVersion`, `MealPlanDay`, `Meal`, `MealType`, `MealItem`, `ClientMealPlanAssignment` + Filament-ресурси. | Заплановано |
-| T4.2 | Автогенерація 7-денних тижнів і стандартних прийомів їжі з можливістю редагування (BR-P-01, BR-P-03). | Заплановано |
-| T4.3 | Вибір позиції: інгредієнт (дозволена одиниця + грами) або рецепт (лише `serving`, без грамів) — BR-P-05. | Заплановано |
-| T4.4 | Транзакційний сервіс публікації плану: перевірка тижнів, заповненості днів/прийомів, грамування (BR-P-01…BR-P-06). | Заплановано |
+| T4.1 | [Сім Eloquent-моделей та Filament foundation](meal-plans.md): admin list/create/view, атомарний plan+draft, exact-version read-only hierarchy; без нижніх writers. | Виконано |
+| T4.2 | [Генерація послідовних 7-денних тижнів, вибір чинних типів, редагування прийомів і видалення будь-якого повного тижня чернетки](meal-plans.md); exact draft, locks/retry/stale guards (BR-P-01, BR-P-03). | Виконано |
+| T4.3 | [Командний writer позицій](meal-plans.md#writer-позицій-t43): ingredient/UOM/grams, legacy, explicit A/1 B/7 C/3 C/4, CAS/locks/ACL та мінімальні Filament actions. UX-4E — окремий day/week UI нижче; повторення тижнів — T4.3R нижче. | Виконано |
+| UX-4E | [Єдиний week/day editor](meal-plans.md#редактор-тижня-й-дня-ux-4e): 7 колонок, mobile день, компактні photo cards/menus, create-only початок тижня (SQL15), каталог, явні порції, DnD/keyboard fallback, атомарне сортування через writer. | Виконано |
+| T4.3R | [Повторення тижня у draft](meal-plans.md#повторення-тижнів-у-чернетці-t43r): незалежні deep copies 7 днів/прийомів/позицій, exact Model I, явне підтвердження всіх наявних цільових тижнів (навіть 0 позицій), snapshot/retry/locks/rollback; без Publish/assignment. | Виконано |
+| T4.4 | [Публікація exact draft](meal-plans.md#публікація-точної-версії-t44): повнота/грамування, Model I, atomic locks, stale/duplicate/immutable history, Filament, PG/Livewire/concurrency/Chromium (BR-P-01…07). | Виконано |
 | T4.5 | Призначення версії клієнту: атомарна заміна дат, `replaced_by_assignment_id`, подія в `client_events` (BR-P-08, BR-P-11). | Заплановано |
 | T4.6 | Персональна копія плану (Copy-on-Write). | Заплановано |
 
@@ -158,7 +160,8 @@
 
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
-| CI-COST-1 | [Два рівні CI](ci.md): Fast на кожному commit, явний Full на фінальному SHA, fail-closed pre-merge та вимірювання GitHub jobs; інтегровано через PR #42. Серверний branch protection недоступний поточній інтеграції. | Частково |
+| CI-COST-1 | [Два рівні CI](ci.md): Fast на кожному commit, явний Full на фінальному SHA, fail-closed pre-merge та вимірювання GitHub jobs; інтегровано через PR #42; активний strict ruleset `CI-COST-1` із трьома required checks підтверджено read-only preflight. | Виконано |
+| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1, по дві ізольовані PG/Chromium групи всередині одного job, bytecode reuse і navigation/render readiness без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Фінальний Full і фактичний відсоток — в описі Draft PR, без merge. | Частково |
 
 ### Stage 9 — Підготовка до запуску
 
@@ -196,6 +199,7 @@
 | DEC-3T | Джерело duration, ідентичність timer та формат часу для timer token; у чинних таблицях є лише текст кроку | Очікує рішення | Перед timer tokens; решту B2 не блокує, час/температура не масштабуються |
 | DEC-3B | Явний refresh із diff, GET read-only; accepted snapshot для Save/Publish, manual quantity/UOM зберігаються; §17 і Issue #37 | Виконано | Базові команди PR B1; решта editor slice за T3.2–T3.3 |
 | DEC-2A | Для першого екрана затверджено гнучкий JSON без попереднього повного контракту; решта запитань переноситься поступово з Google-форми. | Частково | Розширювати разом із UI, без блокування інших модулів |
+| UX-4D | [Погоджено #60](https://github.com/ValtonUA/telmanfit/issues/60): видалення будь-якого повного тижня draft; 0 items — відразу, ≥1 — confirmation; stable anchor та перенумерація без зміни ID/вмісту наступних тижнів. Окремі дні не переставляються/не видаляються. | Виконано | Доповнення T4.2 у PR #59; повторення тижнів (#61) реалізовано окремим T4.3R після T4.3, перед T4.4 |
 | DEC-4A | Дострокове завершення/заміна призначення та `replaced_by_assignment_id` | Очікує рішення | Перед Stage 4 assignment workflow |
 | DEC-9A | Безпечне повторне MFA enrollment останнього admin після B5 restore | Очікує рішення | Перед Stage 9 / production |
 

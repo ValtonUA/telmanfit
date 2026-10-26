@@ -114,7 +114,7 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 
 - [README.md](README.md) — навігація; [roadmap.md](docs/roadmap.md) — статуси/пріоритети; [project-status.md](docs/project-status.md) — факти й докази; [architecture.md](docs/architecture.md) — стабільна архітектура.
 - [business-rules.md](docs/business-rules.md), [entity-catalog.md](docs/entity-catalog.md), [database.dbml](docs/database.dbml), `docs/*.sql` — бізнес і схема; `docs/auth*.md`, `docs/stage-*.md`, `docs/evidence/` — предметні контракти та історичні докази.
-- [ci.md](docs/ci.md) — Fast/Full правила й алгоритм перевірки, без дублювання процедур тут.
+- [ci.md](docs/ci.md) — обов’язкові PR-перевірки, локальні набори та алгоритм pre-merge.
 
 ## 16. Політика актуальності документації (обов'язково для кожного PR)
 
@@ -131,6 +131,6 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 
 `Documentation health` та `scripts/docs_guard.py` перевіряють посилання, roadmap і PR-base docs-impact; це **не гарантія семантичної правильності тексту**. Не обходити guard косметичними змінами.
 
-**Merge-gate для агента:** лише після **окремого дозволу на merge** і предметного review виконати `python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit` із довіреного checkout. Потрібні **всі** Full PR jobs, Fast PR і Documentation health — `completed/success` на **актуальному head SHA**, master є предком head, немає auto-merge. Failed/cancelled/pending/skipped/старі SHA чи attempts блокують merge. Новий commit або зміна base — новий Full через `scripts/ci/request_full.py`. Безпосередньо перед merge повторити gate й використовувати `--match-head-commit <SHA>`. Деталі — [ci.md](docs/ci.md).
+**Merge-gate для агента:** лише після **окремого дозволу на merge** і предметного review виконати `python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit` із довіреного checkout. Потрібні Fast PR checks, Docs links/roadmap/PR impact і Targeted PR checks — `completed/success` на **актуальному head SHA**, master є предком head, немає auto-merge. Failed/cancelled/pending/skipped/старі SHA чи attempts блокують merge. Full CI не запускається й не є вимогою для жодного diff, label чи критичного шляху. Після зміни head або base повторити три required checks і gate. Безпосередньо перед merge повторити gate й використовувати `--match-head-commit <SHA>`. Деталі — [ci.md](docs/ci.md).
 
 Серверний GitHub branch protection може бути недоступний: тоді це обов'язковий **агентський** захист, який технічно може обійти людина/admin. Не дозволяй auto-merge та не видавай `eligible: true` за право злити PR без рішення власника.

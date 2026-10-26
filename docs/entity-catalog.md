@@ -272,7 +272,7 @@
 3. **Один вид позиції:** `meal_items.food_id` завжди посилається на `foods`; `foods.food_type` визначає типізованого нащадка — `ingredients` або опубліковану `recipe_versions`. Обидва варіанти одночасно неможливі; складений FK і constraint-тригер це забезпечують.
 4. **Copy-on-Write:** персональні рецепти й плани є окремими логічними записами з `parent_recipe_id` / `parent_meal_plan_id`; зміни копії не впливають на оригінал і на інших клієнтів.
 5. **КБЖВ рецептів:** харчова цінність зберігається в `recipe_versions` на одну порцію (`kcal_per_serving`, `protein_per_serving`, `fat_per_serving`, `carbs_per_serving`). Для опублікованої версії ці значення обов'язкові та незмінні; `ingredients` не версіонуються.
-6. **Кількості інгредієнтів:** `recipe_ingredients.quantity`, `quantity_grams` і КБЖВ рецепта зберігаються **на 1 порцію**; legacy масштабується через `recipe_versions.servings_count`; для batch_v1 B/C — фізичні партії, потрібен явний формат/дільник (майбутній Stage 4).
+6. **Кількості інгредієнтів:** `recipe_ingredients.quantity`, `quantity_grams` і КБЖВ рецепта зберігаються **на 1 порцію**; legacy масштабується через `recipe_versions.servings_count`; для batch_v1 B/C — фізичні партії, потрібен явний формат/дільник за G4-I (SQL 14).
 7. **Одна чернетка:** для кожного `recipes.id` і `meal_plans.id` допускається не більше однієї чернетки; це забезпечено частковими UNIQUE-індексами `recipe_one_draft` і `meal_plan_one_draft`.
 8. **Призначення планів:** клієнту можна призначити лише опубліковану `meal_plan_version`; перекриття дат для одного клієнта заборонені через `EXCLUDE`-обмеження `no_overlapping_client_plan_dates`; історія зберігається через `replaced_by_assignment_id`, самопосилання заборонене CHECK-ом `assignment_no_self_replacement`. Правила завершення/заміни, окрім перелічених обмежень, залишаються сервісними.
 9. **Версії в плані:** один `meal_plan` може містити багато різних `recipe_versions` через `meal_items`; тексти рецептів не дублюються.
@@ -442,3 +442,48 @@ PUBLIC/runtime direct DML не надається; grants існують тіл�
 Новий adapter доступний лише guarded synthetic testing, production/cutover
 закрито; `4040404` збережено. D6-A epoch/fence чинний, бюджети після restore не є
 доказом невикористаного ліміту. [Контракт, parity та докази B6](auth6-b6.md).
+
+## G4-I — точні selectors позиції раціону
+
+[SQL 14](14_meal_item_selectors.sql) додає до `meal_items` лише nullable
+`recipe_version_id integer`, `recipe_batch_format_id integer`,
+`recipe_portion_divisor smallint`. Історія не переписується; усі старі поля
+зберігають значення, нові — NULL. CHECK допускає тільки всі NULL або повну трійку
+з divisor 1/3/4/7. Ingredient і published legacy — тільки NULL; batch — повна трійка.
+FK `(recipe_version_id,food_id) → recipe_versions(id,food_id)` та
+`(recipe_batch_format_id,recipe_version_id) → recipe_batch_formats(id,recipe_version_id)`
+мають UPDATE/DELETE RESTRICT; додано відсутній UNIQUE `(id,food_id)` версії,
+наявний UNIQUE формату повторно не створюється. Два partial indexes — на нові FK.
+
+Чинний measure guard розширено перевіркою exact published version/food, contract,
+належності format і відповідності `single/1`, `week/7`, `half_week/3 або 4`.
+Recipe — `serving`, grams NULL; ingredient — дозволена UOM та grams >0, звірка
+конверсії при Publish збережена. Root SHARE lock узгоджений із recipe writer;
+child locks не додаються. Published root/descendants і планові immutable guards
+залишаються чинними. Forward-only `down()` відмовляє без втрати selector-даних.
+
+Readonly resolver і decimal scale/округлення описані в [meal-plans.md](meal-plans.md#model-i-g4-i-selectors-та-readonly-resolver).
+Фізичний склад партії не змінюється від обраного divisor; shopping/cooking writer відсутній.
+
+## Презентаційні поля SQL15 (Issue #62 / PR #67)
+
+`meal_plans.week_start_weekday SMALLINT NOT NULL DEFAULT 1 CHECK (1..7)` —
+обов'язковий «Початок тижня» при створенні, ISO Пн=1 … Нд=7; UI типово Пн.
+Значення незмінне після створення (DB trigger, редактора немає). Для існуючих
+планів погоджено default=1; дні, позиції, призначення та nutrition не backfill-яться.
+День N має weekday `((week_start_weekday + N - 2) % 7) + 1`; це не календарна дата
+призначення. Поля anchor у версіях немає.
+
+`ingredients.image_url` і `recipes.image_url` — nullable text, mutable cover metadata.
+Логічна обкладинка recipe спільна для всіх його exact published versions; title
+і nutrition беруться з вибраної exact version. Cover не належить recipe_versions,
+foods або meal_items, не замінює `recipe_directions.image_url`. SQL15 виключає лише
+новий ingredient image_url із `recipe_batch_source_hash`, зберігаючи попередній hash
+і всі інші залежності. URL перевіряється Laravel exact HTTPS host allowlist;
+порожній allowlist дозволяє всю роботу без фото. [Операційний контракт](meal-plans.md#зображення-та-початок-тижня-sql15).
+
+## Зображення кухонного обладнання
+
+`kitchen_equipment.image_url` — nullable text із публічним HTTPS URL. Воно використовує той
+самий точний host allowlist та поля URL, що й обкладинки інгредієнтів/рецептів. Forward
+SQL додає лише метадані зображення; ID і категорії довідника не змінюються.

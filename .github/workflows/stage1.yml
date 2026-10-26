@@ -8,6 +8,10 @@ on:
       base:
         required: true
         type: string
+      groups:
+        required: false
+        type: string
+        default: all
 permissions:
   contents: read
 jobs:
@@ -50,33 +54,39 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
-      - run: python -m playwright install --with-deps chromium
-      - name: Stage 3 recipe batches, historical upgrade and concurrency
-        run: RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1 bash tests/pg/run-stage1.sh
-      - name: AUTH-6B B5 retention, archive ACL, restore faults and concurrency
-        shell: bash
+      - run: python -m playwright install chromium
+      - name: Chromium render readiness regressions
+        run: python -m unittest discover -s tests/browser -p 'test_*.py' -v
+      - name: Selected isolated PostgreSQL and Chromium groups (two bounded workers)
+        run: python3 scripts/ci/stage1_groups.py --groups '${{ inputs.groups }}'
+      - name: Complete SQL schema suite
+        env:
+          GROUPS: ${{ inputs.groups }}
         run: |
-          mkdir -p tests/pg/out
-          AUTH6B5_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b5.out
-      - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh
-      - name: AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency
-        shell: bash
-        run: AUTH6B_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b.out
-      - run: bash tests/pg/test-runner.sh
-      - run: bash tests/pg/run-isolated-pg.sh
+          if [[ "$GROUPS" == all ]]; then
+            bash tests/pg/test-runner.sh
+            bash tests/pg/run-isolated-pg.sh
+          else
+            echo "Full-only SQL schema suites are not selected."
+          fi
       - name: AUTH-1 regression
         env:
+          GROUPS: ${{ inputs.groups }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
-            tail -2 tests/pg/out/auth1.out
-          else
-            python3 - <<'PYCODE'
+          if [[ "$GROUPS" == all ]]; then
+            if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
+              tail -2 tests/pg/out/auth1.out
+            else
+              python3 - <<'PYCODE'
           from pathlib import Path
           text = '\n'.join(Path('tests/pg/out/auth1.out').read_text().splitlines()[-30:])
           print('::error::AUTH-1 regression failed: ' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
           PYCODE
-            exit 1
+              exit 1
+            fi
+          else
+            echo "Full-only AUTH-1 upstream probe is not selected."
           fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -84,6 +94,9 @@ jobs:
           name: stage1-pg-logs
           path: |
             tests/pg/out/*.out
+            tests/pg/out/groups.json
+            docs/evidence/meal-plans/*.png
+            docs/evidence/meal-plans/checks.json
             docs/evidence/food-catalog/*.png
             docs/evidence/food-catalog/checks.json
             docs/evidence/recipe-batches/*.png

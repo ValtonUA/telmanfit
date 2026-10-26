@@ -287,3 +287,29 @@ snapshots, review, коректні auto, totals і frozen equipment. Весь �
 opt-in nearest 100 g, дробові упаковки після погодження. Seeds/фасування не додаються.
 Обладнання A — ручна база, B/C — auto/manual; ID стабільні при Save, manual min_value/UOM/tip не переписуються. Auto count округлюється ceil до цілого, volume — лише до decimal точності сховища; NULL не є нулем. Publish вимагає актуальної явної перевірки достатності A/B/C після будь-якої зміни залежностей ([SQL 12](12_recipe_equipment.sql)).
 Межі ядра та команд — [контракт реалізації](recipe-batches.md).
+
+## G4-I: уточнення BR-P-05 для Model I
+
+[SQL 14](14_meal_item_selectors.sql) зберігає BR-P-01…07 та розширює BR-P-05:
+ingredient і published `legacy_v1` мають усі три recipe selectors NULL;
+`batch_v1` вимагає exact published `(food_id,recipe_version_id,recipe_batch_format_id,recipe_portion_divisor)`.
+`single→1`, `week→7`, `half_week→3 або 4`; partial NULL, batch all-NULL, чужий
+format/version, draft version або невідповідна UOM/grams відхиляються SQL.
+`quantity` — дробова кількість спожитих порцій. Legacy nutrition = frozen
+`*_per_serving × quantity`; batch = frozen `*_total × quantity / divisor`.
+Обчислення decimal, одне HalfUp округлення результату до 6 знаків; жодного
+проміжного округлення порції чи fallback на A/1. Приготування цілої фізичної партії
+використовує весь її frozen склад незалежно від divisor. Старі рядки не backfill-яться.
+
+### Презентація раціонів — SQL15
+
+- «Початок тижня» обов'язковий при створенні plan: ISO 1..7, default Пн=1;
+  незмінний після створення (CHECK/NOT NULL + trigger). Існуючі плани отримують
+  погоджений default=1 без змін порядкових днів або frozen даних.
+- Nullable logical covers належать лише ingredients/recipes. Зміна cover
+  дозволена свіжому admin через CAS/locks; опубліковані версії й nutrition
+  незмінні. Step images не використовуються як cover.
+- Фото — лише browser HTTPS до exact явно дозволених hosts; сервер не
+  завантажує URL. Немає host/URL або фото зламане — компактний placeholder.
+- Округлення лише презентаційне: exact decimal HALF_UP, kcal 0 знаків, Б/Ж/В 1;
+  від'ємні, float, scientific та інші неканонічні значення відхиляються fail-closed.

@@ -60,6 +60,7 @@ Table ingredients [headercolor: #0F766E] {
   food_id integer [not null, unique]
   food_type food_type_enum [not null, default: 'ingredient']
   name text [not null]
+  image_url text [note: 'Змінюване публічне HTTPS фото; точний allowlist hosts у Laravel; nullable, поза frozen nutrition.']
   ingredient_category_id smallint
   kcal_per_100g numeric(7,2) [not null]
   protein_per_100g numeric(7,2) [not null]
@@ -85,6 +86,7 @@ Table ingredient_uoms [headercolor: #0F766E] {
 Table recipes [headercolor: #7C3AED] {
   id integer [pk]
   title text [not null]
+  image_url text [note: 'Спільна змінювана обкладинка всіх exact versions; фото recipe_directions окремі.']
   recipe_category_id smallint
   parent_recipe_id integer
   owner_client_id integer
@@ -118,6 +120,7 @@ Table recipe_versions [headercolor: #7C3AED] {
   indexes {
     (recipe_id, version_number) [unique]
     (id, recipe_id) [unique]
+    (id, food_id) [unique]
   }
 
   Note: 'Published versions are immutable. food_id exists only for published versions. Only one draft per recipe (partial unique index); children are immutable via triggers.'
@@ -174,6 +177,7 @@ Table kitchen_equipment_categories [headercolor: #D97706] {
 Table kitchen_equipment [headercolor: #D97706] {
   id smallint [pk]
   name text [not null, unique]
+  image_url text [note: 'Змінюване публічне HTTPS фото; точний allowlist hosts у Laravel; nullable.']
   kitchen_equipment_category_id smallint
 }
 
@@ -195,6 +199,7 @@ Table recipe_kitchen_equipment [headercolor: #D97706] {
 Table meal_plans [headercolor: #2563EB] {
   id integer [pk]
   title text [not null]
+  week_start_weekday smallint [not null, default: 1, note: 'ISO 1..7; обов’язкове при створенні, незмінне DB trigger. Існуючим планам погоджено Пн=1.']
   parent_meal_plan_id integer
   owner_client_id integer
   created_at timestamptz [not null]
@@ -253,9 +258,12 @@ Table meal_items [headercolor: #2563EB] {
   quantity numeric(7,2) [not null]
   uom_id smallint [not null]
   resolved_quantity_grams numeric(7,2)
+  recipe_version_id integer
+  recipe_batch_format_id integer
+  recipe_portion_divisor smallint
   sort_order smallint [not null, default: 0]
 
-  Note: 'Single food_id points either to an ingredient or to a published recipe version.'
+  Note: 'SQL 14: ingredient/legacy selectors all NULL; batch selectors all NOT NULL, exact published version/format; single=1, week=7, half_week=3 or 4. quantity is consumed portions; recipe serving and NULL grams.'
 }
 
 Table client_meal_plan_assignments [headercolor: #2563EB] {
@@ -1111,3 +1119,7 @@ Ref: recipe_batch_quantities.uom_id > uoms.id [delete: restrict]
 Ref: recipe_batch_equipment.(format_id, recipe_version_id) > recipe_batch_formats.(id, recipe_version_id) [delete: restrict]
 Ref: recipe_batch_equipment.(recipe_kitchen_equipment_id, recipe_version_id) > recipe_kitchen_equipment.(id, recipe_version_id) [delete: restrict]
 Ref: recipe_batch_equipment.uom_id > uoms.id [delete: restrict]
+
+// G4-I: composite identity, RESTRICT; existing food FK remains.
+Ref: meal_items.(recipe_version_id,food_id) > recipe_versions.(id,food_id) [delete: restrict, update: restrict]
+Ref: meal_items.(recipe_batch_format_id,recipe_version_id) > recipe_batch_formats.(id,recipe_version_id) [delete: restrict, update: restrict]

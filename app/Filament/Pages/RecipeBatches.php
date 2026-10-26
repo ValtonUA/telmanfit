@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Actions\RecipeCoverAction;
 use App\Models\User;
 use App\Services\Recipes\BatchEditor;
 use App\Services\Recipes\RecipeTokens;
@@ -59,6 +60,11 @@ final class RecipeBatches extends Page
     public bool $legacySourcesAccepted = false;
 
     public bool $legacyReviewed = false;
+
+    protected function getHeaderActions(): array
+    {
+        return [RecipeCoverAction::make($this->version)->visible(fn () => $this->version !== null)];
+    }
 
     public function previewLegacy(): void
     {
