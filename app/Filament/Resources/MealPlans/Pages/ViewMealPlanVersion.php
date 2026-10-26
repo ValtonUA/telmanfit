@@ -6,6 +6,7 @@ use App\Filament\Resources\MealPlans\MealPlanVersionResource;
 use App\Models\Meal;
 use App\Models\MealType;
 use App\Services\MealPlans\MealPlanStructure;
+use App\Services\MealPlans\MealPlanWeekRepeater;
 use App\Support\Presentation\MealPlanDisplay;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 
 class ViewMealPlanVersion extends ViewRecord
@@ -32,6 +34,9 @@ class ViewMealPlanVersion extends ViewRecord
 
     #[Url]
     public int $week = 1;
+
+    #[Locked]
+    public string $repeatSummary = '';
 
     public function getMaxContentWidth(): Width
     {
@@ -96,6 +101,7 @@ class ViewMealPlanVersion extends ViewRecord
     {
         return [
             ...$this->itemActions(),
+            ...$this->weekRepetitionActions(),
             ...$this->weekDeletionActions(),
             Action::make('generateWeek')->label('Додати 7 днів')->modalSubmitActionLabel('Додати тиждень')->authorize(fn () => $this->editable())
                 ->modalHeading('Додати наступний семиденний тиждень')
@@ -137,7 +143,7 @@ class ViewMealPlanVersion extends ViewRecord
         if (in_array($name, ['addItem', 'editItem', 'moveItem', 'deleteItem'], true)) {
             Gate::authorize('editItems', $this->getRecord());
         }
-        if (in_array($name, ['generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
+        if (in_array($name, ['repeatWeek', 'replaceWeeks', 'generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
             $this->authorizeStructure();
         }
 
@@ -181,6 +187,65 @@ class ViewMealPlanVersion extends ViewRecord
         }
 
         return [ActionGroup::make($actions)->label('Видалити тиждень')->button()->color('danger')];
+    }
+
+    protected function weekRepetitionActions(): array
+    {
+        return [
+            Action::make('repeatWeek')->label('Повторити тиждень')->authorize(fn () => $this->editable())
+                ->modalHeading('Повторити тиждень')->modalSubmitActionLabel('Повторити')->modalCancelActionLabel('Скасувати')
+                ->modalDescription('Незалежні копії всіх 7 днів, прийомів і позицій у чернетці. Джерело й попередні тижні зберігаються. Порожні дні копіюються як є; тиждень має містити хоча б одну позицію. Нові тижні залишаться чернеткою.')
+                ->fillForm(function (): array {
+                    $snapshot = app(MealPlanWeekRepeater::class)->snapshot(auth()->user(), $this->getRecord());
+
+                    return ['source_week' => 1, 'total_weeks' => max(2, intdiv(count($snapshot['days']), 7)), 'expected' => $snapshot['expected']];
+                })
+                ->schema([
+                    Hidden::make('expected')->required(),
+                    Select::make('source_week')->label('Вихідний тиждень')->required()->live()
+                        ->options(fn () => collect(range(1, max(1, $this->weekCount())))->mapWithKeys(fn ($n) => [$n => 'Тиждень '.$n])->all()),
+                    TextInput::make('total_weeks')->label('Кількість тижнів загалом')->integer()->minValue(2)->maxValue(4681)->required()->live(onBlur: true)
+                        ->helperText(fn (Get $get) => (int) $get('total_weeks') > (int) $get('source_week')
+                            ? 'Тиждень '.($get('source_week') ?: 1).' → цільові тижні '.((int) $get('source_week') + 1).'–'.$get('total_weeks').'. Наприклад, 4 загалом = джерело 1 + 3 копії. Усі наявні цільові тижні потребують окремої згоди, навіть без позицій.'
+                            : 'Укажіть загальну кількість, більшу за номер джерела і не меншу за наявну тривалість.'),
+                ])->action(function (array $data, Action $action): void {
+                    $preview = $this->withStructureValidation($action, fn () => app(MealPlanWeekRepeater::class)->preview(auth()->user(), $this->getRecord(), $data));
+                    if ($preview['replacements'] !== []) {
+                        $this->replaceMountedAction('replaceWeeks', array_intersect_key($preview, array_flip(['source_week', 'total_weeks', 'expected'])));
+
+                        return;
+                    }
+                    $this->repeatWeekCommand($action, $data);
+                }),
+
+        ];
+    }
+
+    /** Окреме confirmation action, доступне лише після перевірки підписаного стану. */
+    public function replaceWeeksAction(): Action
+    {
+        return Action::make('replaceWeeks')->label('Замінити цільові тижні')->authorize(fn () => $this->editable())
+            ->requiresConfirmation()->modalHeading('Замінити цільові тижні')
+            ->modalSubmitActionLabel('Так, замінити цільові тижні')->modalCancelActionLabel('Скасувати')
+            ->modalDescription(fn () => $this->repeatSummary)
+            ->schema([Hidden::make('confirmation')])
+            ->fillForm(function (array $arguments, Action $action): array {
+                $preview = $this->withStructureValidation($action, fn () => app(MealPlanWeekRepeater::class)->preview(auth()->user(), $this->getRecord(), $arguments));
+                $counts = collect($preview['replacements'])->map(fn ($counts, $week) => 'тиждень '.$week.' — прийомів: '.$counts['meal_count'].', позицій: '.$counts['item_count'])->implode('; ');
+                $this->repeatSummary = 'Джерело: тиждень '.$preview['source_week'].'. Цільовий діапазон: '.($preview['source_week'] + 1).'–'.$preview['total_weeks'].'. Наявні тижні, які буде замінено: '.$counts.'. Вміст цільових тижнів буде повністю замінено незалежними копіями. Поточні правки цілей буде втрачено. Дію неможливо скасувати.';
+
+                return ['confirmation' => $preview['confirmation']];
+            })
+            ->action(function (array $data, array $arguments, Action $action): void {
+                $this->repeatWeekCommand($action, $arguments + ['confirmation' => $data['confirmation'] ?? null]);
+            });
+    }
+
+    protected function repeatWeekCommand(Action $action, array $input): void
+    {
+        $this->command($action, fn () => app(MealPlanWeekRepeater::class)->repeat(auth()->user(), $this->getRecord(), $input));
+        // У редакторі цільового дня його ID вже замінено: повертаємося до огляду.
+        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => $this->week]), navigate: false);
     }
 
     protected function editable(): bool

@@ -111,7 +111,7 @@ class EditMealPlanDay extends ViewMealPlanVersion
 
         return [Action::make('overview')->label('До огляду тижня')->url(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => intdiv($this->day()->day_number - 1, 7) + 1])),
             ActionGroup::make([
-                ...array_values(array_filter($actions, fn ($a) => $a instanceof Action && in_array($a->getName(), ['addMeal', 'editMeal', 'deleteMeal'], true))),
+                ...array_values(array_filter($actions, fn ($a) => $a instanceof Action && in_array($a->getName(), ['repeatWeek', 'replaceWeeks', 'addMeal', 'editMeal', 'deleteMeal'], true))),
                 ...$this->itemActions(),
                 RecipeCoverAction::make()->visible(fn () => $this->editable())->authorize(fn () => $this->editable() && CatalogWriter::allowed(auth()->user())),
             ])->label('Керування')->button()->color('gray')];

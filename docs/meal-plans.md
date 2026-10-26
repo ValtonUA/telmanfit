@@ -1,4 +1,4 @@
-# Раціони — контракт T4.1–T4.3 та Model I
+# Раціони — контракт T4.1–T4.3R та Model I
 
 [Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
 [readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
@@ -112,7 +112,7 @@ FK RESTRICT та immutable/UNIQUE guards не змінені. Конкурент
 
 Publish (T4.4), призначення/заміна
 (T4.5), CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
-Повторення/копіювання заповнених тижнів (Issue #61) не реалізовано.
+Повторення заповнених тижнів у draft описано нижче; воно не публікує і не призначає раціон.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
 G4-I реалізує окремий forward-only schema/readonly контракт Model I за
@@ -282,7 +282,7 @@ UX-4D видалення тижнів залишаються в огляді; п
 Header показує назву плану, а version/status — другорядно; actions згруповано в «Керування».
 Published має readonly огляд і сторінку дня, без каталогу, drag handles чи edit CTA;
 прямі Livewire write calls відхиляються Policy/Service. SQL01–14 не переписані; погоджений forward SQL15 описано нижче. Залежності,
-робочі БД, feature flags та призначення не змінюються. Repeat weeks #61,
+робочі БД, feature flags та призначення не змінюються. Повторення тижнів T4.3R описано нижче.
 Publish/assignment/CoW і production activation залишаються окремими задачами.
 
 Перевірки: `MealPlanDayEditorTest`, незалежний
@@ -331,3 +331,65 @@ TTL чи purge і не переносить файли у Laravel storage. У т
 округлює HALF_UP до kcal0/macro1 без float; resolver зберігає precision.
 `MealPlanPresentationTest` вимірює повний Livewire render 10/40 позицій,
 перевіряє незростання query count і точну відповідність scalar/bulk.
+
+
+## Повторення тижнів у чернетці T4.3R
+
+[Issue #61](https://github.com/ValtonUA/telmanfit/issues/61): «Керування → Повторити
+тиждень» доступне в огляді точної draft version та редакторі дня. Вихідний тиждень
+типово 1; «Кількість тижнів загалом» — кінцева тривалість усього раціону.
+Джерело S копіюється у S+1…N; джерело й попередні тижні не змінюються.
+Після успіху відкривається огляд поточного тижня; редактор цільового дня не
+залишається на старому ID, який щойно було замінено.
+Наприклад, 1 → 4 створює три копії. Для джерела 2 та N=4 змінюються лише 3 і 4.
+N має перевищувати S і бути не меншим за наявну тривалість: скорочення раціону
+виконується окремою UX-4D дією. Верхня технічна межа 4681 тиждень походить із
+SQL smallint day_number, нового продуктового ліміту немає.
+
+Джерело мусить бути повним семиденним блоком у безперервній структурі 1…N та
+містити хоча б одну позицію. Частково заповнений тиждень дозволений: порожні дні
+й прийоми копіюються як є. Це не перевірка готовності до Publish; повністю порожнє
+джерело й розірвана legacy-структура відхиляються без запису.
+
+`MealPlanWeekRepeater` використовує `MealPlanStructure::withinDraft`: runtime
+fence → fresh actor → exact version FOR UPDATE → days → meals → items. Усі
+наявні дні/прийоми/позиції блокуються в стабільному порядку, а HMAC стану містить
+actor, version, рядки та їхні PostgreSQL xmin revisions. Snapshot береться при
+відкритті форми й не оновлюється при зміні її полів. Append, edit, delete-week,
+інший repeat або ABA-правка після snapshot вимагають нового відкриття форми.
+Після успіху version xmin оновлюється також для інвалідації старих editor tokens.
+Повтор submit відхиляється; дублікати чи повторне затирання правок не створюються.
+
+Відсутні цілі створюються без додаткового confirmation. Якщо хоча б один
+цільовий тиждень уже існує, перший submit лише відкриває окреме «Замінити цільові
+тижні» — навіть за 0 прийомів і 0 позицій. Це зберігає авторські назви, типи та
+порядок прийомів без страв до явної згоди тренера. Діалог показує source, цільовий
+діапазон, точний список наявних тижнів, які буде замінено, та кількість прийомів
+і позицій у кожному з них. Відсутні тижні не потрапляють до списку заміни. Лише «Так, замінити цільові тижні» передає
+окремий HMAC grant, прив'язаний до actor/version/source/total/snapshot.
+Cancel, відкриття, reload і preview не пишуть дані. `confirmed=true`, підміна
+лічильників або старий grant не дозволяють заміну; перед записом стан звіряється
+повторно під locks. Нові конкурентні вставки також серіалізуються FK key-share
+проти FOR UPDATE на батьківських рядках.
+
+В одній транзакції цільові items → meals → days видаляються і створюються заново
+з новими ID. Кожен день, прийом і позиція — фізично незалежний рядок; title,
+meal_type_id, sort_order (включно з однаковими значеннями та стабільним ID-порядком),
+food_id, exact recipe_version_id/recipe_batch_format_id/recipe_portion_divisor,
+quantity, uom_id і resolved_quantity_grams копіюються без повторного resolution,
+float чи переходу на latest. A/1, B/7, C/3, C/4 та legacy NULL selectors зберігаються.
+Немає live-link, нової таблиці, міграції чи фонової materialization. Deferred
+constraints і повторна перевірка ролі/fence виконуються до commit; пізня помилка
+відкочує всі видалення й копії. Каталоги, frozen recipes, published plans та
+історичні assignments не змінюються. Чинні admin/MFA/CSRF middleware збережено.
+
+Повтор у draft — лише підготовка вмісту. **T4.4** окремо реалізує публікацію
+та перевірку заповненості, **T4.5** — призначення exact published version, дати,
+заміни та DEC-4A; безстроковий повтор тут не реалізується.
+
+Перевірки: `tests/Postgres/MealPlanWeekRepetitionTest.php` (deep copy/ID independence,
+formats/decimal/history, confirmation/cancel/forgery/stale/ACL, deferred rollback),
+`tests/pg/meal-plan-week-repetition-concurrency.php` (реальні lock waits для repeat,
+item edit, append, UX-4D delete, raw INSERT, publication, role/fence),
+`tests/browser/week_repetition.py` (1440/390/320 light/dark, copy, independent edit,
+replace/cancel і stale modal). Входять у штатний Stage3/4 runner, без нових CI jobs.
