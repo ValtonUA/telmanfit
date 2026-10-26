@@ -49,7 +49,7 @@ Empty down відновлює попередні CHECK; down при будь-я�
   expired invitation мають зрозумілий стан. Парольних полів немає.
 - `/app/login`: email OTP, expiry/error, resend з cooldown, restricted TOTP або
   recovery після OTP, повна session лише після потрібних факторів.
-- `/app`: справжнє users.name, поточний clients.status, безпека та вихід. Pending
+- `/app`: ім’я з users.first_name (або legacy full_name; [перехід](client-profiles.md)), поточний clients.status, безпека та вихід. Pending
   явно означає, що платний супровід не активовано. Раціони/метрики не вигадуються.
 - `/app/security`: нове підтвердження дії, QR/manual enrollment, одноразовий показ
   recovery batch, regeneration, replacement, disable/re-enrollment, opaque own

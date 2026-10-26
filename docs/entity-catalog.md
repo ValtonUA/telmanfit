@@ -5,17 +5,18 @@
 > **Оновлено:** 20.10.2026 за результатами статичного аудиту v0.3.
 
 
-За поточними домовленостями маємо 37 бізнес-таблиць у 8 групах та 7 окремих auth-таблиць AUTH-2 (нижче). Це не означає, що всі вони мають бути реалізовані одночасно: каталог описує узгоджену структуру першої повноцінної версії.
+За поточними домовленостями маємо 38 бізнес-таблиць у 8 групах та 7 окремих auth-таблиць AUTH-2 (нижче). Це не означає, що всі вони мають бути реалізовані одночасно: каталог описує узгоджену структуру першої повноцінної версії.
 
 ## 1. Users & Client Management
 
-6 таблиць
+7 таблиць
 
 | Таблиця                     | Призначення                                                              |
 | --------------------------- | ------------------------------------------------------------------------ |
 | `users`                     | Облікові записи користувачів, Telegram-авторизація та доступ до Filament |
 | `clients`                   | Клієнтські профілі, відповідальний тренер, статус і початок супроводу    |
-| `client_onboardings`        | Початкова анкета клієнта                                                 |
+| `client_profiles`          | Загальні характеристики, ціль, труднощі, пріоритети та режим роботи |
+| `client_onboardings`        | Історичний знімок початкової анкети клієнта                                                 |
 | `client_nutrition_profiles` | Харчові цілі, уподобання, обмеження                                      |
 | `client_activity_profiles`  | Ціль щодо кроків, фізичні обмеження (зокрема травми), бажані дні тренувань |
 | `client_settings`           | Індивідуальні налаштування, графік нагадувань і звітів                   |
@@ -24,10 +25,11 @@
 
 - Кожен клієнт має відповідального тренера: явний вибір серед `coach`/`admin`, без default. Filament доступний лише `admin`.
 - Нові клієнти отримують доступ виключно за персональним запрошенням, створеним admin у Filament (рішення користувача 21.10.2026). Ручне створення карток адміністратором в обхід запрошення заборонене.
-- Одна людина має один `users` і максимум один `clients`; ім’я — `users.name`, без `clients.display_name`. Наявні картки з `user_id=NULL` зберігаються як перехідні записи; nullable у SQL не дозволяє ручного створення через UI.
+- Одна людина має один `users` і максимум один `clients`; ім’я та прізвище — `users.first_name/last_name`, обчислюване `full_name`; `name` — тимчасовий legacy fallback, без `clients.display_name`. Наявні картки з `user_id=NULL` зберігаються як перехідні записи; nullable у SQL не дозволяє ручного створення через UI.
 - PWA та Telegram Mini App максимально використовують один React-застосунок, Laravel API і PostgreSQL; підтримуються одна або обидві оболонки, Mini App може мати менше можливостей.
 - Заплановано «Підключити Telegram» у PWA з підтвердженням володіння Telegram-акаунтом і зворотне підключення PWA до того самого акаунта. Автоматичне ототожнення за ім’ям, username чи email заборонене.
-- Запрошення, Telegram-автентифікація, прив’язка Telegram і PWA-автентифікація ще не реалізовані. До реалізації створення клієнтів через UI недоступне. PWA email OTP без пароля та вимоги MFA затверджено; технічні пропозиції й нові auth-сутності — [auth-architecture.md](auth-architecture.md). Вони ще не входять до чинної схеми 37 бізнес-таблиць; SQL/DBML тут не змінюються. Анкета потребує окремого погодження.
+- Межі реалізованого invitation/email OTP/MFA — [project-status](project-status.md); Telegram linking ще не реалізовано. Поточна анкета має лише три питання; повне завершення потребує окремого контракту.
+- Типізовані профілі, семантика полів, SQL-обмеження й безпечний перехід описані в [контракті профілів](client-profiles.md). Кожен профіль/анкета має PK/FK `client_id`; архів після завершення незмінний. NOT NULL імен — ціль після ручного уточнення legacy записів.
 - Реєстрація в застосунку не запускає супровід автоматично.
 - Наявність клієнтського профілю не означає, що платний супровід активний.
 - Один `user` потенційно може бути і тренером, і клієнтом, але самостійне ведення у v1 не реалізуємо.
@@ -68,6 +70,9 @@
 | `recipes`               | Логічні рецепти, зокрема персональні похідні рецепти |
 | `recipe_versions`       | Чернетки та незмінні опубліковані версії рецептів; КБЖВ і кількості — на 1 порцію; кроки — в `recipe_directions` |
 | `recipe_ingredients`    | Склад конкретної версії рецепта із кількостями інгредієнтів |
+| `recipe_batch_formats` | Три фізичні партії A/B/C, frozen totals та policy; один version/food |
+| `recipe_batch_quantities` | B/C author quantity/UOM, edible grams, frozen conversion, mode/context/ack |
+| `recipe_batch_equipment` | Resolved equipment snapshots трьох форматів; nullable min_value |
 | `recipe_components`     | Необов'язкові групи інгредієнтів конкретної версії рецепта |
 | `ingredient_categories` | Категорії продуктів                                |
 | `recipe_categories`     | Категорії рецептів                                 |
@@ -76,7 +81,7 @@
 
 Залишаємо вже погоджений принцип:
 
-Інгредієнти мають КБЖВ на 100 г, а рецепти — розраховану харчову цінність на порцію. Інгредієнти **не версіонуються**: виправлення значень у `ingredients` діють для всіх посилань. Це означає, що при повторному розрахунку історичних рецептів їхні відображувані КБЖВ можуть змінитися; незмінність опублікованої версії гарантує насамперед її склад, кількості та інструкції. КБЖВ фіксується в `recipe_versions` на одну порцію під час публікації; після публікації значення незмінні. Перерахунок чернеток після зміни інгредієнтів — сервісне правило (див. відкриті питання).
+Інгредієнти мають КБЖВ на 100 г і не версіонуються. Published-рецепти завжди читають frozen значення: зміна довідника не змінює історичний показ. Для `batch_v1` A — `recipe_ingredients` у g; `recipe_batch_formats` зберігає три фізичні totals, `recipe_batch_quantities` — авторські B/C quantity/UOM, їстівні grams, frozen conversion, auto/manual та review context; auto C успадковує фактичну UOM/factor B і прийняте правило округлення за UOM code, manual C лишається незалежним. `recipe_batch_equipment` фіксує обладнання для кожного формату зі збереженням nullable min_value. Повний контракт — [forward Stage 3](recipe-batches.md), SQL — [11](11_recipe_batches.sql) та forward-ревізії функцій [12](12_recipe_equipment.sql) і [13](13_recipe_legacy_conversion.sql). C3 дозволяє лише явну одноразову draft legacy→batch конвертацію з originals у наявних snapshots; published legacy лише створює нову draft-версію того самого recipe, без історичного nutrition backfill. Equipment A зберігає ручну базу, B/C — auto/manual min_value/UOM/tip; стабільний baseline PK, nullable min_value, ceil count та adequacy acknowledgement поточного складу. Достатність фізично перевіряє автор; нових таблиць/полів для неї немає.
 
 Не змушуємо кожен рецепт мати вагу готової страви. Коли Ви приготували каструлю їжі на п'ять порцій, достатньо розділити її на п'ять частин.
 
@@ -131,6 +136,8 @@
 | `client_fitness_equipment` | Обладнання, наявне у конкретного клієнта |
 
 Повноцінного модуля тренувань у v1 не буде.
+
+Обидві таблиці інвентаря — сумісні legacy-структури, їхні дані зберігаються. Нові довільні описи пишуться лише у `client_activity_profiles.fitness_equipment`; автоматичного підбору вправ/рецептів немає. Подальше вилучення потребує окремого перенесення.
 
 Інформація про травми, обмеження, цільові кроки та бажані дні тренувань залишається в `client_activity_profiles`.
 
@@ -200,6 +207,7 @@
 |---|---|---|
 | `users` (тренер) → `clients` | 1:N | Відповідальний тренер |
 | `users` (акаунт клієнта) ↔ `clients` | 1:0..1 | `clients.user_id` залишається nullable для перехідних записів; UI-створення заборонене |
+| `clients` → `client_profiles` | 1:0..1 | Загальні актуальні характеристики |
 | `clients` → `client_onboardings` | 1:0..1 | Одна початкова анкета на профіль у v1 |
 | `clients` → `client_nutrition_profiles` | 1:0..1 | Профіль може бути ще не заповнений |
 | `clients` → `client_activity_profiles` | 1:0..1 | Профіль може бути ще не заповнений |
@@ -260,11 +268,11 @@
 ### Інваріанти та затверджені рішення (v0.3)
 
 1. **Жодного автоматичного перепризначення:** нова версія рецепта чи плану не змінює посилання у вже призначених опублікованих планах.
-2. **Повна незмінність опублікованих версій:** `recipe_versions` і `meal_plan_versions` зі статусом `published`, а також їхні дочірні рядки (`recipe_components`, `recipe_ingredients`, `recipe_directions`, `recipe_kitchen_equipment`, `meal_plan_days`, `meals`, `meal_items`) не можна змінювати або видаляти. Це забезпечено тригерами SQL.
+2. **Повна незмінність опублікованих версій:** `recipe_versions` і `meal_plan_versions` зі статусом `published`, а також їхні дочірні рядки (`recipe_components`, `recipe_ingredients`, `recipe_directions`, `recipe_kitchen_equipment`, `recipe_batch_formats`, `recipe_batch_quantities`, `recipe_batch_equipment`, `meal_plan_days`, `meals`, `meal_items`) не можна змінювати або видаляти. Це забезпечено тригерами SQL.
 3. **Один вид позиції:** `meal_items.food_id` завжди посилається на `foods`; `foods.food_type` визначає типізованого нащадка — `ingredients` або опубліковану `recipe_versions`. Обидва варіанти одночасно неможливі; складений FK і constraint-тригер це забезпечують.
 4. **Copy-on-Write:** персональні рецепти й плани є окремими логічними записами з `parent_recipe_id` / `parent_meal_plan_id`; зміни копії не впливають на оригінал і на інших клієнтів.
 5. **КБЖВ рецептів:** харчова цінність зберігається в `recipe_versions` на одну порцію (`kcal_per_serving`, `protein_per_serving`, `fat_per_serving`, `carbs_per_serving`). Для опублікованої версії ці значення обов'язкові та незмінні; `ingredients` не версіонуються.
-6. **Кількості інгредієнтів:** `recipe_ingredients.quantity`, `quantity_grams` і КБЖВ рецепта зберігаються **на 1 порцію**; масштабування виконується через `recipe_versions.servings_count` під час формування плану.
+6. **Кількості інгредієнтів:** `recipe_ingredients.quantity`, `quantity_grams` і КБЖВ рецепта зберігаються **на 1 порцію**; legacy масштабується через `recipe_versions.servings_count`; для batch_v1 B/C — фізичні партії, потрібен явний формат/дільник за G4-I (SQL 14).
 7. **Одна чернетка:** для кожного `recipes.id` і `meal_plans.id` допускається не більше однієї чернетки; це забезпечено частковими UNIQUE-індексами `recipe_one_draft` і `meal_plan_one_draft`.
 8. **Призначення планів:** клієнту можна призначити лише опубліковану `meal_plan_version`; перекриття дат для одного клієнта заборонені через `EXCLUDE`-обмеження `no_overlapping_client_plan_dates`; історія зберігається через `replaced_by_assignment_id`, самопосилання заборонене CHECK-ом `assignment_no_self_replacement`. Правила завершення/заміни, окрім перелічених обмежень, залишаються сервісними.
 9. **Версії в плані:** один `meal_plan` може містити багато різних `recipe_versions` через `meal_items`; тексти рецептів не дублюються.
@@ -281,11 +289,11 @@
 
 1. **Категорії:** залишити одну nullable-категорію (`ingredients.ingredient_category_id`, `recipes.recipe_category_id`) чи перейти на M:N? Поточний SQL фіксує один FK; M:N потребує нових таблиць і не входить у v1.
 2. **Травми:** `client_activity_profiles` має лише `physical_limitations` (text). Чи достатньо вільного тексту, чи потрібна структурована модель травм?
-3. **Анкета та налаштування:** контракти `client_onboardings.answers`, `client_settings.reminder_settings`, `client_settings.report_settings` (jsonb) ще не зафіксовані.
+3. **Анкета та налаштування:** нові налаштування типізовані; legacy JSON збережено. Повне завершення анкети потребує контракту; [правила переходу](client-profiles.md).
 4. **Адмінський вхід — частково вирішено 21.10.2026:** MFA для admin обов’язкова; PWA клієнта — email OTP без пароля. Окремий admin primary email+password, shared TOTP adapter та recovery останнього admin — пропозиції P4/P5 у [auth-architecture.md](auth-architecture.md). Nullable email/password у схемі не змінюються.
 5. **Призначення тренера — вирішено 21.10.2026 (G1 для Stage 2):** адміністратор явно обирає `coach_user_id` серед користувачів з `role = coach` або `role = admin`; `client` не дозволений, типового тренера немає. БД перевіряє лише FK, роль перевіряє Laravel. Доступ до Filament залишається лише для `admin`; інші питання авторизації G1 цим не закриваються.
 6. **Життєвий цикл призначень (частково закрито 21.10.2026):** самопосилання в `replaced_by_assignment_id` заборонене CHECK-обмеженням `assignment_no_self_replacement`; `end_date` nullable; правила дострокового завершення та решти заміни — сервісні.
-7. **Перерахунок чернеток — вирішено 23.10.2026:** відкладений автоматичний перерахунок за поточними `ingredients` та `ingredient_uoms.grams_per_uom` при читанні/редагуванні, збереженні та повторно при публікації з транзакційною перевіркою. Жодної зміни старих published версій (BR-F-11).
+7. **Перерахунок чернеток:** після зміни `ingredients` або `ingredient_uoms.grams_per_uom` опубліковані КБЖВ не змінюються; для batch_v1 прийнято явний refresh із diff; GET не записує, manual quantity/UOM зберігаються. Базові команди редактора — [PR B1](recipe-batches.md#команди-та-базовий-filament-editor-pr-b1); решта editor slice — за roadmap.
 8. **Архівування `foods`:** SQL забороняє видаляти типізованого нащадка, залишаючи `foods`; окремого workflow архівування немає.
 9. **Метрики — вирішено 21.10.2026 (GAP-3):** `metrics.min_value` / `max_value` — жорсткі **включні** межі рівня додатка (Laravel API + React); PostgreSQL свідомо не перевіряє `client_metrics.value`; зміна меж не потребує зміни схеми (BR-T-02, аудит §7.9).
 10. **Повідомлення та події:** переходи статусів, ідемпотентність, таксономія `client_events.event_type` і retention залишаються сервісними правилами.
@@ -293,7 +301,7 @@
 
 ### Рішення реєстрації та технічні питання — 21.10.2026
 
-Затверджено доступ лише за персональним запрошенням, створеним admin у Filament, один `users`/максимум один `clients`, спільні дані PWA/Telegram Mini App та підтверджене підключення в обох напрямках без автоматичного ототожнення за ім’ям, username чи email. Правила — [business-rules.md](business-rules.md), BR-U-14…BR-U-18. Спосіб PWA-входу вже затверджено: email OTP без пароля; invitation створює admin у Filament, без email binding, із відкликанням і використанням лише після успішної реєстрації. Optional client TOTP/резервні коди — найближчий етап, admin MFA обов’язкова. Технічні деталі P1–P6 ще потребують погодження: [auth-architecture.md](auth-architecture.md), §13. Анкета залишається окремим відкритим контрактом. Запрошення, Telegram-автентифікація, прив’язка Telegram та PWA-автентифікація ще не реалізовані; створення нових клієнтів через UI до їх реалізації недоступне. Поточна задача не змінює SQL/DBML і не робить `clients.user_id` обов’язковим.
+Затверджено доступ лише за персональним запрошенням, створеним admin у Filament, один `users`/максимум один `clients`, спільні дані PWA/Telegram Mini App та підтверджене підключення в обох напрямках без автоматичного ототожнення за ім’ям, username чи email. Правила — [business-rules.md](business-rules.md), BR-U-14…BR-U-18. Спосіб PWA-входу вже затверджено: email OTP без пароля; invitation створює admin у Filament, без email binding, із відкликанням і використанням лише після успішної реєстрації. Optional client TOTP/резервні коди — найближчий етап, admin MFA обов’язкова. Технічні деталі P1–P6 ще потребують погодження: [auth-architecture.md](auth-architecture.md), §13. Анкета залишається окремим відкритим контрактом. Запрошення, Telegram-автентифікація, прив’язка Telegram та PWA-автентифікація ще не реалізовані; створення нових клієнтів через UI до їх реалізації недоступне. Ревізія профілів описана в [контракті](client-profiles.md); `clients.user_id` залишається nullable.
 
 ## 13. Що змінилося від v1
 
@@ -434,3 +442,48 @@ PUBLIC/runtime direct DML не надається; grants існують тіл�
 Новий adapter доступний лише guarded synthetic testing, production/cutover
 закрито; `4040404` збережено. D6-A epoch/fence чинний, бюджети після restore не є
 доказом невикористаного ліміту. [Контракт, parity та докази B6](auth6-b6.md).
+
+## G4-I — точні selectors позиції раціону
+
+[SQL 14](14_meal_item_selectors.sql) додає до `meal_items` лише nullable
+`recipe_version_id integer`, `recipe_batch_format_id integer`,
+`recipe_portion_divisor smallint`. Історія не переписується; усі старі поля
+зберігають значення, нові — NULL. CHECK допускає тільки всі NULL або повну трійку
+з divisor 1/3/4/7. Ingredient і published legacy — тільки NULL; batch — повна трійка.
+FK `(recipe_version_id,food_id) → recipe_versions(id,food_id)` та
+`(recipe_batch_format_id,recipe_version_id) → recipe_batch_formats(id,recipe_version_id)`
+мають UPDATE/DELETE RESTRICT; додано відсутній UNIQUE `(id,food_id)` версії,
+наявний UNIQUE формату повторно не створюється. Два partial indexes — на нові FK.
+
+Чинний measure guard розширено перевіркою exact published version/food, contract,
+належності format і відповідності `single/1`, `week/7`, `half_week/3 або 4`.
+Recipe — `serving`, grams NULL; ingredient — дозволена UOM та grams >0, звірка
+конверсії при Publish збережена. Root SHARE lock узгоджений із recipe writer;
+child locks не додаються. Published root/descendants і планові immutable guards
+залишаються чинними. Forward-only `down()` відмовляє без втрати selector-даних.
+
+Readonly resolver і decimal scale/округлення описані в [meal-plans.md](meal-plans.md#model-i-g4-i-selectors-та-readonly-resolver).
+Фізичний склад партії не змінюється від обраного divisor; shopping/cooking writer відсутній.
+
+## Презентаційні поля SQL15 (Issue #62 / PR #67)
+
+`meal_plans.week_start_weekday SMALLINT NOT NULL DEFAULT 1 CHECK (1..7)` —
+обов'язковий «Початок тижня» при створенні, ISO Пн=1 … Нд=7; UI типово Пн.
+Значення незмінне після створення (DB trigger, редактора немає). Для існуючих
+планів погоджено default=1; дні, позиції, призначення та nutrition не backfill-яться.
+День N має weekday `((week_start_weekday + N - 2) % 7) + 1`; це не календарна дата
+призначення. Поля anchor у версіях немає.
+
+`ingredients.image_url` і `recipes.image_url` — nullable text, mutable cover metadata.
+Логічна обкладинка recipe спільна для всіх його exact published versions; title
+і nutrition беруться з вибраної exact version. Cover не належить recipe_versions,
+foods або meal_items, не замінює `recipe_directions.image_url`. SQL15 виключає лише
+новий ingredient image_url із `recipe_batch_source_hash`, зберігаючи попередній hash
+і всі інші залежності. URL перевіряється Laravel exact HTTPS host allowlist;
+порожній allowlist дозволяє всю роботу без фото. [Операційний контракт](meal-plans.md#зображення-та-початок-тижня-sql15).
+
+## Зображення кухонного обладнання
+
+`kitchen_equipment.image_url` — nullable text із публічним HTTPS URL. Воно використовує той
+самий точний host allowlist та поля URL, що й обкладинки інгредієнтів/рецептів. Forward
+SQL додає лише метадані зображення; ID і категорії довідника не змінюються.

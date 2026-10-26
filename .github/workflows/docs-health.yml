@@ -9,16 +9,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   docs:
     name: Docs links, roadmap and PR impact
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Unit-test documentation guard
         run: python3 -m unittest discover -s tests/docs -p 'test_*.py' -v
+      - name: CI gate regression tests
+        run: python3 -m unittest discover -s tests/ci -p 'test_*.py' -v
       - name: Verify T1.5 owner-provided source data (read-only)
         run: python3 scripts/validate_t15_source.py
       - name: Validate documentation links and roadmap status IDs

@@ -1,0 +1,16 @@
+{
+  "cancelled_pid": 43436,
+  "exit_code": 1,
+  "started_containers": 1,
+  "remaining_own_containers": [],
+  "private_work_root_removed": true,
+  "worker_states": {
+    "recipe": "cancelled",
+    "baseline": "cancelled",
+    "b5": "not_started",
+    "b3": "not_started"
+  },
+  "status": "failure",
+  "recovered_containers": [],
+  "proof": "real local PG18 startup cancellation; separate from success measurements"
+}

@@ -1,0 +1,1944 @@
+{
+  "browser": "154.0.8037.57",
+  "results": [
+    {
+      "page": "dashboard",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "invitations",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": {
+          "display": "block",
+          "padding": "6px 12px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "table",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "clients",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "table",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "card",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "questionnaire",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "12px",
+          "gap": "normal"
+        },
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "edit",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dropdown",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "notification",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dashboard",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "invitations",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": {
+          "display": "block",
+          "padding": "6px 12px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "table",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "clients",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "table",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "card",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "questionnaire",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.21 0.006 285.885)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "12px",
+          "gap": "normal"
+        },
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "edit",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dropdown",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "notification",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dashboard",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "none",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "invitations",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": {
+          "display": "block",
+          "padding": "6px 12px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "clients",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "card",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "questionnaire",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "12px",
+          "gap": "normal"
+        },
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "edit",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dropdown",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "notification",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dashboard",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "none",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "invitations",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": {
+          "display": "block",
+          "padding": "6px 12px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "clients",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "card",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "questionnaire",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.21 0.006 285.885)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "12px",
+          "gap": "normal"
+        },
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "edit",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dropdown",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "notification",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dashboard",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "none",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "invitations",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": {
+          "display": "block",
+          "padding": "6px 12px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "clients",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "card",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "questionnaire",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.828 0.189 84.429)",
+          "color": "oklch(0.414 0.112 45.904)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "12px",
+          "gap": "normal"
+        },
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "edit",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dropdown",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "notification",
+      "width": 320,
+      "theme": "light",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": false,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.985 0 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "rgb(255, 255, 255)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "oklch(0.141 0.005 285.823)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dashboard",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "none",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "invitations",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": {
+          "display": "block",
+          "padding": "6px 12px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "button": {
+          "display": "inline-grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "clients",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": {
+          "display": "block",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "normal"
+        },
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "card",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": null,
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": null,
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "questionnaire",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklch(0.666 0.179 58.318)",
+          "color": "oklch(0.279 0.077 45.635)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "oklch(0.21 0.006 285.885)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "12px",
+          "gap": "normal"
+        },
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "edit",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "dropdown",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    },
+    {
+      "page": "notification",
+      "width": 320,
+      "theme": "dark",
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "dark": true,
+        "input": {
+          "display": "flex",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "normal"
+        },
+        "rawInput": null,
+        "button": {
+          "display": "grid",
+          "padding": "8px 12px",
+          "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.05)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "8px",
+          "gap": "6px"
+        },
+        "field": {
+          "display": "grid",
+          "padding": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(255, 255, 255)",
+          "radius": "0px",
+          "gap": "8px"
+        },
+        "table": null,
+        "modal": null,
+        "theme": [
+          "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css"
+        ]
+      }
+    }
+  ],
+  "asset_failures": [],
+  "page_errors": [],
+  "asset_paths": [
+    "http://127.0.0.1:8098/build/assets/theme-C5xlwRpH.css",
+    "http://127.0.0.1:8098/fonts/filament/filament/inter/index.css",
+    "http://127.0.0.1:8098/fonts/filament/filament/inter/inter-cyrillic-wght-normal-DR6K5BQD.woff2",
+    "http://127.0.0.1:8098/fonts/filament/filament/inter/inter-latin-wght-normal-DIHYUR35.woff2",
+    "http://127.0.0.1:8098/js/filament/actions/actions.js",
+    "http://127.0.0.1:8098/js/filament/filament/app.js",
+    "http://127.0.0.1:8098/js/filament/filament/echo.js",
+    "http://127.0.0.1:8098/js/filament/forms/components/select.js",
+    "http://127.0.0.1:8098/js/filament/forms/components/textarea.js",
+    "http://127.0.0.1:8098/js/filament/notifications/notifications.js",
+    "http://127.0.0.1:8098/js/filament/schemas/schemas.js",
+    "http://127.0.0.1:8098/js/filament/support/support.js",
+    "http://127.0.0.1:8098/js/filament/tables/tables.js",
+    "http://127.0.0.1:8098/livewire-9bbe9912/livewire.min.js"
+  ],
+  "invitation_create_revoke": true
+}

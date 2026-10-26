@@ -17,7 +17,7 @@ TelmanFit — застосунок онлайн-фітнес-супроводу 
 
 ### Реєстрація та оболонки клієнта — затверджено 21.10.2026
 
-Доступ нового клієнта — виключно за персональним запрошенням, створеним admin у Filament; відповідальний тренер обирається явно. Одна людина має один `users` і максимум один `clients`; ім’я зберігається в `users.name`, без `clients.display_name`. Реєстрація не активує платний супровід.
+Доступ нового клієнта — виключно за персональним запрошенням, створеним admin у Filament; відповідальний тренер обирається явно. Одна людина має один `users` і максимум один `clients`; ім’я/прізвище зберігаються в `users.first_name/last_name`, `full_name` обчислюється в Laravel (legacy fallback — [контракт профілів](client-profiles.md)), без `clients.display_name`. Реєстрація не активує платний супровід.
 
 PWA і Telegram Mini App використовують максимально один React-застосунок у `client/`, один Laravel API і PostgreSQL. Клієнт може користуватися будь-якою оболонкою або обома зі спільними даними; можливості Mini App можуть бути обмежені. Це цільова архітектура оболонок; ступінь реалізації окремих клієнтських сценаріїв визначається кодом та [поточними доказами](project-status.md).
 
@@ -56,9 +56,10 @@ PWA і Telegram Mini App використовують максимально о�
 | Мова backend | PHP | `~8.3.36 \|\| ~8.4.27 \|\| ~8.5.12` у Composer; цільовий runtime — PHP 8.5 із security patch | `composer.json`, [D8.1](auth6-d8-preflight.md) |
 | Фреймворк | Laravel | `^13.17` | `composer.json` |
 | Адмінка | Filament | `~5.0` | `composer.json` |
+| Реактивні компоненти адмінки | Livewire | `4.4.8` у lock; виправлення GHSA-mhf7-xp6r-6qrc, без зміни Filament чи audit policy | `composer.lock`, [advisory](https://github.com/advisories/GHSA-mhf7-xp6r-6qrc) |
 | Розробка | Laravel Tinker, Pint, Pail, PAO | `^3.0`, `^1.27`, `^1.2.5`, `^1.0.6` | `composer.json` |
 | Тести backend | PHPUnit | `^12.5.12`; **11 XML-конфігурацій окремих тестових наборів** | `composer.json`, `phpunit*.xml`; [пояснення](#31-карта-технічних-файлів) |
-| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–09_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
+| БД | PostgreSQL: **01–04 бізнес-схема**, **05–09 auth/security** | 18 — цільовий runtime і перевірений тестовий PG18.6 | `docs/01–15_*.sql`, `database/sql/`, `database/migrations/`; [пояснення](#31-карта-технічних-файлів) |
 | SPA | React + TypeScript + Vite | React `^19.3`, TS `~6.0.3`, Vite `^8.3.4` | `client/package.json` |
 | Стилі SPA | CSS + Tailwind (Laravel-конвеєр) | Tailwind `^4.0` | `package.json`, `vite.config.js` |
 | Лінт SPA | ESLint + typescript-eslint | `^10.13`, `^8.71` | `client/eslint.config.js` |
@@ -66,18 +67,21 @@ PWA і Telegram Mini App використовують максимально о�
 
 ### 3.1. Карта технічних файлів
 
-**У `docs/` є дев'ять SQL-файлів — це не дев'ять баз даних:**
+**У `docs/` є тринадцять SQL-файлів — це модулі та forward-проєкції однієї БД:**
 
 | Рівень | Файли | Для чого |
 |---|---|---|
 | Бізнес-схема | `01_nutrition_schema.sql`, `02_users_clients.sql`, `03_progress_tracking.sql`, `04_fitness_messaging.sql` | Продукти/рецепти, клієнти, прогрес, інвентар/повідомлення — 37 бізнес-таблиць |
+| Рецепти A/B/C | [11_recipe_batches.sql](11_recipe_batches.sql), [12_recipe_equipment.sql](12_recipe_equipment.sql), [13_recipe_legacy_conversion.sql](13_recipe_legacy_conversion.sql) | Forward-схема та guard-функції; виконувані джерела — `database/sql/recipes/` |
+| Презентація та медіа каталогу | [15_plan_presentation.sql](15_plan_presentation.sql), [16_catalog_media.sql](16_catalog_media.sql) | Forward SQL15: immutable weekday plan і nullable covers; SQL16: nullable photo URL кухонного обладнання; `database/sql/presentation/` |
+| Профілі | `10_client_profiles.sql` | Forward-ревізія типізованих профілів; доповнює незмінні знімки Stage 1 |
 | Auth-таблиці | `05_auth_schema.sql` | Запрошення, сесії, MFA, резервні коди |
 | Auth recovery | `06_auth_recovery_schema.sql` | Технічна схема assisted recovery; **D3 operational із друзями відкладено** |
 | Security notices | `07_auth_security_notice_outbox.sql` | Черга повідомлень про події безпеки |
 | Retention/restore | `08_auth_retention_restore.sql` | Історія та захист після відновлення БД |
 | Rate budgets | `09_auth_rate_budgets.sql` | Серверні ліміти частоти запитів |
 
-Це **еталонні SQL-проєкції**. Реальна Laravel-інтеграція описана у `database/migrations/` та `database/sql/stage1/`, `database/sql/auth2/`, `database/sql/auth5/`, `database/sql/auth6b*/`; див. [Stage 1](stage-1.md) та [AUTH-2](auth-schema.md)–[B6](auth6-b6.md). `docs/05_auth_schema.sql` передбачає вже узгоджену Laravel `users`, тому **не запускати docs/01–09 SQL вручну на робочій БД**.
+Це **еталонні SQL-проєкції**; SQL 10 — forward-доповнення до Stage1, його виконуване джерело — `database/sql/profiles/00_profiles.sql`. Реальна Laravel-інтеграція описана у `database/migrations/` та `database/sql/stage1/`, `database/sql/auth2/`, `database/sql/auth5/`, `database/sql/auth6b*/`; див. [Stage 1](stage-1.md) та [AUTH-2](auth-schema.md)–[B6](auth6-b6.md). `docs/05_auth_schema.sql` передбачає вже узгоджену Laravel `users`, тому **не запускати docs/01–09 SQL вручну на робочій БД**.
 
 **11 файлів `phpunit*.xml` у корені — лише конфігурації тестів:**
 - `phpunit.xml` — `tests/Unit` і `tests/Feature`, базові SQLite-тести;
@@ -87,7 +91,7 @@ PWA і Telegram Mini App використовують максимально о�
 
 Їх використовує [`tests/pg/run-stage1.sh`](../tests/pg/run-stage1.sh) і [GitHub Actions](../.github/workflows/stage1.yml). Розділення забезпечує окремі test-only конфігурації session/cache/auth. **Без перегляду залежностей не об'єднувати та не видаляти.**
 
-**`docs/evidence/` і `docs/screenshots/` — архів технічних доказів, не вміст застосунку.** Там JSON-виміри та скриншоти браузерних перевірок MFA/Filament і UX-1. На 23.10.2026: **55 + 21 = 76 файлів, близько 2,8 МБ**. На них посилаються [UX-1](ux-1.md), [AUTH-3](auth3.md), [AUTH-5](auth5.md), [AUTH-6B/B6](auth6-b6.md) та workflow. Заміна на тимчасові GitHub Actions artifacts можлива лише з перевіркою CI, посилань, маскування секретів і потрібного строку збереження доказів.
+**`docs/evidence/` і `docs/screenshots/` — архів технічних доказів, не вміст застосунку.** Там JSON-виміри та скриншоти браузерних перевірок MFA/Filament і UX-1. На них посилаються [UX-1](ux-1.md), [AUTH-3](auth3.md), [AUTH-5](auth5.md), [AUTH-6B/B6](auth6-b6.md) та workflow. Заміна на тимчасові GitHub Actions artifacts можлива лише з перевіркою CI, посилань, маскування секретів і потрібного строку збереження доказів.
 
 **Навігація для Codex:** [AGENTS.md](../AGENTS.md) → [roadmap.md](roadmap.md) → [project-status.md](project-status.md) → потрібна частина [архітектури](architecture.md) та відповідні SQL/бізнес-правила. Немає потреби сприймати кожен `evidence`/XML як документ для планування функціоналу.
 
@@ -110,6 +114,10 @@ PWA і Telegram Mini App використовують максимально о�
 |---|---|
 | `app/Http/Controllers/Api/` | JSON-контролери (наразі лише `HealthController`) |
 | `app/Providers/Filament/AdminPanelProvider.php` | Конфігурація панелі `admin` |
+| `app/Filament/Resources/Catalog/`, `app/Models/Catalog/` | Штатні Filament ресурси й моделі існуючих харчових довідників; conversions у формі ingredient |
+| `app/Services/Catalog/CatalogWriter.php`, `app/Policies/CatalogPolicy.php` | Транзакційний writer food/ingredient, decimal validation, CAS/locks та admin ACL; [предметний контракт](food-catalog.md) |
+| `app/Models/Meal*.php`, `app/Models/ClientMealPlanAssignment.php`, `app/Models/Food.php` | Eloquent чинної nutrition-схеми, явні FK та decimal casts |
+| `app/Filament/Resources/MealPlans/`, `app/Services/MealPlans/`, `app/Policies/MealPlan*` | Адміністративний foundation раціонів, atomic create та exact-version read-only views; [контракт](meal-plans.md) |
 | `client/` | Окремий Vite-проєкт React/TS; `npm run build` → `public/app` |
 | `database/migrations/` | Стандартні Laravel-міграції, узгодження `users`, `btree_gist` і модулі 01–04; див. stage-1.md |
 | `docs/` | Entity Catalog, DBML, SQL-модулі, аудит, цей документ, правила й план |
@@ -177,6 +185,7 @@ PWA і Telegram Mini App використовують максимально о�
 - У БД зберігається лише шлях: `client_progress_photos.storage_path`; бінарні дані — у сховищі Laravel (`FILESYSTEM_DISK=local`, приватна тека), фотографії не робляться публічними.
 - Доступ до фото, ретенція, перевірка завантажень і безпечне приватне зберігання — сервісні правила, не DDL ([03_progress_tracking.sql](03_progress_tracking.sql), блок «Application-side contracts»).
 - Інші медіа (зображення кроків рецепта — `recipe_directions.image_url`) посилаються на URL/шлях, а не на бінарні дані.
+- Публічні фото інгредієнтів, рецептів і кухонного обладнання зберігаються як `image_url`; Laravel перевіряє точний HTTPS host allowlist. R2 служить джерелом об'єктів, а CLI-зіставлення описано в [звіті й інструкції](r2-image-matching.md).
 
 ## 12. Конфігурація та середовища
 
@@ -191,6 +200,16 @@ PWA і Telegram Mini App використовують максимально о�
 Вимоги до ізольованої PostgreSQL-БД й безпечного запуску тестів — [tests/pg/README.md](../tests/pg/README.md) і [stage-1.md](stage-1.md). Жодних міграцій на реальних клієнтських БД без дозволу.
 
 ## 13. Локальний запуск і типові команди
+
+Постійне середовище Windows 11 / Docker Desktop: [Docker Compose](local-compose.md).
+`compose.yaml` збирає PHP 8.5 / Laravel, React/Vite та nginx у контейнерах,
+створює лише нову ізольовану PostgreSQL 18 і зберігає дані, ключі, storage та
+незалежний RestoreFence epoch у named volumes. Local-only adapter не реєструється
+у production; міграції на непорожній БД при рестарті заборонені.
+
+Нижче — альтернативний запуск із runtime на хості.
+
+Для перевірки Filament та клієнтської анкети використовуйте [ізольований локальний профіль](local-demo.md): окрема PostgreSQL 18, незалежний local epoch, штатні MFA/OTP, loopback-only. Він явно opt-in і не змінює production; звичайний `composer dev` сам по собі не налаштовує security runtime.
 
 ```sh
 composer install                 # залежності PHP
@@ -211,6 +230,7 @@ cd client && npm run build       # збірка SPA у public/app
 - **PostgreSQL:** `phpunit.pgsql.xml`, `tests/pg/run-stage1.sh` та ізольовані SQL/PHPUnit регресії для PG-специфічних інваріантів; [Stage 1](stage-1.md).
 - **Auth:** окремі `phpunit.auth*.xml` й контекстні browser/HTTP тести; guard-режими не є production activation.
 - **SPA:** `client/` lint/type-check/build; browser перевірки UI на синтетичних даних.
+- [CI](ci.md) має Fast на кожному commit і явний Full на фінальному head; після merge виконується дешевший Fast + docs. Full не дублюється автоматично на master; можливий ризик merge-resolution знімається вимогою включити актуальний master у перевірений head.
 - Для кожного PR перевірити CI саме на його SHA. Минулі результати та покриті/непокриті випадки наведено в [project-status.md](project-status.md) і модульних звітах, **не дублювати тут датовані PASS-лічильники**.
 
 ## 15. Стан реалізації
@@ -239,3 +259,5 @@ cd client && npm run build       # збірка SPA у public/app
 
 
 
+
+Контракт профілів: [client-profiles.md](client-profiles.md). Початкова анкета — історичний JSON-знімок; поточні характеристики зберігаються в окремих typed профілях. Час ранкового повідомлення локальний у timezone клієнта; scheduler не додано.

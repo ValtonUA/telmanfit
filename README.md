@@ -11,10 +11,12 @@
 | **Що робимо зараз і наступним** | [Roadmap](docs/roadmap.md) — єдиний актуальний план і статуси |
 | **Що вже реалізовано, а що лише спроєктовано** | [Project Status](docs/project-status.md) |
 | **Чому дев'ять SQL, одинадцять PHPUnit XML та папки evidence/screenshots** | [Архітектура, карта технічних файлів](docs/architecture.md#31-карта-технічних-файлів) |
+| **Локальна демонстрація у Windows/WSL2** | [Безпечний запуск на окремій PostgreSQL 18](docs/local-demo.md) |
 | Як працює архітектура | [Architecture](docs/architecture.md) |
 | Бізнес-правила | [Business Rules](docs/business-rules.md) |
 | Таблиці й зв'язки | [Entity Catalog](docs/entity-catalog.md), [DBML](docs/database.dbml) |
 | **Правила для Codex/AI-агентів** | [AGENTS.md](AGENTS.md) |
+| Зіставлення медіа каталогу з R2 | [Інструкція та інвентаризація](docs/r2-image-matching.md) |
 
 ## Стан реалізації
 
@@ -34,3 +36,5 @@
 **Безпека:** не запускати SQL/міграції на існуючій або production БД та не змінювати auth gates без окремого дозволу. Тести PostgreSQL виконуються в ізольованому середовищі за [tests/pg/README.md](tests/pg/README.md). Перед будь-якою задачею Codex читає [AGENTS.md](AGENTS.md).
 
 **Правило актуальності:** у тому самому PR, що змінює реалізацію або архітектуру, переглядати відповідні джерела; [правила для Codex і розробників](AGENTS.md#16-політика-актуальності-документації-обовязково-для-кожного-pr).
+
+Локальна розробка на Windows 11 без PHP/Node на хості: [Docker Compose — одна команда запуску](docs/local-compose.md).

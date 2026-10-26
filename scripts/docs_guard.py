@@ -92,12 +92,12 @@ def is_implementation(path: str) -> bool:
     dirs = (
         "app/", "client/src/", "routes/", "database/migrations/",
         "database/sql/", "database/seeders/", "config/", "bootstrap/",
-        "resources/views/", "lang/",
+        "resources/views/", "lang/", "docker/", ".github/workflows/", "scripts/ci/", "tests/ci/",
     )
     files = {
         "composer.json", "composer.lock", "package.json", "package-lock.json",
         "client/package.json", "client/package-lock.json",
-        "client/vite.config.ts", "vite.config.js",
+        "client/vite.config.ts", "vite.config.js", "compose.yaml", ".dockerignore",
     }
     return path.startswith(dirs) or path in files
 
@@ -106,7 +106,8 @@ def is_canonical_document(path: str) -> bool:
     # Merely editing an unrelated historical report must not silently bypass
     # the requirement to reconcile current facts/status or architecture.
     if path in {"docs/roadmap.md", "docs/project-status.md", "docs/architecture.md",
-                "docs/business-rules.md", "docs/entity-catalog.md", "docs/database.dbml"}:
+                "docs/business-rules.md", "docs/entity-catalog.md", "docs/database.dbml",
+                "docs/ci.md"}:
         return True
     return path.startswith("docs/") and path.endswith(".sql")
 
@@ -114,7 +115,7 @@ def is_canonical_document(path: str) -> bool:
 def validate_pr_impact(base: str) -> list[str]:
     try:
         paths = subprocess.check_output(
-            ["git", "-C", str(ROOT), "diff", "--name-only", "--diff-filter=ACMR", base, "HEAD"],
+            ["git", "-C", str(ROOT), "diff", "--name-only", "--diff-filter=ACMRD", base, "HEAD"],
             text=True, stderr=subprocess.STDOUT,
         ).splitlines()
     except subprocess.CalledProcessError as exc:

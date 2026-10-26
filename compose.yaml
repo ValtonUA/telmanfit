@@ -1,0 +1,89 @@
+name: telmanfit-local
+x-app: &app
+  image: telmanfit-local-app
+  volumes:
+    - local-state:/tmp/telmanfit-auth4-compose
+    - epoch:/run/telmanfit-epoch:ro
+    - storage:/var/www/html/storage
+  networks: [local]
+services:
+  setup:
+    <<: *app
+    user: root
+    entrypoint: [php, docker/local/setup.php]
+    volumes:
+      - local-state:/tmp/telmanfit-auth4-compose
+      - epoch:/run/telmanfit-epoch
+      - database-secrets:/run/database-secrets
+    restart: on-failure
+  database:
+    image: telmanfit-local-database
+    build:
+      context: .
+      dockerfile: docker/local/Dockerfile
+      target: database
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/database-secrets/password
+    volumes:
+      - database:/var/lib/postgresql
+      - database-secrets:/run/database-secrets:ro
+    depends_on:
+      setup: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -h 127.0.0.1 && test -f /var/lib/postgresql/local-cluster-ready']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    networks: [local]
+  app:
+    <<: *app
+    build:
+      context: .
+      dockerfile: docker/local/Dockerfile
+      target: app
+    depends_on:
+      database: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, php, docker/local/health.php]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+  worker:
+    <<: *app
+    command: [php, artisan, queue:work, --sleep=3, --tries=3, --timeout=60]
+    depends_on:
+      app: {condition: service_healthy}
+    restart: unless-stopped
+  scheduler:
+    <<: *app
+    command: [php, artisan, schedule:work]
+    depends_on:
+      app: {condition: service_healthy}
+    restart: unless-stopped
+  web:
+    image: telmanfit-local-web
+    build:
+      context: .
+      dockerfile: docker/local/Dockerfile
+      target: web
+    ports: ["127.0.0.1:8098:80"]
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, 'curl -fsS http://127.0.0.1/up >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [local]
+volumes:
+  database:
+  database-secrets:
+  local-state:
+  epoch:
+  storage:
+networks:
+  local:

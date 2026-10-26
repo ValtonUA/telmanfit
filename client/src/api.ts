@@ -1,5 +1,5 @@
 export type Me = {
-  user: { id: string; name: string }
+  user: { id: string; first_name: string | null; last_name: string | null; full_name: string }
   client: { id: string; status: 'pending' | 'active' | 'paused' | 'finished' }
   security: { mfa_enabled: boolean; methods: string[]; recovery_codes_remaining: number; recovery_used: boolean }
 }
@@ -74,7 +74,7 @@ export function initialize(): Promise<{ me?: Me; invite?: FlowResult }> {
     if (token && window.location.pathname === '/app/register') {
       return { invite: await api('auth/invitations/exchange', { token }) }
     }
-    if (['/app', '/app/', '/app/index.html', '/app/security'].includes(window.location.pathname)) {
+    if (['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding'].includes(window.location.pathname)) {
       try { return { me: await api<Me>('me') } } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 401) throw error
       }

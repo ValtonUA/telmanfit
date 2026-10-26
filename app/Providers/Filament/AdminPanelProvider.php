@@ -34,6 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandName('TelmanFit')
+            ->sidebarFullyCollapsibleOnDesktop(fn () => request()->routeIs('filament.admin.resources.meal-plan-versions.*'))
             ->login(config('mfa.enabled') ? null : Login::class)
             ->authGuard(config('mfa.enabled') ? 'admin' : 'web')
             ->defaultAvatarProvider(LocalAvatarProvider::class)
