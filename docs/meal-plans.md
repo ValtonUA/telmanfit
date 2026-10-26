@@ -545,3 +545,91 @@ Chromium T4.6 після штатного recipe browser; помилка кож�
 item через `MealItemWriter` і публікує копію. На кожному кроці порівнює всі поля
 source plan/version/days/meals/items і попередні assignments/client_events;
 окреме подальше призначення копії також не переписує збережену історію.
+
+## Клієнтське читання T5.1
+
+`GET /api/meal-plan` — захищений read-only browser API. Використовує той самий
+`ClientSession::user()` у транзакції, cookie context, serialized session lock,
+restore/recovery fence, перевірки ролі, email, binding, auth_version, idle/absolute
+expiry та optional MFA, що й AUTH-4/5. Профіль читається через наявний `GET /api/me`;
+нового login, bearer token чи client guard немає. Controlled/local/testing та
+production OFF залишаються чинними; T5.1 не вмикає feature flags.
+
+Клієнт визначається виключно через `clients.user_id` чинного користувача. API не
+приймає селекторів клієнта, призначення або версії; query-параметри їх не змінюють.
+Не існує маршруту `/api/meal-plan/{id}` і write-методів. Статус супроводу не є
+додатковою умовою доступу до явно призначеного плану (DEC-4A).
+
+`CurrentClientMealPlan` одним SELECT читає призначення, його **точну** published
+версію й logical plan. `start_date <= today <= end_date`, NULL кінець відкритий;
+`today` — календар `config('app.timezone')`, як у T4.5/DEC-4A. Не перетворювати ці
+date на timestamps чи самовільно змінювати календар на client_settings.timezone.
+`replaced_by_assignment_id` не приховує старе призначення до включного кінця його
+періоду. Майбутнє/завершене призначення або проміжок між періодами не дає fallback.
+Універсальний план доступний за призначенням, персональний — лише owner_client_id.
+Новіші публікації, draft і персональні плани інших клієнтів не підставляються.
+
+Успішна відповідь містить лише метадані призначення та версії (ID — рядки,
+version_number — число, дати періоду — `YYYY-MM-DD`; published_at — timestamp із БД):
+
+```json
+{
+  "assignment": {
+    "id": "42",
+    "start_date": "2026-10-27",
+    "end_date": null,
+    "meal_plan_version": {
+      "id": "17",
+      "meal_plan_id": "8",
+      "version_number": 1,
+      "status": "published",
+      "published_at": "2026-10-26 12:00:00+00",
+      "title": "Призначений раціон"
+    }
+  }
+}
+```
+
+Без чинного доступного призначення: **200** `{"assignment":null}`. Немає картки
+або чинної client session — **401** `{"code":"unauthenticated",...}`;
+controlled auth вимкнено — **404**, недоступна auth-інфраструктура/fence — **503**.
+Штатні короткі JSON-помилки AUTH boundary не розкривають SQL чи чужих даних.
+Усі відповіді цього endpoint мають `Cache-Control: no-store, private`.
+
+GET/HEAD не пише навіть у `sessions`: для цього маршруту `SerializedAuthSession`
+пропускає save й GC; перевірка чинності та session advisory lock залишаються.
+Отже читання T5.1 саме по собі **не продовжує idle TTL**; інші AUTH-4/5 endpoints
+зберігають штатну поведінку. Немає business events, auto-assignment, refresh,
+оновлення статусів чи snapshot writes. Дні/позиції, recipe API, покупки та React
+належать наступним задачам T5.2–T5.8 і цим endpoint не реалізовані.
+
+`tests/Auth4/ClientMealPlanTest.php` входить до чинного AUTH-4 набору без змін CI.
+Він виконує реальні HTTP-запити з cookie після штатного email OTP login, перевіряє
+дати/заміни/gaps, exact version з newer published+draft, PG-відмову draft assignment,
+personal/foreign ACL, MFA, revoked/expired/invalid sessions, anonymous/admin,
+server timezone, controlled/fence та незмінність усіх public tables разом із xmin.
+SQL-log додатково виключає DML/DDL; session GC lottery примусово 100%.
+Linux-відтворення: `AUTH4_ONLY=1 bash tests/pg/run-stage1.sh`.
+
+Локальний Windows preflight 27.10.2026: штатний Bash runner потребує Unix Docker
+endpoint і shared Linux socket path, тож напряму у PowerShell не запускається.
+Для перевірок використано еквівалентний orchestration з PowerShell: окремі PHP
+8.5.12 CLI (`pdo_pgsql`) та офіційний PostgreSQL 18.6 Bookworm із pin
+`sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc`.
+Обидва нові контейнери — `network=none`, без портів і Docker socket. PGDATA — tmpfs,
+спільний лише новий socket volume з local driver `type=tmpfs`, без ресурсів
+`telmanfit-local`/Infection. `docker inspect` підтвердив ці умови до тестів.
+Нова `telmanfit_stage1_test`, непривілейована роль `telmanfit_test_runner`, синтетичні
+дані та чинні міграції; guards не змінювалися. Cleanup стосується лише власних
+контейнерів/socket volume і тимчасових копій коду/залежностей. Робочий Compose,
+Composer, PCOV, конфігурацію Docker та реальну БД не змінювали.
+
+Локальні результати цього зрізу: AUTH-4 разом із 27 новими T5.1 сценаріями —
+57 tests / 417 assertions; AUTH-5 — 19 / 131; Stage 4 assignment/publication/copy
+на окремому свіжому baseline cluster — 35 / 510. `php artisan test` на SQLite —
+84 passed / 356 assertions, 2 SPA-тести штатно skipped через відсутню React-збірку
+в тестовій копії; backend assets взято з наявного образу, без rebuild.
+Pint для шести змінених PHP-файлів, `git diff --check` та документаційний guard —
+PASS. Попередній Stage4 запуск поверх повної auth-схеми відхилено через duplicate
+DDL fixtures; успішний прогін вище використовував штатний baseline, без зміни tests
+чи guards Stage 4. Статус GitHub required checks перевіряється окремо на head PR.
