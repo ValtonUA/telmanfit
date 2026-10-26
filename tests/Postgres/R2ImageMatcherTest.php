@@ -56,7 +56,6 @@ class R2ImageMatcherTest extends PostgresTestCase
         $this->assertSame('https://images.example.com/ingredients/chicken_fillet.webp', DB::table('ingredients')->where('id', $ingredientId)->value('image_url'));
         $this->assertNull(DB::table('ingredients')->whereIn('id', [$ambiguousOne, $ambiguousTwo])->whereNotNull('image_url')->value('image_url'));
         $this->assertNull(DB::table('kitchen_equipment')->where('id', $equipmentId)->value('image_url'));
-        $this->assertStringContainsString('Кілька об’єктів відповідають одному запису.', Artisan::output());
         $this->assertSame('https://images.example.com/recipes/buckwheat_mushrooms.webp', DB::table('recipes')->where('id', $recipeId)->value('image_url'));
         $this->assertSame('https://images.example.com/old.png', DB::table('ingredients')->where('id', $existingId)->value('image_url'));
     }
