@@ -22,7 +22,7 @@
         @if ($days->isEmpty())
             <div class="plan-empty"><h2>Порожня чернетка: днів ще немає.</h2><p>Чернетка ще не готова до публікації. Додайте семиденний тиждень через меню вгорі. Відкриття сторінки не створює даних.</p></div>
         @else
-            <p class="plan-muted">Дні — порядкові номери у шаблоні. {{ $editable ? 'Чернетка ще не готова до публікації. Виберіть день, щоб налаштувати його меню.' : 'Опублікована версія — лише читання.' }}</p>
+            <p class="plan-muted">Дні — порядкові номери у шаблоні. {{ $editable ? 'Виберіть день, щоб налаштувати меню. Дія «Опублікувати» перевірить готовність усього раціону.' : 'Опублікована версія — лише читання.' }}</p>
             <label class="plan-mobile-picker">Показати день
                 <select x-model.number="selectedDay" class="plan-select" wire:key="day-picker-{{ $weekNumber }}">
                     @foreach ($days as $day)<option value="{{ $day->id }}">{{ $this->dayLabel($day->day_number) }}</option>@endforeach
