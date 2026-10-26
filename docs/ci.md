@@ -40,6 +40,10 @@ GitHub Actions.
   семиденних блоків, редагування структури, retry/stale/PG negatives,
   UX-4D: empty/no-modal, filled confirmation/cancel, stable anchor/retry, middle-week renumber та history hashes;
   реальні delete-vs-append/delete-vs-raw-item INSERT locks і Chromium light/dark 1440/390/320; [контракт](meal-plans.md).
+- T4.5: exact published-version client assignment, atomic replacement/history, fresh admin/recovery fence,
+  owner/ACL/date checks, PG exclusion/locks/concurrency and confirmation/stale browser flows;
+  local reproduction: `MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`;
+  [контракт](meal-plans.md).
 - T4.4: publication preflight/atomic transition, exact Model I/history, SQL immutability,
   PG/Livewire, independent-session lock waits та Chromium light/dark 1440/390/320
   у чинній recipe групі; [контракт](meal-plans.md#публікація-точної-версії-t44).
@@ -79,7 +83,10 @@ commit блокують очікування; selector assertion доводит�
 Повторний static Pint у PG runner прибрано: його зберігають обидва required PHP
 matrix jobs і Fast. SQLite tests під synthetic PG bindings збережені.
 Chromium regression тести readiness та реального cancellation cleanup запускаються у Stage1 після Playwright
-install. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
+install. У recipe browser mutation-сценарії проходять для кожної ширини 1440/390/320 у light;
+усі шість width/theme комбінацій зберігають responsive render, no-overflow та dark/light checks,
+а dark додатково відкриває й безпечно скасовує modal. Повні backend PG/Unit/concurrency assertions
+не дублюються за темою. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
 MFA/OTP timer/cooldown перевірки збережені.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
 Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
