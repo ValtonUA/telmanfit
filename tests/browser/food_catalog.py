@@ -149,6 +149,7 @@ def run_catalog(page, base):
             checks.append(f'{suffix}: 3 categories create/edit, UOM immutable code, ingredient validation/create/edit, conversion/default/reload, equipment create/edit, search, no overflow/delete')
 
     # Дві вкладки: CAS відхиляє stale writer із видимим поясненням.
+    page.goto(responsive_rows[320]['food_url'])
     other = page.context.new_page()
     other.goto(page.url)
     page.get_by_label('Назва', exact=False).fill('Synthetic concurrent first')
