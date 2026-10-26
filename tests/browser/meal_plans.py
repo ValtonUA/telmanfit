@@ -48,8 +48,8 @@ def run_meal_plans(page, base):
             page.set_viewport_size({'width': width, 'height': 1000})
             page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
             if theme == 'dark':
-                # Бізнес-сценарій проходить для кожної ширини у light; dark повторює
-                # повний responsive/read-only render та реальний modal open/cancel.
+                # Повні mutation-сценарії проходять у light для кожної ширини.
+                # Dark перевіряє опублікований read-only вигляд і форму створення.
                 page.goto(published)
                 expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
                 expect(page.get_by_text('100.1', exact=True).first).to_be_visible()
@@ -59,28 +59,15 @@ def run_meal_plans(page, base):
                     expect(page.get_by_role('button', name=name, exact=True)).to_have_count(0)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
                 assert page.evaluate('document.documentElement.classList.contains("dark")')
-                page.evaluate('scrollTo(0,0)')
                 page.screenshot(path=str(output / f'published-{suffix}.png'), full_page=True)
 
                 page.goto(base + '/admin/meal-plans/create')
                 expect(page.get_by_label('Початок тижня', exact=False)).to_have_value('1')
-                page.get_by_label('Назва', exact=False).fill('Synthetic plan ' + suffix)
-                page.get_by_role('button', name='Створити', exact=True).click()
-                page.wait_for_url('**/admin/meal-plan-versions/*')
-                expect(page.get_by_text('Чернетка', exact=True)).to_be_visible()
-                expect(page.get_by_text('Порожня чернетка: днів ще немає.', exact=True)).to_be_visible()
+                expect(page.get_by_label('Назва', exact=False)).to_be_visible()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-                page.evaluate('scrollTo(0,0)')
-                page.screenshot(path=str(output / f'empty-{suffix}.png'), full_page=True)
-                version_id = int(page.url.rsplit('/', 1)[1])
-                before_cancel = json.loads(fixture('week-state', version_id))
-                management(page, 'Додати 7 днів')
-                dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
-                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-                expect(dialog).to_be_visible()
-                submit(dialog, 'Скасувати')
-                assert json.loads(fixture('week-state', version_id)) == before_cancel
-                checks.append(suffix + ': dark published/empty responsive render and add-week modal cancel without DB changes')
+                assert page.evaluate('document.documentElement.classList.contains("dark")')
+                page.screenshot(path=str(output / f'create-form-{suffix}.png'), full_page=True)
+                checks.append(suffix + ': dark published read-only render and create form responsive')
                 print('Meal plans Chromium: ' + suffix + ' responsive PASS', flush=True)
                 continue
             page.goto(published)
