@@ -3,12 +3,28 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Contracts\Session\Session;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\DB;
 
 /** Лише controlled HTTP: session lock → domain locks → save → unlock. */
 final class SerializedAuthSession extends StartSession
 {
+    protected function collectGarbage(Session $session)
+    {
+        // T5.1 GET не запускає retention і не змінює навіть session metadata.
+        if (! request()->isMethodSafe() || ! request()->is('api/meal-plan')) {
+            parent::collectGarbage($session);
+        }
+    }
+
+    protected function saveSession($request)
+    {
+        if (! $request->isMethodSafe() || ! $request->is('api/meal-plan')) {
+            parent::saveSession($request);
+        }
+    }
+
     public function handle($request, Closure $next)
     {
         $controlled = (config('auth4.enabled') && ClientAuthBoundary::covers($request))
