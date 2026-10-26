@@ -36,7 +36,7 @@ assertion; прибрано лише повторний static Pint, збере�
 Workers мають private compiled views/PHPUnit cache та окремі loopback ports;
 fail-fast/signal/owned-container recovery перевірено негативними tests і реальним
 PG18 cancellation probe. Нова кількість billed jobs не додається.
-Результат Full на фінальному SHA записується в описі PR після запуску.
+Full CI вилучено; для PR обов’язкові Fast, Documentation health і Targeted на актуальному head.
 
 
 `ClientProfilesTest` перевіряє SQL-відмову будь-якого UPDATE завершеної анкети
@@ -52,8 +52,7 @@ PG18 cancellation probe. Нова кількість billed jobs не додає
 Інші пакети, Composer constraints та `composer audit --locked` не змінено.
 AUTH-1 зберігає точну перевірку встановлених версій; очікуваний Livewire оновлено
 до `v4.4.8` разом із lock. Історичні звіти/логи попередніх прогонів не переписано.
-Регресії PHP 8.4/8.5, auth/Filament/PostgreSQL та Chromium виконуються чинними
-workflow; результат належить лише конкретному head SHA у Checks відповідного PR.
+На PR виконуються Fast і Documentation health; required Targeted обирає auth/Filament/PostgreSQL/Chromium регресії за diff та не піднімає PG/browser runner для нерелевантних змін. PHP 8.4/8.5 matrix і cold Compose доступні лише для локальної діагностики; Full CI не запускається.
 
 | Напрям | Де перевіряти | Межі |
 |---|---|---|
@@ -64,7 +63,7 @@ workflow; результат належить лише конкретному he
 | Аудит карток клієнтів | [Stage 2 audit](stage-2-audit.md), `tests/Postgres/ClientResourceTest.php`, `tests/Auth4/Auth4Test.php` | Чотири додаткові регресійні тести: пошук за тренером, захист прив’язки/видалення та повторна перевірка ролі тренера перед реєстрацією; бізнес-поведінка незмінна |
 | Вигляд Filament | [Штатні компоненти та перевірка теми](filament-theme.md), `tests/browser/filament_theme.py`; історичний [UX-1](ux-1.md) | Запрошення використовують штатні Blade-компоненти Filament 5; Chromium у disposable Compose перевіряє light/dark і 1440/390/320 px. Windows Desktop вручну не перевірено |
 | Recovery/retention/budgets | [B3](auth6-b3.md), [B4](auth6-b4.md), [B5](auth6-b5.md), [B6](auth6-b6.md) | Підтверджені лише зазначені там synthetic/guarded операції |
-| CI | Fast на кожному PR commit і push master; повний PostgreSQL/auth/browser/PHP matrix/cold Compose за явною `ci:full`; [контракт і докази](ci.md) | Merge лише після всіх success на поточному head через `scripts/ci/pre_merge.py`; без доступу до branch protection це агентський, не серверний захист |
+| CI | Fast, Documentation health і Targeted на кожному PR; Full workflow і тригер вилучені, `pre_merge.py` перевіряє лише три required статуси на актуальному head; [контракт і докази](ci.md) | PHP runtime matrix та cold Compose залишаються локальними наборами; ruleset вимагає Fast/Docs/Targeted |
 
 ## Правило підтримки
 
