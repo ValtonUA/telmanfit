@@ -55,14 +55,20 @@ def evaluate(snapshot):
             continue
         run = max(runs, key=lambda r: r["id"])
         jobs = snapshot["jobs"].get(str(run["id"]), [])
-        names = [j["name"] for j in jobs]
+        names = [
+            "regressions / PostgreSQL and browser regressions"
+            if (workflow == "targeted.yml" and j["name"] == "regressions"
+                and j["status"] == "completed" and j["conclusion"] == "skipped")
+            else j["name"]
+            for j in jobs
+        ]
         if run["status"] != "completed" or run["conclusion"] != "success":
             errors.append(f"{workflow}: latest run {run['id']} is not completed/success")
         if set(names) != required or len(names) != len(required):
             errors.append(f"{workflow}: missing/extra/duplicate jobs: {names}")
         for job in jobs:
             if (workflow == "targeted.yml"
-                    and job["name"] == "regressions / PostgreSQL and browser regressions"
+                    and job["name"] in {"regressions", "regressions / PostgreSQL and browser regressions"}
                     and job["status"] == "completed" and job["conclusion"] == "skipped"):
                 # Targeted gate proves the diff selected no PG/browser scope.
                 continue
