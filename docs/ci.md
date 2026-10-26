@@ -8,8 +8,7 @@ schedule чи ручний запуск не запускає Full.
 Fast перевіряє runtime, Composer lock/platform/audit, PHP syntax, Compose config,
 Pint, Unit/Feature на SQLite, обидві frontend збірки та client lint. Docs перевіряє
 посилання/roadmap і docs-impact **від PR base до точного head**, включно з
-видаленнями. Targeted запускає вибрані PostgreSQL/browser і security набори на
-точному head. Workflow має contents: read, без `pull_request_target` і secrets.
+видаленнями. Targeted залишає обов’язковий статус на кожному PR, але запускає PostgreSQL/browser і security набори лише за релевантним diff; документаційні, CI-only та нецільові зміни не піднімають їхнє важке оточення. Workflow має contents: read, без `pull_request_target` і secrets.
 
 `scripts/ci/pre_merge.py` перевіряє лише Fast, Docs і Targeted на точному PR head,
 поточну ancestry до master, найновіший run/attempt, усі jobs/steps, PR event і
@@ -139,6 +138,6 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 
 ## PR gate без Full CI
 
-Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: група `baseline` із AUTH3–5 security сценаріями запускається завжди; зміни рецептів і планів додають `recipe`, security-код — `b5`/`b3`; міграції та нецільові PG/browser тести розширюють набір до всіх груп. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують свої unit regressions через Documentation health плюс baseline. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
+Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: AUTH3–5 `baseline` запускається для auth/security/readiness змін; зміни рецептів і планів запускають лише `recipe`; `b5`/`b3` додаються для відповідного auth/security коду; міграції та невідомі PG/browser тести консервативно розширюють набір. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують свої unit regressions через Documentation health плюс baseline. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
 
-Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow продовжує вимагати наявні baseline/security перевірки і вибирає інші групи консервативно.
+Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.
