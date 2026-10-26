@@ -85,9 +85,10 @@ matrix jobs і Fast. SQLite tests під synthetic PG bindings збережен�
 Chromium regression тести readiness та реального cancellation cleanup запускаються у Stage1 після Playwright
 install. У recipe browser mutation-сценарії планів і каталогу проходять для кожної ширини
 1440/390/320 у light; усі шість width/theme комбінацій зберігають responsive render,
-no-overflow та dark/light перевірки форм і станів. У dark залишаються read-only і search
-перевірки, а також відкриття та безпечне скасування meal-plan modal із перевіркою, що
-стан БД не змінився. Backend PG/Unit/concurrency assertions не дублюються за темою.
+no-overflow та dark/light перевірки форм і станів. У dark залишаються published
+read-only, create-form, catalog edit і search перевірки. Повні бізнес-операції та
+cancel/DB-invariance перевірки виконуються для кожної ширини у світлій темі.
+Backend PG/Unit/concurrency assertions не дублюються за темою.
 `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні MFA/OTP timer/cooldown перевірки збережені.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
 Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
