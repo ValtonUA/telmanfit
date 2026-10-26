@@ -20,7 +20,7 @@ jobs:
           php-version: '8.4.27'
           extensions: pdo_pgsql, pgsql, pdo_sqlite, intl, mbstring, dom
           coverage: none
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84e3e4022e16d87065 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
       - run: php scripts/check-php-runtime.php
