@@ -27,6 +27,9 @@ class TargetedGroupTests(unittest.TestCase):
                          ("baseline", "b5", "b3"))
         self.assertEqual(select_groups(["tests/pg/meal-plan-assignment.php"]),
                          ("recipe",))
+        for path in ("tests/browser/meal_plans.py", "tests/browser/food_catalog.py"):
+            with self.subTest(path=path):
+                self.assertEqual(select_groups([path]), ("recipe",))
 
     def test_critical_schema_and_unclassified_harness_changes_fail_closed_to_all(self):
         self.assertEqual(select_groups(["database/migrations/2026_create.php"]), ALL)

@@ -47,6 +47,29 @@ def run_meal_plans(page, base):
             suffix = f'{width}-{theme}'
             page.set_viewport_size({'width': width, 'height': 1000})
             page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
+            if theme == 'dark':
+                # Повні mutation-сценарії проходять у light для кожної ширини.
+                # Dark перевіряє опублікований read-only вигляд і форму створення.
+                page.goto(published)
+                expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
+                expect(page.get_by_text('100.1', exact=True).first).to_be_visible()
+                expect(page.get_by_text('0.5', exact=True).first).to_be_visible()
+                expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
+                for name in ('Змінити', 'Видалити', 'Опублікувати', 'Призначити', 'Копіювати'):
+                    expect(page.get_by_role('button', name=name, exact=True)).to_have_count(0)
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                assert page.evaluate('document.documentElement.classList.contains("dark")')
+                page.screenshot(path=str(output / f'published-{suffix}.png'), full_page=True)
+
+                page.goto(base + '/admin/meal-plans/create')
+                expect(page.get_by_label('Початок тижня', exact=False)).to_have_value('1')
+                expect(page.get_by_label('Назва', exact=False)).to_be_visible()
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                assert page.evaluate('document.documentElement.classList.contains("dark")')
+                page.screenshot(path=str(output / f'create-form-{suffix}.png'), full_page=True)
+                checks.append(suffix + ': dark published read-only render and create form responsive')
+                print('Meal plans Chromium: ' + suffix + ' responsive PASS', flush=True)
+                continue
             page.goto(published)
             expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
             expect(page.get_by_text('100.1', exact=True).first).to_be_visible()

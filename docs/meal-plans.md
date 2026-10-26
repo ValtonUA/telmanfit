@@ -184,7 +184,7 @@ G4-I не містить shopping list чи scheduler. Команди T4.3 оп�
 та explicit reader failure. `MealItemPortionTest` перевіряє точність і скінченні
 decimal strings. `meal-item-selector-concurrency.php` доводить реальні lock waits
 в обох порядках selector/root і відхилення update/delete/downgrade без deadlock.
-Вони входять у штатний Stage3/T4.2 runner та Full CI; browser UI для G4-I не змінено.
+Вони входять у локальний Stage3/T4.2 runner та релевантні Targeted PR-перевірки; browser UI для G4-I не змінено.
 
 
 ## Writer позицій T4.3
@@ -506,8 +506,8 @@ published version і дат. «Перевірити наслідки» відк�
 `MealPlanAssignmentTest` перевіряє backend/Livewire/SQL negatives/rollback;
 `meal-plan-assignment-concurrency.php` — незалежні процеси й доведені lock waits;
 `meal_plan_assignments.py` — релевантні Chromium light/dark 1440/390/320,
-preview/cancel/confirm/history/stale та CSRF/revocation. Full CI запускається
-окремо після незалежного review власника.
+preview/cancel/confirm/history/stale та CSRF/revocation. Для PR обов’язкові
+Fast, Docs та Targeted на актуальному SHA; Full CI workflow вилучено.
 
 
 ## Персональні копії T4.6
