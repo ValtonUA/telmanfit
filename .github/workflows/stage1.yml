@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
-      - run: python -m playwright install --with-deps chromium
+      - run: python -m playwright install chromium
       - name: Chromium render readiness regressions
         run: python -m unittest discover -s tests/browser -p 'test_*.py' -v
       - name: All isolated PostgreSQL and Chromium groups (two bounded workers)

@@ -205,7 +205,6 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     stage1_mark recipe_concurrency
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then
         bash tests/browser/recipe-batch-in-context.sh
-        bash tests/browser/meal-plan-assignment-in-context.sh
         stage1_mark recipe_browser
     fi
     exit
@@ -266,6 +265,10 @@ stage1_mark auth5_tests_concurrency
 if [[ ${AUTH5_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth5-in-context.sh
     stage1_mark auth5_browser
+fi
+if [[ ${MEAL_PLAN_ASSIGNMENT_BROWSER:-0} == 1 ]]; then
+    bash tests/browser/meal-plan-assignment-in-context.sh
+    stage1_mark meal_plan_assignment_browser
 fi
 
 vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth6.xml --display-all-issues

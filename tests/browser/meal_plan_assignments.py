@@ -12,7 +12,7 @@ import time
 from playwright.sync_api import sync_playwright, expect
 from readiness import TRACKER, metrics as readiness_metrics
 
-base = 'http://127.0.0.1:8090'
+base = 'http://127.0.0.1:' + os.environ.get('ASSIGNMENT_BROWSER_PORT', '8090')
 f = json.loads(os.environ['ASSIGNMENT_BROWSER_FIXTURE'])
 url = base + '/admin/clients/' + str(f['client']) + '/meal-plans'
 output = Path('/tmp/telmanfit-t45-browser')

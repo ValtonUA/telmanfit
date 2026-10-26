@@ -63,6 +63,11 @@ PR; стара зелена перевірка не годиться. На opene
 - T4.4: publication preflight/atomic transition, exact Model I/history, SQL immutability,
   PG/Livewire, independent-session lock waits та Chromium light/dark 1440/390/320
   у чинній recipe групі; [контракт](meal-plans.md#публікація-точної-версії-t44).
+- T4.5: preview/confirmation, first assignment/replacement/history, stale, CSRF і
+  revocation перевіряються сервісом, PostgreSQL concurrency та Chromium у всіх шести
+  комбінаціях 1440/390/320 × light/dark. Це окремий workflow у Full не додає: browser
+  runner працює у baseline worker на порту 8098 паралельно з recipe групою; наявні
+  T4.1–T4.4 сценарії його кроки не дублюють. [Контракт](meal-plans.md).
 - G4-I Model I: populated upgrade hashes, direct SQL selector negatives, decimal
   readonly resolver, fractional portions, frozen physical composition та root/selector
   concurrency; входять у Stage3/T4.2 runner без додаткового workflow.
@@ -100,13 +105,15 @@ commit блокують очікування; selector assertion доводит�
 matrix jobs і Fast. SQLite tests під synthetic PG bindings збережені.
 Chromium regression тести readiness та реального cancellation cleanup запускаються у Stage1 після Playwright
 install. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
-MFA/OTP timer/cooldown перевірки збережені.
+MFA/OTP timer/cooldown перевірки збережені. Stage1 завантажує pinned Chromium без
+`--with-deps`: Ubuntu runner image вже містить системні Chromium-бібліотеки, а apt
+оновлення й додаткові шрифти не є потрібною частиною браузерного тесту.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
 Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
 jobs: GitHub рахує wall time одного зайнятого runner, а не суму worker durations.
 Composer/npm/Playwright і immutable Docker layers готуються один раз на job.
 Workers мають різні disposable PG/socket, VIEW_COMPILED_PATH, PHPUnit cache,
-HTTP ports (recipe8090; auth8093–8097), stdout files і process groups. PG mutable
+HTTP ports (recipe8090; T4.5 assignment8098; auth8093–8097), stdout files і process groups. PG mutable
 state не ділиться; SQLite85 у synthetic context і обидва PG142/194 збережені.
 Parent і workers відмовляють для remote Docker. Усі чотири exit0/completed/success
 обов'язкові; missing/failed/cancelled/pending/skipped блокує orchestrator. При
@@ -171,5 +178,5 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 `MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`.
 Запускає лише `MealPlanAssignmentTest`, assignment concurrency і assignment Chromium
 на новій disposable PG18 із cleanup. Без browser — опустити
-`MEAL_PLAN_ASSIGNMENT_BROWSER`. Ці ж перевірки інтегровані в чинну recipe/Stage4
-групу Full; запуск Full для T4.5 відкладено до незалежного review власника.
+`MEAL_PLAN_ASSIGNMENT_BROWSER`. Ці ж перевірки інтегровані в чинну baseline Stage1
+групу Full; запуск Full для T4.5 відкладено до перевірки виправлення власником.
