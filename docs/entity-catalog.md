@@ -481,3 +481,9 @@ foods або meal_items, не замінює `recipe_directions.image_url`. SQL1
 новий ingredient image_url із `recipe_batch_source_hash`, зберігаючи попередній hash
 і всі інші залежності. URL перевіряється Laravel exact HTTPS host allowlist;
 порожній allowlist дозволяє всю роботу без фото. [Операційний контракт](meal-plans.md#зображення-та-початок-тижня-sql15).
+
+## Зображення кухонного обладнання
+
+`kitchen_equipment.image_url` — nullable text із публічним HTTPS URL. Воно використовує той
+самий точний host allowlist та поля URL, що й обкладинки інгредієнтів/рецептів. Forward
+SQL додає лише метадані зображення; ID і категорії довідника не змінюються.
