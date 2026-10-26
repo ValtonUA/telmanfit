@@ -1,0 +1,25 @@
+{
+  "eligible": true,
+  "repository": "ValtonUA/telmanfit",
+  "pr": 42,
+  "head_sha": "2f6376aa4b0df1d1ae86f487f8bde41b8cf6420c",
+  "base_sha": "075a58f807ebe83e6f12a5c28f135c03aa85df1d",
+  "evidence": {
+    "full.yml": {
+      "run_id": 40105750052,
+      "attempt": 1,
+      "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105750052"
+    },
+    "fast.yml": {
+      "run_id": 40105600427,
+      "attempt": 1,
+      "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105600427"
+    },
+    "docs-health.yml": {
+      "run_id": 40105600424,
+      "attempt": 1,
+      "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40105600424"
+    }
+  },
+  "errors": []
+}

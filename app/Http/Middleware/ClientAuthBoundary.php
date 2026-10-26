@@ -14,9 +14,15 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 /** Охоплює session/CSRF/controller faults; жодних SQL bindings у logger/JSON. */
 final class ClientAuthBoundary
 {
+    public static function covers(Request $request): bool
+    {
+        return $request->is('api/auth/*', 'api/me')
+            || (app()->environment(['local', 'testing']) && $request->is('api/onboarding'));
+    }
+
     public function handle(Request $request, Closure $next): mixed
     {
-        if (! $request->is('api/auth/*', 'api/me')) {
+        if (! self::covers($request)) {
             return $next($request);
         }
         if (! config('auth4.enabled')) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, csrf, initialize } from './api'
 import type { FlowResult, Me } from './api'
 import { AuthForm } from './components/AuthForm'
+import { OnboardingFirstStep } from './components/OnboardingFirstStep'
 import { SecurityPanel } from './components/SecurityPanel'
 import './App.css'
 
@@ -28,7 +29,7 @@ export default function App() {
       initialize().then(result => {
         if (active && current === generation) {
           setMe(result.me); setInvite(result.invite)
-          if (!result.me && ['/app', '/app/', '/app/index.html', '/app/security'].includes(window.location.pathname)) {
+          if (!result.me && ['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding'].includes(window.location.pathname)) {
             window.history.replaceState(null, '', '/app/login'); setPage('/app/login')
           }
         }
@@ -58,7 +59,8 @@ export default function App() {
       {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
         : me && page === '/app/security' ? <SecurityPanel me={me} onExit={exit} />
-        : me ? <div className="dashboard"><span className="eyebrow">Ваш особистий кабінет</span><h1>Вітаємо, {me.user.name}</h1><p className="muted intro">Ваш шлях починається з турботи про себе.</p><section className="card"><span className="eyebrow">Статус супроводу</span><h2>{statuses[me.client.status]?.label ?? 'Статус недоступний'}</h2><p>{statuses[me.client.status]?.description}</p></section><section className="card security-preview"><div><h2>Спокій за свій акаунт</h2><p>Другий фактор, електронна пошта та ваші пристрої.</p></div><a className="button" href="/app/security">Налаштування безпеки</a></section></div>
+        : me && page === '/app/onboarding' ? <OnboardingFirstStep />
+        : me ? <div className="dashboard"><span className="eyebrow">Ваш особистий кабінет</span><h1>Вітаємо, {me.user.first_name ?? me.user.full_name}</h1><p className="muted intro">Ваш шлях починається з турботи про себе.</p><section className="card"><span className="eyebrow">Статус супроводу</span><h2>{statuses[me.client.status]?.label ?? 'Статус недоступний'}</h2><p>{statuses[me.client.status]?.description}</p></section><section className="card onboarding-preview"><div><h2>Ваша початкова анкета</h2><p>Три запитання з вашої анкети. Відповіді зберігаються в особистому кабінеті.</p></div><a className="button" href="/app/onboarding">Заповнити анкету</a></section><section className="card security-preview"><div><h2>Спокій за свій акаунт</h2><p>Другий фактор, електронна пошта та ваші пристрої.</p></div><a className="button" href="/app/security">Налаштування безпеки</a></section></div>
         : <AuthForm key={page} invite={invite} onLogin={login} />}
     </main>
     <footer>TelmanFit · Крок за кроком, у вашому темпі</footer>

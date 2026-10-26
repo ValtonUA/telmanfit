@@ -1,76 +1,106 @@
 name: Stage 1 PostgreSQL
 on:
-  pull_request:
-    branches: [master]
-  push:
-    branches: [master]
+  workflow_call:
+    inputs:
+      head:
+        required: true
+        type: string
+      base:
+        required: true
+        type: string
+      groups:
+        required: false
+        type: string
+        default: all
 permissions:
   contents: read
 jobs:
   schema:
+    name: PostgreSQL and browser regressions
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.head }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4.27'
           extensions: pdo_pgsql, pgsql, pdo_sqlite, intl, mbstring, dom
           coverage: none
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
       - run: php scripts/check-php-runtime.php
-      - run: composer install --no-interaction --prefer-dist
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+      - run: composer install --no-interaction --prefer-dist --no-scripts --no-plugins
+      - run: php artisan package:discover --ansi
+      - run: php artisan filament:upgrade --ansi
       - run: composer check-platform-reqs
-      - run: npm install --ignore-scripts
+      - run: npm ci --ignore-scripts
       - run: npm run build
-      - run: npm ci --prefix client
+      - run: npm ci --prefix client --ignore-scripts
       - run: npm run lint --prefix client
       - run: npm run build --prefix client
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
       - run: pip install playwright==1.62.0
-      - run: python -m playwright install --with-deps chromium
-      - name: AUTH-6B B6 atomic PostgreSQL budgets, faults and concurrency
-        timeout-minutes: 10
-        shell: bash
+      - run: python -m playwright install chromium
+      - name: Chromium render readiness regressions
+        run: python -m unittest discover -s tests/browser -p 'test_*.py' -v
+      - name: Selected isolated PostgreSQL and Chromium groups (two bounded workers)
+        run: python3 scripts/ci/stage1_groups.py --groups '${{ inputs.groups }}'
+      - name: Complete SQL schema suite
+        env:
+          GROUPS: ${{ inputs.groups }}
         run: |
-          mkdir -p tests/pg/out
-          AUTH6B6_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b6.out
-      - name: AUTH-6B B5 retention, archive ACL, restore faults and concurrency
-        shell: bash
-        run: |
-          mkdir -p tests/pg/out
-          AUTH6B5_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b5.out
-      - run: AUTH3_BROWSER=1 AUTH4_BROWSER=1 AUTH5_BROWSER=1 tests/pg/run-stage1.sh
-      - name: AUTH-6B B3/B4 migration, outbox, privileges, security and concurrency
-        shell: bash
-        run: AUTH6B_ONLY=1 tests/pg/run-stage1.sh | tee tests/pg/out/auth6b.out
-      - run: bash tests/pg/test-runner.sh
-      - run: bash tests/pg/run-isolated-pg.sh
+          if [[ "$GROUPS" == all ]]; then
+            bash tests/pg/test-runner.sh
+            bash tests/pg/run-isolated-pg.sh
+          else
+            echo "Full-only SQL schema suites are not selected."
+          fi
       - name: AUTH-1 regression
         env:
+          GROUPS: ${{ inputs.groups }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
-            tail -2 tests/pg/out/auth1.out
-          else
-            python3 - <<'PYCODE'
+          if [[ "$GROUPS" == all ]]; then
+            if bash experiments/auth1/run.sh > tests/pg/out/auth1.out 2>&1; then
+              tail -2 tests/pg/out/auth1.out
+            else
+              python3 - <<'PYCODE'
           from pathlib import Path
           text = '\n'.join(Path('tests/pg/out/auth1.out').read_text().splitlines()[-30:])
           print('::error::AUTH-1 regression failed: ' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
           PYCODE
-            exit 1
+              exit 1
+            fi
+          else
+            echo "Full-only AUTH-1 upstream probe is not selected."
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: stage1-pg-logs
           path: |
             tests/pg/out/*.out
+            tests/pg/out/groups.json
+            docs/evidence/meal-plans/*.png
+            docs/evidence/meal-plans/checks.json
+            docs/evidence/food-catalog/*.png
+            docs/evidence/food-catalog/checks.json
+            docs/evidence/recipe-batches/*.png
+            docs/evidence/recipe-batches/checks.json
             docs/evidence/auth3/*.png
             docs/evidence/auth3/results.json
             docs/evidence/auth4/*.png
@@ -79,4 +109,3 @@ jobs:
             docs/evidence/auth5/results.json
             docs/evidence/auth6/*.json
             docs/evidence/auth6b-b5/*.json
-            docs/evidence/auth6b-b6/*.json

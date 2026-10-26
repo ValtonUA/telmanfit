@@ -41,6 +41,9 @@ abstract class PostgresTestCase extends TestCase
                 (require $file)->up();
             }
         }
+        if (! Schema::hasTable('client_profiles')) {
+            (require database_path('migrations/2026_10_24_000000_revise_client_profiles.php'))->up();
+        }
         DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     }
 

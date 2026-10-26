@@ -1,0 +1,60 @@
+{
+  "base_sha": "a4b6444dcf905e79c83551965eb5fe19bd8af587",
+  "php": "8.4.27",
+  "playwright": "1.62.0",
+  "chromium": "154.0.8037.57 (Debian system binary; GitHub installs Playwright Chromium)",
+  "livewire": "4.4.8",
+  "billing_api_queried": false,
+  "checks": {
+    "ci_regressions": "23 PASS",
+    "docs_regressions": "PASS",
+    "docs_guard": "PASS including --pr-base origin/master",
+    "unit_feature": "85 PASS / 348 assertions",
+    "pint": "PASS",
+    "client_lint": "PASS",
+    "frontend_builds": "Filament + SPA PASS",
+    "composer_platform": "PASS",
+    "sql_runner_fail_closed": "PASS: missing/duplicate/gap/fail/identity/inventory/residue/missing-file",
+    "isolated_pg_sql_pdo": "76 PASS / 0 FAIL / 0 GAP; cleanup PASS",
+    "b5": "41 tests / 392 assertions; restore/concurrency PASS; cleanup exit0",
+    "auth4": "30 tests / 181 assertions; Chromium + concurrency PASS; cleanup exit0",
+    "auth5": "19 tests / 131 assertions; Chromium + concurrency PASS; cleanup exit0",
+    "recipe": "142 PASS / 2464 assertions; all concurrency; Chromium19 checks,1440/390/320 light/dark PASS; cleanup exit0"
+  },
+  "incomplete_attempts": [
+    {
+      "name": "initial local before",
+      "result": "failure: missing assets; obsolete vendor; excluded from success baseline"
+    },
+    {
+      "name": "before with assets",
+      "result": "failure: unordered legacy fixture selected published batch; excluded"
+    },
+    {
+      "name": "before current vendor + legacy fixture fix",
+      "seconds": 289.524,
+      "result": "failure: nested menu visibility timeout; excluded"
+    },
+    {
+      "name": "first after",
+      "seconds": 350.99,
+      "result": "failure: transient mobile modal overflow assertion; excluded"
+    }
+  ],
+  "recipe_seconds": 886.647,
+  "recipe_phases_seconds": {
+    "immutable_image_pull": 0,
+    "isolated_cluster_roles_database": 5,
+    "baseline_migrations": 0,
+    "recipe_phpunit": 33,
+    "recipe_concurrency": 18,
+    "recipe_browser": 831,
+    "total_with_cleanup": 887
+  },
+  "source_sha256": {
+    "tests/browser/php-server.sh": "cd7f69921d0e440695d44cc7ed93a783dd3068d9a49c8b25961166dc5b07b132",
+    "tests/browser/meal_plans.py": "c0260ca61b8f90a453c976929d6f5691e8457a32939dd73bda72dfe68cc9f619",
+    "tests/browser/meal-plan-fixture.php": "66302d0627d68b91f9fcd981629324eab704a271987af09d8aa0fe43138d548a",
+    "tests/pg/run-stage1.sh": "5174c1f0e38fe1918c229766c93aaef5b52f11bbf45f9c7988228c7191ee0770"
+  }
+}

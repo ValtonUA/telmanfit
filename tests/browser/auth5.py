@@ -195,6 +195,7 @@ with sync_playwright() as p:
     page.get_by_label('Код із листа', exact=True).fill(delivery(EMAIL))
     click(page, 'Підтвердити', 'auth/email-otp/verify')
     page.get_by_label('Ваше ім’я', exact=True).fill('Синтетичний клієнт')
+    page.get_by_label('Ваше прізвище', exact=True).fill('Тестове')
     click(page, 'Завершити реєстрацію', 'auth/registration/complete', 201)
     expect(page.get_by_role('heading', name='Очікує початку')).to_be_visible()
     shot(page, '03-dashboard-pending')

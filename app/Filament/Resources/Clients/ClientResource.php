@@ -18,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ClientResource extends Resource
@@ -39,7 +40,7 @@ class ClientResource extends Resource
                 ->label('Акаунт клієнта')
                 ->relationship('user', 'name')
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => self::userLabel($record))
-                ->searchable(['name', 'email'])
+                ->searchable(['first_name', 'last_name', 'name', 'email'])
                 ->wrapOptionLabels()
                 ->unique(ignoreRecord: true)
                 ->helperText('Для наявної перехідної картки акаунт може бути відсутній; картка визначається її ID.'),
@@ -47,7 +48,7 @@ class ClientResource extends Resource
                 ->label('Відповідальний тренер')
                 ->relationship('coach', 'name', modifyQueryUsing: fn (Builder $query) => $query->whereIn('role', [User::ROLE_COACH, User::ROLE_ADMIN]))
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => self::userLabel($record))
-                ->searchable(['name', 'email'])
+                ->searchable(['first_name', 'last_name', 'name', 'email'])
                 ->wrapOptionLabels()
                 ->required()
                 ->rules([Rule::exists('users', 'id')->whereIn('role', [User::ROLE_COACH, User::ROLE_ADMIN])])
@@ -63,12 +64,16 @@ class ClientResource extends Resource
     {
         return $schema->components([
             TextEntry::make('id')->label('ID картки'),
-            TextEntry::make('user.name')->label('Клієнт')->placeholder('Без акаунта'),
+            TextEntry::make('user.full_name')->label('Клієнт')->placeholder('Без акаунта'),
             TextEntry::make('user.email')->label('Електронна пошта')->placeholder('—'),
-            TextEntry::make('coach.name')->label('Відповідальний тренер'),
+            TextEntry::make('coach.full_name')->label('Відповідальний тренер'),
             TextEntry::make('status')->label('Статус супроводу')->badge()
                 ->color(fn (string $state): string => self::statusColor($state))
                 ->formatStateUsing(fn (string $state): string => Client::STATUSES[$state]),
+            TextEntry::make('onboarding_answers')
+                ->label('Анкета — перші відповіді')
+                ->state(fn (Client $record): string => self::onboardingSummary($record))
+                ->columnSpanFull(),
             TextEntry::make('coaching_started_at')->label('Початок супроводу (UTC)')->dateTime()->timezone('UTC')->placeholder('Ще не розпочато'),
             TextEntry::make('created_at')->label('Створено (UTC)')->dateTime()->timezone('UTC'),
             TextEntry::make('updated_at')->label('Оновлено (UTC)')->dateTime()->timezone('UTC'),
@@ -79,11 +84,11 @@ class ClientResource extends Resource
     {
         return $table->columns([
             TextColumn::make('id')->label('ID картки')->searchable()->sortable()->extraCellAttributes(['class' => 'client-id']),
-            TextColumn::make('user.name')->label('Клієнт')->searchable()->sortable()->wrap()->placeholder('Без акаунта')
+            TextColumn::make('user.full_name')->label('Клієнт')->searchable(['first_name', 'last_name', 'name'])->sortable(['first_name', 'last_name', 'name'])->wrap()->placeholder('Без акаунта')
                 ->extraCellAttributes(['class' => 'client-name']),
             TextColumn::make('user.email')->label('Електронна пошта')->searchable()->wrap()->visibleFrom('sm')->placeholder('—')
                 ->extraCellAttributes(['class' => 'client-email']),
-            TextColumn::make('coach.name')->label('Тренер')->searchable()->sortable()->wrap()
+            TextColumn::make('coach.full_name')->label('Тренер')->searchable(['first_name', 'last_name', 'name'])->sortable(['first_name', 'last_name', 'name'])->wrap()
                 ->extraCellAttributes(['class' => 'client-coach']),
             TextColumn::make('status')->label('Статус')->badge()
                 ->extraCellAttributes(['class' => 'client-status'])
@@ -98,6 +103,27 @@ class ClientResource extends Resource
             ->stackedOnMobile()
             ->extraAttributes(['class' => 'clients-table'])
             ->defaultSort('id', 'desc');
+    }
+
+    private static function onboardingSummary(Client $client): string
+    {
+        $raw = DB::table('client_onboardings')->where('client_id', $client->getKey())->value('answers');
+        $answers = is_string($raw) ? json_decode($raw, true) : $raw;
+
+        if (! is_array($answers) || ! isset($answers['workplace'], $answers['meals_per_day'], $answers['top_reasons'])) {
+            return 'Перші відповіді ще не збережено';
+        }
+
+        $workplaces = [
+            'home' => 'Повністю з дому',
+            'hybrid' => 'З дому та офісу',
+            'office' => 'Повністю в офісі',
+        ];
+        $where = $workplaces[$answers['workplace']] ?? 'Не вказано';
+
+        return 'Робота: '.$where
+            .' | Прийомів їжі: '.(string) $answers['meals_per_day']
+            .' | Перешкоди: '.(string) $answers['top_reasons'];
     }
 
     private static function statusColor(string $status): string
@@ -122,6 +148,6 @@ class ClientResource extends Resource
 
     private static function userLabel(User $user): string
     {
-        return $user->name.' (#'.$user->id.')'.($user->email ? ' — '.$user->email : '');
+        return $user->full_name.' (#'.$user->id.')'.($user->email ? ' — '.$user->email : '');
     }
 }

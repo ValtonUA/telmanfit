@@ -49,13 +49,13 @@
 | BR-U-03 | Кожен клієнт має відповідального тренера: `clients.coach_user_id NOT NULL` | [БД] | `02_users_clients.sql` |
 | BR-U-04 | `clients.user_id` залишається nullable + UNIQUE: максимум один профіль на акаунт; наявні NULL-картки зберігаються як перехідні записи. Це не дозвіл на ручне створення через UI | [БД]+[EC] | `02_users_clients.sql`; рішення користувача 21.10.2026, EC §1 |
 | BR-U-05 | Статуси супроводу: `pending`, `active`, `paused`, `finished`; статус `active` неможливий без `coaching_started_at` | [БД] | `02_users_clients.sql` (CHECK) |
-| BR-U-06 | Існують рівно чотири додаткові профілі клієнта, кожен 1:0..1: анкета, харчовий профіль, профіль активності, налаштування; анкета — не більше однієї на клієнта | [БД] | `02_users_clients.sql` (UNIQUE/PK на `client_id`), EC §1 |
+| BR-U-06 | Загальний, харчовий, активнісний профілі, налаштування та історична анкета — кожен 1:0..1, PK/FK client_id | [БД] | `10_client_profiles.sql` (PK/FK на `client_id`), EC §1 |
 | BR-U-07 | Реєстрація в застосунку не запускає супровід автоматично; наявність профілю не означає, що платний супровід активний | [EC] | EC §1 |
 | BR-U-08 | У v1 клієнтів веде лише тренер; самостійне ведення «клієнт-як-тренер» не реалізується | [EC] | EC §1, §10 |
 | BR-U-09 | Таймзона клієнта зберігається явно (`client_settings.timezone`, типово `Europe/Kyiv`) і використовується для меж звітів | [БД]+[Laravel] | `02_users_clients.sql`, `03_progress_tracking.sql` (коментарі) |
 | BR-U-10 | `coach_user_id` не перевіряється БД на роль. Рішення G1 від 21.10.2026: адміністратор явно обирає користувача з `role = coach` або `role = admin`; `client` не дозволений, типового тренера немає. Авторизацію забезпечує Laravel | [Laravel] | `02_users_clients.sql` (фінальний коментар), аудит §5.2 |
 | BR-U-11 | Автентифікація Telegram виконується через перевірку `initData`; неперевірена прив'язка `telegram_user_id` до користувача заборонена | [Laravel] | `02_users_clients.sql` (коментар), аудит §5.2 |
-| BR-U-12 | Контракти `client_onboardings.answers`, `client_settings.reminder_settings`, `client_settings.report_settings` (jsonb) **ще не зафіксовані** — реалізація до погодження неможлива | — | аудит §7, EC §12 |
+| BR-U-12 | Нові налаштування — typed колонки; legacy JSON зберігається. Анкета — json-архів, незмінний після завершення; повне завершення ще не визначене | [БД]+[Laravel] | [Контракт профілів](client-profiles.md) |
 
 ### Затверджені продуктові правила реєстрації — 21.10.2026
 
@@ -67,7 +67,7 @@
 | BR-U-15 | Одна людина — один `users`, максимум один `clients`; PWA і Telegram Mini App можуть використовуватися окремо або разом зі спільними даними через Laravel API/PostgreSQL | UNIQUE профілю є в БД; спільна клієнтська автентифікація ще не реалізована |
 | BR-U-16 | Максимально один React-застосунок для обох оболонок; Mini App може мати обмежений набір можливостей | Затверджена ціль; є лише каркас SPA |
 | BR-U-17 | PWA матиме «Підключити Telegram» із підтвердженням володіння Telegram-акаунтом; зворотне підключення PWA теж використовує той самий акаунт. Автоматичне ототожнення за ім’ям, username чи email заборонене | Прив’язка та обидві клієнтські автентифікації ще не реалізовані |
-| BR-U-18 | Ім’я авторизованого користувача — `users.name`; `clients.display_name` не додається. NULL-картки не видаляються; `user_id NOT NULL` потребує окремого рішення | Схема збережена, редагування перехідних карток перевірене тестами |
+| BR-U-18 | Ім’я/прізвище — `users.first_name/last_name`, `full_name` обчислюється; `name` — legacy fallback до уточнення; `clients.display_name` не додається. NULL-картки не видаляються; `user_id NOT NULL` потребує окремого рішення | Схема збережена, редагування перехідних карток перевірене тестами |
 
 BR-U-07 залишається чинним: реєстрація не активує платний супровід. До реалізації запрошень, Telegram-автентифікації, прив’язки Telegram та PWA-автентифікації створення нових клієнтів через UI недоступне. PWA-вхід email OTP без пароля й вимоги MFA затверджено нижче; TTL, сесії, нові таблиці та recovery-процедура залишаються технічними пропозиціями. Анкета — окремий відкритий контракт. Поточний явний вибір наявного `user_id` під час редагування перехідної картки не є Telegram-прив’язкою й не встановлює автоматично тотожність людей.
 
@@ -96,7 +96,7 @@ BR-U-07 залишається чинним: реєстрація не акти�
 | BR-F-08 | Для кожного рецепта допускається **не більше однієї чернетки** (`recipe_one_draft`); публікація — це UPDATE статусу, прямий INSERT зі статусом `published` заборонений | [БД] | `01` (`recipe_one_draft`, `reject_direct_published_insert`) |
 | BR-F-09 | Публікація рецепта вимагає: існуючий `foods` типу `recipe_version`, ≥ 1 інгредієнт, `version_number`, `published_at` і всі `*_per_serving` (≥ 0) | [БД] | `01` (CHECK `recipe_versions`, `validate_recipe_publication`) |
 | BR-F-10 | КБЖВ рецепта фіксується **на 1 порцію** (`*_per_serving`); `servings_count > 0` | [БД]+[EC] | `01`, EC §11.5–11.6 |
-| BR-F-11 | Після публікації КБЖВ і склад незмінні; подальші виправлення `ingredients` **не** змінюють зафіксовані значення | [БД]+[EC] | `01` (`guard_recipe_version`), EC §3, аудит §5.3 |
+| BR-F-11 | Після публікації КБЖВ і склад незмінні. Для batch draft GET read-only; зміни довідника приймаються явним refresh з diff, без переписування manual quantity/UOM; Save/Publish потребують актуального accepted snapshot. C3: явний одноразовий legacy draft→batch draft перехід із preview/Refresh та збереженням originals; published legacy лише нова draft-версія, без історичних nutrition snapshots/backfill | [БД]+[EC] | `01` (`guard_recipe_version`), EC §3, аудит §5.3 ; C3 — [SQL 13](13_recipe_legacy_conversion.sql) |
 | BR-F-12 | Кількості в `recipe_ingredients` (`quantity`, `quantity_grams`) зберігаються на 1 порцію; обидві > 0 | [БД]+[EC] | `01` (CHECK), EC §11.6 |
 | BR-F-13 | Одиниця інгредієнта в рецепті мусить бути дозволеною: `g` або наявний рядок у `ingredient_uoms` | [БД] | `01` (`recipe_ingredient_measure_check`) |
 | BR-F-14 | Публікація перевіряє грамування: `quantity_grams = ROUND(quantity × grams_per_uom, 2)` для кожної позиції; для `g` множник 1 | [БД] | `01` (`assert_ingredient_grams`), аудит §3.1 |
@@ -157,8 +157,8 @@ BR-U-07 залишається чинним: реєстрація не акти�
 
 | ID | Правило | Рівень | Джерело |
 |---|---|---|---|
-| BR-E-01 | `fitness_equipment` — довідник інвентаря з ознакою `is_active` та унікальною назвою | [БД] | `04` (CREATE TABLE) |
-| BR-E-02 | У клієнта одна позиція на вид інвентаря (`PRIMARY KEY(client_id, fitness_equipment_id)`), `quantity > 0` | [БД] | `04` (PK, CHECK) |
+| BR-E-01 | Legacy `fitness_equipment` — довідник інвентаря з ознакою `is_active` та унікальною назвою | [БД] | `04` (CREATE TABLE) |
+| BR-E-02 | У legacy `client_fitness_equipment` одна позиція на вид інвентаря (`PRIMARY KEY(client_id, fitness_equipment_id)`), `quantity > 0` | [БД] | `04` (PK, CHECK) |
 | BR-E-03 | Повноцінного модуля тренувань у v1 немає; травми, обмеження, цільові кроки й бажані дні тренувань лишаються в `client_activity_profiles` | [EC] | EC §6, аудит §7 |
 
 ## 7. Messaging & Automation
@@ -233,7 +233,7 @@ BR-U-07 залишається чинним: реєстрація не акти�
 | Обов'язковість `email`/`password` для адміністратора | BR-U-02, стратегія міграції `users` |
 | Технічні auth-пропозиції P1–P6 та контракт анкети; спосіб PWA email OTP вже затверджено | [auth-architecture.md](auth-architecture.md), BR-U-12, BR-U-14…BR-U-22 |
 | Життєвий цикл призначень (завершення, заміна, `end_date`) | BR-P-11 |
-| Перерахунок чернеток після зміни довідників | BR-F-11, BR-F-14 |
+| Фактичні T1.5/UOM та їстівна маса фасувань; принцип refresh уже погоджено | DEC-3A, BR-F-13/14 |
 | Архівування `foods` | BR-F-03 |
 | Переходи статусів повідомлень, таксономія подій, retention | BR-M-06, BR-M-07 |
 | Представлення enum (`text + CHECK` vs PG-enum) | BR-F-07, EC §12.11 |
@@ -249,3 +249,67 @@ BR-U-07 залишається чинним: реєстрація не акти�
 
 | BR-U-13 | Видалення користувача, який є тренером клієнта, заборонене (FK `ON DELETE RESTRICT`) | [БД] | `02_users_clients.sql` |
 
+
+## Типізовані клієнтські профілі
+
+Детальний контракт та перехідні винятки — [client-profiles.md](client-profiles.md),
+реальні PostgreSQL-обмеження — [SQL 10](10_client_profiles.sql). SQL 01–04 —
+незмінений історичний baseline, який доповнює нова forward-міграція.
+
+- `sex`: male/female; `work_mode`: remote/office/hybrid. Зріст — додатний цілий
+  smallint, дата народження скінченна та не в майбутньому.
+- Калорійність і steps_target невід’ємні. Ціль/труднощі/пріоритети та описи — текст.
+- Дні: тільки monday, tuesday, wednesday, thursday, friday, saturday, sunday;
+  масиви text[] без NULL-елементів/повторів, день звіту text.
+- `morning_message_time` — локальний час у timezone клієнта, не UTC.
+- Поточний API пише лише чернетку; майбутнє завершення переносить перевірені
+  відповіді до актуальних профілів у єдиній транзакції та фіксує незмінний архів.
+  Подальші зміни характеристик оновлюють лише профілі; статус не активується.
+- Інвентар зі словника збережено як legacy; нові описи обладнання — тільки text
+  у профілі. Підбір рецептів/вправ, scheduler і перерахунок КБЖВ не реалізуються.
+
+## Forward-контракт рецептів A/B/C
+
+[SQL 11](11_recipe_batches.sql) доповнює незмінні SQL 01–04, лише для `batch_v1`.
+A лишається на 1 порцію в g; B та C зберігають фізичні партії і власні quantity/UOM/їстівні grams.
+КБЖВ A/1, B/7, C/3, C/4 береться із totals; C/3 і C/4 ділять одну партію.
+КБЖВ форматів не зобов'язане бути однаковим. Режим керує парою quantity/UOM. Auto C успадковує фактичну UOM/frozen factor B;
+округлення обирається із accepted policy snapshot для цієї UOM. За відсутності
+підтвердженого правила для не-g потрібен explicit refresh, без заміни на g.
+Manual C зберігає власну пару; змінюється лише актуальність review.
+Manual зберігається після будь-якої зміни залежностей; acknowledgement конкретного
+контексту втрачає актуальність без процентного порогу. Reset — явна дія.
+Неповний draft дозволений: bounded pending rows зі стабільним `pending:` ID не беруть
+участі в totals. Завершені рядки мають A і дві B/C кількості; рівно три headers
+перевіряються deferred на COMMIT. Publish вимагає відсутність pending, актуальні
+snapshots, review, коректні auto, totals і frozen equipment. Весь агрегат immutable.
+Пресети застосовуються лише з підтвердженим step/conversion: exact g, count ceil,
+opt-in nearest 100 g, дробові упаковки після погодження. Seeds/фасування не додаються.
+Обладнання A — ручна база, B/C — auto/manual; ID стабільні при Save, manual min_value/UOM/tip не переписуються. Auto count округлюється ceil до цілого, volume — лише до decimal точності сховища; NULL не є нулем. Publish вимагає актуальної явної перевірки достатності A/B/C після будь-якої зміни залежностей ([SQL 12](12_recipe_equipment.sql)).
+Межі ядра та команд — [контракт реалізації](recipe-batches.md).
+
+## G4-I: уточнення BR-P-05 для Model I
+
+[SQL 14](14_meal_item_selectors.sql) зберігає BR-P-01…07 та розширює BR-P-05:
+ingredient і published `legacy_v1` мають усі три recipe selectors NULL;
+`batch_v1` вимагає exact published `(food_id,recipe_version_id,recipe_batch_format_id,recipe_portion_divisor)`.
+`single→1`, `week→7`, `half_week→3 або 4`; partial NULL, batch all-NULL, чужий
+format/version, draft version або невідповідна UOM/grams відхиляються SQL.
+`quantity` — дробова кількість спожитих порцій. Legacy nutrition = frozen
+`*_per_serving × quantity`; batch = frozen `*_total × quantity / divisor`.
+Обчислення decimal, одне HalfUp округлення результату до 6 знаків; жодного
+проміжного округлення порції чи fallback на A/1. Приготування цілої фізичної партії
+використовує весь її frozen склад незалежно від divisor. Старі рядки не backfill-яться.
+
+### Презентація раціонів — SQL15
+
+- «Початок тижня» обов'язковий при створенні plan: ISO 1..7, default Пн=1;
+  незмінний після створення (CHECK/NOT NULL + trigger). Існуючі плани отримують
+  погоджений default=1 без змін порядкових днів або frozen даних.
+- Nullable logical covers належать лише ingredients/recipes. Зміна cover
+  дозволена свіжому admin через CAS/locks; опубліковані версії й nutrition
+  незмінні. Step images не використовуються як cover.
+- Фото — лише browser HTTPS до exact явно дозволених hosts; сервер не
+  завантажує URL. Немає host/URL або фото зламане — компактний placeholder.
+- Округлення лише презентаційне: exact decimal HALF_UP, kcal 0 знаків, Б/Ж/В 1;
+  від'ємні, float, scientific та інші неканонічні значення відхиляються fail-closed.

@@ -1,58 +1,40 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TelmanFit
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Вебзастосунок для персонального онлайн-супроводу до схуднення: тренер веде клієнтів у Laravel/Filament, клієнт використовує React-застосунок. Проєкт на стадії розробки, **не розгорнутий у production**.
 
-## About Laravel
+**Стек:** Laravel 13, PHP 8.5 (цільовий runtime; Composer також дозволяє визначені patch-версії 8.3/8.4), PostgreSQL 18, Filament 5, React 19, TypeScript, Vite.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Де що шукати
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Потрібно | Документ |
+|---|---|
+| **Що робимо зараз і наступним** | [Roadmap](docs/roadmap.md) — єдиний актуальний план і статуси |
+| **Що вже реалізовано, а що лише спроєктовано** | [Project Status](docs/project-status.md) |
+| **Чому дев'ять SQL, одинадцять PHPUnit XML та папки evidence/screenshots** | [Архітектура, карта технічних файлів](docs/architecture.md#31-карта-технічних-файлів) |
+| **Локальна демонстрація у Windows/WSL2** | [Безпечний запуск на окремій PostgreSQL 18](docs/local-demo.md) |
+| Як працює архітектура | [Architecture](docs/architecture.md) |
+| Бізнес-правила | [Business Rules](docs/business-rules.md) |
+| Таблиці й зв'язки | [Entity Catalog](docs/entity-catalog.md), [DBML](docs/database.dbml) |
+| **Правила для Codex/AI-агентів** | [AGENTS.md](AGENTS.md) |
+| Зіставлення медіа каталогу з R2 | [Інструкція та інвентаризація](docs/r2-image-matching.md) |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Стан реалізації
 
-## Learning Laravel
+**Не фіксуємо у README поточні етапи, SHA та кількість готових функцій.** За ними звертайтеся до [roadmap.md](docs/roadmap.md). Фактичний стан коду, середовищ та результати перевірок — у [project-status.md](docs/project-status.md). Архітектура і межі між компонентами — [architecture.md](docs/architecture.md).
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Каталоги
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Каталог/файли | Призначення |
+|---|---|
+| `app/` | Laravel API, Filament, моделі та сервіси |
+| `client/` | React/TypeScript SPA |
+| `database/migrations/`, `database/sql/` | Виконувана інтеграція PostgreSQL |
+| `docs/` | Roadmap, бізнес-правила, схеми та історичні технічні звіти |
+| `tests/`, `phpunit*.xml`, `.github/workflows/` | Автоматизовані перевірки |
+| `docs/evidence/`, `docs/screenshots/` | Докази тестів (не runtime-файли застосунку) |
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+**Безпека:** не запускати SQL/міграції на існуючій або production БД та не змінювати auth gates без окремого дозволу. Тести PostgreSQL виконуються в ізольованому середовищі за [tests/pg/README.md](tests/pg/README.md). Перед будь-якою задачею Codex читає [AGENTS.md](AGENTS.md).
 
-## Agentic Development
+**Правило актуальності:** у тому самому PR, що змінює реалізацію або архітектуру, переглядати відповідні джерела; [правила для Codex і розробників](AGENTS.md#16-політика-актуальності-документації-обовязково-для-кожного-pr).
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
-```
-
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Локальна розробка на Windows 11 без PHP/Node на хості: [Docker Compose — одна команда запуску](docs/local-compose.md).

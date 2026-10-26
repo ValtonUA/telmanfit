@@ -1,0 +1,61 @@
+
+name: Targeted PR regressions
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: targeted-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  scope:
+    name: Select required PostgreSQL/browser security coverage
+    runs-on: ubuntu-latest
+    outputs:
+      groups: ${{ steps.scope.outputs.groups }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select conservative test groups from changed files
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ci/targeted_groups.py
+  regressions:
+    needs: scope
+    if: needs.scope.outputs.groups != ''
+    uses: ./.github/workflows/stage1.yml
+    with:
+      head: ${{ github.event.pull_request.head.sha }}
+      base: ${{ github.event.pull_request.base.sha }}
+      groups: ${{ needs.scope.outputs.groups }}
+  gate:
+    name: Targeted PR checks
+    needs: [scope, regressions]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require scope selection and every selected regression
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          GROUPS: ${{ needs.scope.outputs.groups }}
+          REGRESSIONS: ${{ needs.regressions.result }}
+        run: |
+          python3 - <<'PY'
+          import os
+          assert os.environ['SCOPE'] == 'success', os.environ
+          groups = os.environ['GROUPS']
+          result = os.environ['REGRESSIONS']
+          if not groups:
+              assert result == 'skipped', result
+              print('No PostgreSQL/browser group applies to this diff.')
+          else:
+              assert all(group in {'recipe', 'baseline', 'b5', 'b3'} for group in groups.split(',')), groups
+              assert result == 'success', result
+          PY

@@ -1,0 +1,35 @@
+{
+  "checks": [
+    "draft: 1440px light, preview/cancel, source hash unchanged",
+    "draft: 1440px dark, preview/cancel, source hash unchanged",
+    "draft: 390px light, preview/cancel, source hash unchanged",
+    "draft: 390px dark, preview/cancel, source hash unchanged",
+    "draft: 320px light, preview/cancel, source hash unchanged",
+    "draft: 320px dark, preview/cancel, source hash unchanged",
+    "draft: native confirm/cancel, missing acceptance rejected, explicit conversion, redirect/reload",
+    "published: 1440px light, preview/cancel, source hash unchanged",
+    "published: 1440px dark, preview/cancel, source hash unchanged",
+    "published: 390px light, preview/cancel, source hash unchanged",
+    "published: 390px dark, preview/cancel, source hash unchanged",
+    "published: 320px light, preview/cancel, source hash unchanged",
+    "published: 320px dark, preview/cancel, source hash unchanged",
+    "published: native confirm/cancel, missing acceptance rejected, explicit conversion, redirect/reload",
+    "Invalid token: concrete refusal; original hash unchanged"
+  ],
+  "source_hashes": [
+    {
+      "kind": "draft",
+      "source_id": "115",
+      "before": "8853fbb3c02c695458e432b23b72c2b03c01c395550fa7957e770cd04e57ba89",
+      "after": "ebba2458c43ce40d86227fa404b70b0810a445587bfbf44154972ccd26279295",
+      "result_url_path": "/admin/recipe-batches?version=115"
+    },
+    {
+      "kind": "published",
+      "source_id": "116",
+      "before": "31401cd6a61124cb8f0fe5819bf2f5b1016aca08296fcc429354951979efc082",
+      "after": "31401cd6a61124cb8f0fe5819bf2f5b1016aca08296fcc429354951979efc082",
+      "result_url_path": "/admin/recipe-batches?version=117"
+    }
+  ]
+}

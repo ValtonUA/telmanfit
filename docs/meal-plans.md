@@ -1,0 +1,443 @@
+# Раціони — контракт T4.1–T4.4 та Model I
+
+[Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
+[readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
+наступних кроків. Поточні статуси — лише в [roadmap](roadmap.md), докази — у
+[project-status](project-status.md).
+
+## Доступні сторінки
+
+- `/admin/meal-plans`: штатна Filament 5 таблиця, пошук назви, фільтри
+  універсального/персонального власника, статуси та кількість версій.
+- `/admin/meal-plans/create`: обов’язкова непорожня назва, необов’язковий наявний
+  клієнт за перевіреним ID. Універсальний план має `owner_client_id=NULL`.
+- `/admin/meal-plans/{record}`: назва, власник та посилання на **кожну точну версію**.
+- `/admin/meal-plan-versions/{record}`: ID, номер публікації, статус, дата та
+  [семиденний огляд UX-4E](#редактор-тижня-й-дня-ux-4e) із compact meals/items та day CTA.
+- `/admin/meal-plan-versions/{record}/days/{day}`: exact-day editor усіх прийомів,
+  каталог/порції/DnD та серверний Model I preview; published — readonly.
+
+Після створення відкривається єдина нова чернетка. Порожній стан явно пояснює,
+що вона ще не готова до публікації. Відкриття/reload не створює наступної чернетки.
+Published показуються лише для читання; наявні legacy-позиції не переписуються. Зміна назви чи власника наявного
+плану також закрита: окреме правило зміни metadata published plan не затверджене.
+
+## Серверні межі та дані
+
+`MealPlanFoundation::create` повторно перевіряє чинного admin і recovery/restore
+fence, тримає shared actor/owner locks, створює logical plan та одну `draft`
+версію в одній транзакції й перевіряє deferred constraints до повернення успіху.
+Неконтрольовані поля не використовуються: ID, lineage, publication/version/status,
+food/FK і replacement links не дозволені для mass assignment. Роль, статус
+супроводу, foods, рецепти та призначення не змінюються.
+
+`MealPlanPolicy` дозволяє лише admin list/view/create. Policy нижніх сутностей
+дозволяє admin читання; універсальні create/update/delete/replicate закриті. Окрема
+здатності `editStructure` та `publish` дозволені лише для чинної точної draft version. Штатні middleware
+панелі забезпечують session/MFA/CSRF, з повторною авторизацією Livewire-запитів.
+Сервіс не створює сесію й не обходить ці middleware.
+
+Сім моделей відповідають чинним SQL01/02 FK: owner/parent/copies, plan/versions,
+version/days/assignments, day/meals, meal/type/items, item/food/uom,
+assignment/client/version/creator/replacement/replaces. Допоміжна `Food` представляє
+наявний супертип та зв’язок ingredient; нової таблиці немає. Відсутні SQL timestamps
+не генеруються; `created_at`/дати незмінного типу, numeric — `decimal:2`, без float.
+Наявні partial UNIQUE, immutable guards та EXCLUDE збережені без зміни SQL/міграцій.
+
+## Редагування структури T4.2
+
+На тій самій сторінці точної версії admin явно додає наступні 7 днів:
+`1…7`, `8…14`, `15…21` тощо. Відкриття й reload лише читають дані. Типи треба
+обрати з чинного `meal_types`, впорядкованого `sort_order, id`; автоматичних
+припущень про коди чи ID немає. Порожній довідник показує пояснення і блокує
+генерацію. Неповну/розірвану legacy-структуру сервіс не ремонтує автоматично.
+Межа номера дня — чинний SQL `smallint`, без нового продуктового ліміту тижнів.
+
+Дії «Додати прийом», «Змінити прийом», «Видалити порожній прийом» вибирають день
+або прийом **цієї версії**. Доступні чинний тип, необов’язкова назва та signed
+smallint порядок (однаковий порядок стабільно сортується за ID). Тип у дні унікальний.
+Поля редагування недоступні до завантаження обраного прийому; під час його
+повторного вибору взаємодія з полями заблокована до відповіді Livewire, щоб пізнє
+заповнення не стерло щойно введений текст. День може тимчасово залишитися без прийомів; UI показує порожній стан,
+публікація відхиляє такий день. Окремий прийом із позиціями видаляти заборонено. Окремі дні не
+переставляються й не видаляються; для повних тижнів діє погоджений UX-4D нижче.
+
+`MealPlanStructure` перевіряє Policy/свіжого admin та recovery/restore fence,
+тримає runtime fence shared lock → actor shared lock → exact version FOR UPDATE
+→ days → meals → type shared locks. Runtime перед actor узгоджений із restore,
+який блокує runtime перед оновленням users. Після блокування повторно перевіряє draft;
+після команд — deferred guards і свіжу роль до commit. Жодного переходу на latest.
+Сервіс не змінює parent/owner/status/publication/assignments або історичні snapshots.
+Повтор запиту явного блоку `start_day` є no-op, навіть якщо його прийоми вже
+відредаговані; паралельні кліки серіалізуються на версії. Append не торкається
+попередніх тижнів. Редагування/видалення порівнює hash початкових полів прийому
+під lock, тому stale форма не стирає новішу правку. Повтор add з тим самим типом
+відхиляється без змін. Немає нових таблиць, міграцій, довідників або feature flags.
+
+## Видалення тижнів UX-4D
+
+[Issue #60](https://github.com/ValtonUA/telmanfit/issues/60) погоджує видалення
+**будь-якого повного семиденного тижня точної чернетки**: першого, середнього,
+останнього або єдиного. Меню «Видалити тиждень» показує актуальні номери та
+кількість `meal_items`. Наявність автоматичних `meals` без позицій означає
+**порожній** тиждень: вибір виконує видалення відразу, без warning/confirm-модалу.
+За ≥1 позиції відкривається confirmation із фактичною кількістю, попередженням
+про незворотне видалення всіх позицій/прийомів і зсув наступних тижнів; кнопки
+«Скасувати» / «Видалити тиждень». Cancel та перегляд не пишуть дані.
+
+Запит містить стабільний anchor (ID першого дня) і HMAC snapshot усіх семи днів,
+прийомів та позицій, прив’язаний до actor і version. Номер тижня не є ключем
+команди. Заповнений тиждень додатково потребує окремого серверного confirmation
+HMAC поточного snapshot; `confirmed=true`, підміна count/anchor/version або
+повторення старого запиту не дають права видаляти сусідній тиждень. Під version
+FOR UPDATE повторно читаються й блокуються дні → прийоми → позиції, звіряється
+підпис і **фактичний** item count. Нові/змінені позиції чи прийоми, або зміщення
+днів після іншого видалення, вимагають оновлення сторінки та нового підтвердження.
+Read-only підписані snapshots не змінюють БД; при конкурентному читанні будь-яка
+неузгодженість відхиляється повторною перевіркою під lock.
+
+Транзакція явно видаляє лише вибрані `meal_items → meals → meal_plan_days` цієї
+чернетки. Наступні дні оновлюються по одному **в зростаючому порядку**: номер мінус
+7, без конфлікту з негайним UNIQUE. Їхні ID, прийоми та вміст зберігаються; після
+єдиного тижня лишається 0 днів. Версія, foods, ingredients, recipes/recipe_versions,
+інші плани, призначення й журнали не змінюються. Published та розірвані legacy
+структури не редагуються/не ремонтуються цією командою. Recovery fence → actor →
+version lock order, fresh-role check, deferred guards і rollback спільні з T4.2.
+FK RESTRICT та immutable/UNIQUE guards не змінені. Конкурентний прямий INSERT
+позиції серіалізується також через FOR UPDATE на meal та його FK key-share:
+нова позиція вимагає fresh confirmation або INSERT відхиляється після DELETE,
+а orphan/тихого видалення непідтвердженої позиції немає.
+
+## Свідомо закриті команди
+
+Призначення/заміна (T4.5), CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
+Повторення заповнених тижнів у draft описано нижче; воно не публікує і не призначає раціон.
+Довідник типів читається з чинних рядків, seeds не додаються.
+
+G4-I реалізує окремий forward-only schema/readonly контракт Model I за
+[Issue #63](https://github.com/ValtonUA/telmanfit/issues/63); writer T4.3 використовує цей контракт без зміни схеми.
+[Proposal §11/§13](proposals/stage-3-recipe-batch-editor.md#11-контракт-stage-4-food-формат-порція-і-фізичне-приготування)
+уточнено цією авторизацією; selectors не входили до T4.2. DEC-4A потрібне перед T4.5.
+T1.5 та DEC-3T не блокують
+цей synthetic foundation. Production activation — окремий go/no-go.
+
+## Перевірки
+
+- `tests/Unit/MealPlanModelsTest.php`: PK/timestamps/fillable boundary семи моделей.
+- `tests/Postgres/MealPlanFoundationTest.php`: реальні FK/nullable/decimal/date
+  relations, atomic create, deferred late fault rollback, name/owner validation,
+  прямий Livewire, fresh-role ACL, SQL unique/immutable/exclusion negatives,
+  populated legacy recipe/ingredient plans та hash незмінності історії.
+- `tests/Postgres/MealPlanStructureTest.php`: 7/14/21 днів, типи/порядок, retries,
+  rollback deferred faults, порожній довідник, stale/forged/cross-version IDs,
+  SQL UNIQUE, immutable history, fresh-role/fence та прямі Filament actions.
+- `tests/Postgres/MealPlanWeekDeletionTest.php`: 7/14/21/28 днів, перший/середній/останній/єдиний тиждень, stable IDs/content, signed confirmation, cancel/forgery/retry/stale, ACL/fence, deferred rollback та history hashes.
+- `tests/pg/meal-plan-week-deletion-concurrency.php`: реальні delete-vs-append і delete-vs-прямий INSERT item в обох порядках, double/filled replay, stale edit, доведені lock waits та відсутність сусіднього видалення/deadlocks.
+- `tests/pg/meal-plan-structure-concurrency.php`: незалежні PG-сесії з доведеним
+  lock wait; double/retry, edit-vs-generate, stale edit, revoked role та runtime
+  fence-vs-writer без інверсії locks.
+- `tests/pg/meal-plan-concurrency.php`: окремий процес, доведене очікування locks,
+  duplicate draft / immutable detail / overlap відмови; два атомарні незалежні
+  створення без lost write. Входить у штатний recipe/Stage4 runner.
+- `tests/browser/meal_plans.py`: справжня MFA-сесія, create/list/search/detail,
+  точна published hierarchy, порожня чернетка, генерація/редагування/append/reload,
+  UX-4D modal/no-modal, cancel/confirm, middle-week renumber зі stable IDs,
+  1440/390/320 light/dark,
+  overflow, CSRF 419, revoked signed Livewire/HTTP 403 та незмінна історія.
+  Виконується разом із Stage 3 catalog/recipe регресіями; synthetic screenshots
+  і checks зберігаються як CI artifacts у `meal-plans/`.
+
+Локальне відтворення: `RECIPE_BATCH_ONLY=1 RECIPE_BATCH_BROWSER=1 bash tests/pg/run-stage1.sh`.
+Runner використовує лише нову disposable PG18, network none, без зовнішніх портів,
+синтетичні дані та cleanup. Повний CI і machine gate — [ci.md](ci.md).
+
+## Model I G4-I: selectors та readonly resolver
+
+[Issue #63](https://github.com/ValtonUA/telmanfit/issues/63) авторизує окремий
+forward-only [SQL 14](14_meal_item_selectors.sql), byte-identical до
+[виконуваного модуля](../database/sql/meal_plans/00_selectors.sql). Nullable поля
+та composite FK/guards наведені в [Entity Catalog](entity-catalog.md#g4-i--точні-selectors-позиції-раціону).
+SQL 01–13, історичні plans/assignments/foods/recipes/items не змінюються.
+
+`MealItemResolver::resolve(int|MealItem)` — внутрішній readonly контракт, без
+нового публічного endpoint або UI. Він завжди перечитує persisted item за ID,
+одним SQL snapshot приєднує точні food, published version, format, UOM та ingredient.
+Повертає readonly `MealItemPortion`: foodId, enum kind, recipeVersionId, formatId,
+divisor, quantity та nutrition (`kcal/protein/fat/carbs` decimal strings scale 6).
+Legacy version визначається унікальним food, жодного `latest`; batch — тільки
+повна явна трійка. Ingredient використовує historical resolved grams і чинні
+`*_per_100g`, legacy — frozen `*_per_serving`, batch — frozen format `*_total`.
+Спочатку множення на quantity, потім ділення на divisor й одне HalfUp округлення
+до 6 знаків. C/3 і C/4 мають один format ID та різні показники споживання.
+Відсутній item, невідомий format, неповні selectors чи нечислові nutrients —
+`DomainException`, без A/1 fallback. Viewer показує збережені поля та readonly КБЖВ через той самий resolver.
+
+`recipe_batch_quantities` описує **цілу фізичну партію**: зміна спожитої
+кількості/divisor не змінює її кількостей, кроків або обладнання. Майбутні nutrition
+і shopping consumers масштабують за `quantity/divisor`; cooking цілої партії — ні.
+G4-I не містить shopping list чи scheduler. Команди T4.3 описані нижче.
+
+`MealItemSelectorsTest` перевіряє непорожній synthetic upgrade з SHA256 snapshots
+історії, legacy nutrition, ingredient/A/1/B/7/C/3/C/4, 0.5 порції, SQL NULL matrix,
+чужі й неопубліковані версії/formats, UOM/grams, immutable history, deferred rollback
+та explicit reader failure. `MealItemPortionTest` перевіряє точність і скінченні
+decimal strings. `meal-item-selector-concurrency.php` доводить реальні lock waits
+в обох порядках selector/root і відхилення update/delete/downgrade без deadlock.
+Вони входять у штатний Stage3/T4.2 runner та Full CI; browser UI для G4-I не змінено.
+
+
+## Writer позицій T4.3
+
+`MealItemWriter` — єдині команди `save`, `move`, `delete` для точної draft version.
+Filament day editor та доступне fallback меню «Позиції» на сторінці версії:
+пошук наявного
+інгредієнта/опублікованої версії, додавання, редагування, явне перенесення між
+прийомами/днями цієї версії та видалення з confirmation/cancel. Порожній каталог
+не генерує seed. Поля редагування позиції заблоковані до завантаження її optimistic token;
+повторний вибір також блокує взаємодію до відповіді Livewire. Продукт наявної
+позиції незмінний; його заміна потребує явних
+add/delete. Однаковий sort_order стабільно впорядковується за ID.
+
+Ingredient використовує default conversion, якщо вона є, інакше g; одиницю можна
+обрати явно. Quantity і grams — positive numeric(7,2), decimal strings/Brick Math;
+quantity × актуальний factor округлюється HalfUp до 2 знаків, overflow і нуль після
+округлення відхиляються. Legacy — exact published food, serving і NULL selectors/grams.
+Batch потребує явних version/format/divisor: A/1, B/7, C/3 або C/4. UI пояснює
+частку фізичної партії й споживану quantity (зокрема 0.5). Readonly preview і
+persisted summary використовують один `MealItemResolver`, без JS nutrition чи A fallback.
+`preview` додає лише derived SQL row до тих самих joins/перевірок resolver, без INSERT.
+
+Policy `editItems` та Service повторно перевіряють чинного admin і draft.
+`MealPlanStructure::withinDraft` спільний з T4.2/UX-4D: runtime fence → actor →
+exact version FOR UPDATE, далі days → meals → items за ID. Cross-version/plan IDs
+відхиляються під lock. Рецептурний root/ingredient SHARE береться перед UOM за ID;
+published formats читаються під root fence без інверсії child locks.
+Ingredient root lock захищає conversion phantoms чинними SQL guards. Каталог,
+default/conversions/UOM і frozen recipe metadata мають actor/version HMAC snapshot;
+зміни після вибору вимагають повторного вибору/перевірки. Перед успіхом виконуються
+наявні deferred SQL guards та fresh-role/fence check. Автоматичного retry немає.
+
+Add порівнює HMAC стану прийому й усіх його items, тому подвійний submit відхиляється.
+Edit/move/delete порівнюють expected стан item і PG MVCC revision точної версії; stale форми не стирають новішу правку.
+Move зберігає точний food/selector/grams; delete видаляє лише item. Кожен успішний item command виконує no-op UPDATE лише draft root: дані статусу
+не змінюються, а xmin оновлюється. Tokens і week snapshots включають цю MVCC revision,
+тому навіть add→delete чи edit A→B→A не оживляють стару форму/confirmation; нових колонок немає.
+Week snapshots UX-4D включають актуальні items, тому add/edit/move/delete роблять старе підтвердження
+невалідним. Published history, legacy NULL selectors, recipes, assignments і каталоги
+ці команди не переписують. Session/MFA/CSRF межа залишається штатною Filament.
+
+`MealItemWriterTest` перевіряє decimal/default/UOM, legacy та чотири batch порції,
+preview/reload, stale/retry, forged/cross-version IDs, ACL/fence, deferred rollback,
+Livewire та недійсне старе підтвердження UX-4D. `meal-item-writer-concurrency.php`
+перевіряє незалежні PG-сесії й реальні lock waits для edit/double add,
+item-vs-week-delete в обох порядках, write-vs-publish та conversion/UOM change.
+`tests/browser/meal_items.py` проходить search/empty/add/edit/move/delete/cancel/reload
+у Chromium 1440/390/320 light/dark разом із чинними MFA/CSRF/revocation регресіями.
+Week/day DnD UX-4E (#62) реалізовано поверх цих команд, як описано нижче.
+Повторення тижнів і публікацію описано нижче; assignments залишаються окремою задачею. Схема, feature flags і реальні БД не змінюються.
+
+## Редактор тижня й дня UX-4E
+
+Основний екран exact version — семиденний огляд `?week=N`. Він рендерить
+позиції лише вибраного тижня; GET/reload не створюють днів або позицій. На desktop
+від 1280 px сім колонок розташовані одночасно, на 390/320 px перемикається один
+день. Показуються «День N (weekday)» за початком тижня плану, без календарної дати. У колонці лише
+заповнені прийоми, компактні назви й порції та одна нижня CTA «Заповнити день» /
+«Редагувати день». Порожні налаштовані прийоми приховані лише в огляді.
+
+`/admin/meal-plan-versions/{record}/days/{day}` — єдина full-width Filament
+сторінка всіх прийомів exact дня. URL перевіряється на сервері та повторно при
+Livewire hydration; day ID locked. Ліворуч також видно порожні прийоми, праворуч —
+серверний пошук/фільтр ingredient або exact published recipe, по 12 результатів,
+без сотень зображень. Форма показує серверний Model I preview. Quantity та UOM
+під час додавання з каталогу порожні; A/1, B/7, C/3, C/4 обираються явно.
+
+Sidebar повністю згортається на desktop лише для цих двох сторінок.
+Native HTML Drag API для миші та Pointer API з ручкою для touch — тонкий Alpine
+адаптер. Каталог → прийом відкриває штатний Filament modal; до підтвердження немає
+запису. `food_id` відокремлений від persisted `meal_item.id`. Перенесення на позицію
+вставляє перед нею, на заголовок/вільне місце прийому — в кінець. DOM не переставляє
+позиції оптимістично: успіх повертає канонічний серверний порядок, validation/conflict
+залишає актуальний стан та notification. Доступні кнопка «Додати» з вибором прийому в modal,
+select перенесення й кнопки «Вище»/«Нижче» в меню «⋯», штатне меню «Позиції» у «Керування» для
+редагування/confirmation видалення. Це також клавіатурний та touch fallback.
+
+`MealItemWriter::place` — мінімальне розширення чинної writer boundary: exact
+version → day → source/target meals та optional before item, HMAC snapshot дня
+(actor/version/MVCC revision/вміст), спільні recovery/actor/version/hierarchy locks,
+перевірка свіжої ролі й deferred guards. Порядок до команди стабільний за
+`sort_order, id`; цільовий і початковий прийоми перенумеровуються атомарно від 0,
+з перевіркою smallint. Identity food/recipe/format/divisor, quantity та UOM не
+змінюються. Stale/repeated drop, чужий день/версія, видалений тиждень, ABA та
+конкурентні move/delete відхиляються без часткового запису.
+
+Усі інші дії використовують T4.3 `save/move/delete` і T4.2
+`saveMeal/deleteMeal`. Сторінка дня додатково перевіряє, що аргументи кожної
+команди належать саме її дню. Після save Livewire перечитує цей день без redirect, зберігаючи пошук/фільтр/сторінку каталогу, а «До огляду
+тижня» повертає на тиждень його поточного порядкового номера. Генерація та
+UX-4D видалення тижнів залишаються в огляді; попередні forms — доступний fallback
+поверх тих самих сервісів. Другого основного редактора немає.
+
+Header показує назву плану, а version/status — другорядно; actions згруповано в «Керування».
+Published має readonly огляд і сторінку дня, без каталогу, drag handles чи edit CTA;
+прямі Livewire write calls відхиляються Policy/Service. SQL01–14 не переписані; погоджений forward SQL15 описано нижче. Залежності,
+робочі БД, feature flags та призначення не змінюються. Повторення тижнів T4.3R описано нижче.
+Публікацію описано нижче; assignment/CoW і production activation залишаються окремими задачами.
+
+Перевірки: `MealPlanDayEditorTest`, незалежний
+`tests/pg/meal-plan-day-concurrency.php` (доведені PG lock waits),
+`tests/browser/day_editor.py` у штатному Stage3/4 runner. Chromium перевіряє
+1440/390/320 light/dark, щільний і порожній тиждень, exact navigation,
+copy/cancel/confirm, mouse drag, trusted Chromium touch/Pointer input, keyboard/buttons, explicit
+A/B/C порції, persistence та overflow. Browser artifacts зберігаються разом із
+T4.1–T4.3 у `meal-plans/`; Chromium touch emulation не замінює ручну перевірку
+фізичного touchscreen пристрою. Результати й CI належать конкретному head SHA.
+
+## Зображення та початок тижня SQL15
+
+Останнє уточнення власника PR #67 має пріоритет: required create select
+«Початок тижня» з Пн за замовчуванням зберігається в
+`meal_plans.week_start_weekday` (ISO 1..7), а не у версії. DB забороняє
+зміну після створення; Day 1/8 показують обраний weekday, assignment date окрема.
+Forward migration `2026_10_25_020000_add_plan_presentation.php` виконує
+`database/sql/presentation/00_plan_media.sql`, ідентичний `15_plan_presentation.sql`.
+Existing plans default=1 погоджено явно; days/items/frozen snapshots не змінюються.
+
+`ingredients.image_url` / `recipes.image_url` nullable. Ingredient edit та action
+«Обкладинка рецепта» у «Керування» draft day editor (пошук логічного рецепта), а також на recipe editor зберігають URL; дія доступна без увімкнення batch feature flag. свіжі admin ACL, recovery
+fence, locks і CAS захищають write. Cover recipe спільний для всіх exact versions.
+Не використовуються images кроків. Фото не входить у nutrition source hash,
+тому додавання колонки та заміна cover не змушують Refresh.
+
+`PUBLIC_IMAGE_HOSTS` — comma-separated **точні** публічні DNS hosts, без scheme,
+path, wildcard. Типово порожній: весь editor працює без фото. Реальний R2 host
+невідомий і не потрібний для цього PR; не слід підставляти вигаданий R2 URL.
+Після окремо погодженого налаштування дозволяються тільки HTTPS URL до цих hosts,
+без userinfo, port, fragment, IP/private names або SVG/HTML/XML. Сервер не
+виконує fetch/proxy/upload. Browser без referrer, lazy/async, object-fit та sizes.
+Для NULL/untrusted/broken фото — компактний текст/placeholder; week не лишає
+порожніх фото-прямокутників. Day thumb 56–64 px, desktop catalog 2-column grid з компактним 64px placeholder,
+week photo full-width 4:3 з дворядковим підписом.
+
+R2 key може лишатися стабільним при overwrite. Видимість нового файлу залежить
+від CDN/browser TTL; власник storage окремо визначає Cache-Control/TTL та за
+потреби виконує Cloudflare purge. Цей PR не змінює bucket, об'єкти, credentials,
+TTL чи purge і не переносить файли у Laravel storage. У тестах
+`https://images.example.com/…` перехоплюється Chromium route fixture без R2/network.
+
+`MealItemResolver::resolveMany` виконує ті самі exact joins/decimal calculations
+для всіх позицій одним SQL; labels/covers також одним lookup. Презентація
+округлює HALF_UP до kcal0/macro1 без float; resolver зберігає precision.
+`MealPlanPresentationTest` вимірює повний Livewire render 10/40 позицій,
+перевіряє незростання query count і точну відповідність scalar/bulk.
+
+
+## Повторення тижнів у чернетці T4.3R
+
+[Issue #61](https://github.com/ValtonUA/telmanfit/issues/61): «Керування → Повторити
+тиждень» доступне в огляді точної draft version та редакторі дня. Вихідний тиждень
+типово 1; «Кількість тижнів загалом» — кінцева тривалість усього раціону.
+Джерело S копіюється у S+1…N; джерело й попередні тижні не змінюються.
+Після успіху відкривається огляд поточного тижня; редактор цільового дня не
+залишається на старому ID, який щойно було замінено.
+Наприклад, 1 → 4 створює три копії. Для джерела 2 та N=4 змінюються лише 3 і 4.
+N має перевищувати S і бути не меншим за наявну тривалість: скорочення раціону
+виконується окремою UX-4D дією. Верхня технічна межа 4681 тиждень походить із
+SQL smallint day_number, нового продуктового ліміту немає.
+
+Джерело мусить бути повним семиденним блоком у безперервній структурі 1…N та
+містити хоча б одну позицію. Частково заповнений тиждень дозволений: порожні дні
+й прийоми копіюються як є. Це не перевірка готовності до Publish; повністю порожнє
+джерело й розірвана legacy-структура відхиляються без запису.
+
+`MealPlanWeekRepeater` використовує `MealPlanStructure::withinDraft`: runtime
+fence → fresh actor → exact version FOR UPDATE → days → meals → items. Усі
+наявні дні/прийоми/позиції блокуються в стабільному порядку, а HMAC стану містить
+actor, version, рядки та їхні PostgreSQL xmin revisions. Snapshot береться при
+відкритті форми й не оновлюється при зміні її полів. Append, edit, delete-week,
+інший repeat або ABA-правка після snapshot вимагають нового відкриття форми.
+Після успіху version xmin оновлюється також для інвалідації старих editor tokens.
+Повтор submit відхиляється; дублікати чи повторне затирання правок не створюються.
+
+Відсутні цілі створюються без додаткового confirmation. Якщо хоча б один
+цільовий тиждень уже існує, перший submit лише відкриває окреме «Замінити цільові
+тижні» — навіть за 0 прийомів і 0 позицій. Це зберігає авторські назви, типи та
+порядок прийомів без страв до явної згоди тренера. Діалог показує source, цільовий
+діапазон, точний список наявних тижнів, які буде замінено, та кількість прийомів
+і позицій у кожному з них. Відсутні тижні не потрапляють до списку заміни. Лише «Так, замінити цільові тижні» передає
+окремий HMAC grant, прив'язаний до actor/version/source/total/snapshot.
+Cancel, відкриття, reload і preview не пишуть дані. `confirmed=true`, підміна
+лічильників або старий grant не дозволяють заміну; перед записом стан звіряється
+повторно під locks. Нові конкурентні вставки також серіалізуються FK key-share
+проти FOR UPDATE на батьківських рядках.
+
+В одній транзакції цільові items → meals → days видаляються і створюються заново
+з новими ID. Кожен день, прийом і позиція — фізично незалежний рядок; title,
+meal_type_id, sort_order (включно з однаковими значеннями та стабільним ID-порядком),
+food_id, exact recipe_version_id/recipe_batch_format_id/recipe_portion_divisor,
+quantity, uom_id і resolved_quantity_grams копіюються без повторного resolution,
+float чи переходу на latest. A/1, B/7, C/3, C/4 та legacy NULL selectors зберігаються.
+Немає live-link, нової таблиці, міграції чи фонової materialization. Deferred
+constraints і повторна перевірка ролі/fence виконуються до commit; пізня помилка
+відкочує всі видалення й копії. Каталоги, frozen recipes, published plans та
+історичні assignments не змінюються. Чинні admin/MFA/CSRF middleware збережено.
+
+Повтор у draft — лише підготовка вмісту. Публікація T4.4 перевіряє заповненість
+усього раціону; **T4.5** — призначення exact published version, дати,
+заміни та DEC-4A; безстроковий повтор тут не реалізується.
+
+Перевірки: `tests/Postgres/MealPlanWeekRepetitionTest.php` (deep copy/ID independence,
+formats/decimal/history, confirmation/cancel/forgery/stale/ACL, deferred rollback),
+`tests/pg/meal-plan-week-repetition-concurrency.php` (реальні lock waits для repeat,
+item edit, append, UX-4D delete, raw INSERT, publication, role/fence),
+`tests/browser/week_repetition.py` (1440/390/320 light/dark, copy, independent edit,
+replace/cancel і stale modal). Входять у штатний Stage3/4 runner, без нових CI jobs.
+
+
+## Публікація точної версії T4.4
+
+«Керування → Опублікувати» в огляді та редакторі дня доступне лише чинному admin
+для exact draft. Відкриття виконує readonly preflight усього раціону, незалежно від
+вибраного тижня/дня: ≥7 днів, кратність 7, безперервні 1…N, хоча б один прийом
+у кожному дні та позиція в кожному прийомі. Усі наявні прийоми обов’язкові;
+довідник не визначає додаткового обов’язкового набору типів.
+Повідомлення містять номер дня, назву/ID прийому та ID позиції; пропуски днів і
+порожні прийоми показуються разом. Кожна позиція проходить exact Model I resolver;
+для ingredient додатково перевіряється quantity × чинний factor, HALF_UP до 2 знаків,
+без float, refresh чи мовчазного виправлення грамування. Помилки показує Filament
+notification; confirmation не відкривається, записи не змінюються.
+
+Успішний preflight видає окремий HMAC publication token стану actor/version,
+root і всіх days/meals/items з PostgreSQL xmin. Cancel не пише дані. Зміна
+структури/позицій, ABA або підміна token вимагають нового підтвердження.
+`MealPlanPublisher` повторює перевірку в одній транзакції: recovery fence SHARE →
+fresh actor SHARE → exact version FOR UPDATE → days → meals → items → ingredient
+roots SHARE → published recipe roots SHARE → UOM SHARE. Root guards захищають
+conversion phantoms; публікація бачить актуальний factor або чекає конкурентного
+catalog writer. Точний version lock серіалізує editor/repeat/delete та publication;
+SQL guards залишають останній захист для raw SQL. Автоматичного retry немає.
+
+Після повторної валідації logical plan FOR UPDATE серіалізує номер max+1 у межах
+цього плану (smallint overflow відхиляється). Єдиний UPDATE встановлює status,
+version_number і published_at. Deferred guards та повторний actor/fence check
+виконуються до повернення успіху; пізня помилка відкочує публікацію повністю.
+Повторний submit уже published version відхиляється. Новий draft не створюється.
+
+Публікація не копіює й не перераховує recipes/nutrition: ingredient grams, legacy
+NULL selectors і exact batch A/1, B/7, C/3, C/4, quantity та UOM залишаються
+незмінними. Нових foods, client events або assignments немає. Історія лишається
+в наявних exact versions; published root і всі дочірні рядки захищають чинні
+SQL01/14 immutable guards. Нова схема/міграція для цього переходу не потрібна.
+Редактор дня включає `publishPlan` у header-меню «Керування» та використовує
+ту саму action і `MealPlanPublisher`, що й огляд, без окремої логіки публікації.
+Після успіху з будь-якої точки входу UI відкриває readonly огляд; day editor теж readonly. Прямі Livewire
+writes проходять ті самі Policy/Service та штатні session/MFA/CSRF middleware.
+
+Перевірки: `MealPlanPublicationTest` (PG/Livewire, повнота/грамування, Model I,
+history, stale/forged/ACL/fence, immutability negatives та late rollback),
+`tests/pg/meal-plan-publication-concurrency.php` (незалежні сесії, доведені lock
+waits для duplicate, raw edit в обох порядках, ABA, writer/repeat/delete-week,
+append, conversion, role/fence),
+`tests/browser/plan_publication.py` (1440/390/320 light/dark, errors/cancel/stale,
+окремі overview/day menu/confirmation/cancel/stale/publish/readonly redirect,
+signed CSRF/revocation з редактора дня) включені в чинний Stage3/4 runner без нових CI jobs.

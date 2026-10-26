@@ -90,6 +90,7 @@ with sync_playwright() as p:
     click(page,'verify',200)
     assert page.evaluate('state.next')=='registration_complete'
     page.locator('#name').fill('Синтетичний клієнт')
+    page.locator('#last_name').fill('Тестове')
     before = next(c['value'] for c in context.cookies() if c['name']=='telmanfit_client_session')
     click(page,'complete',201)
     after = next(c['value'] for c in context.cookies() if c['name']=='telmanfit_client_session')

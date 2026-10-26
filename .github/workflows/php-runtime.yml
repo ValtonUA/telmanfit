@@ -1,13 +1,19 @@
 name: PHP runtime security
 on:
-  pull_request:
-    branches: [master]
-  push:
-    branches: [master]
+  workflow_call:
+    inputs:
+      head:
+        required: true
+        type: string
+      base:
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
   runtime:
+    name: PHP ${{ matrix.php }} security
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     env:
       APP_ENV: testing
@@ -23,22 +29,33 @@ jobs:
       matrix:
         php: ['8.4.27', '8.5.12']
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.head }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: pdo_pgsql, pgsql, pdo_sqlite, intl, mbstring, dom, bcmath, zip
           coverage: none
       - run: php scripts/check-php-runtime.php
       - run: composer validate --strict
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
       - run: composer install --no-interaction --prefer-dist --no-scripts --no-plugins
       - run: composer check-platform-reqs
       - run: composer audit --locked --no-interaction
       - run: php artisan package:discover --ansi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
-      - run: npm install --ignore-scripts --package-lock=false
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm ci --prefix client --ignore-scripts
       - run: npm run build --prefix client
@@ -47,3 +64,8 @@ jobs:
         run: AUTH6B6_ONLY=1 tests/pg/run-stage1.sh
       - run: php artisan test --display-all-issues
       - run: php vendor/bin/pint --test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: b6-${{ matrix.php }}-${{ inputs.head }}
+          path: docs/evidence/auth6b-b6/*.json
+          if-no-files-found: error
