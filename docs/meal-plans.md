@@ -1,4 +1,4 @@
-# Раціони — контракт T4.1–T4.4 та Model I
+# Раціони — контракт T4.1–T4.5 та Model I
 
 [Issue #56](https://github.com/ValtonUA/telmanfit/issues/56) визначає foundation;
 [readiness gate #54](https://github.com/ValtonUA/telmanfit/issues/54) визначає залежності
@@ -110,14 +110,14 @@ FK RESTRICT та immutable/UNIQUE guards не змінені. Конкурент
 
 ## Свідомо закриті команди
 
-Призначення/заміна (T4.5), CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
+CoW (T4.6), Delete/replicate/archive самих планів/версій та CRUD довідника meal types відсутні.
 Повторення заповнених тижнів у draft описано нижче; воно не публікує і не призначає раціон.
 Довідник типів читається з чинних рядків, seeds не додаються.
 
 G4-I реалізує окремий forward-only schema/readonly контракт Model I за
 [Issue #63](https://github.com/ValtonUA/telmanfit/issues/63); writer T4.3 використовує цей контракт без зміни схеми.
 [Proposal §11/§13](proposals/stage-3-recipe-batch-editor.md#11-контракт-stage-4-food-формат-порція-і-фізичне-приготування)
-уточнено цією авторизацією; selectors не входили до T4.2. DEC-4A потрібне перед T4.5.
+уточнено цією авторизацією; selectors не входили до T4.2. DEC-4A для T4.5 погоджено й описано нижче.
 T1.5 та DEC-3T не блокують
 цей synthetic foundation. Production activation — окремий go/no-go.
 
@@ -234,7 +234,7 @@ item-vs-week-delete в обох порядках, write-vs-publish та conversi
 `tests/browser/meal_items.py` проходить search/empty/add/edit/move/delete/cancel/reload
 у Chromium 1440/390/320 light/dark разом із чинними MFA/CSRF/revocation регресіями.
 Week/day DnD UX-4E (#62) реалізовано поверх цих команд, як описано нижче.
-Повторення тижнів і публікацію описано нижче; assignments залишаються окремою задачею. Схема, feature flags і реальні БД не змінюються.
+Повторення тижнів, публікацію й призначення описано нижче як окремі сервіси. Схема, feature flags і реальні БД не змінюються.
 
 ## Редактор тижня й дня UX-4E
 
@@ -441,3 +441,69 @@ append, conversion, role/fence),
 `tests/browser/plan_publication.py` (1440/390/320 light/dark, errors/cancel/stale,
 окремі overview/day menu/confirmation/cancel/stale/publish/readonly redirect,
 signed CSRF/revocation з редактора дня) включені в чинний Stage3/4 runner без нових CI jobs.
+
+
+## Призначення клієнтам T4.5 / DEC-4A
+
+**Погоджене DEC-4A:** admin обирає наявного клієнта, точну опубліковану версію
+та дату початку сьогодні або в майбутньому. `end_date` nullable; межі включні.
+Персональний раціон доступний лише `owner_client_id`, універсальний — будь-якому
+наявному клієнту. Призначення не активує супровід і не змінює його статус;
+окремого нового обмеження на pending/active/paused/finished DEC-4A не вводить.
+«Сьогодні» визначається серверним Laravel календарем (`config('app.timezone')`),
+дати зберігаються як date, без перетворення календарних днів у timestamps.
+
+Дострокова заміна має явно вибране попереднє призначення. Початок нового —
+**майбутня дата**, строго після початку попереднього. Якщо періоди перетинаються,
+попереднє завершується днем перед новим початком і отримує
+`replaced_by_assignment_id` нового запису. Завершення не може передувати початку.
+Новий період не може зачіпати жодне інше призначення: автоматичного обрізання,
+перенесення або видалення запланованих раціонів немає. Якщо вибране попереднє
+не перетинається з новим періодом, створюється **окремий** запис без replacement
+link. Чужа/відсутня/вже замінена ціль, перекриття іншого періоду та неузгоджені
+дати відхиляються з українським поясненням. Історичні записи й published вміст
+не змінюються; в старому призначенні дозволені лише погоджені дата/link.
+
+`MealPlanAssigner::snapshot/preview/assign` — єдина доменна межа, без Telegram,
+нової схеми чи feature flags. Preview лише читає. Підпис HMAC прив'язаний до
+actor, client, стану картки та **всього** розкладу з PostgreSQL xmin revisions.
+Окремий confirmation HMAC охоплює точну version, дати, ціль, snapshot і наслідки.
+Після конкурентного запису, ABA, зміни картки, повторного submit або підміни
+полів потрібне нове відкриття форми. Після успіху no-op UPDATE `updated_at`
+клієнта змінює лише MVCC revision; нового поля idempotency немає. Повторні
+запити відхиляються без дубля або повторного журналювання.
+
+Одна PostgreSQL транзакція: recovery runtime SHARE → fresh actor SHARE →
+exact published version SHARE → logical plan SHARE → client FOR UPDATE →
+assignments FOR UPDATE за ID. Це узгоджено з publisher (version → plan) та
+restore (runtime → actor). Client lock серіалізує і порожній розклад; FK guards
+і EXCLUDE залишаються останнім DB-захистом. Роль/recovery fence перевіряються
+до операції та перед commit; deferred guards виконуються до успіху.
+Помилка будь-якого кроку, зокрема журналу, відкочує дати/link/новий запис/подію.
+
+У `client_events` лише INSERT з локальним `event_type=meal_plan_assigned` для
+створення та заміни. Глобальну таксономію/enum/retention не вводимо. Колонки
+`client_id`, `actor_user_id`; `event_data` містить client/actor, old/new assignment
+IDs, exact old/new version IDs, початок старого, його end до/після, нові start/end.
+Для окремого призначення old-поля NULL. Імен, email та інших персональних даних
+у payload немає. Публікація залишається окремою T4.4 операцією; assignment не
+публікує draft автоматично.
+
+**Filament:** «Картка клієнта → Раціони клієнта» відкриває
+`/admin/clients/{record}/meal-plans`. Таблиця показує version із посиланням на
+readonly огляд, включні дати, безстроковість і обидва напрямки історії заміни.
+«Призначити раціон» та «Замінити раціон» відкривають вибір доступної exact
+published version і дат. «Перевірити наслідки» відкриває окремий modal із назвами,
+номерами версій, ID та точними датами завершення/початку. Лише
+«Так, підтвердити призначення» пише дані; cancel/reload не пишуть. Порожній
+каталог пояснює необхідність спочатку опублікувати відповідний раціон.
+Штатні session/MFA/CSRF та persistent authorization залишаються чинними.
+
+Цільовий прогін без повної регресії:
+`MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`.
+Лише disposable PG18 без мережі/портів, synthetic fixtures і cleanup.
+`MealPlanAssignmentTest` перевіряє backend/Livewire/SQL negatives/rollback;
+`meal-plan-assignment-concurrency.php` — незалежні процеси й доведені lock waits;
+`meal_plan_assignments.py` — релевантні Chromium light/dark 1440/390/320,
+preview/cancel/confirm/history/stale та CSRF/revocation. Full CI запускається
+окремо після незалежного review власника.

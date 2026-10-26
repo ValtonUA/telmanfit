@@ -12,7 +12,7 @@
 | 1 | PostgreSQL: 37 бізнес-таблиць | Частково | Міграції/тести виконані; T1.5 seed-довідники ще не погоджені |
 | 2 | Картки клієнтів і auth | Частково | Картки готові; auth controlled/local/testing, production OFF; перший робочий екран анкети, решта питань пізніше |
 | **3** | **Каталог продуктів і рецептів** | **Частково** | **A/B1/B2: ядро та редактор; C1: нові версії A/B/C; C2: персональні CoW; C3 merged #51; D: merged #53, Completion Audit #54; T1.5 окремо** |
-| 4 | Раціони і призначення | Частково | T4.1/T4.2 foundation і структура; G4-I selectors/readonly resolver і T4.3 writer; UX-4E week/day editor; T4.3R повторення тижнів; T4.4 публікація; DEC-4A перед T4.5 |
+| 4 | Раціони і призначення | Частково | T4.1/T4.2 foundation і структура; G4-I selectors/readonly resolver і T4.3 writer; UX-4E week/day editor; T4.3R повторення тижнів; T4.4 публікація; T4.5 призначення за DEC-4A; далі T4.6 CoW |
 | 5 | Клієнтський кабінет | Частково | Auth/security shell є, харчового функціоналу немає |
 | 6 | Метрики, звіти, фото | Заплановано | Після клієнтів; окремі контракти за потреби |
 | 7 | Комунікація | Заплановано | Після базового прогресу |
@@ -37,7 +37,7 @@
 
 | ID | Передумова | Статус | Пояснення |
 |---|---|---|---|
-| G1 | Погодження Open Questions | **Частково** | G3/роль coach/admin/клієнтський email OTP/архітектура auth погоджені; **залишаються лише предметні рішення**: T1.5 для Stage 3 (BR-F-11 визначено за §17), анкета для T2.4, заміни призначень для Stage 4. Не позначати всі етапи заблокованими. |
+| G1 | Погодження Open Questions | **Частково** | G3/роль coach/admin/клієнтський email OTP/архітектура auth погоджені; **залишаються лише предметні рішення**: T1.5 для Stage 3 (BR-F-11 визначено за §17), анкета для T2.4; DEC-4A для призначень погоджено. Не позначати всі етапи заблокованими. |
 | G2 | Ізольований PostgreSQL із `btree_gist` | **Виконано** | PG18.6, інтеграційні тести [Stage 1](stage-1.md) |
 | G3 | Стратегія міграцій `B+R1` | **Виконано** | Laravel-міграції, збереження `users.id` BIGINT |
 | G4 | Тестовий PG runner/CI | **Виконано** | `phpunit.pgsql.xml`, `tests/pg/run-stage1.sh`, GitHub Actions |
@@ -107,7 +107,7 @@
 | UX-4E | [Єдиний week/day editor](meal-plans.md#редактор-тижня-й-дня-ux-4e): 7 колонок, mobile день, компактні photo cards/menus, create-only початок тижня (SQL15), каталог, явні порції, DnD/keyboard fallback, атомарне сортування через writer. | Виконано |
 | T4.3R | [Повторення тижня у draft](meal-plans.md#повторення-тижнів-у-чернетці-t43r): незалежні deep copies 7 днів/прийомів/позицій, exact Model I, явне підтвердження всіх наявних цільових тижнів (навіть 0 позицій), snapshot/retry/locks/rollback; без Publish/assignment. | Виконано |
 | T4.4 | [Публікація exact draft](meal-plans.md#публікація-точної-версії-t44): повнота/грамування, Model I, atomic locks, stale/duplicate/immutable history, Filament, PG/Livewire/concurrency/Chromium (BR-P-01…07). | Виконано |
-| T4.5 | Призначення версії клієнту: атомарна заміна дат, `replaced_by_assignment_id`, подія в `client_events` (BR-P-08, BR-P-11). | Заплановано |
+| T4.5 | [Призначення exact published version клієнту за DEC-4A](meal-plans.md#призначення-клієнтам-t45-dec-4a): атомарні дати/заміна/подія, HMAC stale/replay, admin/owner ACL, Filament preview/confirm/history, PG/Livewire/concurrency/Chromium. | Виконано |
 | T4.6 | Персональна копія плану (Copy-on-Write). | Заплановано |
 
 ### Stage 5 — Клієнтський кабінет
@@ -193,7 +193,7 @@
 | DEC-3B | Явний refresh із diff, GET read-only; accepted snapshot для Save/Publish, manual quantity/UOM зберігаються; §17 і Issue #37 | Виконано | Базові команди PR B1; решта editor slice за T3.2–T3.3 |
 | DEC-2A | Для першого екрана затверджено гнучкий JSON без попереднього повного контракту; решта запитань переноситься поступово з Google-форми. | Частково | Розширювати разом із UI, без блокування інших модулів |
 | UX-4D | [Погоджено #60](https://github.com/ValtonUA/telmanfit/issues/60): видалення будь-якого повного тижня draft; 0 items — відразу, ≥1 — confirmation; stable anchor та перенумерація без зміни ID/вмісту наступних тижнів. Окремі дні не переставляються/не видаляються. | Виконано | Доповнення T4.2 у PR #59; повторення тижнів (#61) реалізовано окремим T4.3R після T4.3, перед T4.4 |
-| DEC-4A | Дострокове завершення/заміна призначення та `replaced_by_assignment_id` | Очікує рішення | Перед Stage 4 assignment workflow |
+| DEC-4A | [Початок сьогодні/в майбутньому, дострокова заміна з майбутньої дати, історія та окремі непересічні періоди](meal-plans.md#призначення-клієнтам-t45-dec-4a) | Виконано | Реалізовано T4.5 без зміни схеми |
 | DEC-9A | Безпечне повторне MFA enrollment останнього admin після B5 restore | Очікує рішення | Перед Stage 9 / production |
 
 Інші питання з [schema-audit.md](schema-audit.md), §7, вирішувати **для відповідної функції**, не відкриваючи заново закриті G1/G3/G4/G5. Детальні бізнес-правила — [business-rules.md](business-rules.md), архітектура — [architecture.md](architecture.md).

@@ -25,6 +25,8 @@ class ViewClient extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('mealPlanAssignments')->label('Раціони клієнта')
+                ->url(fn () => ClientResource::getUrl('assignments', ['record' => $this->getRecord()])),
             Action::make('editFirstAnswers')
                 ->label('Анкета — 3 запитання')
                 ->visible(fn (): bool => (Filament::auth()->user()?->can('update', $this->getRecord()) ?? false)

@@ -165,3 +165,11 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 не називати оцінку списаними хвилинами. Before/after і сценарії 5/10 commits
 публікуються у Draft PR після завершення реальних GitHub runs. Дані останнього
 фінального SHA додаються до опису PR, щоб не створювати новий неперевірений commit.
+
+
+Цільовий T4.5 runner без Stage1/Chromium full regression:
+`MEAL_PLAN_ASSIGNMENT_ONLY=1 MEAL_PLAN_ASSIGNMENT_BROWSER=1 bash tests/pg/run-stage1.sh`.
+Запускає лише `MealPlanAssignmentTest`, assignment concurrency і assignment Chromium
+на новій disposable PG18 із cleanup. Без browser — опустити
+`MEAL_PLAN_ASSIGNMENT_BROWSER`. Ці ж перевірки інтегровані в чинну recipe/Stage4
+групу Full; запуск Full для T4.5 відкладено до незалежного review власника.
