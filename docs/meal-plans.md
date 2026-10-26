@@ -428,7 +428,9 @@ NULL selectors і exact batch A/1, B/7, C/3, C/4, quantity та UOM залиша
 незмінними. Нових foods, client events або assignments немає. Історія лишається
 в наявних exact versions; published root і всі дочірні рядки захищають чинні
 SQL01/14 immutable guards. Нова схема/міграція для цього переходу не потрібна.
-Після успіху UI відкриває readonly огляд; day editor теж readonly. Прямі Livewire
+Редактор дня включає `publishPlan` у header-меню «Керування» та використовує
+ту саму action і `MealPlanPublisher`, що й огляд, без окремої логіки публікації.
+Після успіху з будь-якої точки входу UI відкриває readonly огляд; day editor теж readonly. Прямі Livewire
 writes проходять ті самі Policy/Service та штатні session/MFA/CSRF middleware.
 
 Перевірки: `MealPlanPublicationTest` (PG/Livewire, повнота/грамування, Model I,
@@ -437,4 +439,5 @@ history, stale/forged/ACL/fence, immutability negatives та late rollback),
 waits для duplicate, raw edit в обох порядках, ABA, writer/repeat/delete-week,
 append, conversion, role/fence),
 `tests/browser/plan_publication.py` (1440/390/320 light/dark, errors/cancel/stale,
-publish/reload/readonly, signed CSRF/revocation) включені в чинний Stage3/4 runner без нових CI jobs.
+окремі overview/day menu/confirmation/cancel/stale/publish/readonly redirect,
+signed CSRF/revocation з редактора дня) включені в чинний Stage3/4 runner без нових CI jobs.

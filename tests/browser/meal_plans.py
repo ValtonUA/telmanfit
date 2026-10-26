@@ -133,7 +133,8 @@ def run_meal_plans(page, base):
             checks.append(suffix + ": T4.3R deep copy, independent edit, replace confirm/cancel, stale guard")
             from plan_publication import run_plan_publication
             run_plan_publication(page, base, f, suffix, submit)
-            checks.append(suffix + ': T4.4 validation/cancel/stale/publish/reload/readonly')
+            run_plan_publication(page, base, f, suffix + '-day', submit, from_day=True)
+            checks.append(suffix + ': T4.4 overview + day menu/confirmation/cancel/stale/publish/readonly redirect')
             from plan_presentation import run_plan_presentation
             run_plan_presentation(page, base, f, suffix)
             page.goto(draft_url)
@@ -202,7 +203,7 @@ def run_meal_plans(page, base):
     # Окрема валідна draft confirmation лишається draft для CSRF/revocation probes.
     publication_guard = json.loads(fixture('repeat-single-seed', f['type'], f['extra_type'], f['food']))
     fixture('publication-fill', publication_guard['version'])
-    page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']))
+    page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']) + '/days/' + str(publication_guard['day']))
     management(page, 'Опублікувати')
     expect(page.get_by_role('heading', name='Опублікувати версію раціону', exact=True)).to_be_visible()
     publication_raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()
