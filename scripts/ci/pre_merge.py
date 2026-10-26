@@ -16,6 +16,8 @@ REQUIRED = {
         "Targeted PR checks",
     },
 }
+
+
 def api(path):
     raw = subprocess.check_output(["gh", "api", "--paginate", path], text=True)
     # --slurp is absent from older gh releases. Decode concatenated JSON pages.
@@ -59,6 +61,11 @@ def evaluate(snapshot):
         if set(names) != required or len(names) != len(required):
             errors.append(f"{workflow}: missing/extra/duplicate jobs: {names}")
         for job in jobs:
+            if (workflow == "targeted.yml"
+                    and job["name"] == "regressions / PostgreSQL and browser regressions"
+                    and job["status"] == "completed" and job["conclusion"] == "skipped"):
+                # Targeted gate proves the diff selected no PG/browser scope.
+                continue
             if (job["status"] != "completed" or job["conclusion"] != "success"
                     or job["head_sha"] != sha or job["run_attempt"] != run["run_attempt"]):
                 errors.append(f"{workflow}: invalid job {job['name']}")
