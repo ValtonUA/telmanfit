@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\User;
+use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\MealPlans\MealPlanAssigner;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\MealPlans\AssignmentFixture;
@@ -26,6 +28,15 @@ if (($argv[1] ?? '') === 'worker') {
         exit(in_array($data['case'], ['role', 'fence'], true) && $e->getStatusCode() === 403 ? 0 : 4);
     }
 }
+// PHPUnit rolls back its per-test auth DDL; install only the needed auth schema here.
+if (! Schema::hasTable('auth_security_runtime')) {
+    foreach (glob(database_path('migrations/2026_10_22_*.php')) as $file) {
+        (require $file)->up();
+    }
+    (require database_path('migrations/2026_10_24_000000_revise_client_profiles.php'))->up();
+}
+DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL,
+    'last_reconciled_at' => now(), 'issuance_not_before' => now(), 'state' => 'ready']);
 $actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic assignment race admin', 'role' => 'admin']));
 $fixture = new class
 {
