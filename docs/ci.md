@@ -83,8 +83,13 @@ commit блокують очікування; selector assertion доводит�
 Повторний static Pint у PG runner прибрано: його зберігають обидва required PHP
 matrix jobs і Fast. SQLite tests під synthetic PG bindings збережені.
 Chromium regression тести readiness та реального cancellation cleanup запускаються у Stage1 після Playwright
-install. `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні
-MFA/OTP timer/cooldown перевірки збережені.
+install. У recipe browser mutation-сценарії планів і каталогу проходять для кожної ширини
+1440/390/320 у light; усі шість width/theme комбінацій зберігають responsive render,
+no-overflow та dark/light перевірки форм і станів. У dark залишаються published
+read-only, create-form, catalog edit і search перевірки. Повні бізнес-операції та
+cancel/DB-invariance перевірки виконуються для кожної ширини у світлій темі.
+Backend PG/Unit/concurrency assertions не дублюються за темою.
+`CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні MFA/OTP timer/cooldown перевірки збережені.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
 Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
 jobs: GitHub рахує wall time одного зайнятого runner, а не суму worker durations.
@@ -142,6 +147,6 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 
 ## PR gate без Full CI
 
-Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: AUTH3–5 `baseline` запускається для auth/security/readiness змін; зміни рецептів і планів запускають лише `recipe`; `b5`/`b3` додаються для відповідного auth/security коду; міграції та невідомі PG/browser тести консервативно розширюють набір. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують unit regressions через Documentation health без PG/browser runner. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
+Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: AUTH3–5 `baseline` запускається для auth/security/readiness змін; зміни рецептів, планів і їхніх browser helpers (`meal_plans.py`, `food_catalog.py`) запускають лише `recipe`; `b5`/`b3` додаються для відповідного auth/security коду; міграції та невідомі PG/browser тести консервативно розширюють набір. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують unit regressions через Documentation health без PG/browser runner. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
 
 Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.
