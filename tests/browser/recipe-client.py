@@ -78,6 +78,48 @@ with sync_playwright() as p:
         page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name='Сьогодні').click()
         checks.append('Бібліотека T5.6: auth, published-only, Markdown, HTTPS, reload, 1440/390/320 light/dark')
         page.get_by_role('link', name='Переглянути раціон').click()
+        # T5.7a: реальна read-only shopping агрегація для обраного тижня.
+        expect(page.get_by_role('link', name='Список покупок на тиждень')).to_be_visible()
+        page.get_by_role('link', name='Список покупок на тиждень').click()
+        expect(page.get_by_role('heading', name='Список покупок')).to_be_visible()
+        expect(page.locator('.shopping-product').first).to_be_visible()
+        shopping_response = context.request.get(BASE + '/api/meal-plan/shopping-list?week=1')
+        assert shopping_response.status == 200, shopping_response.status
+        shopping_data = shopping_response.json()
+        assert shopping_data['state'] == 'ready', shopping_data['state']
+        assert shopping_response.headers.get('cache-control') == 'no-store, private'
+        assert len(shopping_data['items']) == page.locator('.shopping-product').count()
+        for actual, expected_item in zip(page.locator('.shopping-product').all(), shopping_data['items']):
+            assert expected_item['name'] in actual.inner_text()
+            decimal = expected_item['quantity_grams'].rstrip('0').rstrip('.')
+            assert decimal + ' г' in actual.inner_text()
+        expect(page.get_by_text('Кількості розраховані за призначеним раціоном', exact=False)).to_be_visible()
+        for width in (1440, 390, 320):
+            for theme in ('light', 'dark'):
+                page.set_viewport_size({'width': width, 'height': 1000})
+                page.emulate_media(color_scheme=theme)
+                expect(page.locator('.shopping-product').first).to_be_visible()
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.emulate_media(color_scheme='light')
+        page.get_by_role('combobox', name='Тиждень раціону').select_option('2')
+        expect(page).to_have_url(BASE + '/app/meal-plan/shopping-list?week=2')
+        expect(page.locator('.shopping-product').first).to_be_visible()
+        page.reload()
+        expect(page.locator('.shopping-product').first).to_be_visible()
+        page.route('**/api/meal-plan/shopping-list*', lambda route: route.fulfill(
+            status=409, content_type='application/json',
+            body='{"code":"shopping_list_unavailable"}'))
+        page.get_by_role('button', name='Оновити', exact=True).click()
+        expect(page.get_by_role('heading', name='Повний список покупок недоступний')).to_be_visible()
+        expect(page.locator('.shopping-product')).to_have_count(0)
+        page.unroute('**/api/meal-plan/shopping-list*')
+        page.get_by_role('button', name='Спробувати ще раз', exact=True).click()
+        expect(page.locator('.shopping-product').first).to_be_visible()
+        page.get_by_role('link', name='← Повернутися до раціону').click()
+        expect(page.get_by_role('combobox', name='Тиждень раціону')).to_have_value('2')
+        page.get_by_role('combobox', name='Тиждень раціону').select_option('1')
+        checks.append('T5.7a: PG exact grams, week selector, deep URL/reload, 409 clears UI, retry, responsive light/dark')
         expect(page.locator('.dish-link').first).to_be_visible()
         expect(page.locator('.dish').first.locator('a')).to_have_count(0)
         page.get_by_role('combobox', name='Тиждень раціону').select_option('2')
