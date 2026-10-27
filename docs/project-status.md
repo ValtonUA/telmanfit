@@ -8,6 +8,77 @@
 
 ## Підтверджені факти й межі
 
+### INFECTION-1
+
+27.10.2026, **FEASIBILITY: PASS** на master
+`f2a9146ff958e0f0f1a00a6a97c2a24bc142fa81`: PR #82 merged, CLI Docker доступний,
+PHP **8.5.12**, PCOV **1.0.12**, PHPUnit **12.5.40**, Infection **0.35.8**.
+Початковий реальний PHPUnit/PCOV запуск: **31 tests, 85 assertions**; мінімальний
+справжній mutation run довів працездатність Infection без мережі й БД.
+SHA256 обох класів і початкових тестів CLI-образу звірено з актуальним checkout.
+Окремий worktree/branch `test/infection-1`; паралельний T5.2 не змінювався.
+
+Фінальний набір mutators визначено **до змін тестів**; попередній розвідувальний
+прогін без integer mutators не є baseline таблиці. Обидва фінальні прогони
+використовують ті самі 10 mutators, два класи, один thread, timeout 10 s та
+справжній заново зібраний coverage; без skip-initial-tests і MSI threshold.
+MSI нижче — точне значення `summary.json`, CLI округлює його до цілих.
+
+| Показник | До | Після |
+|---|---:|---:|
+| Згенеровані мутації | 104 | 104 |
+| Killed PHPUnit | 87 | 99 |
+| Survived / escaped (одна категорія) | 17 | 5 |
+| Uncovered / timed-out / error / syntax-error | 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 |
+| Skipped / ignored / killed static analysis | 0 / 0 / 0 | 0 / 0 / 0 |
+| MSI / covered MSI | 83.65% | 95.19% |
+| Mutation code coverage | 100% | 100% |
+| Цільові PHPUnit tests / assertions | 31 / 85 | 43 / 103 |
+
+Line coverage не змінився: BatchEvaluator **75/77 (97.40%)**, MealItemPortion
+**9/10 (90.00%)**. Це демонструє прогалини assertions навіть за високого line coverage;
+100% mutation coverage стосується лише вибраних мутацій, а не всього застосунку.
+
+**Адресні тести закрили 12 із 17 початкових survivors:**
+
+| Реальна прогалина | Перевірка |
+|---|---|
+| Валідація divisor=0 та quantity=0 маскувалася відсутніми nutrients | MealItemPortion: валідні чотири nutrients, окремі zero/negative divisor та zero quantity; саме DomainException |
+| Snapshot допускав третій десятковий знак без реакції тесту | BatchEvaluator: `kcal=1.001` відхиляється до розрахунку |
+| Не перевіряли `single.quantity`, A/1, дільники A/1 і B/7 | Повна single identity та всі чотири nutrients для A/1 і B/7 |
+| Не було повної таблиці `incomplete` | Усі чотири комбінації rows/pending, включно з complete=false та empty=true |
+| Exact auto C втрачав півсотих або відхиляв валідну точність | A=0.03 → B=0.21 → target C=0.105 → quantity/grams=0.11, kcal=0.135795 |
+| Занадто грубе compatibility rounding відхиляло дозволену верхню межу | A=100 g, kcal=99999.99 → single total=99999.990000 та A/1=99999.99 |
+
+**П'ять залишків не виключено з MSI.** Усі в BatchEvaluator; класифікація —
+предметний аналіз чинного контракту, а не доказ еквівалентності для майбутніх змін:
+
+| ID (початок) / місце / mutator | Висновок |
+|---|---|
+| `e4591839`, line 28, IncrementInteger | Scale target C 3→4 зберігає точне B/2, але додає нуль у `target_grams` (0.105→0.1050). Це **спостережувана різниця представлення**, не повністю еквівалентний PHP output. Фіксованого scale target контракт не задає; кількості, nutrition, context/review не змінюються. Не вводили нову бізнес-вимогу заради MSI. |
+| `7c5c9028`, line 58, IncrementInteger | Проміжний scale 6→7 після scale2×scale2/100; потім результат канонізується до 6. Для дозволених inputs числової чи вихідної різниці немає. |
+| `1b1ca7f5`, line 66, IncrementInteger | Validation scale 2→3 після явного toScale(2); return цієї перевірки відкидається, діапазон незмінний. |
+| `2a15baf4`, line 106, LogicalOr | Ослаблення раннього type guard для rounding дублюється строгим in_array policy guard. Невалідний тип усе одно дає InvalidArgumentException; текст повідомлення може відрізнятися. Додано non-string-rounding case, але текст не є контрактом. |
+| `212fce86`, line 140, DecrementInteger | Негативна межа non-positive decimal 0→−1 недосяжна після regex, який пропускає лише невід'ємні числа. Positive гілка незмінна. |
+
+**Перевірки:** цільові PHPUnit — 43/103 PASS; `php -l` обох тестів та
+`vendor/bin/pint --test tests/Unit/BatchEvaluatorTest.php tests/Unit/MealItemPortionTest.php`
+— PASS. Додатковий весь Unit suite — **76 tests, 283 assertions, exit 0** у
+disposable `/tmp/validation` із поточними app/tests, Laravel bootstrap/config/routes/resources,
+package discovery та порожнім synthetic `.env`. Початкова спроба ширшого suite в
+мінімальному CLI-образі виявила відсутній bootstrap, наступна — warning відсутнього
+`.env`; обидва обмеження усунено лише у disposable копії, не в репозиторії.
+Docs guard із PR base — PASS. GitHub CI на фінальному head фіксується в описі Draft PR.
+
+Composer додав **18 installs, 0 updates, 0 removals** тільки в тимчасовому похідному
+образі; manifests застосунку та головний app-image незмінні. Тести/мутації працювали
+як www-data, `NetworkMode=none`, `Mounts=[]`; writable disposable layer потрібний
+для експорту `/tmp/results`. БД не використовувалася. Coverage/XML/JUnit, mutation
+JSON/logs, tooling lock і stdout збережено лише локально в gitignored
+`.phpunit.cache/infection-1/`. Власні контейнери та тимчасовий image видалено після
+експорту; CLI base збережено. Compose, telmanfit-local/volumes, PostgreSQL, MFA/auth
+та production flags не змінювалися. Команди й обрані mutators — [infection-env.md](infection-env.md#пілот-infection-1).
+
 ### INFECTION-ENV
 
 Окремий [CLI Dockerfile](../docker/infection/Dockerfile) перевірено локально:
@@ -26,8 +97,8 @@ Dry-run на копії чинного lock: **18 installs, 0 updates, 0 removal
 PHPUnit 12.5.40 збережено. Тимчасове встановлення з вимкненими scripts/plugins
 і `php vendor/bin/infection --version` підтвердили запуск 0.35.8;
 `composer --no-plugins check-platform-reqs` — PASS.
-Мутації та інтеграційний запуск PHPUnit через Infection не виконувалися;
-сумісність залежностей не є доказом проходження майбутнього пілота.
+У межах INFECTION-ENV мутації та інтеграційний запуск PHPUnit через Infection
+не виконувалися; справжній пілот і його межі наведені в INFECTION-1 вище.
 Робочий app-image залишився
 `sha256:97a4bc5a90e29eaa682169af5f12a2782392e2f78c7370babf40bd103af1b86b`.
 Compose, робочі контейнери/volumes, PostgreSQL, MFA/auth і CI не змінено.
