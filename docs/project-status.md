@@ -253,3 +253,5 @@ selectors, кількостей/UOM/грамів і порядку. Двоета
 описана в таблиці вище; призначення T4.5/DEC-4A і production activation
 залишаються окремими етапами.
 
+
+> T5.6: в окремому Draft PR реалізується бібліотека `library_items`, Filament/ClientSession API/React із синтетичними перевірками. До merge НЕ є можливістю `master`; production OFF. Канонічний контракт: [library.md](library.md).

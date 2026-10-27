@@ -1123,3 +1123,25 @@ Ref: recipe_batch_equipment.uom_id > uoms.id [delete: restrict]
 // G4-I: composite identity, RESTRICT; existing food FK remains.
 Ref: meal_items.(recipe_version_id,food_id) > recipe_versions.(id,food_id) [delete: restrict, update: restrict]
 Ref: meal_items.(recipe_batch_format_id,recipe_version_id) > recipe_batch_formats.(id,recipe_version_id) [delete: restrict, update: restrict]
+
+
+// T5.6: незалежна бібліотека авторського матеріалу без персональних grants.
+Table library_items [headercolor: #0369A1] {
+  id bigint [pk, increment]
+  type text [not null, note: 'article | video | playlist | instruction; PostgreSQL text + CHECK']
+  title text [not null]
+  summary text
+  cover_image_url text
+  content_markdown text
+  external_url text
+  status text [not null, default: 'draft', note: 'draft | published; text + CHECK']
+  published_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (published_at, id) [note: 'PG partial index WHERE status=published']
+  }
+
+  Note: 'Published requires published_at and content/source. Draft published_at=NULL. CHECKs and authoritative DDL in database/sql/library/01_library_items.sql.'
+}
