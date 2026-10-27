@@ -166,7 +166,7 @@ class ClientLibraryTest extends TestCase
             $this->head($url)->assertOk();
         }
         $this->assertSame($before, $this->snapshot());
-        DB::table('auth_session_states')->where('session_id', $this->sessionId)->update(['revoked_at' => now()]);
+        DB::table('auth_session_states')->where('session_id', $this->sessionId)->update(['revoked_at' => DB::raw('clock_timestamp()')]);
         $this->getJson('/api/library')->assertUnauthorized();
         $this->getJson('/api/library/'.$item->id)->assertUnauthorized();
     }
