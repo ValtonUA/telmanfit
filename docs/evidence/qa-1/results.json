@@ -1,0 +1,113 @@
+{
+  "base_sha": "15a4525028c21dfc8bd35d4e57dc3622752d4d3c",
+  "tested_code_sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
+  "qa_1a": "PASS",
+  "qa_1b": "BLOCKED",
+  "runs": [
+    {
+      "name": "qa1-t45-final-01",
+      "php_branch": "84",
+      "command": "unset SESSION_DRIVER CACHE_STORE QUEUE_CONNECTION MAIL_MAILER; ASSIGNMENT_BROWSER_PORT=8108 bash /workspace/telmanfit-audit-2026-10-27/isolated-context.sh \"bash /workspace/telmanfit-qa1/t45-in-context.sh\"",
+      "sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
+      "started_at": "2026-10-27T02:39:36.238457+00:00",
+      "exit_code": 0,
+      "status": "PASS",
+      "seconds": 47.673,
+      "completed_at": "2026-10-27T02:40:23.909708+00:00"
+    },
+    {
+      "name": "qa1-t45-final-02",
+      "php_branch": "84",
+      "command": "unset SESSION_DRIVER CACHE_STORE QUEUE_CONNECTION MAIL_MAILER; ASSIGNMENT_BROWSER_PORT=8108 bash /workspace/telmanfit-audit-2026-10-27/isolated-context.sh \"bash /workspace/telmanfit-qa1/t45-in-context.sh\"",
+      "sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
+      "started_at": "2026-10-27T02:40:23.941696+00:00",
+      "exit_code": 0,
+      "status": "PASS",
+      "seconds": 47.429,
+      "completed_at": "2026-10-27T02:41:11.369034+00:00"
+    },
+    {
+      "name": "qa1-t45-final-03",
+      "php_branch": "84",
+      "command": "unset SESSION_DRIVER CACHE_STORE QUEUE_CONNECTION MAIL_MAILER; ASSIGNMENT_BROWSER_PORT=8108 bash /workspace/telmanfit-audit-2026-10-27/isolated-context.sh \"bash /workspace/telmanfit-qa1/t45-in-context.sh\"",
+      "sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
+      "started_at": "2026-10-27T02:41:11.398604+00:00",
+      "exit_code": 0,
+      "status": "PASS",
+      "seconds": 47.782,
+      "completed_at": "2026-10-27T02:41:59.179092+00:00"
+    },
+    {
+      "name": "qa1-t45-final-04",
+      "php_branch": "84",
+      "command": "unset SESSION_DRIVER CACHE_STORE QUEUE_CONNECTION MAIL_MAILER; ASSIGNMENT_BROWSER_PORT=8108 bash /workspace/telmanfit-audit-2026-10-27/isolated-context.sh \"bash /workspace/telmanfit-qa1/t45-in-context.sh\"",
+      "sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
+      "started_at": "2026-10-27T02:41:59.209992+00:00",
+      "exit_code": 0,
+      "status": "PASS",
+      "seconds": 47.998,
+      "completed_at": "2026-10-27T02:42:47.206114+00:00"
+    },
+    {
+      "name": "qa1-t45-final-05",
+      "php_branch": "84",
+      "command": "unset SESSION_DRIVER CACHE_STORE QUEUE_CONNECTION MAIL_MAILER; ASSIGNMENT_BROWSER_PORT=8108 bash /workspace/telmanfit-audit-2026-10-27/isolated-context.sh \"bash /workspace/telmanfit-qa1/t45-in-context.sh\"",
+      "sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
+      "started_at": "2026-10-27T02:42:47.241091+00:00",
+      "exit_code": 0,
+      "status": "PASS",
+      "seconds": 47.813,
+      "completed_at": "2026-10-27T02:43:35.051937+00:00"
+    }
+  ],
+  "readiness_regressions": {
+    "tests": 7,
+    "seconds": 3.789,
+    "status": "PASS"
+  },
+  "ci_regressions": {
+    "tests": 39,
+    "seconds": 0.523,
+    "status": "PASS"
+  },
+  "docs_regressions": {
+    "tests": 11,
+    "seconds": 0.008,
+    "status": "PASS"
+  },
+  "source_hashes": {
+    "tests/browser/readiness.py": "b2dd0e8577159a50466884611b1378f17f8ee26fcf7590dd8aa39fd3ede809e6",
+    "tests/browser/meal_plan_assignments.py": "d69083c3297d0b90769abf80d5460ab46f2b62864cd68f9592fa499e9bda65ff",
+    "tests/browser/test_readiness.py": "60f0a32d36968b896c4540dd1c08ee9f87576d8050c4c6ba5f222110fda5a04f"
+  },
+  "composer_audit": {
+    "url": "https://github.com/ValtonUA/telmanfit/actions/runs/40430634221",
+    "head_sha": "15a4525028c21dfc8bd35d4e57dc3622752d4d3c",
+    "run_conclusion": "success",
+    "job_id": 121947139970,
+    "step_number": 10,
+    "step_command": "composer audit --locked --no-interaction",
+    "step_conclusion": "success",
+    "checked_via": "GitHub connector run metadata + workflow job steps"
+  },
+  "cold": {
+    "status": "BLOCKED",
+    "storage_driver": "vfs",
+    "root_filesystem_total_gib": 32,
+    "free_gib_at_preflight_approx": 3.4,
+    "tmp_free_gib_approx": 4.7,
+    "previous_build_exit_code": 130,
+    "previous_build_stop_free_bytes": 1826050048,
+    "previous_build_completed": false,
+    "cache_records": 90,
+    "earliest_cache_created": "2026-10-27 01:47:10.249640455 +0000 UTC",
+    "latest_cache_created": "2026-10-27 02:01:03.901661344 +0000 UTC",
+    "cause": "vfs full-directory copies for image/container layers plus retained cold-build cache consumed32GB root; normal PG runs also copy image rootfs despite PGDATA tmpfs",
+    "exact_complete_build_minimum": "not measured: prior cold build never finished; cannot infer exact minimum from cancelled build",
+    "safe_provisioning_request": "fresh isolated executor with64GiB Docker filesystem and at least32GiB free before cold build; run cold build without concurrent PG runners; measure peak and reserve at least2GiB",
+    "provisioning_request_is": "engineering capacity recommendation, not a proven exact minimum",
+    "alternative_executor_available": false,
+    "global_prune": false,
+    "foreign_resources_modified": false
+  }
+}

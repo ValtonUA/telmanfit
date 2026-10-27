@@ -1,0 +1,10 @@
+{
+  "containers_before": [],
+  "containers_after": [],
+  "volumes_before": [],
+  "volumes_after": [],
+  "live_browser_or_http_processes": [],
+  "zombie_chromium_processes": 163,
+  "business_runtime_compose_source_diff": [],
+  "status": "PASS"
+}
