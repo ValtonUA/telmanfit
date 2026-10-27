@@ -18,6 +18,66 @@ class BatchEvaluatorTest extends TestCase
             'ingredient_fingerprint' => 'ingredient-1', 'conversion_fingerprint' => 'conversion-1', 'factors' => [], 'week' => $state, 'half_week' => $state];
     }
 
+    public function test_single_identity_and_a_b_portions_preserve_all_nutrients(): void
+    {
+        $out = (new BatchEvaluator)->evaluate([42 => self::row()]);
+
+        $this->assertSame(['quantity' => '150.00', 'grams' => '150.00', 'uom' => 'g', 'factor' => '1.00'], $out['rows'][42]['single']);
+        $expected = ['kcal' => '185.18', 'protein' => '30.00', 'fat' => '4.50', 'carbs' => '6.00'];
+        $this->assertSame($expected, $out['portions']['A/1']);
+        $this->assertSame($expected, $out['portions']['B/7']);
+    }
+
+    #[DataProvider('completionCases')]
+    public function test_completion_depends_on_both_rows_and_pending(bool $hasRows, bool $hasPending, bool $expected): void
+    {
+        $out = (new BatchEvaluator)->evaluate($hasRows ? [42 => self::row()] : [], $hasPending ? [['id' => 'pending:test']] : []);
+
+        $this->assertSame($expected, $out['incomplete']);
+    }
+
+    public static function completionCases(): array
+    {
+        return [
+            'empty' => [false, false, true],
+            'only-pending' => [false, true, true],
+            'complete' => [true, false, false],
+            'rows-with-pending' => [true, true, true],
+        ];
+    }
+
+    public function test_auto_exact_half_cent_rounds_once_to_storage_precision(): void
+    {
+        $row = self::row();
+        $row['quantity'] = '0.03';
+        $out = (new BatchEvaluator)->evaluate([42 => $row]);
+
+        $this->assertSame('0.21', $out['rows'][42]['week']['quantity']);
+        $this->assertSame('0.11', $out['rows'][42]['half_week']['quantity']);
+        $this->assertSame('0.11', $out['rows'][42]['half_week']['grams']);
+        $this->assertSame('0.135795', $out['totals']['half_week']['kcal']);
+    }
+
+    public function test_single_compatibility_accepts_exact_upper_bound(): void
+    {
+        $row = self::row();
+        $row['quantity'] = '100.00';
+        $row['nutrients']['kcal'] = '99999.99';
+        $out = (new BatchEvaluator)->evaluate([42 => $row]);
+
+        $this->assertSame('99999.990000', $out['totals']['single']['kcal']);
+        $this->assertSame('99999.99', $out['portions']['A/1']['kcal']);
+    }
+
+    public function test_nutrient_snapshot_rejects_excess_precision_before_calculation(): void
+    {
+        $row = self::row();
+        $row['nutrients']['kcal'] = '1.001';
+
+        $this->expectException(InvalidArgumentException::class);
+        (new BatchEvaluator)->evaluate([42 => $row]);
+    }
+
     public function test_graph_manual_ack_reload_parent_change_and_reset(): void
     {
         $e = new BatchEvaluator;
@@ -198,6 +258,7 @@ class BatchEvaluatorTest extends TestCase
             'exact-for-count' => [['piece' => ['rounding' => 'exact', 'step' => '0.01']]],
             'zero-step' => [['piece' => ['rounding' => 'ceil', 'step' => '0.00', 'confirmed' => true]]],
             'unknown-rounding' => [['piece' => ['rounding' => 'unknown', 'step' => '1.00', 'confirmed' => true]]],
+            'non-string-rounding' => [['piece' => ['rounding' => 1, 'step' => '1.00', 'confirmed' => true]]],
         ];
     }
 

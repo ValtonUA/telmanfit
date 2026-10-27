@@ -209,8 +209,8 @@
 
 | ID | Завдання | Статус | Наступна дія |
 |---|---|---|---|
-| INFECTION-ENV | Окремий PHP CLI/PCOV образ і справжній coverage двох Unit-наборів; [відтворення](infection-env.md), факти — у project-status | Виконано | Review окремого Draft PR; без merge та обов'язкових CI checks |
-| INFECTION-1 | Мутаційний пілот для погоджених доменних розрахунків | Заплановано | Окреме доручення після підтвердження середовища; mutators/MSI/пороги ще не визначено |
+| INFECTION-ENV | Окремий PHP CLI/PCOV образ і справжній coverage двох Unit-наборів; [відтворення](infection-env.md), факти — у project-status | Виконано | PR #82 змерджено; середовище використано в INFECTION-1 |
+| INFECTION-1 | Вузький пілот BatchEvaluator/MealItemPortion: 104 мутації, адресні тести; [до/після та класифікація](project-status.md#infection-1) | Виконано | Review Draft PR та Fast/Docs/Targeted на його head; без merge, обов'язкового MSI threshold або розширення scope |
 
 ## Джерела й історія
 
