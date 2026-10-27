@@ -32,7 +32,7 @@ final class LibraryItem extends Model
 
     protected static function booted(): void
     {
-        static::saving(function (self $item): void {
+        self::saving(function (self $item): void {
             foreach (['summary', 'cover_image_url', 'content_markdown', 'external_url'] as $field) {
                 if ($item->$field === '') {
                     $item->$field = null;
