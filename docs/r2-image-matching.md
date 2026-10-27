@@ -9,6 +9,89 @@ php artisan assets:match-r2-images --dry-run
 php artisan assets:match-r2-images --apply --public-base-url=https://images.example.com --aliases-file=/path/to/r2-image-aliases.json
 ```
 
+## Налаштування й контрольовані помилки
+
+`AppServiceProvider` реєструє `R2ObjectSource → R2ObjectLister` без запиту до мережі під час boot.
+Lister використовує підписані SigV4 GET `ListObjectsV2` (`auto/s3`), до 1000 ключів
+на сторінку й opaque `NextContinuationToken`. Це наявний адаптер
+[офіційного S3 API R2](https://developers.cloudflare.com/r2/api/s3/api/), без нових залежностей.
+Повторений або відсутній token, некоректний XML, HTTP-помилка та connection timeout
+дають контрольований exit code 1. HTTP redirects вимкнені; connect timeout 10 с,
+request timeout 30 с. Transport exception, response body та credentials не друкуються.
+Потрібні всі чотири значення: `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`; без них команда повертає підказку до звернення до БД.
+
+## Windows Docker Desktop: dry-run на наявній локальній БД
+
+Відкрийте PowerShell у checkout з цим виправленням. Docker Desktop має працювати,
+наявний проєкт `telmanfit-local` — бути healthy. Команди нижче не запускають
+Compose setup/bootstrap, міграції чи перебудову робочих контейнерів.
+
+Створіть приватний файл поза Git, наприклад `C:\private\telmanfit-r2-readonly.env`,
+і заповніть його локально. Значення нижче — placeholders:
+
+```dotenv
+R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+R2_BUCKET=<BUCKET_NAME>
+R2_ACCESS_KEY_ID=<READ_ONLY_ACCESS_KEY_ID>
+R2_SECRET_ACCESS_KEY=<READ_ONLY_SECRET_ACCESS_KEY>
+PUBLIC_IMAGE_HOSTS=<EXACT_PUBLIC_IMAGE_HOST>
+```
+
+Використайте R2 credentials лише для читання потрібного bucket; не передавайте їх
+у чат або Git. `PUBLIC_IMAGE_HOSTS` — точний публічний DNS host без схеми/шляху;
+S3 endpoint не є публічним image URL. Dry-run не вимагає цього allowlist,
+але перед майбутнім apply його й публічний HTTPS URL треба перевірити окремо.
+
+Наведений запуск використовує залежності наявного app image та два виправлені
+PHP-файли з checkout, змонтовані read-only. Наявні volumes підключаються
+read-only, конфігурація читається через штатний loader. Секрети діють лише
+в одноразовому процесі. Стандартні імена контейнера/мережі перевірте:
+
+```powershell
+docker ps --filter label=com.docker.compose.project=telmanfit-local
+docker network inspect telmanfit-local_local --format '{{.Name}}'
+$repo = (Get-Location).Path
+$dryRunPhp = @'
+require 'docker/local/load-env.php';
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+if (! $app->environment('local')
+    || config('database.default') !== 'pgsql'
+    || config('database.connections.pgsql.host') !== 'database'
+    || ! str_starts_with((string) config('database.connections.pgsql.database'), 'telmanfit_local_')) {
+    fwrite(STDERR, "Unexpected database/environment; stopped.\n");
+    exit(2);
+}
+Illuminate\Support\Facades\DB::statement('SET default_transaction_read_only = on');
+exit($kernel->handle(
+    new Symfony\Component\Console\Input\ArrayInput([
+        'command' => 'assets:match-r2-images',
+        '--dry-run' => true,
+    ]),
+    new Symfony\Component\Console\Output\ConsoleOutput()
+));
+'@
+docker run --rm --read-only --network telmanfit-local_local `
+  --volumes-from telmanfit-local-app-1:ro `
+  --mount "type=bind,source=$repo\app\Providers\AppServiceProvider.php,target=/var/www/html/app/Providers/AppServiceProvider.php,readonly" `
+  --mount "type=bind,source=$repo\app\Services\Catalog\R2ObjectLister.php,target=/var/www/html/app/Services/Catalog/R2ObjectLister.php,readonly" `
+  --env-file 'C:\private\telmanfit-r2-readonly.env' `
+  -e 'PGOPTIONS=-c default_transaction_read_only=on' `
+  --entrypoint php telmanfit-local-app -r $dryRunPhp
+```
+
+Цей варіант розрахований на app image, який уже містить `MatchR2Images`,
+`R2ObjectSource` та `R2ObjectLister` з тією самою архітектурою.
+Якщо перевірка без credentials потрібна першою, пропустіть `--env-file`:
+очікується exit 1 з переліком потрібних R2 змінних, без BindingResolutionException.
+Для alias-файлу потрібні реальні ID БД та окремий read-only bind mount;
+історичні номери й синтетичні fixtures не є відповідностями робочого каталогу.
+
+## Формат aliases
+
 Формат alias-файлу: JSON object з ключами таблиць та числових ID, значенням є масив назв, синонімів або історичних кодів:
 
 ```json
