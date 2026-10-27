@@ -138,6 +138,9 @@ network=none, ports відсутні, cleanup у finally. Робочі БД/.env
 Runner також виконує стандартний backend suite зі справжніми наявними admin
 build assets image; React build не копіюється, відповідні SPA tests можуть бути
 skipped. GitHub Fast PR збирає frontend і перевіряє його окремо.
+Linux-команди винесено в [cooking-runtime.sh](../tests/pg/cooking-runtime.sh),
+без вкладеного Windows shell quoting; він також проходить повний migration path
+і перевірку всіх user FK/BIGINT із двома новими cooking references.
 
 Read-only preflight локального профілю не підтвердив шість published страв і
 раціон; тестовий пілот використовує лише синтетичні дані. Повний Filament→телефон

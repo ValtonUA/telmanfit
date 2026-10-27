@@ -34,7 +34,9 @@ immutable descendants, JSON і token відмови. Актуальні резу
 перевірок: PG18 **10 tests / 155 assertions PASS**; стандартний backend
 **119 passed / 490 assertions**, 3 SPA tests skipped через відсутність React build
 у disposable копії. Використано справжні наявні admin build assets локального
-image, не нову frontend збірку. Pint (3 PHP files), CI selector (5 tests),
+image, не нову frontend збірку. Повний migration path на disposable PG18 та
+FK/BIGINT regression — **1 test / 30 assertions PASS** (17 FK, включно з двома
+новими cooking user references). Pint (4 PHP files), CI selector (5 tests),
 docs guard із PR base та SQL projection equality — PASS. CI на exact head
 фіксується в описі окремого Draft PR.
 
