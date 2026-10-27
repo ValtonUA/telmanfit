@@ -8,6 +8,42 @@
 
 ## Підтверджені факти й межі
 
+### T5.7b — schema/domain v1
+
+FEASIBILITY PASS на master `66cb162ec343f8e03e5bd9f55f4826c30170127f`:
+PG18.6, PHP8.5.12, Docker та GitHub доступні. Власник затвердив D1–D5 і
+один повний наявний семиденний фрагмент без автоматичного DEC-5M.
+Read-only preflight локального профілю: 2 recipes, 0 published recipe versions,
+0 published meal plan versions; шість страв/раціон не підтверджено.
+Робочі дані не експортувалися й не використовувалися в тестах.
+
+[Контракт SQL17](cooking-templates.md) і forward-only міграція додають п'ять
+нормалізованих таблиць, balances view, повний frozen menu pattern, immutable
+published lineage, coverage/portion/selector guards, versioned JSONB blocks
+та exact frozen quantity/explicit-sum resolver. Доменний admin review/publish
+перевіряє revision, suitability/safety/manual parameters і чинний image allowlist.
+Доменний read guard перевіряє assignment/owner/full week/requested mode/pattern;
+authentication adapter та HTTP boundary ще не реалізовано.
+
+Синтетичний пілот: 1 template + 1 session + 6 recipes (legacy/A/B/C),
+outputs/allocations, review/publish й обчислені залишки. Міграція застосована
+до заповненої synthetic схеми; історичні recipe/menu таблиці порівнюються до/після.
+PG18 тести також покривають reuse двом клієнтам і між наявними тижнями,
+partial/revoked/foreign access, підготовлені режими 2/7, stale review,
+immutable descendants, JSON і token відмови. Актуальні результати локальних
+перевірок: PG18 **10 tests / 155 assertions PASS**; стандартний backend
+**119 passed / 490 assertions**, 3 SPA tests skipped через відсутність React build
+у disposable копії. Використано справжні наявні admin build assets локального
+image, не нову frontend збірку. Pint (3 PHP files), CI selector (5 tests),
+docs guard із PR base та SQL projection equality — PASS. CI на exact head
+фіксується в описі окремого Draft PR.
+
+Filament/React/API, local progress, timers/wake lock, Filament→телефон walkthrough,
+production activation та реальні міграції не виконувалися. SQL-функція доступу
+не є RLS або автентифікацією. Придатність інструкцій і відсутність технологічної
+води в ingredient tokens підтверджує автор: machine-readable water classifier
+у чинному каталозі немає. Семантична перевірка безпеки не автоматизується.
+
 ### INFECTION-1
 
 27.10.2026, **FEASIBILITY: PASS** на master

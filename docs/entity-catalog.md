@@ -473,6 +473,24 @@ child locks не додаються. Published root/descendants і планов�
 Readonly resolver і decimal scale/округлення описані в [meal-plans.md](meal-plans.md#model-i-g4-i-selectors-та-readonly-resolver).
 Фізичний склад партії не змінюється від обраного divisor; shopping/cooking writer відсутній.
 
+## Кухонні шаблони SQL17
+
+Канонічні поля, FK й guards — [SQL17](17_cooking_templates.sql), семантика та
+межа реалізації — [cooking-templates.md](cooking-templates.md).
+
+| Сутність | Ключі й дані |
+|---|---|
+| CookingTemplate / cooking_templates | integer identity; title, created_by → users BIGINT; адміністративна серія без client/week identity. |
+| CookingTemplateVersion / cooking_template_versions | integer identity; template_id, version_number UNIQUE; previous_version_id тієї ж серії; draft/published, source_plan_version_id/source_week, mode 7/2/1, revision, menu_pattern JSONB, trigger-derived SHA256 menu_fingerprint; reviewed_revision/by/at та published_at. Один draft; published immutable. |
+| CookingSession / cooking_sessions | integer identity; composite UNIQUE(id,version_id); position і day UNIQUE у версії, day 1–7, introduction/equipment/estimated_seconds вручну, content JSONB v1 зі stable IDs. |
+| CookingOutput / cooking_outputs | integer identity; composite FK session/version, exact recipe_version, nullable format composite FK, portion_divisor = cooked. Один рядок — один фізичний batch. |
+| CookingAllocation / cooking_allocations | PK(version,day,meal_position,item_position); composite FK output/version, exact portions. Покриття recipe slots, selector/day/aggregate guards перед publish. |
+
+`cooking_output_balances` — view: cooked/allocated/left_over. Ingredient slots
+входять до повного pattern. Часткові тижні unavailable; автоматичний DEC-5M
+не реалізовано. Runtime progress і ClientSession bindings не зберігаються
+в authoring content. Нові Eloquent/Filament/API ресурси не створено.
+
 ## Презентаційні поля SQL15 (Issue #62 / PR #67)
 
 `meal_plans.week_start_weekday SMALLINT NOT NULL DEFAULT 1 CHECK (1..7)` —

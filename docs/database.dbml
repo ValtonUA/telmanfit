@@ -1145,3 +1145,77 @@ Table library_items [headercolor: #0369A1] {
 
   Note: 'Published requires published_at and content/source. Draft published_at=NULL. CHECKs and authoritative DDL in database/sql/library/01_library_items.sql.'
 }
+
+// T5.7b: authoritative SQL17; full existing week, no cycle/assignment binding.
+Table cooking_templates {
+  id integer [pk, increment]
+  title text [not null]
+  created_by bigint [not null, ref: > users.id]
+  Note: 'Administrative series metadata; title is not versioned client content.'
+}
+Table cooking_template_versions {
+  id integer [pk, increment]
+  template_id integer [not null, ref: > cooking_templates.id]
+  version_number integer [not null]
+  previous_version_id integer [ref: > cooking_template_versions.id]
+  status text [not null, default: 'draft', note: 'draft | published; immutable published']
+  source_plan_version_id integer [not null, ref: > meal_plan_versions.id]
+  source_week integer [not null]
+  mode smallint [not null, note: '7 | 2 | 1; exact prepared session count']
+  revision bigint [not null, default: 0]
+  menu_pattern jsonb
+  menu_fingerprint text [note: 'Trigger-derived SHA256; lookup only; full JSONB equality required']
+  reviewed_revision bigint
+  reviewed_by bigint [ref: > users.id]
+  reviewed_at timestamptz
+  published_at timestamptz
+  indexes {
+    (template_id,version_number) [unique]
+    template_id [note: 'Partial UNIQUE WHERE status=draft']
+    (menu_fingerprint,mode) [note: 'Partial lookup WHERE status=published']
+  }
+  Note: 'SQL17 guards lineage, current explicit admin review, exact complete 7-day pattern and publication coverage; details reset revision/review.'
+}
+Table cooking_sessions {
+  id integer [pk, increment]
+  version_id integer [not null, ref: > cooking_template_versions.id]
+  position smallint [not null]
+  day smallint [not null, note: '1..7']
+  introduction text [not null, default: '']
+  equipment text [not null, default: '']
+  estimated_seconds integer [not null]
+  content jsonb [not null, note: 'schema_version=1; stable stage/block IDs; action/image/hint/timer']
+  indexes {
+    (version_id,position) [unique]
+    (version_id,day) [unique]
+    (id,version_id) [unique]
+  }
+}
+Table cooking_outputs {
+  id integer [pk, increment]
+  version_id integer [not null]
+  session_id integer [not null]
+  recipe_version_id integer [not null, ref: > recipe_versions.id]
+  format_id integer
+  portion_divisor numeric(7,2) [not null, note: 'Physical cooked portions: legacy servings_count, A/1, B/7, C/3 or C/4']
+  indexes {
+    (id,version_id) [unique]
+    recipe_version_id
+  }
+}
+Table cooking_allocations {
+  version_id integer [not null, ref: > cooking_template_versions.id]
+  day smallint [not null]
+  meal_position integer [not null]
+  item_position integer [not null]
+  output_id integer [not null]
+  portions numeric(7,2) [not null]
+  indexes {
+    (version_id,day,meal_position,item_position) [pk]
+    output_id
+  }
+  Note: 'SQL17 exact recipe slot selectors/portions; one output per slot; aggregate <= cooked. View cooking_output_balances derives allocated/left_over.'
+}
+Ref: cooking_outputs.(session_id,version_id) > cooking_sessions.(id,version_id) [delete: restrict]
+Ref: cooking_outputs.(format_id,recipe_version_id) > recipe_batch_formats.(id,recipe_version_id) [delete: restrict]
+Ref: cooking_allocations.(output_id,version_id) > cooking_outputs.(id,version_id) [delete: restrict]

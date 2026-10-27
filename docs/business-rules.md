@@ -1,3 +1,32 @@
+## BR-C — авторські кухонні шаблони
+
+Нормативна схема — [SQL17](17_cooking_templates.sql), точний контракт —
+[cooking-templates.md](cooking-templates.md).
+
+- **BR-C-01:** reuse лише за повною рівністю exact frozen семиденного pattern
+  і режиму, без client/week identity, hash-only рішень та автоматичного DEC-5M.
+  Частковий доступ або відсутні дні — unavailable.
+- **BR-C-02:** published version і її sessions/outputs/allocations незмінні;
+  зміни — новий послідовний draft тієї ж серії, максимум один draft.
+- **BR-C-03:** один output — один exact фізичний legacy/A/B/C batch; кожна
+  recipe позиція має одне джерело й точні portions. Allocated ≤ cooked;
+  залишки обчислюються, не розподіляються автоматично. День готування не пізніше споживання.
+- **BR-C-04:** 7/2/1 — окремо підготовлені режими; без потрібної published
+  версії режим unavailable. Публікація вимагає відповідно 7/2/1 сесій у різні дні.
+- **BR-C-05:** фасування/охолодження/зберігання/розігрівання — звичайні авторські
+  етапи, без спеціального типу чи обов'язкової секції. Перед publish admin явно
+  підтверджує придатність, безпеку, ручні параметри та відсутність технологічної
+  води в автоматичних токенах. Зміна залежностей скидає review; терміни не генеруються.
+- **BR-C-06:** token лише exact frozen quantity/grams або сума явно вибраних
+  output+row, з provenance, без дублів, чужих outputs, live conversions, float,
+  формул чи масштабування за allocations. Вода/equipment/time/temperature вручну.
+- **BR-C-07:** JSONB v1 має stable stage/block IDs та action/image/hint/timer;
+  unknown structure/HTML/unresolved references блокують publish усієї інструкції.
+- **BR-C-08:** перед кожним застосуванням і читанням перевіряти exact чинний
+  assignment, ClientSession owner, повний доступний тиждень і published версію
+  в одному read snapshot. Доменний SQL guard не замінює authentication;
+  HTTP/React boundary реалізується наступними PR.
+
 > **AUTH-4, 22.10.2026:** P3 затверджено прямою задачею. Реалізовано controlled
 > invitation/registration/email OTP backend, окремий client session context і shared
 > MFA інтеграцію; default OFF, лише local/testing. Production/P5/P6 не активовано.

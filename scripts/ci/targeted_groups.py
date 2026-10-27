@@ -18,6 +18,8 @@ SECURITY_PREFIXES = (
     "experiments/auth",
 )
 RECIPE_PREFIXES = (
+    "app/Services/Cooking/",
+    "tests/Postgres/CookingTemplatesTest.php",
     "app/Services/Catalog/",
     "app/Console/Commands/MatchR2Images.php",
     "config/r2.php",

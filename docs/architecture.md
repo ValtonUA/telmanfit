@@ -75,6 +75,7 @@ PWA і Telegram Mini App використовують максимально о�
 | Рецепти A/B/C | [11_recipe_batches.sql](11_recipe_batches.sql), [12_recipe_equipment.sql](12_recipe_equipment.sql), [13_recipe_legacy_conversion.sql](13_recipe_legacy_conversion.sql) | Forward-схема та guard-функції; виконувані джерела — `database/sql/recipes/` |
 | Презентація та медіа каталогу | [15_plan_presentation.sql](15_plan_presentation.sql), [16_catalog_media.sql](16_catalog_media.sql) | Forward SQL15: immutable weekday plan і nullable covers; SQL16: nullable photo URL кухонного обладнання; `database/sql/presentation/` |
 | Профілі | `10_client_profiles.sql` | Forward-ревізія типізованих профілів; доповнює незмінні знімки Stage 1 |
+| Кухонні шаблони | [17_cooking_templates.sql](17_cooking_templates.sql), [контракт](cooking-templates.md) | Нормалізовані templates/versions/sessions/outputs/allocations, JSONB v1; виконуване джерело `database/sql/cooking/` |
 | Auth-таблиці | `05_auth_schema.sql` | Запрошення, сесії, MFA, резервні коди |
 | Auth recovery | `06_auth_recovery_schema.sql` | Технічна схема assisted recovery; **D3 operational із друзями відкладено** |
 | Security notices | `07_auth_security_notice_outbox.sql` | Черга повідомлень про події безпеки |
