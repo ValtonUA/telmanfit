@@ -46,3 +46,7 @@
   .meal-plan .notice { background: #2c4436; border-color: #7b9d86; }
   .plan-days button[aria-pressed=true] { background: #b9d7bb; color: #15251e; border-color: #b9d7bb; }
 }
+
+.plan-shopping-link { margin: 20px 0 0; }
+.plan-shopping-link .button { display: inline-flex; align-items: center; justify-content: center; max-width: 100%; white-space: normal; }
+@media (max-width: 480px) { .plan-shopping-link .button { width: 100%; } }

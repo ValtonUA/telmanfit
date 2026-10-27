@@ -98,6 +98,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
               <span>{dateLabel(d.date, true)}</span><strong>День {d.day_number}</strong>{d.date === data.today && <small>Сьогодні</small>}
             </button>)}</nav>
           </>}
+          <p className="plan-shopping-link"><a className="button secondary" href={'/app/meal-plan/shopping-list' + (data.week ? '?week=' + data.week : '')}>Список покупок на тиждень</a></p>
         </section>
         <section className="day-menu" aria-live="polite" aria-label="Меню вибраного дня">
           {day ? <><div className="day-heading"><span className="eyebrow">День {day.day_number}</span><h2>{dateLabel(day.date)}</h2></div>
