@@ -12,14 +12,16 @@ if ($mode !== 'setup') {
     $client = DB::table('clients')->where('user_id', $user)->value('id');
     if ($mode === 'library') {
         DB::table('library_items')->delete();
-        DB::table('library_items')->insert([
+        foreach ([
             ['type' => 'article', 'title' => 'Бібліотека: корисна стаття', 'summary' => 'Тільки тестові дані',
                 'content_markdown' => '## Безпечний заголовок', 'status' => 'published', 'published_at' => now()],
             ['type' => 'video', 'title' => 'Бібліотека: відео', 'external_url' => 'https://www.youtube.com/watch?v=test',
                 'status' => 'published', 'published_at' => now()],
             ['type' => 'playlist', 'title' => 'Прихована чернетка', 'external_url' => 'https://www.youtube.com/',
                 'status' => 'draft', 'published_at' => null],
-        ]);
+        ] as $row) {
+            DB::table('library_items')->insert($row);
+        }
     } elseif ($mode === 'revoke') {
         DB::table('auth_session_states')->where('user_id', $user)->whereNull('revoked_at')->update(['revoked_at' => DB::raw('clock_timestamp()')]);
     } elseif ($mode === 'empty') {
