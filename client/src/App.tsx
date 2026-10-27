@@ -7,6 +7,7 @@ import { Library, LibraryArticle } from './components/Library'
 import { OnboardingFirstStep } from './components/OnboardingFirstStep'
 import { MealItemRecipe } from './components/MealItemRecipe'
 import { MealPlan } from './components/MealPlan'
+import { ShoppingList } from './components/ShoppingList'
 import { SecurityPanel } from './components/SecurityPanel'
 import { Today } from './components/Today'
 import './App.css'
@@ -109,6 +110,7 @@ export default function App() {
       {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
         : me && recipe ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
+        : me && page === '/app/meal-plan/shopping-list' ? <ShoppingList onExit={exit} />
         : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
         : me && page === '/app/resources' ? <Library onExit={exit} />
         : me && /^\/app\/resources\/[1-9][0-9]*$/.test(page) ? <LibraryArticle id={page.split('/')[3]} onExit={exit} />
