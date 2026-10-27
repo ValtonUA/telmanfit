@@ -313,3 +313,14 @@ format/version, draft version або невідповідна UOM/grams відх
   завантажує URL. Немає host/URL або фото зламане — компактний placeholder.
 - Округлення лише презентаційне: exact decimal HALF_UP, kcal 0 знаків, Б/Ж/В 1;
   від'ємні, float, scientific та інші неканонічні значення відхиляються fail-closed.
+
+
+## Бібліотека матеріалів T5.6 (погоджений зріз)
+
+- BR-L-01: рівно чотири типи стаття/відео/плейліст/інструкція в одній таблиці `library_items`; чернетки можуть бути неповними, клієнтський API повертає лише published із `published_at <= now()` (серверний час).
+- BR-L-02: публікація потребує назви та джерела; video/playlist повинні мати HTTPS URL, article/instruction — непорожній власний Markdown або HTTPS URL. Перевірки в Laravel і PostgreSQL CHECK; `published_at` заповнюється моделлю і очищається після зняття з публікації.
+- BR-L-03: лише admin у Filament змінює контент. Авторизовані ClientSession отримують спільну бібліотеку без персональних грантів; анонімний доступ, чернетки, скасовані й майбутні публікації — заборонені.
+- BR-L-04: Markdown рендериться без raw HTML та небезпечних URL; inline photos лише з allowlist PublicImageUrl. Зовнішні URL — браузерні HTTPS без локальних/IP/credentials; сервер не завантажує ресурси. GET/HEAD — без DML та клієнтського session GC/save, `Cache-Control: no-store, private`.
+- BR-L-05: матеріал можна редагувати або зняти з публікації після першого publish; це НЕ immutable recipe/plan. Видалення матеріалів через Filament у v1 вимкнене. Production activation — окремо.
+
+[Предметний контракт](library.md), SQL — `database/sql/library/01_library_items.sql`.
