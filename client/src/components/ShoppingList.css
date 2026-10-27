@@ -1,0 +1,33 @@
+.shopping-list { --shopping-paper: #fffefa; --shopping-ink: #203c32; --shopping-muted: #52665a; --shopping-line: #dce4d8; color: var(--shopping-ink); max-width: 880px; }
+.shopping-back { display: inline-block; margin-bottom: 24px; font-size: 14px; }
+.shopping-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.shopping-heading h1 { margin-bottom: 12px; }
+.shopping-note { margin: 0 0 24px; color: var(--shopping-muted); }
+.shopping-period { margin-bottom: 26px; }
+.shopping-period h2 { overflow-wrap: anywhere; }
+.shopping-period label { max-width: 100%; margin: 16px 0 0; color: var(--shopping-muted); font-size: 14px; }
+.shopping-period select { background: var(--shopping-paper); color: var(--shopping-ink); border-color: var(--shopping-line); }
+.shopping-dates { font-size: 14px; color: var(--shopping-muted); margin-bottom: 0; }
+.shopping-state { margin-top: 16px; }
+.shopping-state p { color: var(--shopping-muted); }
+.shopping-products { list-style: none; display: grid; gap: 12px; padding: 0; margin: 16px 0; }
+.shopping-product { background: var(--shopping-paper); border: 1px solid var(--shopping-line); border-radius: 16px; padding: 18px 20px; min-width: 0; }
+.shopping-product-primary { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 8px 18px; }
+.shopping-product-primary h3 { margin: 0; font-size: 17px; overflow-wrap: anywhere; flex: 1 1 160px; }
+.shopping-product-primary strong { white-space: nowrap; font-size: 17px; }
+.shopping-exact { font-size: 13px; color: var(--shopping-muted); margin: 9px 0; }
+.shopping-sources { font-size: 13px; margin-top: 12px; color: var(--shopping-muted); }
+.shopping-sources summary { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.shopping-sources ul { margin: 10px 0 0; padding-left: 20px; }
+.shopping-sources li { overflow-wrap: anywhere; padding: 2px 0; }
+.shopping-footnote { font-size: 13px; color: var(--shopping-muted); }
+@media (max-width: 480px) {
+  .shopping-product { padding: 15px; }
+  .shopping-heading .secondary { padding-inline: 12px; }
+}
+@media (prefers-color-scheme: dark) {
+  .shopping-list { --shopping-paper: #20342a; --shopping-ink: #e2ece1; --shopping-muted: #b4c8b8; --shopping-line: #496353; }
+  .shopping-list .shopping-product { background: var(--shopping-paper); }
+  .shopping-list a { color: #b9d7bb; }
+  .shopping-list .secondary { color: #e2ece1; border-color: #7b9d86; }
+}
