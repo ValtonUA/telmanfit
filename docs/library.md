@@ -20,7 +20,7 @@ Markdown конвертується через уже встановлений l
 
 ## API і екрани
 
-- `GET /api/library` — JSON `items: [{id,type,title,summary,cover_image_url,published_at}]`, сортування latest first; лише status=published і published_at <= DB CURRENT_TIMESTAMP.
+- `GET /api/library` — JSON `items: [{id,type,title,summary,cover_image_url,published_at}]`, сортування latest first; лише status=published і published_at <= PostgreSQL clock_timestamp() (фактичний час, а не час початку транзакції).
 - `GET /api/library/{id}` — `item` з card-даними, `content_html` (для article/instruction), `external_url` (перевірений). 404 для неопублікованих/некоректних/відсутніх. Ніяких SQL/stacktrace у відповідях.
 - `ClientAuthBoundary` і `SerializedAuthSession` розширені на обидва шляхи. Тільки чинний ClientSession, JSON, `no-store, private`, GET/HEAD без DML/session save/GC. Auth revoked/expired повертає 401 і прибирає попередній вміст на React.
 - React `/app/resources` — реальні published картки, loading/empty/error/retry; `/app/resources/{id}` — Markdown або кнопка зовнішнього посилання, прямий URL/reload, назад до списку. Focus/visibility/60s refresh прибирає вміст після unpublish або втрати доступу.

@@ -159,6 +159,10 @@ class ClientLibraryTest extends TestCase
     public function test_readonly_get_head_and_revoked_session(): void
     {
         $item = $this->make('article', 'published');
+        // PostgreSQL transaction_timestamp() в setUp давніший за publication;
+        // нова публікація всередині довгої транзакції має бути доступною одразу.
+        DB::table('library_items')->where('id', $item->id)
+            ->update(['published_at' => DB::raw('clock_timestamp()')]);
         config(['session.lottery' => [100, 100]]);
         $before = $this->snapshot();
         foreach (['/api/library', '/api/library/'.$item->id] as $url) {

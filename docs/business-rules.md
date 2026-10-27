@@ -317,7 +317,7 @@ format/version, draft version або невідповідна UOM/grams відх
 
 ## Бібліотека матеріалів T5.6 (погоджений зріз)
 
-- BR-L-01: рівно чотири типи стаття/відео/плейліст/інструкція в одній таблиці `library_items`; чернетки можуть бути неповними, клієнтський API повертає лише published із `published_at <= now()` (серверний час).
+- BR-L-01: рівно чотири типи стаття/відео/плейліст/інструкція в одній таблиці `library_items`; чернетки можуть бути неповними, клієнтський API повертає лише published із `published_at <= clock_timestamp()` (поточний час PostgreSQL, не початок транзакції).
 - BR-L-02: публікація потребує назви та джерела; video/playlist повинні мати HTTPS URL, article/instruction — непорожній власний Markdown або HTTPS URL. Перевірки в Laravel і PostgreSQL CHECK; `published_at` заповнюється моделлю і очищається після зняття з публікації.
 - BR-L-03: лише admin у Filament змінює контент. Авторизовані ClientSession отримують спільну бібліотеку без персональних грантів; анонімний доступ, чернетки, скасовані й майбутні публікації — заборонені.
 - BR-L-04: Markdown рендериться без raw HTML та небезпечних URL; inline photos лише з allowlist PublicImageUrl. Зовнішні URL — браузерні HTTPS без локальних/IP/credentials; сервер не завантажує ресурси. GET/HEAD — без DML та клієнтського session GC/save, `Cache-Control: no-store, private`.

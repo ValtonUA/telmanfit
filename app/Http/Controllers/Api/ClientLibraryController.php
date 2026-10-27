@@ -57,7 +57,7 @@ final class ClientLibraryController
     private function published(): Builder
     {
         return DB::table('library_items')->where('status', 'published')
-            ->whereNotNull('published_at')->where('published_at', '<=', DB::raw('CURRENT_TIMESTAMP'));
+            ->whereNotNull('published_at')->where('published_at', '<=', DB::raw('clock_timestamp()'));
     }
 
     private function card(object $row): array
