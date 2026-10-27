@@ -166,7 +166,8 @@ if [[ ${AUTH4_ONLY:-0} == 1 ]]; then
     php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth4.xml --display-all-issues
     php tests/pg/auth4-concurrency.php
-    if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then bash tests/browser/auth4-in-context.sh; fi
+    if [[ ${CLIENT_RECIPE_BROWSER:-0} == 1 ]]; then bash tests/browser/recipe-client-in-context.sh; fi
+    if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then bash tests/browser/auth4-in-context.sh; bash tests/browser/recipe-client-in-context.sh; fi
     exit
 fi
 baseline_paths=()
@@ -265,6 +266,7 @@ php tests/pg/auth4-concurrency.php
 stage1_mark auth4_tests_concurrency
 if [[ ${AUTH4_BROWSER:-0} == 1 ]]; then
     bash tests/browser/auth4-in-context.sh
+    bash tests/browser/recipe-client-in-context.sh
     stage1_mark auth4_browser
 fi
 

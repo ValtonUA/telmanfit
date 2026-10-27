@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "browser": "154.0.8037.57",
+  "checks": [
+    "Картка / ingredient без посилання / B physical quantities / tokens / фото / повернення до week2 day9",
+    "Прямий URL / reload / 1440,390,320 light,dark без overflow",
+    "Фото fallback / error clears content / retry / заміна призначення / forged ID",
+    "Revoked ClientSession / приватний вміст прибрано"
+  ]
+}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ClientAuthController;
+use App\Http\Controllers\Api\ClientMealItemRecipeController;
 use App\Http\Controllers\Api\ClientMealPlanController;
 use App\Http\Controllers\Api\ClientMealPlanDaysController;
 use App\Http\Controllers\Api\ClientOnboardingController;
@@ -41,6 +42,7 @@ Route::middleware(['web', ClientCsrf::class])->group(function () {
     // Авторизація — той самий ClientSession, що в /api/me; без production bypass.
     Route::get('/onboarding', [ClientOnboardingController::class, 'show'])->name('onboarding.show');
     Route::get('/meal-plan', ClientMealPlanController::class)->name('client.meal-plan');
+    Route::get('/meal-plan/items/{item}/recipe', ClientMealItemRecipeController::class)->name('client.meal-plan.recipe');
     Route::get('/meal-plan/days', ClientMealPlanDaysController::class)->name('client.meal-plan.days');
     Route::get('/meal-plan/shopping-list', ClientShoppingListController::class)->name('client.meal-plan.shopping-list');
     Route::post('/onboarding', [ClientOnboardingController::class, 'store'])->name('onboarding.store');

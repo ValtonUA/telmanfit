@@ -3,6 +3,7 @@ import { api, csrf, initialize } from './api'
 import type { FlowResult, Me } from './api'
 import { AuthForm } from './components/AuthForm'
 import { OnboardingFirstStep } from './components/OnboardingFirstStep'
+import { MealItemRecipe } from './components/MealItemRecipe'
 import { MealPlan } from './components/MealPlan'
 import { SecurityPanel } from './components/SecurityPanel'
 import './App.css'
@@ -30,7 +31,7 @@ export default function App() {
       initialize().then(result => {
         if (active && current === generation) {
           setMe(result.me); setInvite(result.invite)
-          if (!result.me && ['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding', '/app/meal-plan'].includes(window.location.pathname)) {
+          if (!result.me && (window.location.pathname.startsWith('/app/meal-plan/') || ['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding', '/app/meal-plan'].includes(window.location.pathname))) {
             window.history.replaceState(null, '', '/app/login'); setPage('/app/login')
           }
         }
@@ -42,7 +43,7 @@ export default function App() {
     return () => { active = false; window.removeEventListener('telmanfit-invitation', newInvitation) }
   }, [])
   useEffect(() => {
-    if (!me || page === '/app/meal-plan') return
+    if (!me || page.startsWith('/app/meal-plan')) return
     let active = true
     const refresh = () => {
       if (document.visibilityState === 'visible') api<Me>('me').then(user => { if (active) setMe(user) }).catch(() => { if (active) { setMe(undefined); setNotice('Сесія завершилася. Увійдіть знову.'); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') } })
@@ -59,6 +60,7 @@ export default function App() {
       {me?.security.recovery_used && page !== '/app/security' && <p role="status" className="notice">Ви використали резервний код. 2FA залишається увімкненою. Невикористаних кодів: {me.security.recovery_codes_remaining}. За потреби оновіть їх у налаштуваннях безпеки.</p>}
       {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
+        : me && /^\/app\/meal-plan\/items\/[^/]+\/recipe$/.test(page) ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
         : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
         : me && page === '/app/security' ? <SecurityPanel me={me} onExit={exit} />
         : me && page === '/app/onboarding' ? <OnboardingFirstStep />
