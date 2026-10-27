@@ -1,6 +1,8 @@
 name: telmanfit-local
 x-app: &app
   image: telmanfit-local-app
+  environment:
+    TELMANFIT_LOCAL_RECIPE_EDITOR: "true"
   volumes:
     - local-state:/tmp/telmanfit-auth4-compose
     - epoch:/run/telmanfit-epoch:ro
