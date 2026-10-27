@@ -15,6 +15,7 @@ final class MatchR2Images extends Command
     protected $signature = 'assets:match-r2-images
         {--dry-run : Лише прочитати R2 і PostgreSQL та показати план}
         {--apply : Записати лише однозначні відповідності з image_url IS NULL}
+        {--exact-only : Лише точні назви й aliases, без fuzzy-пропозицій}
         {--public-base-url= : Публічний HTTPS base URL для застосування}
         {--aliases-file= : JSON зі синонімами й історичними кодами, прив’язаними до типу та ID запису}';
 
@@ -34,7 +35,7 @@ final class MatchR2Images extends Command
             $objects = $lister->list();
             $records = $this->records();
             $aliases = $this->aliases();
-            $plan = $matcher->plan($objects, $records, $aliases);
+            $plan = $matcher->plan($objects, $records, $aliases, (bool) $this->option('exact-only'));
             $this->markConflicts($plan);
 
             if ($apply) {
@@ -47,6 +48,8 @@ final class MatchR2Images extends Command
 
             $this->render($plan, $apply);
             $this->line('R2 objects: '.count($objects).'; confident: '.count(array_filter($plan, fn (array $row): bool => $row['status'] === 'confident')).'; ambiguous: '.count(array_filter($plan, fn (array $row): bool => $row['status'] === 'ambiguous')).'; unmatched: '.count(array_filter($plan, fn (array $row): bool => $row['status'] === 'unmatched')).'; unsupported: '.count(array_filter($plan, fn (array $row): bool => $row['status'] === 'unsupported')).'.');
+
+            $this->line('Ignored legacy objects: '.count(array_filter($plan, fn (array $row): bool => $row['status'] === 'ignored')).'.');
 
             return self::SUCCESS;
         } catch (JsonException|RuntimeException $exception) {

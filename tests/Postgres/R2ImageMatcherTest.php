@@ -74,7 +74,8 @@ class R2ImageMatcherTest extends PostgresTestCase
         $exit = Artisan::call('assets:match-r2-images', ['--dry-run' => true]);
         $output = Artisan::output();
         $this->assertSame(0, $exit, $output);
-        $this->assertStringContainsString('confident: 3; ambiguous: 4; unmatched: 1; unsupported: 1', $output);
+        $this->assertStringContainsString('confident: 4; ambiguous: 2; unmatched: 1; unsupported: 1', $output);
+        $this->assertStringContainsString('Ignored legacy objects: 1', $output);
         $this->assertStringContainsString('#'.$recipeId.' buckwheat mushrooms', $output);
         $this->assertSame('https://images.example.com/old.png', DB::table('ingredients')->where('id', $existingId)->value('image_url'));
         $this->assertNull(DB::table('ingredients')->where('id', $ingredientId)->value('image_url'));
@@ -88,7 +89,7 @@ class R2ImageMatcherTest extends PostgresTestCase
         $this->assertSame(0, $exit, Artisan::output());
         $this->assertSame('https://images.example.com/ingredients/chicken_fillet.webp', DB::table('ingredients')->where('id', $ingredientId)->value('image_url'));
         $this->assertNull(DB::table('ingredients')->whereIn('id', [$ambiguousOne, $ambiguousTwo])->whereNotNull('image_url')->value('image_url'));
-        $this->assertNull(DB::table('kitchen_equipment')->where('id', $equipmentId)->value('image_url'));
+        $this->assertSame('https://images.example.com/kitchen_equipment/kitchen_scale.webp', DB::table('kitchen_equipment')->where('id', $equipmentId)->value('image_url'));
         $this->assertSame('https://images.example.com/recipes/buckwheat_mushrooms.webp', DB::table('recipes')->where('id', $recipeId)->value('image_url'));
         $this->assertSame('https://images.example.com/old.png', DB::table('ingredients')->where('id', $existingId)->value('image_url'));
     }

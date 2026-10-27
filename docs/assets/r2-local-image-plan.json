@@ -1,0 +1,1777 @@
+{
+  "scope": "existing local telmanfit-local PostgreSQL only",
+  "apply_authorized": false,
+  "public_base_url": "https://assets.telmanfit.com.ua",
+  "observed_at_utc": "2026-10-27T21:59:08+00:00",
+  "catalog_before_sha256": "7fee1f9f4b922872434fd55634eeb48df145539f3738ab10840d6a4e6f8829db",
+  "expected_updates": 85,
+  "expected_by_table": {
+    "ingredients": 47,
+    "kitchen_equipment": 37,
+    "recipes": 1
+  },
+  "expected_nonempty_after": 85,
+  "expected_null_after": 23,
+  "preconditions": [
+    "same catalog IDs/names/current URLs as reviewed snapshot",
+    "all 85 target image_url IS NULL",
+    "effective allowlist in app/worker/scheduler contains assets.telmanfit.com.ua",
+    "public URL verification repeated if stale",
+    "separate explicit apply authorization"
+  ],
+  "updates": [
+    {
+      "table": "ingredients",
+      "id": 47,
+      "name": "Мигдаль",
+      "before_image_url": null,
+      "r2_key": "ingredients/almonds.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/almonds.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 4,
+      "name": "Яловичина пісна",
+      "before_image_url": null,
+      "r2_key": "ingredients/beef_top_round.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/beef_top_round.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 21,
+      "name": "Перець болгарський",
+      "before_image_url": null,
+      "r2_key": "ingredients/bell_pepper.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/bell_pepper.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 61,
+      "name": "Чорний перець",
+      "before_image_url": null,
+      "r2_key": "ingredients/black_pepper.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/black_pepper.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 15,
+      "name": "Броколі",
+      "before_image_url": null,
+      "r2_key": "ingredients/broccoli.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/broccoli.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 27,
+      "name": "Гречана крупа",
+      "before_image_url": null,
+      "r2_key": "ingredients/buckwheat.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/buckwheat.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 56,
+      "name": "Масло 82%",
+      "before_image_url": null,
+      "r2_key": "ingredients/butter_82_percent.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/butter_82_percent.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 17,
+      "name": "Морква",
+      "before_image_url": null,
+      "r2_key": "ingredients/carrot.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/carrot.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 42,
+      "name": "Сир твердий 45%",
+      "before_image_url": null,
+      "r2_key": "ingredients/cheese.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/cheese.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 44,
+      "name": "Яйце куряче",
+      "before_image_url": null,
+      "r2_key": "ingredients/chicken_egg.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/chicken_egg.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 1,
+      "name": "Куряче філе",
+      "before_image_url": null,
+      "r2_key": "ingredients/chicken_fillet.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/chicken_fillet.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 6,
+      "name": "Куряча печінка",
+      "before_image_url": null,
+      "r2_key": "ingredients/chicken_liver.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/chicken_liver.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 2,
+      "name": "Куряче стегно, філе без шкірки",
+      "before_image_url": null,
+      "r2_key": "ingredients/chicken_thigh_skinless_fillet.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/chicken_thigh_skinless_fillet.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 32,
+      "name": "Кукурудза консервована",
+      "before_image_url": null,
+      "r2_key": "ingredients/corn_canned.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/corn_canned.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 38,
+      "name": "Кисломолочний сир 0%",
+      "before_image_url": null,
+      "r2_key": "ingredients/cottage_cheese_0_percent.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/cottage_cheese_0_percent.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 39,
+      "name": "Кисломолочний сир 5%",
+      "before_image_url": null,
+      "r2_key": "ingredients/cottage_cheese_5_percent.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/cottage_cheese_5_percent.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 14,
+      "name": "Огірок",
+      "before_image_url": null,
+      "r2_key": "ingredients/cucumber.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/cucumber.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 59,
+      "name": "Діжонська гірчиця",
+      "before_image_url": null,
+      "r2_key": "ingredients/dijon_mustard.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/dijon_mustard.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 31,
+      "name": "Макарони з тв. сортів",
+      "before_image_url": null,
+      "r2_key": "ingredients/durum_pasta.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/durum_pasta.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 19,
+      "name": "Баклажан",
+      "before_image_url": null,
+      "r2_key": "ingredients/eggplant.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/eggplant.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 66,
+      "name": "Часник",
+      "before_image_url": null,
+      "r2_key": "ingredients/garlic.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/garlic.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 37,
+      "name": "Горошок консервований",
+      "before_image_url": null,
+      "r2_key": "ingredients/green_peas_canned.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/green_peas_canned.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 52,
+      "name": "Лаваш тонкий",
+      "before_image_url": null,
+      "r2_key": "ingredients/lavash.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/lavash.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 63,
+      "name": "Лимон",
+      "before_image_url": null,
+      "r2_key": "ingredients/lemon.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/lemon.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 43,
+      "name": "Молоко 2,5%",
+      "before_image_url": null,
+      "r2_key": "ingredients/milk_2_5_percent.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/milk_2_5_percent.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 22,
+      "name": "Гриби печериці",
+      "before_image_url": null,
+      "r2_key": "ingredients/mushrooms.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/mushrooms.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 58,
+      "name": "Гірчиця",
+      "before_image_url": null,
+      "r2_key": "ingredients/mustard.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/mustard.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 30,
+      "name": "Вівсяні пластівці",
+      "before_image_url": null,
+      "r2_key": "ingredients/oats.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/oats.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 55,
+      "name": "Олія оливкова",
+      "before_image_url": null,
+      "r2_key": "ingredients/olive_oil.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/olive_oil.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 20,
+      "name": "Цибуля ріпчаста",
+      "before_image_url": null,
+      "r2_key": "ingredients/onion.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/onion.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 62,
+      "name": "Паприка",
+      "before_image_url": null,
+      "r2_key": "ingredients/paprika.jpg",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/paprika.jpg"
+    },
+    {
+      "table": "ingredients",
+      "id": 5,
+      "name": "Свиняча вирізка",
+      "before_image_url": null,
+      "r2_key": "ingredients/pork_tenderloin.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/pork_tenderloin.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 33,
+      "name": "Сочевиця червона",
+      "before_image_url": null,
+      "r2_key": "ingredients/red_lentils.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/red_lentils.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 28,
+      "name": "Рис білий",
+      "before_image_url": null,
+      "r2_key": "ingredients/rice.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/rice.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 29,
+      "name": "Рис басматі",
+      "before_image_url": null,
+      "r2_key": "ingredients/rice_basmati.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/rice_basmati.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 9,
+      "name": "Лосось",
+      "before_image_url": null,
+      "r2_key": "ingredients/salmon.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/salmon.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 60,
+      "name": "Сіль",
+      "before_image_url": null,
+      "r2_key": "ingredients/salt.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/salt.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 65,
+      "name": "Соєвий соус",
+      "before_image_url": null,
+      "r2_key": "ingredients/soy_sauce.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/soy_sauce.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 54,
+      "name": "Олія соняшникова",
+      "before_image_url": null,
+      "r2_key": "ingredients/sunflower_oil.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/sunflower_oil.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 7,
+      "name": "Тилапія",
+      "before_image_url": null,
+      "r2_key": "ingredients/tilapia_fillet.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/tilapia_fillet.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 13,
+      "name": "Помідор",
+      "before_image_url": null,
+      "r2_key": "ingredients/tomato.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/tomato.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 10,
+      "name": "Тунець у власному соку",
+      "before_image_url": null,
+      "r2_key": "ingredients/tuna_canned_water.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/tuna_canned_water.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 3,
+      "name": "Філе індички",
+      "before_image_url": null,
+      "r2_key": "ingredients/turkey_fillet.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/turkey_fillet.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 68,
+      "name": "Вода",
+      "before_image_url": null,
+      "r2_key": "ingredients/water.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/water.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 67,
+      "name": "Протеїн сироватковий",
+      "before_image_url": null,
+      "r2_key": "ingredients/whey_protein.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/whey_protein.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 40,
+      "name": "Білий йогурт 2,5%",
+      "before_image_url": null,
+      "r2_key": "ingredients/yogurt_2_5_percent.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/yogurt_2_5_percent.webp"
+    },
+    {
+      "table": "ingredients",
+      "id": 18,
+      "name": "Кабачок",
+      "before_image_url": null,
+      "r2_key": "ingredients/zucchini.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/ingredients/zucchini.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 15,
+      "name": "Аерогриль",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/air_fryer.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/air_fryer.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 5,
+      "name": "Форма для запікання",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/baking_dish.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/baking_dish.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 4,
+      "name": "Деко",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/baking_tray.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/baking_tray.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 18,
+      "name": "Блендер стаціонарний",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/blender.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/blender.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 31,
+      "name": "Відкривачка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/can_opener.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/can_opener.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 24,
+      "name": "Ніж",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/chef_knife.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/chef_knife.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 7,
+      "name": "Друшляк",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/colander.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/colander.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 20,
+      "name": "Гриль контактний",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/contact_grill.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/contact_grill.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 25,
+      "name": "Обробна дошка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/cutting_board.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/cutting_board.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 33,
+      "name": "Фольга",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/foil.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/foil.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 11,
+      "name": "Контейнер",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/food_container.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/food_container.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 12,
+      "name": "Ємність",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/food_vessel.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/food_vessel.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 3,
+      "name": "Сковорідка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/frying_pan.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/frying_pan.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 34,
+      "name": "Фольга потовщена",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/heavy_duty_foil.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/heavy_duty_foil.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 19,
+      "name": "Блендер занурювальний",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/immersion_blender.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/immersion_blender.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 23,
+      "name": "Ювелірні ваги",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/jewelry_scales.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/jewelry_scales.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 22,
+      "name": "Кухонні ваги",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/kitchen_scale.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/kitchen_scale.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 27,
+      "name": "Ножиці",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/kitchen_scissors.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/kitchen_scissors.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 17,
+      "name": "Мікрохвильовка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/microwave.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/microwave.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 9,
+      "name": "Миска",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/mixing_bowl.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/mixing_bowl.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 16,
+      "name": "Мультиварка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/multicooker.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/multicooker.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 14,
+      "name": "Духовка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/oven.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/oven.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 6,
+      "name": "Решітка для духовки",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/oven_rack.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/oven_rack.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 36,
+      "name": "Паперові рушники",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/paper_towels.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/paper_towels.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 32,
+      "name": "Пергамент силіконізований",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/parchment.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/parchment.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 1,
+      "name": "Каструля",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/pot.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/pot.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 35,
+      "name": "Рукав для запікання",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/roasting_sleeve.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/roasting_sleeve.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 2,
+      "name": "Сотейник",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/saucepan.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/saucepan.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 10,
+      "name": "Піала",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/small_bowl.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/small_bowl.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 21,
+      "name": "Сувід циркулятор",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/sous_vide_circulator.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/sous_vide_circulator.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 29,
+      "name": "Лопатка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/spatula.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/spatula.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 8,
+      "name": "Вставка-пароварка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/steamer_insert.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/steamer_insert.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 13,
+      "name": "Плита",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/stovetop.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/stovetop.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 30,
+      "name": "Щипці",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/tongs.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/tongs.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 26,
+      "name": "Овочечистка",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/vegetable_peeler.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/vegetable_peeler.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 28,
+      "name": "Вінчик",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/whisk.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/whisk.webp"
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 38,
+      "name": "Зіп-пакет 15×30 см",
+      "before_image_url": null,
+      "r2_key": "kitchen_equipment/zip_bag_15x30.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/kitchen_equipment/zip_bag_15x30.webp"
+    },
+    {
+      "table": "recipes",
+      "id": 1,
+      "name": "Гречка з грибами",
+      "before_image_url": null,
+      "r2_key": "recipes/buckwheat_mushrooms.webp",
+      "proposed_image_url": "https://assets.telmanfit.com.ua/recipes/buckwheat_mushrooms.webp"
+    }
+  ],
+  "public_url_checks": [
+    {
+      "table": "ingredients",
+      "id": 47,
+      "url": "https://assets.telmanfit.com.ua/ingredients/almonds.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.214777+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 23842,
+      "etag": "\"4061cb2322f55f2d09753b473f8e7301\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 4,
+      "url": "https://assets.telmanfit.com.ua/ingredients/beef_top_round.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.214952+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 65710,
+      "etag": "\"c00d9a3adffc41f4a02b4ae11ae37576\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 21,
+      "url": "https://assets.telmanfit.com.ua/ingredients/bell_pepper.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.215237+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 33534,
+      "etag": "\"ea26cea551b44fb1fbafe7643ab38fb3\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 61,
+      "url": "https://assets.telmanfit.com.ua/ingredients/black_pepper.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.215475+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 35716,
+      "etag": "\"dba4ea425e456031165544ae80b9adaa\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 15,
+      "url": "https://assets.telmanfit.com.ua/ingredients/broccoli.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.215701+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 79382,
+      "etag": "\"32ac6d5b8d7917512f0f39ccf6562777\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 27,
+      "url": "https://assets.telmanfit.com.ua/ingredients/buckwheat.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.215937+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 68280,
+      "etag": "\"9f09a9fcb59de93326ebe6a5dfb10378\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 56,
+      "url": "https://assets.telmanfit.com.ua/ingredients/butter_82_percent.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.216140+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 13054,
+      "etag": "\"f4e65ee36de292dab4fc042a21faa369\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 17,
+      "url": "https://assets.telmanfit.com.ua/ingredients/carrot.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.216377+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 17030,
+      "etag": "\"0648cac29566a781dec83f587017a835\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 42,
+      "url": "https://assets.telmanfit.com.ua/ingredients/cheese.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.412162+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 19650,
+      "etag": "\"f732f3bed24abed3a3809cd098621943\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 44,
+      "url": "https://assets.telmanfit.com.ua/ingredients/chicken_egg.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.430580+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 28674,
+      "etag": "\"aaacdf2cb716b375e9e2f379aefef430\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 1,
+      "url": "https://assets.telmanfit.com.ua/ingredients/chicken_fillet.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.431885+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 9998,
+      "etag": "\"4708d9bfab24b3bf602c62a5553aeb40\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 6,
+      "url": "https://assets.telmanfit.com.ua/ingredients/chicken_liver.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.453670+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 36100,
+      "etag": "\"e7ce7b4f19627a68e5b22c74f4fc2405\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 2,
+      "url": "https://assets.telmanfit.com.ua/ingredients/chicken_thigh_skinless_fillet.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.457287+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 5892,
+      "etag": "\"c354b1ebf4a034bbf8ccd59f81942b6a\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 32,
+      "url": "https://assets.telmanfit.com.ua/ingredients/corn_canned.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.461226+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 80562,
+      "etag": "\"2ce5eab62cdc5ac86ca4add87ed226ad\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 38,
+      "url": "https://assets.telmanfit.com.ua/ingredients/cottage_cheese_0_percent.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.462267+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 56640,
+      "etag": "\"4ad1c8db534a2f13c47d0c213d5c5871\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 39,
+      "url": "https://assets.telmanfit.com.ua/ingredients/cottage_cheese_5_percent.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.476351+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 64432,
+      "etag": "\"17b5d289df0a7cc38b762156ba717e75\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 14,
+      "url": "https://assets.telmanfit.com.ua/ingredients/cucumber.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.588197+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 92376,
+      "etag": "\"8145953d583c3e73e5186976bcbab5c2\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 59,
+      "url": "https://assets.telmanfit.com.ua/ingredients/dijon_mustard.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.638361+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 154774,
+      "etag": "\"ce73ee1152c5619fc9c7282b1eade4b1\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 31,
+      "url": "https://assets.telmanfit.com.ua/ingredients/durum_pasta.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.643412+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 40468,
+      "etag": "\"1a5519a45ecdc91c3c04187c865087f7\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 19,
+      "url": "https://assets.telmanfit.com.ua/ingredients/eggplant.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.653038+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 28076,
+      "etag": "\"d31696f4abf82978ab4c8b4c98d371a6\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 66,
+      "url": "https://assets.telmanfit.com.ua/ingredients/garlic.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.660547+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 10568,
+      "etag": "\"bedfec273eea6df095cb6fde496ae418\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 37,
+      "url": "https://assets.telmanfit.com.ua/ingredients/green_peas_canned.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.664443+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 22492,
+      "etag": "\"b7dd5ea8f6c6cca1e3b178ef4a26518d\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 52,
+      "url": "https://assets.telmanfit.com.ua/ingredients/lavash.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.677806+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 25914,
+      "etag": "\"873aadf5a9c99f552ca7dfabd43d59ed\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 63,
+      "url": "https://assets.telmanfit.com.ua/ingredients/lemon.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.691916+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 40406,
+      "etag": "\"92e872ab66fc821dd063bac7d1f345cf\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 43,
+      "url": "https://assets.telmanfit.com.ua/ingredients/milk_2_5_percent.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.803009+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 66078,
+      "etag": "\"b6bfd931fbe58063367ccee243205cad\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 22,
+      "url": "https://assets.telmanfit.com.ua/ingredients/mushrooms.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.841121+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 23446,
+      "etag": "\"aca99c5caa8e25cdf5c055fb65bbb14e\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 58,
+      "url": "https://assets.telmanfit.com.ua/ingredients/mustard.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.842925+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 138360,
+      "etag": "\"ad6353351b8205d363602a4ab192147a\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 30,
+      "url": "https://assets.telmanfit.com.ua/ingredients/oats.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.844100+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 48732,
+      "etag": "\"9e4235570a146ec63cda20762db792fb\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 55,
+      "url": "https://assets.telmanfit.com.ua/ingredients/olive_oil.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.866145+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 47094,
+      "etag": "\"349acb73d47413a3e6bccd848fd882f9\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 20,
+      "url": "https://assets.telmanfit.com.ua/ingredients/onion.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.878839+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 51036,
+      "etag": "\"ec315bb780b4cc307896909c579b1cf4\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 62,
+      "url": "https://assets.telmanfit.com.ua/ingredients/paprika.jpg",
+      "checked_at_utc": "2026-10-27T21:59:58.881755+00:00",
+      "status": 200,
+      "content_type": "image/jpeg",
+      "content_length": 50482,
+      "etag": "\"0bc7af7091ab1e4d553dd7943c02a520\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 5,
+      "url": "https://assets.telmanfit.com.ua/ingredients/pork_tenderloin.webp",
+      "checked_at_utc": "2026-10-27T21:59:58.910672+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 25514,
+      "etag": "\"9c48a7b6c0ca1e301e1b097ea9204091\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 33,
+      "url": "https://assets.telmanfit.com.ua/ingredients/red_lentils.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.009281+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 277316,
+      "etag": "\"a2fde5641ed08da39d91443bb267049a\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 28,
+      "url": "https://assets.telmanfit.com.ua/ingredients/rice.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.042700+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 94228,
+      "etag": "\"241034286705a983e174bac37f9473a0\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 29,
+      "url": "https://assets.telmanfit.com.ua/ingredients/rice_basmati.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.043998+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 38744,
+      "etag": "\"d0584e414b76113d732aa4809da3e953\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 9,
+      "url": "https://assets.telmanfit.com.ua/ingredients/salmon.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.073263+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 61822,
+      "etag": "\"822c5c0c87e2301e2e78e34655932ec3\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 60,
+      "url": "https://assets.telmanfit.com.ua/ingredients/salt.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.104503+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 19500,
+      "etag": "\"44a43dc2501a827c833d560d26f2c3ad\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 65,
+      "url": "https://assets.telmanfit.com.ua/ingredients/soy_sauce.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.104600+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 18574,
+      "etag": "\"4da8020ab3e2b5c8beb2ef326560f815\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 54,
+      "url": "https://assets.telmanfit.com.ua/ingredients/sunflower_oil.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.104698+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 39602,
+      "etag": "\"ac41eb73dda6869bf1cba86c90f3e78d\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 7,
+      "url": "https://assets.telmanfit.com.ua/ingredients/tilapia_fillet.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.104952+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 13640,
+      "etag": "\"86e12be761dde1cbad9762940f668232\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 13,
+      "url": "https://assets.telmanfit.com.ua/ingredients/tomato.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.178324+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 35084,
+      "etag": "\"c689f47bd0a81adbb8c95d92e02bf077\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 10,
+      "url": "https://assets.telmanfit.com.ua/ingredients/tuna_canned_water.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.254731+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 67002,
+      "etag": "\"eab29c84565b97e577c7bc3bda70b0cd\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 3,
+      "url": "https://assets.telmanfit.com.ua/ingredients/turkey_fillet.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.255459+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 6824,
+      "etag": "\"b7795f99d01536038306a1b7010b5a30\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 68,
+      "url": "https://assets.telmanfit.com.ua/ingredients/water.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.281972+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 10910,
+      "etag": "\"892cc17e60d212c9ff812897c3e42b6e\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 67,
+      "url": "https://assets.telmanfit.com.ua/ingredients/whey_protein.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.299136+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 17078,
+      "etag": "\"f63dbc60053fa76e4fb32291d01094b2\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 40,
+      "url": "https://assets.telmanfit.com.ua/ingredients/yogurt_2_5_percent.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.302508+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 93548,
+      "etag": "\"6ae5765ba03622ae3915a4646a57ef19\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "ingredients",
+      "id": 18,
+      "url": "https://assets.telmanfit.com.ua/ingredients/zucchini.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.330432+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 57990,
+      "etag": "\"0bf6804170cc0a6f13eec5e9ae01e3c4\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 15,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/air_fryer.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.336734+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 20372,
+      "etag": "\"13dc7db129650c7203f70df378fcb747\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 5,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/baking_dish.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.383796+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 11410,
+      "etag": "\"82de4d2169865a05a2b7f562cd477e7b\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 4,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/baking_tray.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.466748+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 17382,
+      "etag": "\"6c2973e2a0eb10e5490af5b706a61310\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 18,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/blender.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.477542+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 23252,
+      "etag": "\"f0d0653da0f02be4b8958f442cde0404\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 31,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/can_opener.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.490568+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 7818,
+      "etag": "\"3fb388707760f0618b2dc79156173a71\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 24,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/chef_knife.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.542655+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 11004,
+      "etag": "\"0435f7a855a5d606725f252065483d5e\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 7,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/colander.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.544084+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 23828,
+      "etag": "\"a3f15ccb996cec0924900d145616ab0b\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 20,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/contact_grill.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.585747+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 203570,
+      "etag": "\"88a2020330d763a685b7b694cf113c1f\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 25,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/cutting_board.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.590785+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 46794,
+      "etag": "\"22bb5d1830f0d73b59a6cba1cd97c249\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 33,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/foil.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.624427+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 16300,
+      "etag": "\"9776cef73e1d653ff67fbb49721c31c7\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 11,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/food_container.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.659345+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 35460,
+      "etag": "\"cbe24ad35b8171f9712d20ecb6bc59a8\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 12,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/food_vessel.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.677465+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 207524,
+      "etag": "\"a175d273757ca80c983713554ea3c931\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 3,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/frying_pan.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.685053+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 108082,
+      "etag": "\"1a286a796635deb9eaad53a0c62ad917\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 34,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/heavy_duty_foil.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.719088+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 45470,
+      "etag": "\"424b2303dd113c8fed347fa309de9d04\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 19,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/immersion_blender.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.756177+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 9264,
+      "etag": "\"6a9c12c004c1988d9924f9575662d1e0\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 23,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/jewelry_scales.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.789851+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 35920,
+      "etag": "\"02632bedfa6255dcba076209411f2a64\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 22,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/kitchen_scale.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.800364+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 13244,
+      "etag": "\"e715d796e58b1a6a8d24ddb7ab492347\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 27,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/kitchen_scissors.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.824903+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 15004,
+      "etag": "\"c16f1f7605542ac355f8ff32c1a020f3\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 17,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/microwave.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.833875+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 41250,
+      "etag": "\"55f08028a374fac1aa84d3e9f50a6eff\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 9,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/mixing_bowl.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.884624+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 9716,
+      "etag": "\"37f34c3b9c382325ea6e440affa298b9\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 16,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/multicooker.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.898470+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 39058,
+      "etag": "\"a374da9d7d689b6e515735824a9a4022\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 14,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/oven.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.951823+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 33656,
+      "etag": "\"b402edb9bfecb62b6d23595d2254e829\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 6,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/oven_rack.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.967078+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 17426,
+      "etag": "\"49ce26a7fc835675325c83908ba60c26\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 36,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/paper_towels.webp",
+      "checked_at_utc": "2026-10-27T21:59:59.990347+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 22068,
+      "etag": "\"468040e04ab8bf59dc648f8b0f5f501e\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 32,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/parchment.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.010774+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 13220,
+      "etag": "\"e5d9f5f8f8015d4573d9c445132ed3d8\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 1,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/pot.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.037906+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 26578,
+      "etag": "\"afb2252385109dd6a68c8eb98fa6b819\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 35,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/roasting_sleeve.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.043368+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 33724,
+      "etag": "\"53e95f72cb21a519bd75c74cc1741960\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 2,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/saucepan.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.079827+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 19026,
+      "etag": "\"48b91ac4eb24b880f5a695de2bf473e6\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 10,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/small_bowl.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.128793+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 4294,
+      "etag": "\"64c97f1f1c0cc01e686b950ef40e32c3\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 21,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/sous_vide_circulator.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.174480+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 35166,
+      "etag": "\"92d559d929aef87c34568f6565b7ab11\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 29,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/spatula.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.224549+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 8686,
+      "etag": "\"899f1a33e46c0d2a65d2e47a21a544f1\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 8,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/steamer_insert.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.226723+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 16164,
+      "etag": "\"db3e08c6118d9df632929bd11875f716\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 13,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/stovetop.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.227079+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 33694,
+      "etag": "\"50c156abbc887510b15a107decc2dbf4\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 30,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/tongs.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.264688+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 3376,
+      "etag": "\"9755892bca80718a8b5590850e53b61e\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 26,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/vegetable_peeler.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.276772+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 7182,
+      "etag": "\"bc031b48ec556e44b9ff59cb9a40c4bc\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 28,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/whisk.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.314811+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 16356,
+      "etag": "\"adb28f7535ffaeb00d4867cc2c6445f8\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "kitchen_equipment",
+      "id": 38,
+      "url": "https://assets.telmanfit.com.ua/kitchen_equipment/zip_bag_15x30.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.347299+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 9136,
+      "etag": "\"a993610f415806c89224fab9f0a9064a\"",
+      "tls_verified": true,
+      "ok": true
+    },
+    {
+      "table": "recipes",
+      "id": 1,
+      "url": "https://assets.telmanfit.com.ua/recipes/buckwheat_mushrooms.webp",
+      "checked_at_utc": "2026-10-27T22:00:00.415200+00:00",
+      "status": 200,
+      "content_type": "image/webp",
+      "content_length": 351680,
+      "etag": "\"901762577346f0ffef65ef97eaa3a3b0\"",
+      "tls_verified": true,
+      "ok": true
+    }
+  ],
+  "unmatched_keys": [
+    "ingredients/honey.webp",
+    "ingredients/lime_juice.webp",
+    "ingredients/milk_1_percent.webp",
+    "ingredients/veggie_mix_mexican.webp",
+    "ingredients/veggie_mix_spring.webp",
+    "recipes/chicken_fillet_lemon.webp",
+    "recipes/pork_tenderloin_spices.webp",
+    "recipes/rice_peas_corn.webp",
+    "recipes/tilapia_soy_sauce.webp",
+    "recipes/vegetable_stew.webp"
+  ],
+  "ignored_keys": [
+    "equipment/air_fryer.webp",
+    "equipment/baking_dish.webp",
+    "equipment/baking_tray.webp",
+    "equipment/blender.webp",
+    "equipment/can_opener.webp",
+    "equipment/chef_knife.webp",
+    "equipment/colander.webp",
+    "equipment/contact_grill.webp",
+    "equipment/cutting_board.webp",
+    "equipment/foil.webp",
+    "equipment/food_container.webp",
+    "equipment/food_vessel.webp",
+    "equipment/frying_pan.webp",
+    "equipment/heavy_duty_foil.webp",
+    "equipment/immersion_blender.webp",
+    "equipment/jewelry_scales.webp",
+    "equipment/kitchen_scale.webp",
+    "equipment/kitchen_scissors.webp",
+    "equipment/microwave.webp",
+    "equipment/mixing_bowl.webp",
+    "equipment/multicooker.webp",
+    "equipment/oven.webp",
+    "equipment/oven_rack.webp",
+    "equipment/paper_towels.webp",
+    "equipment/parchment.webp",
+    "equipment/pot.webp",
+    "equipment/roasting_sleeve.webp",
+    "equipment/saucepan.webp",
+    "equipment/small_bowl.webp",
+    "equipment/sous_vide_circulator.webp",
+    "equipment/spatula.webp",
+    "equipment/steamer_insert.webp",
+    "equipment/stovetop.webp",
+    "equipment/tongs.webp",
+    "equipment/vegetable_peeler.webp",
+    "equipment/whisk.webp",
+    "equipment/zip_bag_15x30.webp"
+  ]
+}

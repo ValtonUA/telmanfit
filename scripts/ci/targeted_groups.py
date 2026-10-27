@@ -22,6 +22,7 @@ RECIPE_PREFIXES = (
     "app/Console/Commands/MatchR2Images.php",
     "config/r2.php",
     "tests/Postgres/R2ImageMatcherTest.php",
+    "tests/Postgres/R2ImageMatcherIsolatedTest.php",
     "app/Services/Imports/",
     "app/Console/Commands/ImportNutritionXlsx.php",
     "resources/import/",

@@ -47,6 +47,12 @@ docker compose exec app php docker/local/mail.php
 
 ## Щоденна робота
 
+Публічний host зображень передається через `PUBLIC_IMAGE_HOSTS` у Compose
+environment app/worker/scheduler. Приватний R2 env-file сам по собі не змінює
+вже запущені процеси; R2 credentials до цих сервісів не передаються.
+Застосування URL і rollout конфігурації виконуються лише за окремо погодженим
+[планом зображень](r2-image-application-plan.md), без bootstrap/міграцій.
+
 Редактор A/B/C у цьому локальному профілі має явний
 `TELMANFIT_LOCAL_RECIPE_EDITOR=true`; production/default профілі залишаються OFF.
 Для перенесення власних каталогів і першої чернетки з Excel див.

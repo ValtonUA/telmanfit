@@ -16,7 +16,8 @@ class TargetedGroupTests(unittest.TestCase):
     def test_r2_changes_run_catalog_postgresql_regressions(self):
         for path in ("app/Services/Catalog/R2ObjectLister.php",
                      "app/Console/Commands/MatchR2Images.php",
-                     "config/r2.php", "tests/Postgres/R2ImageMatcherTest.php"):
+                     "config/r2.php", "tests/Postgres/R2ImageMatcherTest.php",
+                     "tests/Postgres/R2ImageMatcherIsolatedTest.php"):
             with self.subTest(path=path):
                 self.assertEqual(select_groups([path]), ("recipe",))
 
