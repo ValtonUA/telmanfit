@@ -1,0 +1,412 @@
+{
+  "ingredient_categories": {
+    "columns": [
+      "id",
+      "name"
+    ],
+    "references": {},
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_categories": {
+    "columns": [
+      "id",
+      "name"
+    ],
+    "references": {},
+    "primary": [
+      "id"
+    ]
+  },
+  "uoms": {
+    "columns": [
+      "id",
+      "code",
+      "label",
+      "kind"
+    ],
+    "references": {},
+    "primary": [
+      "id"
+    ]
+  },
+  "foods": {
+    "columns": [
+      "id",
+      "food_type"
+    ],
+    "references": {},
+    "primary": [
+      "id"
+    ]
+  },
+  "ingredients": {
+    "columns": [
+      "id",
+      "food_id",
+      "food_type",
+      "name",
+      "ingredient_category_id",
+      "kcal_per_100g",
+      "protein_per_100g",
+      "fat_per_100g",
+      "carbs_per_100g",
+      "image_url"
+    ],
+    "references": {
+      "food_id": "foods",
+      "ingredient_category_id": "ingredient_categories"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "ingredient_uoms": {
+    "columns": [
+      "ingredient_id",
+      "uom_id",
+      "grams_per_uom",
+      "is_default"
+    ],
+    "references": {
+      "ingredient_id": "ingredients",
+      "uom_id": "uoms"
+    },
+    "primary": [
+      "ingredient_id",
+      "uom_id"
+    ]
+  },
+  "recipes": {
+    "columns": [
+      "id",
+      "title",
+      "recipe_category_id",
+      "parent_recipe_id",
+      "owner_client_id",
+      "created_at",
+      "image_url"
+    ],
+    "references": {
+      "recipe_category_id": "recipe_categories",
+      "parent_recipe_id": "recipes",
+      "owner_client_id": "clients"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_versions": {
+    "columns": [
+      "id",
+      "recipe_id",
+      "version_number",
+      "status",
+      "food_id",
+      "food_type",
+      "title",
+      "servings_count",
+      "kcal_per_serving",
+      "protein_per_serving",
+      "fat_per_serving",
+      "carbs_per_serving",
+      "published_at",
+      "created_at",
+      "editor_contract",
+      "lock_version",
+      "draft_pending_rows",
+      "publication_review",
+      "source_recipe_version_id"
+    ],
+    "references": {
+      "recipe_id": "recipes",
+      "food_id": "foods",
+      "source_recipe_version_id": "recipe_versions"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_components": {
+    "columns": [
+      "id",
+      "recipe_version_id",
+      "title",
+      "sort_order"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_ingredients": {
+    "columns": [
+      "id",
+      "recipe_version_id",
+      "ingredient_id",
+      "component_id",
+      "quantity",
+      "uom_id",
+      "quantity_grams",
+      "sort_order",
+      "ingredient_snapshot"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions",
+      "ingredient_id": "ingredients",
+      "component_id": "recipe_components",
+      "uom_id": "uoms"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_directions": {
+    "columns": [
+      "id",
+      "recipe_version_id",
+      "direction_number",
+      "direction_text",
+      "image_url"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "kitchen_equipment_categories": {
+    "columns": [
+      "id",
+      "name"
+    ],
+    "references": {},
+    "primary": [
+      "id"
+    ]
+  },
+  "kitchen_equipment": {
+    "columns": [
+      "id",
+      "name",
+      "kitchen_equipment_category_id",
+      "image_url"
+    ],
+    "references": {
+      "kitchen_equipment_category_id": "kitchen_equipment_categories"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_kitchen_equipment": {
+    "columns": [
+      "id",
+      "recipe_version_id",
+      "kitchen_equipment_id",
+      "min_value",
+      "uom_id",
+      "scaling_mode",
+      "tip"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions",
+      "kitchen_equipment_id": "kitchen_equipment",
+      "uom_id": "uoms"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "meal_plans": {
+    "columns": [
+      "id",
+      "title",
+      "parent_meal_plan_id",
+      "owner_client_id",
+      "created_at",
+      "week_start_weekday"
+    ],
+    "references": {
+      "parent_meal_plan_id": "meal_plans",
+      "owner_client_id": "clients"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "meal_plan_versions": {
+    "columns": [
+      "id",
+      "meal_plan_id",
+      "version_number",
+      "status",
+      "published_at",
+      "created_at"
+    ],
+    "references": {
+      "meal_plan_id": "meal_plans"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "meal_plan_days": {
+    "columns": [
+      "id",
+      "meal_plan_version_id",
+      "day_number"
+    ],
+    "references": {
+      "meal_plan_version_id": "meal_plan_versions"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "meal_types": {
+    "columns": [
+      "id",
+      "code",
+      "title",
+      "sort_order"
+    ],
+    "references": {},
+    "primary": [
+      "id"
+    ]
+  },
+  "meals": {
+    "columns": [
+      "id",
+      "meal_plan_day_id",
+      "meal_type_id",
+      "title",
+      "sort_order"
+    ],
+    "references": {
+      "meal_plan_day_id": "meal_plan_days",
+      "meal_type_id": "meal_types"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "meal_items": {
+    "columns": [
+      "id",
+      "meal_id",
+      "food_id",
+      "quantity",
+      "uom_id",
+      "resolved_quantity_grams",
+      "sort_order",
+      "recipe_version_id",
+      "recipe_batch_format_id",
+      "recipe_portion_divisor"
+    ],
+    "references": {
+      "meal_id": "meals",
+      "food_id": "foods",
+      "uom_id": "uoms",
+      "recipe_version_id": "recipe_versions",
+      "recipe_batch_format_id": "recipe_batch_formats"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "client_meal_plan_assignments": {
+    "columns": [
+      "id",
+      "client_id",
+      "meal_plan_version_id",
+      "start_date",
+      "end_date",
+      "created_at",
+      "created_by",
+      "replaced_by_assignment_id"
+    ],
+    "references": {
+      "client_id": "clients",
+      "meal_plan_version_id": "meal_plan_versions",
+      "created_by": "users",
+      "replaced_by_assignment_id": "client_meal_plan_assignments"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_batch_formats": {
+    "columns": [
+      "id",
+      "recipe_version_id",
+      "code",
+      "policy_snapshot",
+      "kcal_total",
+      "protein_total",
+      "fat_total",
+      "carbs_total",
+      "calculation_hash"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions"
+    },
+    "primary": [
+      "id"
+    ]
+  },
+  "recipe_batch_quantities": {
+    "columns": [
+      "recipe_version_id",
+      "format_id",
+      "format_code",
+      "recipe_ingredient_id",
+      "mode",
+      "quantity",
+      "uom_id",
+      "quantity_grams",
+      "input_snapshot",
+      "manual_context",
+      "review_ack_hash"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions",
+      "format_id": "recipe_batch_formats",
+      "recipe_ingredient_id": "recipe_ingredients",
+      "uom_id": "uoms"
+    },
+    "primary": [
+      "format_id",
+      "recipe_ingredient_id"
+    ]
+  },
+  "recipe_batch_equipment": {
+    "columns": [
+      "recipe_version_id",
+      "format_id",
+      "recipe_kitchen_equipment_id",
+      "mode",
+      "min_value",
+      "uom_id",
+      "tip",
+      "input_snapshot",
+      "manual_context",
+      "review_ack_hash"
+    ],
+    "references": {
+      "recipe_version_id": "recipe_versions",
+      "format_id": "recipe_batch_formats",
+      "recipe_kitchen_equipment_id": "recipe_kitchen_equipment",
+      "uom_id": "uoms"
+    },
+    "primary": [
+      "format_id",
+      "recipe_kitchen_equipment_id"
+    ]
+  }
+}

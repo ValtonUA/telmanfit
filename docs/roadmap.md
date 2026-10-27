@@ -64,7 +64,7 @@
 | T1.2 | Модуль 01: 21 таблиця, функції, тригери, constraints та індекси. | Виконано |
 | T1.3 | Модуль 02: 5 нових таблиць; `users` збережено (BIGINT); FK перевірено. | Виконано |
 | T1.4 | Модулі 03–04 реалізовано (5+5 таблиць). | Виконано |
-| T1.5 | Вихідні дані отримано (84 записи у 5 аркушах): [джерельний JSON](reference-data/t1-5-source.json), [план імпорту](reference-data/t1-5-import-plan.md), read-only validator — `scripts/validate_t15_source.py`. Mapping окремих UOM/категорій/полів ще потребує рішення; seed не створювали. | Частково |
+| T1.5 | Вихідні дані отримано (84 записи у 5 аркушах): [джерельний JSON](reference-data/t1-5-source.json), [план імпорту](reference-data/t1-5-import-plan.md), read-only validator — `scripts/validate_t15_source.py`. Mapping канонічного T1.5 ще потребує рішення; seed не створювали. Окремий [local-only XLSX-v1](excel-nutrition-import.md) переносить перевірені каталоги й одну нову batch-чернетку за запуск без publish. | Частково |
 | T1.6 | SQL PASS=76 FAIL=0 GAP=0 та Laravel/PG regression у CI; [деталі](stage-1.md). | Виконано |
 
 **Межа:** Stage 1 створює таблиці й інваріанти, але не сервіс/Filament для харчування; T1.5 — окрема робота із значеннями, а не провал міграцій. [Докази](stage-1.md).

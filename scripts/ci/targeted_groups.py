@@ -18,6 +18,11 @@ SECURITY_PREFIXES = (
     "experiments/auth",
 )
 RECIPE_PREFIXES = (
+    "app/Services/Imports/",
+    "app/Console/Commands/ImportNutritionXlsx.php",
+    "resources/import/",
+    "tests/Postgres/NutritionImportTest.php",
+    "config/recipes.php",
     "app/Filament/Resources/MealPlans/",
     "app/Filament/Resources/Clients/Pages/ManageMealPlanAssignments.php",
     "app/Services/MealPlans/",

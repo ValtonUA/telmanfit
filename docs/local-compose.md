@@ -47,6 +47,12 @@ docker compose exec app php docker/local/mail.php
 
 ## Щоденна робота
 
+Редактор A/B/C у цьому локальному профілі має явний
+`TELMANFIT_LOCAL_RECIPE_EDITOR=true`; production/default профілі залишаються OFF.
+Для перенесення власних каталогів і першої чернетки з Excel див.
+[local-only імпорт Excel-v1](excel-nutrition-import.md). Він має dry-run,
+SHA256-підтвердження та захист від повторів і не публікує рецепти автоматично.
+
 ```powershell
 docker compose up -d
 ```
