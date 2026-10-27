@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalog;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use SimpleXMLElement;
@@ -17,8 +18,13 @@ final class R2ObjectLister implements R2ObjectSource
         $secretKey = (string) config('r2.secret_access_key');
         $parts = parse_url($endpoint);
 
-        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host']) || $bucket === '' || $accessKey === '' || $secretKey === '') {
-            throw new RuntimeException('Налаштування R2 неповне або endpoint не використовує HTTPS.');
+        if (trim($bucket) === '' || trim($accessKey) === '' || trim($secretKey) === '' || $endpoint === '') {
+            throw new RuntimeException('Налаштуйте R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID та R2_SECRET_ACCESS_KEY.');
+        }
+        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
+            || ! filter_var($endpoint, FILTER_VALIDATE_URL)) {
+            throw new RuntimeException('R2_ENDPOINT має бути HTTPS URL без credentials, query або fragment.');
         }
 
         $basePath = trim($parts['path'] ?? '', '/');
@@ -26,6 +32,7 @@ final class R2ObjectLister implements R2ObjectSource
         $host = $parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
         $query = ['list-type' => '2', 'max-keys' => '1000'];
         $objects = [];
+        $seenTokens = [];
 
         do {
             $queryString = $this->query($query);
@@ -42,18 +49,29 @@ final class R2ObjectLister implements R2ObjectSource
             $authorization = "AWS4-HMAC-SHA256 Credential={$accessKey}/{$scope}, SignedHeaders={$signedHeaders}, Signature={$signature}";
             $url = $parts['scheme'].'://'.$host.$path.'?'.$queryString;
 
-            $response = Http::withHeaders([
-                'Authorization' => $authorization,
-                'x-amz-content-sha256' => $payloadHash,
-                'x-amz-date' => $date,
-            ])->get($url);
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => $authorization,
+                    'x-amz-content-sha256' => $payloadHash,
+                    'x-amz-date' => $date,
+                ])->connectTimeout(10)->timeout(30)->withoutRedirecting()->get($url);
+            } catch (ConnectionException) {
+                // Не передавати transport exception: він може містити URL або headers.
+                throw new RuntimeException('Не вдалося з’єднатися з R2. Перевірте мережу, DNS і R2_ENDPOINT.');
+            }
 
             if (! $response->successful()) {
                 throw new RuntimeException('S3 ListObjectsV2 завершився HTTP '.$response->status().'.');
             }
 
-            $xml = simplexml_load_string($response->body());
-            if (! $xml instanceof SimpleXMLElement) {
+            $previousErrors = libxml_use_internal_errors(true);
+            try {
+                $xml = simplexml_load_string($response->body(), SimpleXMLElement::class, LIBXML_NONET);
+            } finally {
+                libxml_clear_errors();
+                libxml_use_internal_errors($previousErrors);
+            }
+            if (! $xml instanceof SimpleXMLElement || $xml->getName() !== 'ListBucketResult') {
                 throw new RuntimeException('R2 повернув некоректну XML-відповідь.');
             }
 
@@ -63,12 +81,20 @@ final class R2ObjectLister implements R2ObjectSource
                 $objects[] = ['key' => (string) $content->Key];
             }
 
-            $truncated = (string) ($xml->IsTruncated ?? 'false') === 'true';
+            $truncatedValue = (string) ($xml->IsTruncated ?? '');
+            if (! in_array($truncatedValue, ['true', 'false'], true)) {
+                throw new RuntimeException('R2 повернув некоректний IsTruncated.');
+            }
+            $truncated = $truncatedValue === 'true';
             $token = (string) ($xml->NextContinuationToken ?? '');
             if ($truncated && $token === '') {
                 throw new RuntimeException('R2 не повернув token для наступної сторінки.');
             }
             if ($truncated) {
+                if (isset($seenTokens[$token])) {
+                    throw new RuntimeException('R2 повторив token пагінації; читання зупинено.');
+                }
+                $seenTokens[$token] = true;
                 $query['continuation-token'] = $token;
             }
         } while ($truncated);

@@ -29,6 +29,8 @@ use App\Services\Auth\Restore\LocalComposeEpoch;
 use App\Services\Auth\Restore\LocalDemoEpoch;
 use App\Services\Auth\Restore\SyntheticEpoch;
 use App\Services\Auth\Restore\SyntheticMaintenanceMode;
+use App\Services\Catalog\R2ObjectLister;
+use App\Services\Catalog\R2ObjectSource;
 use App\Support\Session\ContextDatabaseSessionHandler;
 use Filament\Auth\Http\Responses\Contracts\LogoutResponse;
 use Illuminate\Contracts\Foundation\MaintenanceMode;
@@ -45,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(R2ObjectSource::class, R2ObjectLister::class);
         if ($this->app->environment('testing') && getenv('TELMANFIT_PG_TEST') === '1') {
             $this->app->singleton(ExternalEpoch::class, SyntheticEpoch::class);
             if (config('database.default') === 'pgsql') {
