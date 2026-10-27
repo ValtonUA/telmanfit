@@ -89,6 +89,11 @@ no-overflow та dark/light перевірки форм і станів. У dark
 read-only, create-form, catalog edit і search перевірки. Повні бізнес-операції та
 cancel/DB-invariance перевірки виконуються для кожної ширини у світлій темі.
 Backend PG/Unit/concurrency assertions не дублюються за темою.
+T4.5 browser очікує HTTP-відповідь саме свого Livewire method
+(`mountAction`, `callMountedAction`, `unmountAction`) та commit `succeed/onRender`.
+Фонова `pullNotificationsFromSession` не підтверджує завершення натиснутої дії.
+Окремі Chromium readiness регресії перевіряють цю кореляцію, failed action і
+відмову приймати інший method; timeout та бізнес-assertions не послаблюються.
 `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні MFA/OTP timer/cooldown перевірки збережені.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
 Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed

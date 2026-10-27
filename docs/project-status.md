@@ -130,6 +130,11 @@ T4.5: локальні PostgreSQL/Livewire **20 PASS / 264 assertions**, concurr
 із lock waits, Chromium **8 груп PASS** (1440/390/320 light/dark, stale/CSRF/revocation),
 Pint і docs guard PASS. [Предметний review, файли та межі](evidence/meal-plan-assignments/report.md).
 T4.5 змерджено після Fast, Docs і Targeted; Full CI не є чинною вимогою.
+QA-1 усуває помилкове приймання фонового Livewire notification response у T4.5
+browser helper: очікується method відповідної дії та `succeed/onRender`, без
+зміни timeout або бізнес-assertions. [Результати й межі QA-1](evidence/qa-1/report.md):
+browser5/5 та окремий штатний cold infrastructure acceptance на GitHub-hosted
+runner завершені; cleanup власного stack підтверджений, production activation не виконано.
 
 CI-COST-2 додає bounded виконання по дві ізольовані PG/browser групи в одному job,
 процесний OPcache лише для synthetic Stage1 Chromium HTTP-серверів,
