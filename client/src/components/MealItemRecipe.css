@@ -1,0 +1,32 @@
+.recipe-page { overflow-wrap: anywhere; }
+.recipe-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 32px; align-items: center; }
+.recipe-intro h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); margin-block: 16px; }
+.recipe-cover img, .recipe-cover .recipe-photo-fallback { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 18px; }
+.recipe-assigned { font-weight: 650; color: var(--plan-ink); }
+.recipe-columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; margin-block: 24px; }
+.recipe-columns .card { margin: 0; min-width: 0; }
+.recipe-ingredients ul { list-style: none; padding: 0; }
+.recipe-ingredients li { display: flex; gap: 18px; justify-content: space-between; border-bottom: 1px solid var(--plan-line); padding-block: 14px; }
+.recipe-ingredients li > div { min-width: 0; }
+.recipe-ingredients li strong { flex-shrink: 0; max-width: 45%; text-align: right; }
+.recipe-component { display: block; font-size: 12px; color: var(--plan-muted); margin-bottom: 4px; }
+.recipe-equipment { padding-left: 20px; }
+.recipe-equipment li { padding-block: 10px; }
+.recipe-equipment p { margin-block: 5px; }
+.recipe-directions { margin-bottom: 28px; }
+.recipe-directions ol { list-style: none; padding: 0; }
+.recipe-directions li { padding-block: 18px; border-bottom: 1px solid var(--plan-line); }
+.recipe-directions p { white-space: pre-wrap; line-height: 1.85; max-width: 70ch; }
+.recipe-step-photo { max-width: 640px; margin-top: 20px; }
+.recipe-step-photo img, .recipe-step-photo .recipe-photo-fallback { width: 100%; max-height: 480px; object-fit: contain; border-radius: 14px; }
+.recipe-step-photo .recipe-photo-fallback { min-height: 140px; }
+.dish-link { display: flex; gap: inherit; color: inherit; text-decoration: none; width: 100%; min-width: 0; }
+.dish:has(.dish-link):hover { border-color: #53765b; }
+.dish-link:focus-visible { outline: 3px solid #53765b; outline-offset: 8px; border-radius: 12px; }
+@media (max-width: 640px) {
+  .recipe-intro, .recipe-columns { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .recipe-page .card { padding: 22px 16px; }
+}
+@media (prefers-color-scheme: dark) {
+  .recipe-page a.button { background: #b9d7bb; color: #15251e; }
+}

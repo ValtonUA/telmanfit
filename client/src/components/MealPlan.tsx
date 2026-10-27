@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import './MealPlan.css'
+import './MealItemRecipe.css'
 
 type DayReference = { day_number: number; date: string }
 type MealItem = { id: string; kind: 'unavailable' } | {
@@ -20,22 +21,23 @@ function dateLabel(date: string, short = false): string {
     : { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${date}T12:00:00`))
 }
 
-function Dish({ item }: { item: MealItem }) {
+function Dish({ item, week, day }: { item: MealItem; week: number | null; day: number }) {
   const [failed, setFailed] = useState(false)
   if (item.kind === 'unavailable') return <li className="dish unavailable">Позиція меню тимчасово недоступна. Зверніться до тренера.</li>
-  return <li className="dish">
+  const content = <>
     {item.image_url && !failed
       ? <img className="dish-image" src={item.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       : <div className="dish-image photo-placeholder"><span aria-hidden="true">◌</span><span>Фото відсутнє</span></div>}
     <div className="dish-copy"><h3>{item.title}</h3><p className="dish-quantity">{item.quantity_label}</p>
-      {item.kind === 'recipe' && <p className="recipe-later">Перегляд рецепта буде доступний пізніше</p>}
+      {item.kind === 'recipe' && <p className="recipe-later">Відкрити рецепт →</p>}
     </div>
-  </li>
+  </>
+  return <li className="dish">{item.kind === 'recipe' ? <a className="dish-link" href={`/app/meal-plan/items/${item.id}/recipe?week=${week}&day=${day}`}>{content}</a> : content}</li>
 }
 
 export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
   const [data, setData] = useState<MealPlanResponse>()
-  const [selectedDay, setSelectedDay] = useState<number>()
+  const [selectedDay, setSelectedDay] = useState<number>(Number(new URLSearchParams(window.location.search).get('day')) || 0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [changed, setChanged] = useState(false)
@@ -71,7 +73,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
   }
 
   useEffect(() => {
-    const initial = window.setTimeout(() => { void load() }, 0)
+    const initial = window.setTimeout(() => { void load(Number(new URLSearchParams(window.location.search).get('week')) || undefined) }, 0)
     const refresh = () => { if (document.visibilityState === 'visible') void load(current.current?.week ?? undefined) }
     document.addEventListener('visibilitychange', refresh)
     window.addEventListener('focus', refresh)
@@ -83,6 +85,9 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
       document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh)
     }
   }, [])
+  useEffect(() => {
+    if (data?.week && selectedDay && !loading) window.history.replaceState(null, '', `/app/meal-plan?week=${data.week}&day=${selectedDay}`)
+  }, [data, selectedDay, loading])
   const day = data?.days.find(d => d.day_number === selectedDay)
   return <div className="meal-plan">
     <a className="back-link" href="/app">← Особистий кабінет</a>
@@ -108,7 +113,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
         <section className="day-menu" aria-live="polite" aria-label="Меню вибраного дня">
           {day ? <><div className="day-heading"><span className="eyebrow">День {day.day_number}</span><h2>{dateLabel(day.date)}</h2></div>
             {day.meals.length && day.meals.some(meal => meal.items.length) ? day.meals.map(meal => <section className="meal-section" key={meal.id}>
-              <h3 className="meal-title">{meal.title}</h3><ul className="dish-list">{meal.items.map(item => <Dish key={`${item.id}-${item.kind === 'unavailable' ? '' : item.image_url}`} item={item} />)}</ul>
+              <h3 className="meal-title">{meal.title}</h3><ul className="dish-list">{meal.items.map(item => <Dish key={`${item.id}-${item.kind === 'unavailable' ? '' : item.image_url}`} item={item} week={data.week} day={day.day_number} />)}</ul>
               {!meal.items.length && <p className="muted">Для цього прийому меню недоступне.</p>}
             </section>) : <div className="card plan-state"><h3>Для цього дня меню недоступне</h3><p>Зверніться до тренера або виберіть інший день.</p></div>}
           </> : <div className="card plan-state"><h2>Немає доступного дня</h2><p>Дні раціону закінчилися або не входять у період призначення. Уточніть наступний раціон у тренера.</p></div>}

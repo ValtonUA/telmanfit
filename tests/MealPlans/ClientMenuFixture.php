@@ -11,9 +11,12 @@ trait ClientMenuFixture
 {
     use BatchFixture, LegacyFixture;
 
-    public function menuVersion(int $days = 14, int $weekday = 1, ?int $owner = null): array
+    public function menuVersion(int $days = 14, int $weekday = 1, ?int $owner = null, ?callable $prepareBatch = null): array
     {
         $batch = $this->batch();
+        if ($prepareBatch !== null) {
+            $prepareBatch($batch);
+        }
         $this->publish($batch['version']);
         $legacy = $this->legacy(true);
         $legacyFood = DB::table('recipe_versions')->where('id', $legacy['version'])->value('food_id');

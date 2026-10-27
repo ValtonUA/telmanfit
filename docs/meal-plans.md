@@ -720,7 +720,7 @@ GET/HEAD не пишуть у жодні таблиці, не запускают
 та без чотирьох вкладок T5.5. Login, onboarding і security збережені. Чинний
 `api` використовується з credentials/no-store. Тижні/дні, selected date, авторський
 порядок, порції/UOM та logical covers походять із API, без демонстраційних страв.
-Картка рецепта зберігає exact `recipe_version_id`, але до T5.4 показує
+Історичний зріз T5.2 зберігав exact `recipe_version_id` і показував
 «Перегляд рецепта буде доступний пізніше», без 404/Filament/latest переходів.
 Інгредієнт не має recipe-посилання. КБЖВ, вільні калорії й totals не показуються.
 
@@ -743,3 +743,10 @@ read-only endpoint, без `/api/me` idle refresh. Зміна assignment/version
 Read-only агрегатор призначеного тижня та захищений API описані в
 [контракті списку покупок](shopping-lists.md). Використовуються чинні календар T5.2
 та Model I без зміни їхньої поведінки.
+
+
+## Клієнтський рецепт T5.4
+
+Захищене читання рецепта конкретного meal item, physical composition A/B/C,
+токени, обладнання та помилки — [client-recipes.md](client-recipes.md).
+Клієнтський UX і повернення — [client-app.md](client-app.md#3-раціон-розклад--меню--рецепт).
