@@ -20,6 +20,10 @@ PostgreSQL і browser регресії запускай локальними run
 не GitHub CI на конкретному SHA. Не викликай повний CI workflow або Full suites у
 GitHub Actions.
 
+Зміни адаптерів `app/Services/Catalog/`, R2-команди, `config/r2.php` або
+`R2ImageMatcherTest` обирають групу `recipe`, що містить PostgreSQL-тести
+каталогів і R2 dry-run. Вони використовують лише synthetic source/HTTP mocks.
+
 ## Набори тестів для локального запуску
 
 Ці suite-файли, раннери й reusable workflow-файли збережені для цільової локальної

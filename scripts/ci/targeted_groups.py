@@ -18,6 +18,10 @@ SECURITY_PREFIXES = (
     "experiments/auth",
 )
 RECIPE_PREFIXES = (
+    "app/Services/Catalog/",
+    "app/Console/Commands/MatchR2Images.php",
+    "config/r2.php",
+    "tests/Postgres/R2ImageMatcherTest.php",
     "app/Services/Imports/",
     "app/Console/Commands/ImportNutritionXlsx.php",
     "resources/import/",

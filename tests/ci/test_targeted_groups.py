@@ -13,6 +13,13 @@ select_groups = targeted.select_groups
 
 
 class TargetedGroupTests(unittest.TestCase):
+    def test_r2_changes_run_catalog_postgresql_regressions(self):
+        for path in ("app/Services/Catalog/R2ObjectLister.php",
+                     "app/Console/Commands/MatchR2Images.php",
+                     "config/r2.php", "tests/Postgres/R2ImageMatcherTest.php"):
+            with self.subTest(path=path):
+                self.assertEqual(select_groups([path]), ("recipe",))
+
     def test_unrelated_changes_skip_the_heavy_postgresql_browser_runner(self):
         for paths in ([], ["README.md"], [".github/workflows/targeted.yml"],
                       ["scripts/ci/pre_merge.py"],
