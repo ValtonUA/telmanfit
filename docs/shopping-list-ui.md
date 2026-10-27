@@ -1,4 +1,6 @@
-# T5.7a — екран списку покупок (Draft PR)
+# T5.7a — екран списку покупок (реалізовано в `master`)
+
+Змерджено [PR #94](https://github.com/ValtonUA/telmanfit/pull/94), squash `33ad5c218da712a3c5869fa4bb0ee8e8d1f97716`; Fast/Docs/Targeted PASS на `9f10713d`. Production OFF, робочу БД не змінено.
 
 ## Контекст і межі
 
@@ -25,6 +27,6 @@ FEASIBILITY: PASS — наявні API, React SPA fallback, чотири вкл�
 
 ## Приймання
 
-На ізольованому PostgreSQL 18 із синтетичним T5.2 fixture/real AUTH-4/5 ClientSession браузерний runner перевіряє: реальне значення API, точні грами, selector week=1→2, пряму адресу/reload, повернення, 409 без stale list, retry, responsive light/dark 1440/390/320. Backend T5.3 security/read-only тест лишається без змін і входить у штатний regression. Обов'язкові Fast/Docs/Targeted на фінальному SHA PR. Цей опис не підтверджує production-готовності та не дозволяє жодних змін робочої БД.
+На ізольованому PostgreSQL 18 із синтетичним T5.2 fixture/real AUTH-4/5 ClientSession браузерний runner перевіряє: реальне значення API, точні грами, selector week=1→2, пряму адресу/reload, повернення, 409 без stale list, retry, responsive light/dark 1440/390/320. Backend T5.3 security/read-only тест лишається без змін і входить у штатний regression. Fast/Docs/Targeted пройшли на фінальному SHA PR. Цей опис не підтверджує production-готовності та не дозволяє жодних змін робочої БД.
 
 Наступне T5.7b — кухонні сесії та мегарецепти: data contract/версіонування/безпека приготування потребують окремого погодження.
