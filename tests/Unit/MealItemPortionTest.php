@@ -4,10 +4,27 @@ namespace Tests\Unit;
 
 use App\Domain\MealPlans\MealItemPortion;
 use DomainException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class MealItemPortionTest extends TestCase
 {
+    #[DataProvider('invalidConsumption')]
+    public function test_invalid_consumption_is_rejected_with_valid_nutrients(string $quantity, int $divisor): void
+    {
+        $this->expectException(DomainException::class);
+        MealItemPortion::nutrition(array_fill_keys(['kcal', 'protein', 'fat', 'carbs'], '1.000000'), $quantity, $divisor);
+    }
+
+    public static function invalidConsumption(): array
+    {
+        return [
+            'zero-divisor' => ['0.50', 0],
+            'negative-divisor' => ['0.50', -1],
+            'zero-quantity' => ['0', 1],
+        ];
+    }
+
     public function test_decimal_math_rounds_only_after_consumed_fraction(): void
     {
         $this->assertSame(['kcal' => '0.000001', 'protein' => '0.166667', 'fat' => '16666666.666667', 'carbs' => '0.000000'],
