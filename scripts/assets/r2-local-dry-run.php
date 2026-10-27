@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Catalog\R2ImageManifest;
 use App\Services\Catalog\R2ImageMatcher;
 use App\Services\Catalog\R2ObjectSource;
 use App\Support\Presentation\PublicImageUrl;
@@ -44,8 +45,9 @@ try {
     }
     $before = hash('sha256', json_encode($records));
     $output = new BufferedOutput;
-    $exit = $kernel->handle(new ArrayInput(['command' => 'assets:match-r2-images', '--dry-run' => true, '--exact-only' => true, '--aliases-file' => '/audit/aliases.json', '--public-base-url' => $base]), $output);
+    $exit = $kernel->handle(new ArrayInput(['command' => 'assets:match-r2-images', '--dry-run' => true, '--exact-only' => true, '--aliases-file' => '/audit/aliases.json', '--public-base-url' => $base, '--manifest-file' => '/audit/manifest.json']), $output);
     $plan = $app->make(R2ImageMatcher::class)->plan($objects, $records, $aliases, true);
+    R2ImageManifest::load('/audit/manifest.json')->verify($plan, $base);
     $updates = [];
     foreach ($plan as $row) {
         if ($row['status'] !== 'confident') {

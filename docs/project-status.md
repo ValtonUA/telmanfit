@@ -19,10 +19,14 @@
 перезапускалися; перенесення PUBLIC_IMAGE_HOSTS у ці процеси — обов’язкова
 передумова окремо погодженого rollout. Застосування до БД не виконувалося.
 
-Локально: 19 Unit/Feature тестів (119 assertions), 2 ізольовані PostgreSQL18
-тести на temporary synthetic tables (28 assertions), без міграцій/seeders;
+Локально: 19 Unit/Feature тестів (119 assertions), 20 ізольованих PostgreSQL18
+тестів на synthetic таблицях (254 assertions), без міграцій/seeders;
 Pint — 6 файлів PASS; CI selector — 5 тестів PASS. Повторне застосування, збереження URL у трьох каталогах,
 канонічний префікс і відмова для недозволеного host перевірені.
+Manifest тепер перевіряється автоматично за table/ID/name/key/URL перед
+записом у тій самій PostgreSQL READ COMMITTED транзакції під блокуванням
+трьох каталогів. Зміна набору або інший наявний URL блокує всю операцію;
+реальний apply не виконувався.
 [Механізм](r2-image-matching.md), [план і перевірки](r2-image-application-plan.md).
 
 ### INFECTION-1

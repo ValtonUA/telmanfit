@@ -32,7 +32,8 @@ kitchen_equipment#32 parchment. Попередні 78 відповідносте
    setup або bootstrap для rollout нижче.
 4. Відтворити [read-only запуск](r2-image-matching.md) і порівняти ID, назви й
    image_url із manifest. Очікувати рівно 85/0/10/37. Будь-яка зміна цілей або
-   непорожній URL зупиняє застосування до нового рішення. Зберегти цей JSON
+   інший наявний URL зупиняє застосування до нового рішення. Повторний apply
+   приймає лише NULL або точний URL із manifest; pre-apply runner очікує NULL. Зберегти цей JSON
    як передопераційний експорт image_url. При зміні R2 повторити HEAD 85 URL.
 
 ## Rollout allowlist без bootstrap (план, не виконано)
@@ -74,17 +75,20 @@ Compose тут потрібен лише для interpolation PUBLIC_IMAGE_HOSTS
 ## Запис після окремого дозволу
 
 Команда запису має бути тільки такою (у одноразовому процесі з loader,
-перевіреною локальною DB identity, цими двома PHP bind mounts та aliases):
+перевіреною локальною DB identity, трьома PHP bind mounts (matcher, manifest verifier, command), manifest та aliases):
 
 ```text
-assets:match-r2-images --apply --exact-only --aliases-file=/audit/aliases.json --public-base-url=https://assets.telmanfit.com.ua
+assets:match-r2-images --apply --exact-only --manifest-file=/audit/manifest.json --aliases-file=/audit/aliases.json --public-base-url=https://assets.telmanfit.com.ua
 ```
 
 Для запису PostgreSQL READ ONLY не використовується; файлові mounts і root
 filesystem залишаються read-only, entrypoint php, bootstrap не викликається.
-Спочатку той самий процес має перевірити поточні 85 цілей і відсутність інших
-confident цілей проти JSON manifest. Лише після успішної звірки викликається
-команда. Не запускати apply простим копіюванням dry-run runner-а: він навмисно
+Команда сама блокує три каталоги SHARE ROW EXCLUSIVE у PostgreSQL
+READ COMMITTED, заново читає дані й звіряє весь набір table/ID/name/key/URL
+проти manifest безпосередньо перед записом у тій самій транзакції.
+Відсутній/зайвий збіг, дубль, змінена назва/ID/key/URL або інший наявний URL
+блокують усю операцію. Уже встановлений точний URL зберігається (UNCHANGED).
+Під час lock інші записи до трьох каталогів очікують завершення транзакції. Не запускати apply простим копіюванням dry-run runner-а: він навмисно
 містить READ ONLY й ніколи не виконує apply.
 
 Очікуваний результат: APPLIED 85 (47/37/1), CONFLICT 0; 37 legacy пропущено,
@@ -110,10 +114,11 @@ CONFLICT, припинити подальші дії і перевірити ф�
 
 ## Ізольовані тести
 
-19 Unit/Feature — 119 assertions; 2 PostgreSQL18 — 28 assertions; Pint 6 файлів PASS;
+19 Unit/Feature — 119 assertions; 20 PostgreSQL18 — 254 assertions; Pint 6 файлів PASS;
 CI selector — 5 тестів PASS; documentation guard і Compose config — PASS.
 PostgreSQL-тести використовують власний новий cluster без мережі/наявних volumes
-і temporary synthetic tables, без міграцій/seeders. Перевірено read-only dry-run,
+і synthetic таблиці, без міграцій/seeders; concurrency-тест використовує
+власну тимчасову schema, видиму двом сесіям, та прибирає її після перевірки. Перевірено read-only dry-run,
 відсутність fallback на equipment/, порядок ключів, duplicate canonical conflicts,
 exact-only без приховування точних неоднозначностей, збереження наявних URL
 у всіх трьох каталогах, повторне застосування та відмову для недозволеного host.

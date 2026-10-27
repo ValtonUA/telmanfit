@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Catalog\R2ImageManifest;
 use App\Services\Catalog\R2ImageMatcher;
 use App\Services\Catalog\R2ObjectSource;
 use App\Support\Presentation\PublicImageUrl;
@@ -17,6 +18,7 @@ final class MatchR2Images extends Command
         {--apply : Записати лише однозначні відповідності з image_url IS NULL}
         {--exact-only : Лише точні назви й aliases, без fuzzy-пропозицій}
         {--public-base-url= : Публічний HTTPS base URL для застосування}
+        {--manifest-file= : Затверджений JSON manifest; типовий docs/assets/r2-local-image-plan.json}
         {--aliases-file= : JSON зі синонімами й історичними кодами, прив’язаними до типу та ID запису}';
 
     protected $description = 'Зіставити публічні зображення Cloudflare R2 з каталогами без зміни бізнес-даних';
@@ -33,17 +35,36 @@ final class MatchR2Images extends Command
 
         try {
             $objects = $lister->list();
-            $records = $this->records();
             $aliases = $this->aliases();
-            $plan = $matcher->plan($objects, $records, $aliases, (bool) $this->option('exact-only'));
-            $this->markConflicts($plan);
-
+            $exactOnly = (bool) $this->option('exact-only');
+            $manifestPath = (string) $this->option('manifest-file');
+            $manifest = ($apply || $manifestPath !== '')
+                ? R2ImageManifest::load($manifestPath ?: base_path('docs/assets/r2-local-image-plan.json')) : null;
+            $baseUrl = rtrim((string) $this->option('public-base-url'), '/');
+            if ($manifest !== null && ! $exactOnly) {
+                throw new RuntimeException('Manifest потребує --exact-only.');
+            }
             if ($apply) {
-                $baseUrl = rtrim((string) $this->option('public-base-url'), '/');
-                if ($baseUrl === '') {
-                    throw new RuntimeException('--public-base-url обов’язковий для --apply.');
+                $plan = DB::transaction(function () use ($objects, $aliases, $matcher, $manifest, $baseUrl): array {
+                    if (DB::getDriverName() !== 'pgsql') {
+                        throw new RuntimeException('Manifest apply потребує PostgreSQL.');
+                    }
+                    if (DB::selectOne('SHOW transaction_isolation')->transaction_isolation !== 'read committed') {
+                        throw new RuntimeException('Manifest apply потребує READ COMMITTED для актуальної звірки після lock.');
+                    }
+                    // Блокує INSERT/UPDATE/DELETE, включно з новими кандидатами й перейменуванням.
+                    DB::statement('LOCK TABLE ingredients, kitchen_equipment, recipes IN SHARE ROW EXCLUSIVE MODE');
+                    $plan = $matcher->plan($objects, $this->records(), $aliases, true);
+                    $manifest->verify($plan, $baseUrl);
+                    $this->apply($plan, $baseUrl);
+
+                    return $plan;
+                });
+            } else {
+                $plan = $matcher->plan($objects, $this->records(), $aliases, $exactOnly);
+                if ($manifest !== null) {
+                    $manifest->verify($plan, $baseUrl);
                 }
-                $this->apply($plan, $baseUrl);
             }
 
             $this->render($plan, $apply);
@@ -96,29 +117,6 @@ final class MatchR2Images extends Command
         }
 
         return $aliases;
-    }
-
-    private function markConflicts(array &$plan): void
-    {
-        $targets = [];
-        foreach ($plan as $index => $row) {
-            if ($row['status'] === 'confident') {
-                $targets[$row['type'].':'.$row['record']['id']][] = $index;
-            }
-        }
-
-        foreach ($targets as $indexes) {
-            if (count($indexes) < 2) {
-                continue;
-            }
-            foreach ($indexes as $index) {
-                $candidate = $plan[$index]['record'];
-                $plan[$index]['status'] = 'ambiguous';
-                $plan[$index]['suggestions'] = [$candidate];
-                $plan[$index]['record'] = null;
-                $plan[$index]['reason'] = 'Кілька об’єктів відповідають одному запису.';
-            }
-        }
     }
 
     private function apply(array $plan, string $baseUrl): void

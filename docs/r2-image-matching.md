@@ -38,8 +38,20 @@ php artisan assets:match-r2-images --dry-run --exact-only --aliases-file=/audit/
 
 Потрібен рівно один режим: `--dry-run` або `--apply`. Застосування потребує
 окремого дозволу й `--public-base-url` з HTTPS host у PUBLIC_IMAGE_HOSTS.
-Endpoint R2 не є публічним image host. PublicImageUrl::safe перевіряє кожен
-згенерований URL до транзакції запису. Значення image_url не перезаписуються:
+Endpoint R2 не є публічним image host. Для apply обов’язковий `--exact-only`; типовий manifest —
+`docs/assets/r2-local-image-plan.json` (явний шлях: `--manifest-file`).
+`R2ImageManifest` звіряє повний набір table/ID/name/key/URL, унікальність
+цілей і ключів та HTTPS allowlist. Пропуски, зайві відповідності, зміни
+назв/ID/key/URL або наявний інший image_url завершують команду без записів.
+Збіг наявного URL із manifest дозволяє ідемпотентний повтор.
+
+Apply працює лише на PostgreSQL у READ COMMITTED: одна транзакція отримує
+SHARE ROW EXCLUSIVE lock на три каталоги, заново читає записи, будує план,
+звіряє manifest і виконує записи до звільнення lock. Конкурентні INSERT,
+UPDATE й DELETE чекають; очікування lock може затримати локальне редагування.
+Перевірка не покладається на попередній dry-run. R2 listing — знімок ключів
+на початку команди; блокування БД не блокує зміну вмісту об’єктів у R2.
+PublicImageUrl::safe перевіряє кожен URL до першого запису. Значення image_url не перезаписуються:
 запис відбувається лише через `WHERE image_url IS NULL`; збіг із наявним URL
 має UNCHANGED, інший URL — CONFLICT. Повторне застосування не створює нових змін.
 
@@ -51,12 +63,12 @@ bootstrap, міграції або `compose up --build` для цієї пере
 ```powershell
 $repo = (Get-Location).Path
 $private = 'C:\Projects\private\telmanfit-r2-readonly.env'
-Get-Content -Raw -Encoding UTF8 scripts/assets/r2-local-dry-run.php | docker run --rm -i --read-only --network telmanfit-local_local --volumes-from telmanfit-local-app-1:ro --mount "type=bind,source=$repo\app\Services\Catalog\R2ImageMatcher.php,target=/var/www/html/app/Services/Catalog/R2ImageMatcher.php,readonly" --mount "type=bind,source=$repo\app\Console\Commands\MatchR2Images.php,target=/var/www/html/app/Console/Commands/MatchR2Images.php,readonly" --mount "type=bind,source=$repo\docs\assets\r2-local-image-aliases.json,target=/audit/aliases.json,readonly" --env-file $private -e 'PGOPTIONS=-c default_transaction_read_only=on' --entrypoint php telmanfit-local-app > r2-local-dry-run.json
+Get-Content -Raw -Encoding UTF8 scripts/assets/r2-local-dry-run.php | docker run --rm -i --read-only --network telmanfit-local_local --volumes-from telmanfit-local-app-1:ro --mount "type=bind,source=$repo\app\Services\Catalog\R2ImageMatcher.php,target=/var/www/html/app/Services/Catalog/R2ImageMatcher.php,readonly" --mount "type=bind,source=$repo\app\Console\Commands\MatchR2Images.php,target=/var/www/html/app/Console/Commands/MatchR2Images.php,readonly" --mount "type=bind,source=$repo\app\Services\Catalog\R2ImageManifest.php,target=/var/www/html/app/Services/Catalog/R2ImageManifest.php,readonly" --mount "type=bind,source=$repo\docs\assets\r2-local-image-plan.json,target=/audit/manifest.json,readonly" --mount "type=bind,source=$repo\docs\assets\r2-local-image-aliases.json,target=/audit/aliases.json,readonly" --env-file $private -e 'PGOPTIONS=-c default_transaction_read_only=on' --entrypoint php telmanfit-local-app > r2-local-dry-run.json
 if ($LASTEXITCODE -ne 0) { throw 'Dry-run failed' }
 ```
 
 Runner перевіряє local/pgsql identity, host database, префікс імені локальної БД,
-allowlist, 85 порожніх цілей, відсутність ambiguous та незмінність каталогу.
+allowlist, повний затверджений manifest, 85 порожніх цілей, відсутність ambiguous та незмінність каталогу.
 PostgreSQL REPEATABLE READ READ ONLY завершується ROLLBACK. Код команди/matcher-а
 та aliases монтуються read-only; робочі контейнери не змінюються.
 

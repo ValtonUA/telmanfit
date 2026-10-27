@@ -42,7 +42,7 @@ class R2ImageMatcherCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_dry_run_is_read_only_and_apply_skips_ambiguity_and_existing_images(): void
+    public function test_dry_run_is_read_only_and_unapproved_apply_cannot_write(): void
     {
         $ingredient = DB::table('ingredients')->insertGetId(['name' => 'chicken fillet']);
         $ambiguousA = DB::table('ingredients')->insertGetId(['name' => 'green pepper']);
@@ -75,16 +75,16 @@ class R2ImageMatcherCommandTest extends TestCase
         $this->assertNull(DB::table('kitchen_equipment')->where('id', $equipment)->value('image_url'));
         $this->assertNull(DB::table('recipes')->where('id', $recipe)->value('image_url'));
 
-        $this->assertSame(0, Artisan::call('assets:match-r2-images', [
+        $this->assertSame(1, Artisan::call('assets:match-r2-images', [
             '--apply' => true,
             '--public-base-url' => 'https://images.example.com',
             '--aliases-file' => $aliasesFile,
         ]));
         unlink($aliasesFile);
-        $this->assertSame('https://images.example.com/ingredients/chicken_fillet.webp', DB::table('ingredients')->where('id', $ingredient)->value('image_url'));
-        $this->assertSame('https://images.example.com/ingredients/old_black_pepper.webp', DB::table('ingredients')->where('id', $aliasMatch)->value('image_url'));
-        $this->assertSame('https://images.example.com/kitchen_equipment/kitchen_scale.webp', DB::table('kitchen_equipment')->where('id', $equipment)->value('image_url'));
-        $this->assertSame('https://images.example.com/recipes/buckwheat_mushrooms.webp', DB::table('recipes')->where('id', $recipe)->value('image_url'));
+        $this->assertNull(DB::table('ingredients')->where('id', $ingredient)->value('image_url'));
+        $this->assertNull(DB::table('ingredients')->where('id', $aliasMatch)->value('image_url'));
+        $this->assertNull(DB::table('kitchen_equipment')->where('id', $equipment)->value('image_url'));
+        $this->assertNull(DB::table('recipes')->where('id', $recipe)->value('image_url'));
         $this->assertNull(DB::table('ingredients')->whereIn('id', [$ambiguousA, $ambiguousB])->whereNotNull('image_url')->value('image_url'));
         $this->assertSame('https://images.example.com/current.webp', DB::table('ingredients')->where('id', $existing)->value('image_url'));
     }

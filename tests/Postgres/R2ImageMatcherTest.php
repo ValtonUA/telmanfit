@@ -42,7 +42,7 @@ class R2ImageMatcherTest extends PostgresTestCase
         Http::assertSentCount(1);
     }
 
-    public function test_dry_run_is_read_only_and_apply_only_writes_unique_empty_matches(): void
+    public function test_dry_run_is_read_only_and_apply_without_exact_manifest_cannot_write(): void
     {
         $ingredientId = $this->ingredient('chicken fillet');
         $ambiguousOne = $this->ingredient('green pepper');
@@ -86,11 +86,11 @@ class R2ImageMatcherTest extends PostgresTestCase
             '--public-base-url' => 'https://images.example.com',
         ]);
 
-        $this->assertSame(0, $exit, Artisan::output());
-        $this->assertSame('https://images.example.com/ingredients/chicken_fillet.webp', DB::table('ingredients')->where('id', $ingredientId)->value('image_url'));
+        $this->assertSame(1, $exit, Artisan::output());
+        $this->assertNull(DB::table('ingredients')->where('id', $ingredientId)->value('image_url'));
         $this->assertNull(DB::table('ingredients')->whereIn('id', [$ambiguousOne, $ambiguousTwo])->whereNotNull('image_url')->value('image_url'));
-        $this->assertSame('https://images.example.com/kitchen_equipment/kitchen_scale.webp', DB::table('kitchen_equipment')->where('id', $equipmentId)->value('image_url'));
-        $this->assertSame('https://images.example.com/recipes/buckwheat_mushrooms.webp', DB::table('recipes')->where('id', $recipeId)->value('image_url'));
+        $this->assertNull(DB::table('kitchen_equipment')->where('id', $equipmentId)->value('image_url'));
+        $this->assertNull(DB::table('recipes')->where('id', $recipeId)->value('image_url'));
         $this->assertSame('https://images.example.com/old.png', DB::table('ingredients')->where('id', $existingId)->value('image_url'));
     }
 
