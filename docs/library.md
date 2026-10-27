@@ -1,8 +1,8 @@
-# T5.6 — бібліотека «Корисне» (Draft, до merge)
+# T5.6 — бібліотека «Корисне» (реалізовано в `master`)
 
 ## Мета та статус
 
-Єдина бібліотека для 5–10 клієнтів. FEASIBILITY: PASS — чинні Filament 5, AUTH-4/5 ClientSession, SPA та PostgreSQL 18; зовнішніх API, реальних даних чи production доступу не потрібно. PR з цією специфікацією — лише Draft, без merge/активації.
+Єдина бібліотека для 5–10 клієнтів. Реалізовано в [PR #92](https://github.com/ValtonUA/telmanfit/pull/92), squash-commit `e207d88e7bde8c7b9616fc2535a5d6f15c6e41be`. Чинні Filament 5, AUTH-4/5 ClientSession, SPA та PostgreSQL 18 використано без нових зовнішніх API чи залежностей. **Код змерджено, але production-активацію та застосування міграції до робочої БД не виконано.**
 
 ## Модель і права
 
@@ -28,4 +28,4 @@ Markdown конвертується через уже встановлений l
 
 ## Приймання й докази
 
-PostgreSQL 18 isolated synthetic: CHECK опублікованого джерела та timestamp, статуси й приховування, невідомий ID, валідність URL, HTML/XSS/несанкціоновані зображення, unpublish; authenticated GET/HEAD без DML, revoked/expired session. Filament ACL і поля перевірити в тесті/Chromium. React responsive 1440/390/320, light/dark, прямий URL, no horizontal overflow. Fast PR / Docs / Targeted лише на фінальному SHA; production OFF, без merge. Документ не є дозволом застосовувати міграції до робочої БД.
+Ізольовані PostgreSQL 18 та Auth/Unit тести охоплюють SQL CHECK, приховування чернеток, відкликання сесій, GET/HEAD без DML, санітизацію Markdown і захист URL, Filament ACL і цикл публікації. Браузерний набір перевіряє клієнтські сторінки й прямі URL, responsive 1440/390/320 light/dark. GitHub **Fast PR / Documentation health / Targeted PR regressions — PASS** на фінальному SHA `adb9c9430f5fe665ddf066702b99ecfed598064d` перед злиттям. Реальні середовища не тестувалися і не мігрувалися; цей документ не є дозволом застосовувати міграцію до робочої БД.
