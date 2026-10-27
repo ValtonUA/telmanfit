@@ -95,7 +95,7 @@ def login(page, email=EMAIL, recovery=None, factor=True):
         click(page, 'Підтвердити', 'auth/mfa/verify')
     else:
         assert result['next'] == 'authenticated'
-    expect(page.get_by_role('heading', name='Вітаємо, Синтетичний клієнт')).to_be_visible()
+    expect(page.get_by_role('heading', name='Сьогодні')).to_be_visible()
     if recovery:
         assert raw(page, 'me')['body']['security']['recovery_used'] is True
     assert page.locator('input[type=password]').count() == 0
@@ -104,7 +104,8 @@ def login(page, email=EMAIL, recovery=None, factor=True):
 
 
 def security(page):
-    page.get_by_role('link', name='Налаштування безпеки', exact=True).click()
+    page.get_by_role('link', name='Відкрити профіль').click()
+    page.get_by_role('link', name='Безпека та двофакторна автентифікація').click()
     expect(page.get_by_role('heading', name='Безпека та вхід')).to_be_visible()
     expect(page.get_by_text('Цей пристрій', exact=True)).to_be_visible()
 
@@ -197,7 +198,10 @@ with sync_playwright() as p:
     page.get_by_label('Ваше ім’я', exact=True).fill('Синтетичний клієнт')
     page.get_by_label('Ваше прізвище', exact=True).fill('Тестове')
     click(page, 'Завершити реєстрацію', 'auth/registration/complete', 201)
-    expect(page.get_by_role('heading', name='Очікує початку')).to_be_visible()
+    expect(page.get_by_role('heading', name='Сьогодні')).to_be_visible()
+    page.get_by_role('link', name='Відкрити профіль').click()
+    expect(page.get_by_role('heading', name='Профіль')).to_be_visible()
+    expect(page.locator('.client-profile .card').first).to_contain_text('Очікує початку')
     shot(page, '03-dashboard-pending')
     assert raw(page, 'auth/logout', {}, csrf=False)['status'] == 419
     assert raw(page, 'auth/security/mfa/enroll', {'proof_id': '00000000-0000-4000-8000-000000000001', 'replace': False})['status'] == 403

@@ -1,27 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, ApiError } from '../api'
+import { ApiError } from '../api'
+import { getMealPlanDays } from '../mealPlanApi'
+import type { MealItem, MealPlanResponse } from '../mealPlanApi'
 import './MealPlan.css'
 import './MealItemRecipe.css'
-
-type DayReference = { day_number: number; date: string }
-type MealItem = { id: string; kind: 'unavailable' } | {
-  id: string; kind: 'ingredient' | 'recipe'; title: string; image_url: string | null
-  quantity: string; quantity_label: string; recipe_version_id: string | null
-}
-type MenuDay = DayReference & { meals: { id: string; title: string; items: MealItem[] }[] }
-export type MealPlanResponse = {
-  assignment: null | { id: string; start_date: string; end_date: string | null
-    meal_plan_version: { id: string; title: string } }
-  today?: string; plan_start_date?: string
-  weeks: { number: number; days: DayReference[] }[]; week: number | null; days: MenuDay[]
-}
 
 function dateLabel(date: string, short = false): string {
   return new Intl.DateTimeFormat('uk-UA', short ? { weekday: 'short', day: 'numeric', month: 'short' }
     : { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${date}T12:00:00`))
 }
 
-function Dish({ item, week, day }: { item: MealItem; week: number | null; day: number }) {
+export function Dish({ item, week, day }: { item: MealItem; week: number | null; day: number }) {
   const [failed, setFailed] = useState(false)
   if (item.kind === 'unavailable') return <li className="dish unavailable">Позиція меню тимчасово недоступна. Зверніться до тренера.</li>
   const content = <>
@@ -51,14 +40,14 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
     const request = ++generation.current
     setLoading(true); setError('')
     try {
-      let result = await api<MealPlanResponse>(`meal-plan/days${week ? `?week=${week}` : ''}`)
+      let result = await getMealPlanDays(week)
       if (request !== generation.current) return
       const previous = current.current
       const replaced = previous && (previous.assignment?.id !== result.assignment?.id
         || previous.assignment?.meal_plan_version.id !== result.assignment?.meal_plan_version.id)
       if (replaced) {
         setData(undefined); setChanged(true)
-        if (week) result = await api<MealPlanResponse>('meal-plan/days')
+        if (week) result = await getMealPlanDays()
       }
       if (request !== generation.current) return
       current.current = result; setData(result)

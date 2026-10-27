@@ -48,3 +48,30 @@ main { width: min(100% - 36px, 880px); margin: 54px auto 80px; flex: 1; }
 footer { text-align: center; font-size: 12px; color: #607166; padding: 24px 18px; }
 @media (max-width: 480px) { main { margin-top: 30px; } .header-caption { display: none; } .site-header .text-button { margin-left: auto; } .auth-card h1 { font-size: 1.85rem; } .button-group, .security-layout form { display: flex; flex-direction: column; } .security-layout form > button { margin-right: 0; } .section-heading h2 { flex-basis: 100%; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+
+/* T5.5: клієнтський shell без нового router, з акцентом на дії та доступність. */
+.client-header { border-bottom: 1px solid #dce4d8; background: #fffefa; }
+.client-header-inner { width: min(100% - 36px, 880px); margin: 0 auto; padding: 14px 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.client-header-title { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.client-header-title strong { font-size: 19px; }
+.client-header-actions { display: flex; align-items: center; gap: 8px; }
+.client-avatar { display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 46px;
+  border-radius: 50%; background: #24563e; color: #fff; font-weight: 700; text-decoration: none; }
+.client-avatar:hover { color: #fff; background: #173f2c; }
+.client-main { margin-top: 28px; margin-bottom: 44px; }
+.client-empty > .card, .client-profile > .card { margin-top: 24px; }
+.client-profile .card p:last-child { margin-bottom: 0; }
+@media (max-width: 480px) { .client-main { margin-top: 24px; margin-bottom: 35px; }
+  .client-header-title .eyebrow { font-size: 10px; }
+  .client-header-actions { gap: 2px; } .client-header-actions .text-button { padding-inline: 7px; }
+}
+@media (prefers-color-scheme: dark) {
+  body:has(.client-main) { background: #15251e; color: #e2ece1; }
+  .client-header { background: #20342a; border-color: #496353; }
+  .client-main .card { background: #20342a; border-color: #496353; }
+  .client-main .muted, .client-main .eyebrow, .client-header-title .eyebrow, .client-header .text-button { color: #b9d7bb; }
+  .client-main a { color: #b9d7bb; }
+  .client-main a.button { color: #fff; }
+  .client-main .notice { background: #2c4436; border-color: #7b9d86; }
+}
