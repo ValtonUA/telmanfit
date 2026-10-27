@@ -201,7 +201,7 @@ with sync_playwright() as p:
     expect(page.get_by_role('heading', name='Сьогодні')).to_be_visible()
     page.get_by_role('link', name='Відкрити профіль').click()
     expect(page.get_by_role('heading', name='Профіль')).to_be_visible()
-    expect(page.get_by_text('Очікує початку', exact=True)).to_be_visible()
+    expect(page.locator('.client-profile .card').first).to_contain_text('Очікує початку')
     shot(page, '03-dashboard-pending')
     assert raw(page, 'auth/logout', {}, csrf=False)['status'] == 419
     assert raw(page, 'auth/security/mfa/enroll', {'proof_id': '00000000-0000-4000-8000-000000000001', 'replace': False})['status'] == 403
