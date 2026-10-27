@@ -734,5 +734,12 @@ read-only endpoint, без `/api/me` idle refresh. Зміна assignment/version
 
 Визначення унікальних меню й автоматичного повторення після наявних днів —
 окреме відкрите рішення DEC-5M. T5.2 не додає цикл, `cycle_length`, нові таблиці
-або enum «Меню A/B/C». T5.3–T5.8, покупки, kitchen sessions, Telegram і метрики
+або enum «Меню A/B/C». T5.4–T5.8, UI покупок, kitchen sessions, Telegram і метрики
 цим зрізом не реалізовані. [Докази та відтворення](evidence/client-meal-plan/report.md).
+
+
+## Клієнтські покупки T5.3
+
+Read-only агрегатор призначеного тижня та захищений API описані в
+[контракті списку покупок](shopping-lists.md). Використовуються чинні календар T5.2
+та Model I без зміни їхньої поведінки.

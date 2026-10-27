@@ -16,7 +16,7 @@ final class ClientAuthBoundary
 {
     public static function covers(Request $request): bool
     {
-        return $request->is('api/auth/*', 'api/me', 'api/meal-plan', 'api/meal-plan/days')
+        return $request->is('api/auth/*', 'api/me', 'api/meal-plan', 'api/meal-plan/days', 'api/meal-plan/shopping-list')
             || (app()->environment(['local', 'testing']) && $request->is('api/onboarding'));
     }
 
@@ -26,7 +26,7 @@ final class ClientAuthBoundary
             return $next($request);
         }
         if (! config('auth4.enabled')) {
-            return response()->json(['code' => 'not_found'], 404, ['Cache-Control' => $request->is('api/meal-plan', 'api/meal-plan/days') ? 'no-store, private' : 'no-store']);
+            return response()->json(['code' => 'not_found'], 404, ['Cache-Control' => $request->is('api/meal-plan', 'api/meal-plan/days', 'api/meal-plan/shopping-list') ? 'no-store, private' : 'no-store']);
         }
         if ($request->is('api/auth/security/*') && ! in_array(config('auth5.enabled'), [true, 'true', '1'], true)) {
             return response()->json(['code' => 'not_found'], 404);
@@ -64,7 +64,7 @@ final class ClientAuthBoundary
                     $cookie->getExpiresTime(), '/', null, $cookie->isSecure(), false, false, 'lax'));
             }
         }
-        $response->headers->set('Cache-Control', $request->is('api/meal-plan', 'api/meal-plan/days') ? 'no-store, private' : 'no-store');
+        $response->headers->set('Cache-Control', $request->is('api/meal-plan', 'api/meal-plan/days', 'api/meal-plan/shopping-list') ? 'no-store, private' : 'no-store');
         $response->headers->set('Referrer-Policy', 'no-referrer');
 
         return $response;

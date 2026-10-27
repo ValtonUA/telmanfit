@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ClientMealPlanController;
 use App\Http\Controllers\Api\ClientMealPlanDaysController;
 use App\Http\Controllers\Api\ClientOnboardingController;
 use App\Http\Controllers\Api\ClientSecurityController;
+use App\Http\Controllers\Api\ClientShoppingListController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Middleware\ClientCsrf;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,7 @@ Route::middleware(['web', ClientCsrf::class])->group(function () {
     Route::get('/onboarding', [ClientOnboardingController::class, 'show'])->name('onboarding.show');
     Route::get('/meal-plan', ClientMealPlanController::class)->name('client.meal-plan');
     Route::get('/meal-plan/days', ClientMealPlanDaysController::class)->name('client.meal-plan.days');
+    Route::get('/meal-plan/shopping-list', ClientShoppingListController::class)->name('client.meal-plan.shopping-list');
     Route::post('/onboarding', [ClientOnboardingController::class, 'store'])->name('onboarding.store');
 
     foreach ([
