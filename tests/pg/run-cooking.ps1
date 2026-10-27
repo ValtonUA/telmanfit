@@ -34,5 +34,3 @@ try {
     & docker rm -f $pg | Out-Null
     & docker volume rm $socketVolume | Out-Null
 }
-
-
