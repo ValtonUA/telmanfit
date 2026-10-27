@@ -6,5 +6,15 @@
   "live_browser_or_http_processes": [],
   "zombie_chromium_processes": 163,
   "business_runtime_compose_source_diff": [],
-  "status": "PASS"
+  "status": "PASS",
+  "cold_remote_cleanup": {
+    "status": "PASS",
+    "project": "telmanfit-ci-40440751275-1",
+    "containers_removed": 6,
+    "volumes_removed": 5,
+    "networks_removed": 1,
+    "step_conclusion": "success",
+    "evidence": "https://github.com/ValtonUA/telmanfit/actions/runs/40440751275",
+    "temporary_dispatch_branch_deleted": true
+  }
 }

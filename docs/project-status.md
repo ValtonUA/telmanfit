@@ -133,7 +133,8 @@ T4.5 змерджено після Fast, Docs і Targeted; Full CI не є чи�
 QA-1 усуває помилкове приймання фонового Livewire notification response у T4.5
 browser helper: очікується method відповідної дії та `succeed/onRender`, без
 зміни timeout або бізнес-assertions. [Результати й межі QA-1](evidence/qa-1/report.md):
-cold infrastructure acceptance лишається окремим gate, а не наслідком browser PASS.
+browser5/5 та окремий штатний cold infrastructure acceptance на GitHub-hosted
+runner завершені; cleanup власного stack підтверджений, production activation не виконано.
 
 CI-COST-2 додає bounded виконання по дві ізольовані PG/browser групи в одному job,
 процесний OPcache лише для synthetic Stage1 Chromium HTTP-серверів,

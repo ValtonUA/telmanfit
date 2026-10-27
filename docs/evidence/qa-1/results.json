@@ -2,7 +2,7 @@
   "base_sha": "15a4525028c21dfc8bd35d4e57dc3622752d4d3c",
   "tested_code_sha": "5e64719f26cbb6af821f03c1e60f387e93b3e2c1",
   "qa_1a": "PASS",
-  "qa_1b": "BLOCKED",
+  "qa_1b": "PASS",
   "runs": [
     {
       "name": "qa1-t45-final-01",
@@ -90,7 +90,8 @@
     "step_conclusion": "success",
     "checked_via": "GitHub connector run metadata + workflow job steps"
   },
-  "cold": {
+  "qa_1": "PASS",
+  "cold_cloud_preflight": {
     "status": "BLOCKED",
     "storage_driver": "vfs",
     "root_filesystem_total_gib": 32,
@@ -109,5 +110,141 @@
     "alternative_executor_available": false,
     "global_prune": false,
     "foreign_resources_modified": false
+  },
+  "cold": {
+    "status": "PASS",
+    "run_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40440751275",
+    "run_id": 40440751275,
+    "job_id": 121980257345,
+    "workflow_ref_sha": "69374cdbd999d2fb7d2f07f6e309643f6b258044",
+    "tested_source_sha": "aa691ec607d7137c5ec1e57b7a7a339707d6a3d5",
+    "job_seconds": 308.0,
+    "docker_version": "29.4.2",
+    "storage_driver": "overlayfs",
+    "filesystem_size": "145G",
+    "free_before_build": "89G",
+    "build_command": "docker compose build --pull --no-cache",
+    "compose_project": "telmanfit-ci-40440751275-1",
+    "acceptance": {
+      "passed": 7,
+      "checks": [
+        "Missing/mismatched independent epoch: admin/client 503; no fallback",
+        "Admin password-only denied; enrollment, fresh password+TOTP -> Filament",
+        "Invitation + synthetic email OTP -> actual client registration; anonymous API denied",
+        "Authenticated onboarding mutation without CSRF token rejected with 419",
+        "React: all three answers saved and reopened after full reload",
+        "Filament client card: reads three answers, edits, saves and reopens; React sees same PostgreSQL data",
+        "Compose down/up: persisted users, sessions, answers and MFA; fresh password+TOTP login without enrollment"
+      ]
+    },
+    "filament_views": 48,
+    "filament_asset_errors": 0,
+    "artifact_id": 12706188655,
+    "artifact_url": "https://github.com/ValtonUA/telmanfit/actions/runs/40440751275/artifacts/12706188655",
+    "artifact_sha256": "068120f7de0aa0c6f75cd4ea427f374a727c09f2513b78c9a7170cd90a8a7bfd",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "success",
+        "seconds": 1.0
+      },
+      {
+        "name": "Verify isolated Linux Docker and free storage",
+        "status": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+        "status": "success",
+        "seconds": 2.0
+      },
+      {
+        "name": "Record exact tested source",
+        "status": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+        "status": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Run pip install playwright==1.62.0",
+        "status": "success",
+        "seconds": 3.0
+      },
+      {
+        "name": "Run python -m playwright install --with-deps chromium",
+        "status": "success",
+        "seconds": 19.0
+      },
+      {
+        "name": "Validate standard Compose and cold build without overrides",
+        "status": "success",
+        "seconds": 118.0
+      },
+      {
+        "name": "Reject host credentials and database files in built image",
+        "status": "success",
+        "seconds": 1.0
+      },
+      {
+        "name": "Start fresh isolated volumes",
+        "status": "success",
+        "seconds": 23.0
+      },
+      {
+        "name": "MFA, OTP, CSRF, fence and persistence in Chromium",
+        "status": "success",
+        "seconds": 133.0
+      },
+      {
+        "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+        "status": "success",
+        "seconds": 2.0
+      },
+      {
+        "name": "Service status",
+        "status": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Remove only this disposable CI stack",
+        "status": "success",
+        "seconds": 2.0
+      },
+      {
+        "name": "Post Run actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+        "status": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+        "status": "success",
+        "seconds": 1.0
+      },
+      {
+        "name": "Complete job",
+        "status": "success",
+        "seconds": 0.0
+      }
+    ],
+    "removed": [
+      "Container telmanfit-ci-40440751275-1-web-1 Removed",
+      "Container telmanfit-ci-40440751275-1-worker-1 Removed",
+      "Container telmanfit-ci-40440751275-1-scheduler-1 Removed",
+      "Container telmanfit-ci-40440751275-1-app-1 Removed",
+      "Container telmanfit-ci-40440751275-1-database-1 Removed",
+      "Container telmanfit-ci-40440751275-1-setup-1 Removed",
+      "Volume telmanfit-ci-40440751275-1_local-state Removed",
+      "Volume telmanfit-ci-40440751275-1_epoch Removed",
+      "Network telmanfit-ci-40440751275-1_local Removed",
+      "Volume telmanfit-ci-40440751275-1_database Removed",
+      "Volume telmanfit-ci-40440751275-1_storage Removed",
+      "Volume telmanfit-ci-40440751275-1_database-secrets Removed"
+    ],
+    "temporary_dispatch_branch_deleted": true,
+    "permanent_workflow_change": false,
+    "artifact_local_download": "Cloud gh download blocked403 on artifact blob; connector download succeeded, full evidence remains in GitHub artifact; decoded job log saved locally"
   }
 }

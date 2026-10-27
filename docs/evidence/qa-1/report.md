@@ -2,11 +2,11 @@
 
 База: актуальний master `15a4525028c21dfc8bd35d4e57dc3622752d4d3c` (27.10.2026).
 Перевірений test-code commit: `5e64719f26cbb6af821f03c1e60f387e93b3e2c1`.
-Наступний commit додає лише цей звіт і посилання у project-status; hashes тестових
+Наступні commits додають лише звіт/докази і посилання у project-status; hashes тестових
 файлів зафіксовані в [машинному результаті](results.json).
 
-**QA-1A: PASS. QA-1B: BLOCKED. QA-1 загалом не завершено:**
-критерій cold infrastructure acceptance ще не виконаний.
+**QA-1A: PASS. QA-1B: PASS. Критерії QA-1 виконані.**
+Fast/Docs/Targeted на точному фінальному PR head перевіряються окремо; merge не виконується.
 
 ## Feasibility окремих частин
 
@@ -17,10 +17,11 @@ network=none, PGDATA tmpfs та успішний cleanup. Chromium154.0.8037.57,
 Python Playwright1.62.0. Системний Chromium використовується за штатним
 executable_path у T4.5; bundled browser parity не заявляється.
 
-Для QA-1B зараз лише приблизно3.4GiB вільного диска перед прогоном (32GB root),
-/tmp має4.7GiB. Доступних інструментів створення/збільшення іншого executor немає.
-Прямий дозвіл користувача на окремі частини дозволяє завершити QA-1A із BLOCKED
-QA-1B; це не глобальний PASS інфраструктури.
+Локальний Cloud QA-1B preflight був BLOCKED:3.4GiB free на32GB root і4.7GiB у /tmp.
+Після перевірки додаткових можливостей використано окремий GitHub-hosted executor:
+Docker29.4.2/overlayfs,145G filesystem,89G free до build. Приватний Unix endpoint
+без overrides і порожні Docker inventories перевірено перед checkout/build.
+Це нове ізольоване середовище; локальний Docker driver або production не змінювали.
 
 ## Причина T4.5 timeout
 
@@ -89,34 +90,55 @@ loopback socket; контрольний запуск поза sandbox із пі�
 її відкинуто як harness-помилку, повторна read-only діагностика на8118 — PASS.
 Остаточні5 runs виконані вже після неї та без Response.finished warning.
 
-## QA-1B — причина й вимоги до ресурсів
+## QA-1B — причина, ресурси та успішний cold acceptance
 
-**BLOCKED, cold acceptance не запускався повторно.** Daemon використовує vfs:
-новий image/container layer є повною копією directory, а не overlay delta.
-Залишилися90 cache records попередніх власних PHP/cold builds, створені
-01:47:10–02:01:03 UTC. BuildKit du повідомляє0B для цих записів: це не доказ
-нульового фактичного місця. Docker daemon directories недоступні UID1000 для
-прямого du; чужі файли/ресурси не монтували й не досліджували.
+**PASS**: [cold run40440751275](https://github.com/ValtonUA/telmanfit/actions/runs/40440751275),
+job121980257345, source aa691ec607d7137c5ec1e57b7a7a339707d6a3d5.
+Виконано штатний local-compose.yml на GitHub-hosted runner. Тимчасова власна
+гілка69374cdbd999d2fb7d2f07f6e309643f6b258044 додала тільки workflow_dispatch
+і read-only Docker/storage probe. Checkout/build отримали окремий exact source SHA,
+тому dispatcher не змінював перевірений Dockerfile/Compose або app source.
+Гілка й worktree видалені після успіху; у PR немає постійних workflow змін.
+Full workflow не запускався.
 
-У попередньому cold build вільне місце впало приблизно з9.6GiB до1.7GiB,
-збірка зупинена exit130; app/web build не завершився. Подальші vfs-копії PG
-containers короткочасно вичерпали root. Це storage amplification/capacity
-середовища, не падіння cold acceptance assertion застосунку. Зараз3.4GiB менше
-вже фактично спожитих приблизно8GiB попередньої незавершеної спроби.
+Причина Cloud ENOSPC — Docker vfs із повними directory copies для кожного
+image/container layer та збереженим cache попередніх власних builds.90 cache
+records створені01:47:10–02:01:03 UTC; BuildKit du віддавав0B, що не дорівнює
+фактичному використанню файлової системи. Попередня незавершена спроба вже
+спожила приблизно8GiB додатково, а нинішніх3.4GiB було недостатньо.
+Прямий du daemon directories недоступний UID1000; чужі файли не монтували.
 
-**Точний мінімум завершеного cold build невідомий:** незавершений build не дає
-права вигадати виміряний peak. Мінімальна операційна вимога — більше диска за
-попередній доступний budget, повна місткість для завершення build та stack/volumes,
-резерв щонайменше2GiB і відсутність паралельних PG suites. Практичний запит для
-наступного ізольованого executor:64GiB filesystem Docker і щонайменше32GiB free
-до запуску; це рекомендація із запасом, а не доведений точний мінімум.
+На альтернативному runner використано overlayfs,145G root із89G free.
+Це фактично успішна конфігурація, не твердження, що145G — мінімум.
+Точний peak не інструментувався, тому математичний мінімум не вигадували.
+Практичний запит для окремого повтору: native overlay/snapshotter, щонайменше32GiB
+вільного Docker storage з резервом2GiB, без паралельних PG suites; для vfs потрібен
+більший budget через full-copy amplification. Попередній запит64GiB filesystem/32GiB
+free був рекомендацією із запасом, а не виміряним мінімальним порогом.
 
-Після надання ресурсу: стандартний Dockerfile з --pull --no-cache, private
-project/image names, synthetic credential/SQLite exclusion probes, compose up,
-local_compose.py з TELMANFIT_FILAMENT_THEME_BROWSER=1, persistence down/up і
-cleanup лише власних volumes. Не використовувати cached image замість cold build.
-Production Compose/app-image/telmanfit-local не змінювали. Global prune,
-видалення чужих volumes чи зміна Docker storage driver не виконувались.
+| Частина cold acceptance | Статус | Секунди GitHub step |
+|---|---|---:|
+| Стандартний build --pull --no-cache, без override | PASS | 118 |
+| Synthetic credential/SQLite exclusion у готовому образі | PASS | 1 |
+| Fresh isolated volumes, compose up/health | PASS | 23 |
+| MFA/OTP/CSRF/fence, onboarding, Filament, persistence down/up | PASS | 133 |
+| Власний compose down --volumes --remove-orphans | PASS | 2 |
+
+Увесь job308s. Успішні7 acceptance groups і48 theme/responsive views
+(1440/390/320 light/dark), asset errors0, invitation create/revoke.
+Перевірено marker refusal на непорожній synthetic DB, epoch fail-closed503,
+password-only denial, TOTP/enrollment, invitation/OTP, anonymous denial,
+CSRF419, збереження й повторне читання даних у React/Filament, persistence
+users/sessions/answers/MFA після down/up без повторного enrollment.
+
+Логи підтверджують видалення6 контейнерів,5 volumes і1 мережі тільки власного
+project telmanfit-ci-40440751275-1. Job cleanup completed/success;
+production/telmanfit-local на робочому host не використовувалися.
+[Машинні steps/timings/cleanup](cold-result.json),
+[GitHub artifact](https://github.com/ValtonUA/telmanfit/actions/runs/40440751275/artifacts/12706188655).
+Cloud gh download artifact blob отримав403; plugin download успішний, artifact
+доступний у GitHub, повний decoded job log збережено в локальному audit bundle.
+Це обмеження локального завантаження, не FAIL виконаного acceptance.
 
 ## Composer audit та GitHub CI
 
@@ -138,6 +160,6 @@ Zombie Chromium PIDs після завершення відокремлюють�
 не тримає browser/DB resources і не може бути повторно завершений kill.
 
 5/5 є обмеженим доказом стабільності, не гарантією від усіх майбутніх flakes.
-Залишається QA-1B BLOCKED; загальний QA-1 не може отримати PASS до справжнього
-cold infrastructure acceptance на достатньому диску. Один Draft PR містить тільки
-test synchronization та докази; merge не виконується.
+QA-1B закрито справжнім cold acceptance на окремому runner. QA-1A та QA-1B — PASS,
+cleanup локальних і remote disposable resources підтверджений. Один Draft PR
+містить лише test synchronization та докази; merge і production activation не виконуються.
