@@ -18,7 +18,6 @@ const labels: Record<LibraryCard['type'], string> = {
 
 function Cover({ url, title }: { url: string | null; title: string }) {
   const [broken, setBroken] = useState(false)
-  useEffect(() => setBroken(false), [url])
   return url && !broken
     ? <img className="library-cover" src={url} alt={title} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
     : <div className="library-cover library-cover-empty" aria-hidden="true">Матеріал</div>
