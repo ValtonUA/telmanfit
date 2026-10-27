@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\ClientMealItemRecipeController;
 use App\Http\Controllers\Api\ClientMealPlanController;
 use App\Http\Controllers\Api\ClientMealPlanDaysController;
+use App\Http\Controllers\Api\ClientLibraryController;
 use App\Http\Controllers\Api\ClientOnboardingController;
 use App\Http\Controllers\Api\ClientSecurityController;
 use App\Http\Controllers\Api\ClientShoppingListController;
@@ -41,6 +42,8 @@ Route::middleware(['web', ClientCsrf::class])->group(function () {
     // Одна реальна функція для клієнта: перегляд та збереження першої частини анкети.
     // Авторизація — той самий ClientSession, що в /api/me; без production bypass.
     Route::get('/onboarding', [ClientOnboardingController::class, 'show'])->name('onboarding.show');
+    Route::get('/library', [ClientLibraryController::class, 'index'])->name('client.library.index');
+    Route::get('/library/{item}', [ClientLibraryController::class, 'show'])->name('client.library.show');
     Route::get('/meal-plan', ClientMealPlanController::class)->name('client.meal-plan');
     Route::get('/meal-plan/items/{item}/recipe', ClientMealItemRecipeController::class)->name('client.meal-plan.recipe');
     Route::get('/meal-plan/days', ClientMealPlanDaysController::class)->name('client.meal-plan.days');

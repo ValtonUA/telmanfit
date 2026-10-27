@@ -3,6 +3,7 @@ import { api, csrf, initialize } from './api'
 import type { FlowResult, Me } from './api'
 import { AuthForm } from './components/AuthForm'
 import { ClientNavigation } from './components/ClientNavigation'
+import { Library, LibraryArticle } from './components/Library'
 import { OnboardingFirstStep } from './components/OnboardingFirstStep'
 import { MealItemRecipe } from './components/MealItemRecipe'
 import { MealPlan } from './components/MealPlan'
@@ -19,7 +20,7 @@ const statuses: Record<Me['client']['status'], { label: string; description: str
 
 function pageTitle(path: string): string {
   if (path.startsWith('/app/meal-plan')) return 'Раціон'
-  if (path === '/app/resources') return 'Корисне'
+  if (path === '/app/resources' || path.startsWith('/app/resources/')) return 'Корисне'
   if (path === '/app/progress') return 'Прогрес'
   if (path === '/app/profile') return 'Профіль'
   if (path === '/app/security') return 'Безпека'
@@ -109,7 +110,8 @@ export default function App() {
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
         : me && recipe ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
         : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
-        : me && page === '/app/resources' ? <EmptySection section="Корисне" />
+        : me && page === '/app/resources' ? <Library onExit={exit} />
+        : me && /^\/app\/resources\/[1-9][0-9]*$/.test(page) ? <LibraryArticle id={page.split('/')[3]} onExit={exit} />
         : me && page === '/app/progress' ? <EmptySection section="Прогрес" />
         : me && page === '/app/profile' ? <Profile me={me} />
         : me && page === '/app/security' ? <SecurityPanel me={me} onExit={exit} />
