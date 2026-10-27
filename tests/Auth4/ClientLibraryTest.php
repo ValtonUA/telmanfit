@@ -109,9 +109,9 @@ class ClientLibraryTest extends TestCase
 
     public function test_markdown_is_sanitized_and_external_links_fail_closed(): void
     {
-        $article = $this->make('article', 'published', ['content_markdown' =>
-            "## Розділ\n\n<script>alert(1)</script>\n\n![добре](https://images.example.com/a.jpg)\n"
-            ."![погано](https://example.net/a.jpg)\n\n[кнопка](javascript:alert(1))\n\n[YouTube](https://www.youtube.com/watch?v=ok)"]);
+        $markdown = "## Розділ\n\n<script>alert(1)</script>\n\n![добре](https://images.example.com/a.jpg)\n"
+            ."![погано](https://example.net/a.jpg)\n\n[кнопка](javascript:alert(1))\n\n[YouTube](https://www.youtube.com/watch?v=ok)";
+        $article = $this->make('article', 'published', ['content_markdown' => $markdown]);
         $body = $this->getJson('/api/library/'.$article->id)->assertOk()->json('item.content_html');
         $this->assertStringContainsString('<h2>', $body);
         $this->assertStringContainsString('images.example.com/a.jpg', $body);
@@ -119,7 +119,7 @@ class ClientLibraryTest extends TestCase
         $this->assertStringNotContainsString('javascript:', $body);
         $this->assertStringNotContainsString('example.net', $body);
         $this->assertStringContainsString('noopener noreferrer', $body);
-        foreach (['http://example.com','https://127.0.0.1/x','https://user:pw@example.com/x','javascript:alert(1)'] as $url) {
+        foreach (['http://example.com', 'https://127.0.0.1/x', 'https://user:pw@example.com/x', 'javascript:alert(1)'] as $url) {
             $this->assertNull(ExternalContentUrl::safe($url));
         }
     }

@@ -6,6 +6,7 @@ use App\Services\Auth\Client\ClientSession;
 use App\Support\Library\ExternalContentUrl;
 use App\Support\Library\LibraryMarkdown;
 use App\Support\Presentation\PublicImageUrl;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ final class ClientLibraryController
     public function index(Request $request, ClientSession $sessions): JsonResponse
     {
         return DB::transaction(function () use ($request, $sessions): JsonResponse {
-            $sessions->user($request);
+            $user = $sessions->user($request);
+            abort_unless(DB::table('clients')->where('user_id', $user->id)->exists(), 401);
             $items = $this->published()->orderByDesc('published_at')->orderByDesc('id')
                 ->get(['id', 'type', 'title', 'summary', 'cover_image_url', 'published_at'])
                 ->map(fn (object $row): array => $this->card($row))->all();
@@ -27,7 +29,8 @@ final class ClientLibraryController
     public function show(Request $request, string $item, ClientSession $sessions): JsonResponse
     {
         return DB::transaction(function () use ($request, $item, $sessions): JsonResponse {
-            $sessions->user($request);
+            $user = $sessions->user($request);
+            abort_unless(DB::table('clients')->where('user_id', $user->id)->exists(), 401);
             if (! preg_match('/^[1-9][0-9]{0,17}$/D', $item)) {
                 abort(404);
             }
@@ -51,7 +54,7 @@ final class ClientLibraryController
         });
     }
 
-    private function published(): \Illuminate\Database\Query\Builder
+    private function published(): Builder
     {
         return DB::table('library_items')->where('status', 'published')
             ->whereNotNull('published_at')->where('published_at', '<=', DB::raw('CURRENT_TIMESTAMP'));

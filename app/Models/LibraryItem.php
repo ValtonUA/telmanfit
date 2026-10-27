@@ -62,11 +62,11 @@ final class LibraryItem extends Model
             if ($item->status !== 'published') {
                 return;
             }
-            if (in_array($item->type, ['video', 'playlist'], true) && ! $item->external_url) {
+            if (in_array($item->type, ['video', 'playlist'], true) && empty($item->external_url)) {
                 throw ValidationException::withMessages(['external_url' => 'Для цього типу потрібне HTTPS-посилання.']);
             }
             if (in_array($item->type, ['article', 'instruction'], true)
-                && ! $item->external_url && trim((string) $item->content_markdown) === '') {
+                && empty($item->external_url) && trim((string) $item->content_markdown) === '') {
                 throw ValidationException::withMessages(['content_markdown' => 'Для публікації додайте текст або HTTPS-посилання.']);
             }
         });
