@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "real API / cookie ClientSession / server quantities / exact recipe model / loading",
+    "week/day navigation / keyboard / assignment calendar",
+    "nullable and broken logical cover / no step images",
+    "1440 / 390 / 320 light + dark / no horizontal overflow / text contrast >= 4.5",
+    "API error clears stale dishes / real retry",
+    "unavailable selected day (synthetic UI fault injection)",
+    "assignment replacement while week 2 is open resets unavailable week safely",
+    "real empty assignment / replacement refresh / revoked session clears private UI"
+  ],
+  "result": "PASS",
+  "browser": "156.0.4314.42"
+}

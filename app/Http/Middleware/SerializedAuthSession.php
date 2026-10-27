@@ -13,14 +13,14 @@ final class SerializedAuthSession extends StartSession
     protected function collectGarbage(Session $session)
     {
         // T5.1 GET не запускає retention і не змінює навіть session metadata.
-        if (! request()->isMethodSafe() || ! request()->is('api/meal-plan')) {
+        if (! request()->isMethodSafe() || ! request()->is('api/meal-plan', 'api/meal-plan/days')) {
             parent::collectGarbage($session);
         }
     }
 
     protected function saveSession($request)
     {
-        if (! $request->isMethodSafe() || ! $request->is('api/meal-plan')) {
+        if (! $request->isMethodSafe() || ! $request->is('api/meal-plan', 'api/meal-plan/days')) {
             parent::saveSession($request);
         }
     }

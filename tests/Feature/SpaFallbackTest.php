@@ -6,6 +6,17 @@ use Tests\TestCase;
 
 class SpaFallbackTest extends TestCase
 {
+    public function test_spa_csp_only_allows_validated_exact_image_hosts(): void
+    {
+        $this->skipWhenSpaIsNotBuilt();
+        config(['presentation.image_hosts' => ['images.example.com', '*.example.com', 'localhost', 'example.com; script-src *']]);
+        $policy = $this->get('/app/meal-plan')->assertOk()->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString("img-src 'self' data: https://images.example.com;", $policy);
+        $this->assertStringNotContainsString('*', $policy);
+        $this->assertStringNotContainsString('localhost', $policy);
+        $this->assertStringContainsString("connect-src 'self'; object-src 'none'", $policy);
+    }
+
     public function test_spa_fallback_serves_the_index_for_the_app_root(): void
     {
         $this->skipWhenSpaIsNotBuilt();

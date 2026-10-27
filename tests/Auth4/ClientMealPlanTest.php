@@ -21,13 +21,20 @@ class ClientMealPlanTest extends TestCase
 {
     use AssignmentFixture;
 
-    private int $client;
+    protected string $endpoint = '/api/meal-plan';
 
-    private int $user;
+    protected function emptyResponse(): array
+    {
+        return ['assignment' => null];
+    }
 
-    private int $coach;
+    protected int $client;
 
-    private string $sessionId;
+    protected int $user;
+
+    protected int $coach;
+
+    protected string $sessionId;
 
     protected function setUp(): void
     {
@@ -65,7 +72,7 @@ class ClientMealPlanTest extends TestCase
         parent::tearDown();
     }
 
-    private function assignment(int $version, int $start = 0, ?int $end = null, ?int $client = null): int
+    protected function assignment(int $version, int $start = 0, ?int $end = null, ?int $client = null): int
     {
         return DB::table('client_meal_plan_assignments')->insertGetId([
             'client_id' => $client ?? $this->client, 'meal_plan_version_id' => $version,
@@ -75,7 +82,7 @@ class ClientMealPlanTest extends TestCase
     }
 
     /** Повні рядки та MVCC revisions усіх public tables, включно з sessions/cache/audit. */
-    private function snapshot(): array
+    protected function snapshot(): array
     {
         $hashes = [];
         foreach (DB::select("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename") as $table) {
@@ -86,14 +93,14 @@ class ClientMealPlanTest extends TestCase
         return $hashes;
     }
 
-    private function read(?int $assignment, int $status = 200, string $query = ''): void
+    protected function read(?int $assignment, int $status = 200, string $query = ''): void
     {
         $before = $this->snapshot();
         // Навіть lottery=100% не дає GET права видаляти expired sessions.
         config(['session.lottery' => [100, 100]]);
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $response = $this->getJson('/api/meal-plan'.$query)->assertStatus($status)
+        $response = $this->getJson($this->endpoint.$query)->assertStatus($status)
             ->assertHeader('Cache-Control', 'no-store, private');
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
@@ -101,7 +108,7 @@ class ClientMealPlanTest extends TestCase
             fn ($sql) => preg_match('/^\s*(insert|update|delete|truncate|alter|create|drop)\b/i', $sql))));
         if ($status === 200) {
             if ($assignment === null) {
-                $response->assertExactJson(['assignment' => null]);
+                $response->assertExactJson($this->emptyResponse());
             } else {
                 $response->assertJsonPath('assignment.id', (string) $assignment)
                     ->assertJsonPath('assignment.meal_plan_version.status', 'published');
@@ -174,7 +181,7 @@ class ClientMealPlanTest extends TestCase
         DB::table('meal_plan_versions')->where('id', $new)->update(['status' => 'published', 'version_number' => 2, 'published_at' => now()]);
         DB::table('meal_plan_versions')->insert(['meal_plan_id' => $plan]);
         $this->read($id);
-        $this->getJson('/api/meal-plan')->assertJsonPath('assignment.meal_plan_version.id', (string) $version)
+        $this->getJson($this->endpoint)->assertJsonPath('assignment.meal_plan_version.id', (string) $version)
             ->assertJsonPath('assignment.meal_plan_version.version_number', 1);
     }
 
@@ -288,9 +295,9 @@ class ClientMealPlanTest extends TestCase
     {
         $this->assignment($this->assignmentVersion());
         $before = $this->snapshot();
-        $this->head('/api/meal-plan')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->head($this->endpoint)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
         $this->assertSame($before, $this->snapshot());
-        $this->postJson('/api/meal-plan')->assertStatus(405);
+        $this->postJson($this->endpoint)->assertStatus(405);
     }
 
     public function test_gap_between_periods_has_no_fallback_to_past_or_future_plan(): void
