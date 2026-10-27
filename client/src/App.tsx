@@ -3,6 +3,7 @@ import { api, csrf, initialize } from './api'
 import type { FlowResult, Me } from './api'
 import { AuthForm } from './components/AuthForm'
 import { OnboardingFirstStep } from './components/OnboardingFirstStep'
+import { MealPlan } from './components/MealPlan'
 import { SecurityPanel } from './components/SecurityPanel'
 import './App.css'
 
@@ -29,7 +30,7 @@ export default function App() {
       initialize().then(result => {
         if (active && current === generation) {
           setMe(result.me); setInvite(result.invite)
-          if (!result.me && ['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding'].includes(window.location.pathname)) {
+          if (!result.me && ['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding', '/app/meal-plan'].includes(window.location.pathname)) {
             window.history.replaceState(null, '', '/app/login'); setPage('/app/login')
           }
         }
@@ -41,14 +42,14 @@ export default function App() {
     return () => { active = false; window.removeEventListener('telmanfit-invitation', newInvitation) }
   }, [])
   useEffect(() => {
-    if (!me) return
+    if (!me || page === '/app/meal-plan') return
     let active = true
     const refresh = () => {
       if (document.visibilityState === 'visible') api<Me>('me').then(user => { if (active) setMe(user) }).catch(() => { if (active) { setMe(undefined); setNotice('Сесія завершилася. Увійдіть знову.'); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') } })
     }
     document.addEventListener('visibilitychange', refresh)
     return () => { active = false; document.removeEventListener('visibilitychange', refresh) }
-  }, [me])
+  }, [me, page])
   function login(user: Me) { setMe(user); setInvite(undefined); setNotice(''); window.history.replaceState(null, '', '/app'); setPage('/app') }
   function exit(message: string) { setMe(undefined); setInvite(undefined); setNotice(message); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') }
   return <>
@@ -58,9 +59,10 @@ export default function App() {
       {me?.security.recovery_used && page !== '/app/security' && <p role="status" className="notice">Ви використали резервний код. 2FA залишається увімкненою. Невикористаних кодів: {me.security.recovery_codes_remaining}. За потреби оновіть їх у налаштуваннях безпеки.</p>}
       {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
+        : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
         : me && page === '/app/security' ? <SecurityPanel me={me} onExit={exit} />
         : me && page === '/app/onboarding' ? <OnboardingFirstStep />
-        : me ? <div className="dashboard"><span className="eyebrow">Ваш особистий кабінет</span><h1>Вітаємо, {me.user.first_name ?? me.user.full_name}</h1><p className="muted intro">Ваш шлях починається з турботи про себе.</p><section className="card"><span className="eyebrow">Статус супроводу</span><h2>{statuses[me.client.status]?.label ?? 'Статус недоступний'}</h2><p>{statuses[me.client.status]?.description}</p></section><section className="card onboarding-preview"><div><h2>Ваша початкова анкета</h2><p>Три запитання з вашої анкети. Відповіді зберігаються в особистому кабінеті.</p></div><a className="button" href="/app/onboarding">Заповнити анкету</a></section><section className="card security-preview"><div><h2>Спокій за свій акаунт</h2><p>Другий фактор, електронна пошта та ваші пристрої.</p></div><a className="button" href="/app/security">Налаштування безпеки</a></section></div>
+        : me ? <div className="dashboard"><span className="eyebrow">Ваш особистий кабінет</span><h1>Вітаємо, {me.user.first_name ?? me.user.full_name}</h1><p className="muted intro">Ваш шлях починається з турботи про себе.</p><section className="card"><span className="eyebrow">Статус супроводу</span><h2>{statuses[me.client.status]?.label ?? 'Статус недоступний'}</h2><p>{statuses[me.client.status]?.description}</p></section><section className="card onboarding-preview"><div><h2>Ваш раціон</h2><p>Призначений тренером план харчування, день за днем.</p></div><a className="button" href="/app/meal-plan">Переглянути раціон</a></section><section className="card onboarding-preview"><div><h2>Ваша початкова анкета</h2><p>Три запитання з вашої анкети. Відповіді зберігаються в особистому кабінеті.</p></div><a className="button" href="/app/onboarding">Заповнити анкету</a></section><section className="card security-preview"><div><h2>Спокій за свій акаунт</h2><p>Другий фактор, електронна пошта та ваші пристрої.</p></div><a className="button" href="/app/security">Налаштування безпеки</a></section></div>
         : <AuthForm key={page} invite={invite} onLogin={login} />}
     </main>
     <footer>TelmanFit · Крок за кроком, у вашому темпі</footer>

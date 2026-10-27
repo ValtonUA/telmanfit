@@ -600,8 +600,8 @@ GET/HEAD не пише навіть у `sessions`: для цього маршр�
 пропускає save й GC; перевірка чинності та session advisory lock залишаються.
 Отже читання T5.1 саме по собі **не продовжує idle TTL**; інші AUTH-4/5 endpoints
 зберігають штатну поведінку. Немає business events, auto-assignment, refresh,
-оновлення статусів чи snapshot writes. Дні/позиції, recipe API, покупки та React
-належать наступним задачам T5.2–T5.8 і цим endpoint не реалізовані.
+оновлення статусів чи snapshot writes. Цей endpoint повертає тільки метадані;
+дні/позиції й React описані в T5.2 нижче, recipe API та покупки — наступні задачі.
 
 `tests/Auth4/ClientMealPlanTest.php` входить до чинного AUTH-4 набору без змін CI.
 Він виконує реальні HTTP-запити з cookie після штатного email OTP login, перевіряє
@@ -633,3 +633,106 @@ Pint для шести змінених PHP-файлів, `git diff --check` т�
 PASS. Попередній Stage4 запуск поверх повної auth-схеми відхилено через duplicate
 DDL fixtures; успішний прогін вище використовував штатний baseline, без зміни tests
 чи guards Stage 4. Статус GitHub required checks перевіряється окремо на head PR.
+
+## Клієнтський календар і меню T5.2
+
+`GET /api/meal-plan/days?week=1` — protected read-only browser API з тією самою
+`ClientSession`, AUTH-4/5, serialized lock, CSRF/restore/recovery/MFA boundary,
+що й T5.1. Client ID береться лише з чинної сесії; довільні query ID не впливають
+на доступ. Єдиний селектор — необов'язковий `week`: ціле число 1..2147483647,
+невалідне значення — 422. POST/інші write methods — 405.
+Кожен запит повторно читає чинне призначення та exact published version/owner,
+без fallback на новішу, минулу або майбутню версію.
+
+### Затверджене календарне правило
+
+`meal_plans.week_start_weekday` (ISO 1..7) задає день тижня для `day_number=1`.
+Календарний початок плану — найближчий такий день, що **не пізніше**
+`assignment.start_date`. `day_number = календарні дні від початку плану + 1`.
+`start_date` задає лише початок доступу, не зміщує нумерацію меню.
+Наприклад: Пн + старт Ср → день 3 у середу, день 4 у четвер, день 8 у наступний
+понеділок; Ср + старт Ср → день 1 у середу. Дні перед стартом приховані.
+
+API повертає лише наявні дні exact версії між включними `start_date`/`end_date`
+(NULL кінець відкритий). Відлік і `today` використовують `config('app.timezone')`,
+як чинне визначення активного призначення DEC-4A. Календарні дні обчислюються
+Carbon, без 24-годинної арифметики й помилок DST. За замовчуванням вибирається
+календарний тиждень сьогодні. Після завершення днів `days=[]`, без автоматичного
+повтору першого тижня; попередні доступні дні залишаються в навігації. Вибір
+неіснуючого/недоступного тижня теж дає `200 days=[]`, без чужого fallback.
+
+### Типи та відповідь
+
+ID — рядки; `day_number`, `week`, `weeks[].number` — цілі числа; `date`,
+`today`, `plan_start_date` — `YYYY-MM-DD`. `assignment` має контракт T5.1.
+`weeks` містить навігацію всіх доступних фактичних днів; `days` — тільки обраний
+тиждень. Дні впорядковано за `day_number`, прийоми й позиції — `sort_order, id`.
+Приклад скороченого до однієї позиції payload:
+
+```json
+{
+  "assignment": {
+    "id": "42", "start_date": "2026-10-28", "end_date": null,
+    "meal_plan_version": {
+      "id": "17", "meal_plan_id": "8", "version_number": 1,
+      "status": "published", "published_at": "2026-10-26 12:00:00+00",
+      "title": "Призначений раціон"
+    }
+  },
+  "today": "2026-10-28", "plan_start_date": "2026-10-26",
+  "weeks": [{"number": 1, "days": [{"day_number": 3, "date": "2026-10-28"}]}],
+  "week": 1,
+  "days": [{
+    "day_number": 3, "date": "2026-10-28",
+    "meals": [{"id": "31", "title": "Сніданок", "items": [{
+      "id": "101", "kind": "recipe", "title": "Страва тренера",
+      "image_url": null, "quantity": "0.50", "quantity_label": "0,5 порції",
+      "recipe_version_id": "9"
+    }]}]
+  }]
+}
+```
+
+`items` — discriminated union: `ingredient|recipe` з показаними полями або
+`{"id":"101","kind":"unavailable"}` без назви/зображення для неконсистентного
+selector чи чужого personal recipe. Recipe ID — **exact published version**,
+для legacy визначений exact `food_id`, для batch — перевірені Model I selectors.
+Ingredient має `recipe_version_id=null`; `quantity_label`, наприклад `125,5 г`
+або `2 шт.`, використовує справжню UOM. `quantity` — exact decimal string;
+React показує готовий серверний підпис, нічого не масштабує й не рахує nutrition.
+Resolver працює batched; 7 предметних SELECT незалежно від кількості карток.
+Відповідь не містить профілю, owner ID, nutrition, фізичних партій або кроків.
+
+`image_url` — nullable logical cover ingredient/recipe через `FoodCards` і
+`PublicImageUrl`. Тільки exact allowlisted HTTPS hosts; SPA CSP дозволяє той
+самий перевірений перелік без wildcard. Фото кроків не є обкладинками, сервер
+не завантажує URL. Немає/пошкоджене фото — текстовий placeholder.
+
+Без активного призначення: `200 {"assignment":null,"weeks":[],"week":null,"days":[]}`
+(якщо `week` передано — поле зберігає запитане значення). Помилки AUTH мають
+статуси T5.1; **всі** відповіді нового endpoint — `no-store, private`.
+GET/HEAD не пишуть у жодні таблиці, не запускають GC і не продовжують idle TTL;
+чинні перевірки та locks залишаються. Це не стосується окремих auth-запитів входу.
+
+### React і межі наступних задач
+
+`/app/meal-plan` доступний із чинного кабінету, без нових router/API залежностей
+та без чотирьох вкладок T5.5. Login, onboarding і security збережені. Чинний
+`api` використовується з credentials/no-store. Тижні/дні, selected date, авторський
+порядок, порції/UOM та logical covers походять із API, без демонстраційних страв.
+Картка рецепта зберігає exact `recipe_version_id`, але до T5.4 показує
+«Перегляд рецепта буде доступний пізніше», без 404/Filament/latest переходів.
+Інгредієнт не має recipe-посилання. КБЖВ, вільні калорії й totals не показуються.
+
+Loading приховує попереднє меню; API error очищує картки та пропонує retry.
+Немає призначення/доступного дня/меню — окремі чесні empty states. 401 прибирає
+приватний UI та повертає до login. Refresh відбувається кнопкою, при поверненні
+фокуса/видимості та раз на 60 секунд видимого екрана; polling uses тільки цей
+read-only endpoint, без `/api/me` idle refresh. Зміна assignment/version показує
+повідомлення й перевибирає доступний тиждень; generation guard відкидає пізні
+відповіді після новішого запиту/unmount. Push/миттєве повідомлення не реалізовано.
+
+Визначення унікальних меню й автоматичного повторення після наявних днів —
+окреме відкрите рішення DEC-5M. T5.2 не додає цикл, `cycle_length`, нові таблиці
+або enum «Меню A/B/C». T5.3–T5.8, покупки, kitchen sessions, Telegram і метрики
+цим зрізом не реалізовані. [Докази та відтворення](evidence/client-meal-plan/report.md).
