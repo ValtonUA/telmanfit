@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { api, csrf, initialize } from './api'
 import type { FlowResult, Me } from './api'
 import { AuthForm } from './components/AuthForm'
+import { ClientNavigation } from './components/ClientNavigation'
 import { OnboardingFirstStep } from './components/OnboardingFirstStep'
 import { MealItemRecipe } from './components/MealItemRecipe'
 import { MealPlan } from './components/MealPlan'
 import { SecurityPanel } from './components/SecurityPanel'
+import { Today } from './components/Today'
 import './App.css'
 
 const statuses: Record<Me['client']['status'], { label: string; description: string }> = {
@@ -13,6 +15,43 @@ const statuses: Record<Me['client']['status'], { label: string; description: str
   active: { label: 'Супровід активний', description: 'Ваш поточний статус супроводу — активний.' },
   paused: { label: 'Супровід призупинено', description: 'Щоб узгодити продовження, зверніться до тренера.' },
   finished: { label: 'Супровід завершено', description: 'Ваш акаунт залишається доступним.' },
+}
+
+function pageTitle(path: string): string {
+  if (path.startsWith('/app/meal-plan')) return 'Раціон'
+  if (path === '/app/resources') return 'Корисне'
+  if (path === '/app/progress') return 'Прогрес'
+  if (path === '/app/profile') return 'Профіль'
+  if (path === '/app/security') return 'Безпека'
+  if (path === '/app/onboarding') return 'Анкета'
+  return 'Сьогодні'
+}
+
+function Profile({ me }: { me: Me }) {
+  return <section className="client-profile">
+    <span className="eyebrow">Ваш особистий простір</span>
+    <h1>Профіль</h1>
+    <div className="card"><h2>{me.user.full_name}</h2>
+      <p><strong>Супровід:</strong> {statuses[me.client.status]?.label ?? 'Статус недоступний'}</p>
+      <p className="muted">{statuses[me.client.status]?.description}</p>
+    </div>
+    <div className="card"><h2>Налаштування</h2>
+      <p><a href="/app/security">Безпека та двофакторна автентифікація</a></p>
+      <p><a href="/app/onboarding">Моя анкета</a></p>
+    </div>
+  </section>
+}
+
+function EmptySection({ section }: { section: 'Корисне' | 'Прогрес' }) {
+  return <section className="client-empty">
+    <span className="eyebrow">Ваш особистий простір</span>
+    <h1>{section}</h1>
+    <div className="card"><h2>{section === 'Корисне' ? 'Матеріали поки недоступні' : 'Показників прогресу поки немає'}</h2>
+      <p className="muted">{section === 'Корисне'
+        ? 'Тут з’являться статті, відео та інші матеріали після публікації тренером.'
+        : 'Коли дані будуть доступні, тут можна буде переглянути ваш прогрес.'}</p>
+    </div>
+  </section>
 }
 
 export default function App() {
@@ -31,7 +70,7 @@ export default function App() {
       initialize().then(result => {
         if (active && current === generation) {
           setMe(result.me); setInvite(result.invite)
-          if (!result.me && (window.location.pathname.startsWith('/app/meal-plan/') || ['/app', '/app/', '/app/index.html', '/app/security', '/app/onboarding', '/app/meal-plan'].includes(window.location.pathname))) {
+          if (!result.me && window.location.pathname !== '/app/login' && window.location.pathname !== '/app/register') {
             window.history.replaceState(null, '', '/app/login'); setPage('/app/login')
           }
         }
@@ -53,20 +92,33 @@ export default function App() {
   }, [me, page])
   function login(user: Me) { setMe(user); setInvite(undefined); setNotice(''); window.history.replaceState(null, '', '/app'); setPage('/app') }
   function exit(message: string) { setMe(undefined); setInvite(undefined); setNotice(message); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') }
+  const client = ready && Boolean(me)
+  const recipe = /^\/app\/meal-plan\/items\/[^/]+\/recipe$/.test(page)
   return <>
-    <header className="site-header"><a className="brand" href="/app" aria-label="TelmanFit — кабінет"><span className="brand-mark" aria-hidden="true">T</span>Telman<span>Fit</span></a><span className="header-caption">Особистий простір</span>{me && <button className="text-button" disabled={busy} onClick={async () => { setBusy(true); try { await api('auth/logout', {}); await csrf(); exit('Ви вийшли з акаунта.') } catch (failure) { setError((failure as Error).message) } finally { setBusy(false) } }}>Вийти</button>}</header>
-    <main id="main-content">
+    {client ? <header className="client-header"><div className="client-header-inner">
+      <div className="client-header-title"><span className="eyebrow">Ваш особистий простір</span><strong>{pageTitle(page)}</strong></div>
+      <div className="client-header-actions"><a className="client-avatar" href="/app/profile" aria-label="Відкрити профіль">
+        {(me?.user.first_name ?? me?.user.full_name ?? 'К').trim().charAt(0).toUpperCase()}</a>
+        <button className="text-button" disabled={busy} onClick={async () => { setBusy(true); try { await api('auth/logout', {}); await csrf(); exit('Ви вийшли з акаунта.') } catch (failure) { setError((failure as Error).message) } finally { setBusy(false) } }}>Вийти</button>
+      </div></div></header>
+      : <header className="site-header"><a className="brand" href="/app" aria-label="TelmanFit — кабінет"><span className="brand-mark" aria-hidden="true">T</span>Telman<span>Fit</span></a><span className="header-caption">Особистий простір</span></header>}
+    <main id="main-content" className={client ? 'client-main' : undefined}>
       {notice && <p role="status" className="notice">{notice}</p>}
       {me?.security.recovery_used && page !== '/app/security' && <p role="status" className="notice">Ви використали резервний код. 2FA залишається увімкненою. Невикористаних кодів: {me.security.recovery_codes_remaining}. За потреби оновіть їх у налаштуваннях безпеки.</p>}
       {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
-        : me && /^\/app\/meal-plan\/items\/[^/]+\/recipe$/.test(page) ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
+        : me && recipe ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
         : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
+        : me && page === '/app/resources' ? <EmptySection section="Корисне" />
+        : me && page === '/app/progress' ? <EmptySection section="Прогрес" />
+        : me && page === '/app/profile' ? <Profile me={me} />
         : me && page === '/app/security' ? <SecurityPanel me={me} onExit={exit} />
         : me && page === '/app/onboarding' ? <OnboardingFirstStep />
-        : me ? <div className="dashboard"><span className="eyebrow">Ваш особистий кабінет</span><h1>Вітаємо, {me.user.first_name ?? me.user.full_name}</h1><p className="muted intro">Ваш шлях починається з турботи про себе.</p><section className="card"><span className="eyebrow">Статус супроводу</span><h2>{statuses[me.client.status]?.label ?? 'Статус недоступний'}</h2><p>{statuses[me.client.status]?.description}</p></section><section className="card onboarding-preview"><div><h2>Ваш раціон</h2><p>Призначений тренером план харчування, день за днем.</p></div><a className="button" href="/app/meal-plan">Переглянути раціон</a></section><section className="card onboarding-preview"><div><h2>Ваша початкова анкета</h2><p>Три запитання з вашої анкети. Відповіді зберігаються в особистому кабінеті.</p></div><a className="button" href="/app/onboarding">Заповнити анкету</a></section><section className="card security-preview"><div><h2>Спокій за свій акаунт</h2><p>Другий фактор, електронна пошта та ваші пристрої.</p></div><a className="button" href="/app/security">Налаштування безпеки</a></section></div>
+        : me && ['/app', '/app/', '/app/index.html'].includes(page) ? <Today onExit={exit} />
+        : me ? <section className="card"><h1>Сторінку не знайдено</h1><p><a href="/app">Повернутися на головну</a></p></section>
         : <AuthForm key={page} invite={invite} onLogin={login} />}
     </main>
-    <footer>TelmanFit · Крок за кроком, у вашому темпі</footer>
+    {client && <ClientNavigation path={page} />}
+    {!client && <footer>TelmanFit · Крок за кроком, у вашому темпі</footer>}
   </>
 }
