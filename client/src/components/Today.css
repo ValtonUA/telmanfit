@@ -1,0 +1,8 @@
+.today-page .today-heading { margin-bottom: 22px; }
+.today-heading h1 { margin-bottom: 6px; }
+.today-heading .muted { margin: 0; text-transform: capitalize; }
+.today-actions { margin-bottom: 26px; }
+.today-actions .button { display: inline-flex; align-items: center; justify-content: center; }
+.today-menu > h2 { font-size: 1.35rem; margin: 0 0 24px; }
+.today-menu .meal-section { margin-block: 18px 28px; }
+@media (max-width: 480px) { .today-actions .button { width: 100%; } }
