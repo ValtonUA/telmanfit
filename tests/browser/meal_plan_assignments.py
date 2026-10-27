@@ -70,20 +70,17 @@ with sync_playwright() as p:
     page.wait_for_url('**/admin')
     checks.append('Штатний password + MFA; guest editor недоступний')
 
-    from readiness import livewire_ready
+    from readiness import livewire_click
     from meal_plans import settle_overlays
 
     def fixture(*args):
         return subprocess.check_output(['php', 'tests/browser/meal-plan-assignment-fixture.php', *map(str, args)], text=True)
 
-    def click(name):
-        with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
-            page.get_by_role('button', name=name, exact=True).click()
-        assert response.value.status == 200
-        livewire_ready(page)
+    def click(name, method='callMountedAction'):
+        livewire_click(page, page.get_by_role('button', name=name, exact=True), method)
 
     def form(name, start):
-        click(name)
+        click(name, 'mountAction')
         dialog = page
         dialog.get_by_role('button', name='Опублікована версія', exact=False).click()
         page.get_by_role('option').filter(has_text='Синтетичний раціон призначення').first.click()
@@ -104,7 +101,7 @@ with sync_playwright() as p:
             before = fixture('state', client)
             assert json.loads(before)['assignments'] == []
             page.screenshot(path=str(output / f'first-{width}-{theme}.png'), full_page=True)
-            click('Скасувати')
+            click('Скасувати', 'unmountAction')
             assert fixture('state', client) == before
             form('Призначити раціон', f['today'])
             click('Так, підтвердити призначення')
@@ -132,7 +129,7 @@ with sync_playwright() as p:
     click('Так, підтвердити призначення')
     expect(page.get_by_text('Розклад або картка клієнта змінилися.', exact=False)).to_be_visible()
     assert fixture('state', client) == before
-    click('Скасувати')
+    click('Скасувати', 'unmountAction')
     client = fixture('client').strip()
     page.goto(base + '/admin/clients/' + client + '/meal-plans')
     form('Призначити раціон', f['today'])

@@ -1,5 +1,6 @@
 """Actual render readiness; networkidle не є доказом завершення DOM morph."""
 import time
+from urllib.parse import urlsplit
 
 metrics = {'calls': 0, 'seconds': 0.0}
 
@@ -29,3 +30,23 @@ def livewire_ready(page):
         && window.__ciLivewire.pending === 0 && !window.__ciLivewire.failed""")
     metrics['calls'] += 1
     metrics['seconds'] += time.perf_counter() - started
+
+
+def livewire_click(page, button, method):
+    """Чекати commit натиснутої дії, а не фоновий HTTP notifications."""
+    livewire_ready(page)
+
+    def action_response(response):
+        request = response.request
+        if request.method != 'POST' or not urlsplit(response.url).path.endswith('/livewire/update'):
+            return False
+        data = request.post_data_json
+        return any(call.get('method') == method
+                   for component in data.get('components', [])
+                   for call in component.get('calls', []))
+
+    with page.expect_response(action_response) as response:
+        button.click()
+    assert response.value.status == 200
+    # succeed/onRender у tracker доводить завершення body та DOM morph.
+    livewire_ready(page)

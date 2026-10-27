@@ -9,7 +9,7 @@ import json
 import unittest
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
-from readiness import TRACKER, livewire_ready
+from readiness import TRACKER, livewire_click, livewire_ready
 
 
 class ReadinessTests(unittest.TestCase):
@@ -70,6 +70,61 @@ class ReadinessTests(unittest.TestCase):
         self.page.set_default_timeout(250)
         with self.assertRaises(PlaywrightTimeoutError):
             livewire_ready(self.page)
+
+    def action_page(self, action_status=200, action_method='mountAction'):
+        methods = []
+
+        def respond(route):
+            method = route.request.post_data_json['components'][0]['calls'][0]['method']
+            methods.append(method)
+            route.fulfill(status=503 if method == 'pullNotificationsFromSession' else action_status,
+                          content_type='application/json', body='{}')
+
+        self.page.route('http://synthetic.invalid/', lambda route: route.fulfill(
+            content_type='text/html', body='<button>Action</button><p id="result">before</p>'))
+        self.page.route('**/livewire/update', respond)
+        self.page.goto('http://synthetic.invalid/')
+        self.page.evaluate(TRACKER)
+        self.page.evaluate('''(method) => {
+            window.Livewire = {hook: (name, callback) => {window.commitHook = callback}};
+            document.dispatchEvent(new Event('livewire:init'));
+            const send = async method => {
+                const response = await fetch('/livewire/update', {method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({components: [{calls: [{method, params: []}]}]})});
+                await response.text();
+                return response;
+            };
+            document.querySelector('button').onclick = async () => {
+                // Фонова відповідь гарантовано приходить до commit дії.
+                await send('pullNotificationsFromSession');
+                let succeed, fail;
+                window.commitHook({succeed: cb => {succeed = cb}, fail: cb => {fail = cb}});
+                const response = await send(method);
+                if (!response.ok) { fail(); return; }
+                document.querySelector('#result').textContent = 'rendered';
+                succeed();
+            };
+        }''', action_method)
+        return methods
+
+    def test_action_wait_ignores_unrelated_notifications_response(self):
+        methods = self.action_page()
+        livewire_click(self.page, self.page.get_by_role('button', name='Action'), 'mountAction')
+        self.assertEqual(methods, ['pullNotificationsFromSession', 'mountAction'])
+        self.assertEqual(self.page.locator('#result').inner_text(), 'rendered')
+        self.assertEqual(self.page.evaluate('window.__ciLivewire.rendered'), 1)
+
+    def test_failed_action_is_not_hidden_by_background_response(self):
+        self.action_page(action_status=503)
+        with self.assertRaises(AssertionError):
+            livewire_click(self.page, self.page.get_by_role('button', name='Action'), 'mountAction')
+
+    def test_unrelated_method_cannot_satisfy_action_wait(self):
+        self.action_page(action_method='otherAction')
+        self.page.set_default_timeout(250)
+        with self.assertRaises(PlaywrightTimeoutError):
+            livewire_click(self.page, self.page.get_by_role('button', name='Action'), 'mountAction')
 
 
 class BrowserGroupCleanupTests(unittest.TestCase):
