@@ -1,6 +1,6 @@
 ## BR-C — авторські кухонні шаблони
 
-Нормативна схема — [SQL17](17_cooking_templates.sql), точний контракт —
+Нормативна схема — [SQL17](17_cooking_templates.sql), [SQL18](18_cooking_selection.sql), точний контракт —
 [cooking-templates.md](cooking-templates.md).
 
 - **BR-C-01:** reuse лише за повною рівністю exact frozen семиденного pattern
@@ -22,6 +22,12 @@
   формул чи масштабування за allocations. Вода/equipment/time/temperature вручну.
 - **BR-C-07:** JSONB v1 має stable stage/block IDs та action/image/hint/timer;
   unknown structure/HTML/unresolved references блокують publish усієї інструкції.
+- **BR-C-09:** чинна клієнтська версія обирається явно admin для template + exact
+  pattern + mode. Publish не активує її. Атомарна заміна потребує selection revision;
+  відсутність/несумісність вибору — unavailable, без latest/historical fallback.
+- **BR-C-10:** B/C labels походять із frozen recipe input snapshot, A/grams —
+  канонічні `г`; legacy quantity без frozen label позначається unavailable для
+  майбутнього API, без live label lookup. Числа та provenance лишаються exact.
 - **BR-C-08:** перед кожним застосуванням і читанням перевіряти exact чинний
   assignment, ClientSession owner, повний доступний тиждень і published версію
   в одному read snapshot. Доменний SQL guard не замінює authentication;

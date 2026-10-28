@@ -8,6 +8,10 @@
 Authoritative DDL: [SQL17](17_cooking_templates.sql), його виконувана копія —
 [database SQL](../database/sql/cooking/00_templates.sql), forward-only
 [міграція](../database/migrations/2026_10_28_000000_create_cooking_templates.php).
+Explicit selection і уточнений token result додає forward-only
+[SQL18](18_cooking_selection.sql), byte-identical до
+[runtime SQL](../database/sql/cooking/01_selection.sql), через окрему
+[міграцію](../database/migrations/2026_10_28_010000_add_cooking_selection.php).
 Історичні таблиці й рядки не змінюються. Це schema/domain етап;
 Filament, API, ClientSession adapter, React і production activation — наступні PR.
 
@@ -110,6 +114,60 @@ water/equipment/time/formula token types немає. Таймер не дово�
 
 ## Доступ і наступний API
 
+### Явний вибір чинної версії (погоджений MVP)
+
+`published` означає незмінну перевірену історичну версію, а не автоматичну
+активацію. `cooking_selections` зберігає один явний вибір на
+template + exact menu pattern + mode. Ключ використовує SHA256; guard перевіряє
+повну JSONB рівність старої й нової версій, collision відхиляється без fallback.
+Різні template є окремими серіями: майбутній caller передає явно обраний template
+та exact version ID, не обирає довільний перший template серед сумісних.
+
+Admin виконує `CookingTemplates::select(actor, version, expectedSelectionRevision)`.
+Перший вибір очікує revision=0, запис отримує 1; кожна явна заміна, включно
+з поверненням до старої історичної версії, збільшує revision. Повернення дозволене
+лише як новий явний вибір admin, не автоматично. Publish не змінює selection.
+Заміна атомарна під template lock; stale/ABA — SQLSTATE 40001. Змінювати ключ,
+видаляти selection або посилатися на draft/чужий template/mode заборонено.
+Відсутній вибір або недоступний обраний version — unavailable, без historical/latest
+fallback. Інший pattern/mode не є заміною цього slot і має окремий явний вибір.
+
+`cooking_compatible` — лише внутрішня історична перевірка сумісності SQL17;
+вона не дозволяє клієнтську видачу. Клієнтська перевірка — `cooking_available`,
+яка додатково вимагає точного selection. Старі published версії не змінюються.
+Новий read snapshot після commit заміни відхиляє попередню версію; read request,
+що вже почав REPEATABLE READ snapshot до commit, завершується з попереднім
+цілісним станом. Немає обіцянки скасувати вже видану відповідь або offline content.
+Наступний API повинен повторювати перевірку при новому запиті та скидати local
+progress при зміні exact version, без неявного перенесення.
+
+### Одиниці та labels token result
+
+`cooking_token` повертає decimal `value`, `metric`, `uom_id`, `unit_label`,
+`label_source` та exact provenance `sources`. B/C quantity бере label виключно
+з `recipe_batch_quantities.input_snapshot.uom_label` (`recipe_snapshot`),
+не з чинного `uoms`. A quantity за SQL11 завжди дорівнює грамам: `г`,
+`canonical_grams`. Для metric=grams завжди `г`, `uom_id=null`, `canonical_grams`.
+Це канонічний підпис фізичної метрики, не історична назва довідника.
+
+Legacy не має frozen UOM label: quantity повертає `unit_label=null`,
+`label_source=unavailable`. Числова quantity лишається exact, але майбутній API
+мусить fail-closed відхилити інструкцію з таким quantity token; автор може явно
+використати підтриманий grams token або вручну написати перевірений текст.
+Live label lookup/backfill/перезапис published recipe тут не вводиться.
+Теперішній T5.4 reader має live-label fallback для legacy/A; його не можна
+копіювати в cooking API або називати цілком frozen. Повний cooking API відсутній.
+
+### Конкурентні команди
+
+Aggregate edit/review/publish беруть locks template → version → details;
+`cooking_assert_revision` перевіряє exact revision/status до detail writes
+у тій самій транзакції. Service review/publish використовує такий самий порядок.
+Raw child-first DML може створити deadlock із root-first writer: PostgreSQL
+відхиляє victim (40P01), уся команда відкочується. 40001/40P01/lock timeout
+не є успіхом і не дозволяє автоматично повторювати старий intent: потрібні
+новий snapshot/review та нова явна команда. Прямих editor HTTP endpoints тут немає.
+
 `cooking_available(client,assignment,version,week,mode,server_date)` — read-only доменна
 перевірка exact чинного assignment, published menu/template, ownership плану й
 personal recipes, повного доступного тижня та рівності pattern. Невідповідність
@@ -131,6 +189,12 @@ fingerprint; поточна схема його не зберігає і не п
 міграцію на вже заповнену синтетичну legacy/A/B/C схему, проходить шлях
 1 template → 1 session → 6 outputs → allocations → review → publish.
 Негативні PG перевірки використовують savepoints і rollback.
+Окремий [concurrency runner](../tests/pg/cooking-concurrency.php) запускає три
+незалежні PHP/PDO процеси з різними backend PID: edit/review/publish для кожного
+типу details, rollback, double publish, create-next, selection replacement/ABA,
+READ COMMITTED/REPEATABLE READ/SERIALIZABLE conflicts, MVCC read snapshot та
+справжній deadlock victim. Кожна гонка перевіряє фактичний PG lock wait;
+відсутній worker/lock або неочікуваний SQLSTATE завершує runner кодом 1.
 CI включає цей клас у recipe-групу [Stage 1 runner](../tests/pg/run-stage1.sh).
 Локально Windows: [run-cooking.ps1](../tests/pg/run-cooking.ps1), потрібні Docker
 та наявні локальні PHP/PG image inputs. Нові disposable PG18/socket volume,

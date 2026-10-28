@@ -210,6 +210,7 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/meal-plan-assignment-concurrency.php
     php tests/pg/meal-plan-copy-concurrency.php
     php tests/pg/recipe-cover-concurrency.php
+    php tests/pg/cooking-concurrency.php
     stage1_mark recipe_concurrency
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then
         bash tests/browser/recipe-batch-in-context.sh

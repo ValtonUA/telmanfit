@@ -17,6 +17,7 @@ class TargetedGroupTests(unittest.TestCase):
         for path in ("app/Services/Catalog/R2ObjectLister.php",
                      "app/Services/Cooking/CookingTemplates.php",
                      "tests/Postgres/CookingTemplatesTest.php",
+                     "tests/pg/cooking-concurrency.php",
                      "app/Console/Commands/MatchR2Images.php",
                      "config/r2.php", "tests/Postgres/R2ImageMatcherTest.php"):
             with self.subTest(path=path):

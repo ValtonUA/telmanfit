@@ -10,6 +10,11 @@ use Illuminate\Validation\ValidationException;
 /** Доменні primitives для наступних PR; routes/UI та activation відсутні. */
 final class CookingTemplates
 {
+    public function select(User $actor, int $version, int $expectedSelectionRevision): int
+    {
+        return DB::transaction(fn () => (int) DB::selectOne('SELECT cooking_select(?,?,?) AS revision', [$actor->id, $version, $expectedSelectionRevision])->revision);
+    }
+
     public function review(User $actor, int $version, int $expectedRevision, array $confirmation): void
     {
         DB::transaction(function () use ($actor, $version, $expectedRevision, $confirmation): void {
@@ -41,6 +46,10 @@ final class CookingTemplates
     private function draft(User $actor, int $version, int $expectedRevision): object
     {
         abort_unless(DB::table('users')->where('id', $actor->id)->where('role', 'admin')->exists(), 403);
+        // Спільний порядок template → version; SQLSTATE 40001/40P01 не повторюється.
+        $template = DB::table('cooking_template_versions')->where('id', $version)->value('template_id');
+        abort_unless($template !== null, 404);
+        DB::table('cooking_templates')->where('id', $template)->lockForUpdate()->first();
         $draft = DB::table('cooking_template_versions')->where('id', $version)->lockForUpdate()->first();
         abort_unless($draft !== null, 404);
         if ($draft->status !== 'draft' || (int) $draft->revision !== $expectedRevision) {

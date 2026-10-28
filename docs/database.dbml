@@ -1147,6 +1147,17 @@ Table library_items [headercolor: #0369A1] {
 }
 
 // T5.7b: authoritative SQL17; full existing week, no cycle/assignment binding.
+Table cooking_selections {
+  template_id integer [not null, ref: > cooking_templates.id]
+  mode smallint [not null, note: '1 | 2 | 7']
+  menu_fingerprint text [not null, note: 'SHA256 key; full pattern comparison rejects collision']
+  version_id integer [not null, ref: > cooking_template_versions.id]
+  revision bigint [not null, note: 'Initial 1; expected revision CAS; increments even for explicit rollback to historical version']
+  indexes {
+    (template_id,mode,menu_fingerprint) [pk]
+  }
+  Note: 'SQL18: explicit admin selection only, published version of same template/mode/pattern. Publish does not activate; no delete/key mutation/latest fallback. Atomic replacement under template lock.'
+}
 Table cooking_templates {
   id integer [pk, increment]
   title text [not null]

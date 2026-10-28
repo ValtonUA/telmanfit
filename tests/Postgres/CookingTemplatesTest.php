@@ -4,6 +4,7 @@ namespace Tests\Postgres;
 
 use App\Models\User;
 use App\Services\Cooking\CookingTemplates;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -47,6 +48,7 @@ class CookingTemplatesTest extends PostgresTestCase
         }
         $history = $this->history();
         (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->up();
+        (require database_path('migrations/2026_10_28_010000_add_cooking_selection.php'))->up();
         $this->assertSame($history, $this->history());
     }
 
@@ -113,6 +115,83 @@ class CookingTemplatesTest extends PostgresTestCase
         return (int) DB::table('cooking_template_versions')->where('id', $v)->value('revision');
     }
 
+    private function replacement(array $d): array
+    {
+        $old = DB::table('cooking_template_versions')->where('id', $d['v'])->first();
+        $v = DB::table('cooking_template_versions')->insertGetId(['template_id' => $d['template'], 'previous_version_id' => $d['v'],
+            'version_number' => $old->version_number + 1, 'source_plan_version_id' => $d['source'], 'source_week' => 1, 'mode' => 1]);
+        $s = (array) DB::table('cooking_sessions')->where('id', $d['session'])->first();
+        unset($s['id']);
+        $session = DB::table('cooking_sessions')->insertGetId(array_replace($s, ['version_id' => $v]));
+        $outputs = [];
+        foreach ($d['outputs'] as $id) {
+            $o = (array) DB::table('cooking_outputs')->where('id', $id)->first();
+            unset($o['id']);
+            $output = DB::table('cooking_outputs')->insertGetId(array_replace($o, ['version_id' => $v, 'session_id' => $session]));
+            $a = (array) DB::table('cooking_allocations')->where('output_id', $id)->first();
+            DB::table('cooking_allocations')->insert(array_replace($a, ['version_id' => $v, 'output_id' => $output]));
+            $outputs[] = $output;
+        }
+
+        return array_replace($d, compact('v', 'session', 'outputs'));
+    }
+
+    public function test_explicit_selection_replacement_no_publish_activation_no_fallback_and_aba(): void
+    {
+        $this->assertSame(file_get_contents(database_path('sql/cooking/01_selection.sql')), file_get_contents(base_path('docs/18_cooking_selection.sql')));
+        $d = $this->draft();
+        $service = app(CookingTemplates::class);
+        $this->rejected(fn () => $service->select($this->actor, $d['v'], 0));
+        $this->publishCooking($d['v']);
+        $client = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+        $assignment = DB::table('client_meal_plan_assignments')->insertGetId(['client_id' => $client, 'meal_plan_version_id' => $d['source'],
+            'created_by' => $this->actor->id, 'start_date' => '2026-10-26', 'end_date' => '2026-11-01']);
+        $available = fn ($v) => DB::selectOne("SELECT cooking_available(?,?,?,1,1,'2026-10-28'::date) AS ok", [$client, $assignment, $v])->ok;
+        $this->assertFalse($available($d['v']));
+        $this->assertSame(1, $service->select($this->actor, $d['v'], 0));
+        $this->rejected(fn () => DB::select('SELECT cooking_select(?,?,NULL)', [$this->actor->id, $d['v']]));
+        $this->rejected(fn () => DB::select('SELECT cooking_assert_revision(?,NULL)', [$d['v']]));
+        $this->rejected(fn () => DB::table('cooking_selections')->update(['mode' => 2, 'revision' => 2]));
+        $this->assertTrue($available($d['v']));
+        $next = $this->replacement($d);
+        $this->publishCooking($next['v']);
+        $this->assertTrue($available($d['v']));
+        $this->assertFalse($available($next['v']));
+        $this->assertSame(2, $service->select($this->actor, $next['v'], 1));
+        $this->assertFalse($available($d['v']));
+        $this->assertTrue($available($next['v']));
+        $this->rejected(fn () => $service->select($this->actor, $d['v'], 1), DeadlockException::class);
+        $this->rejected(fn () => DB::table('cooking_selections')->update(['version_id' => $d['v']]));
+        $this->rejected(fn () => DB::table('cooking_selections')->delete());
+        $coach = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic coach', 'role' => 'coach']));
+        $this->rejected(fn () => $service->select($coach, $d['v'], 2));
+        $this->assertSame(3, $service->select($this->actor, $d['v'], 2));
+        $this->rejected(fn () => $service->select($this->actor, $next['v'], 1), DeadlockException::class);
+        $this->assertTrue($available($d['v']));
+        DB::table('client_meal_plan_assignments')->where('id', $assignment)->update(['end_date' => '2026-10-27']);
+        $this->assertFalse($available($d['v']));
+        $this->assertFalse($available($next['v']));
+    }
+
+    public function test_token_labels_preserve_frozen_bc_and_never_lookup_live_catalog(): void
+    {
+        $d = $this->draft();
+        $resolve = fn ($n, $metric = 'quantity') => json_decode(DB::selectOne('SELECT cooking_token(?,?::jsonb)::text AS t', [$d['session'],
+            json_encode(['metric' => $metric, 'sources' => [['output' => $d['outputs'][$n], 'row' => $this->recipes[$n]['row']]]])])->t, true);
+        $before = array_map(fn ($n) => $resolve($n), range(0, 5));
+        $this->assertSame('recipe_snapshot', $before[2]['label_source']);
+        $this->assertSame('gram', $before[2]['unit_label']);
+        $this->assertSame('canonical_grams', $before[1]['label_source']);
+        $this->assertSame('г', $before[1]['unit_label']);
+        $this->assertNull($before[0]['unit_label']);
+        $this->assertSame('unavailable', $before[0]['label_source']);
+        DB::table('uoms')->where('code', 'g')->update(['label' => 'Змінений довідник']);
+        foreach (range(0, 5) as $n) {
+            $this->assertSame($before[$n], $resolve($n));
+            $this->assertSame('г', $resolve($n, 'grams')['unit_label']);
+        }
+    }
+
     private function review(int $v): void
     {
         app(CookingTemplates::class)->review($this->actor, $v, $this->revision($v), array_fill_keys(['suitability', 'safety', 'manual_parameters', 'no_process_water_tokens'], true));
@@ -177,6 +256,7 @@ class CookingTemplatesTest extends PostgresTestCase
     {
         $d = $this->draft();
         $this->publishCooking($d['v']);
+        app(CookingTemplates::class)->select($this->actor, $d['v'], 0);
         $available = fn ($client, $assignment, $version = null, $week = 1, $mode = 1) => DB::selectOne('SELECT cooking_available(?,?,?,?,?,?::date) AS ok', [$client, $assignment, $version ?? $d['v'], $week, $mode, '2026-10-28'])->ok;
         $clients = [];
         foreach ([1, 2] as $n) {

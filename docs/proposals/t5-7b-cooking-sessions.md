@@ -1,6 +1,6 @@
 # T5.7b — кухонні сесії та мегарецепти: контракт для погодження
 
-> **Статус:** D1–D5 затверджені власником; додатково погоджено семиденну межу v1. Авторські фасування/зберігання — звичайні етапи з явним review. Чинна схема/domain реалізація й межі — [cooking-templates.md](../cooking-templates.md), [SQL17](../17_cooking_templates.sql). Filament/API/React і production — наступні окремі PR.
+> **Статус:** D1–D5 затверджені власником; додатково погоджено семиденну межу v1. Авторські фасування/зберігання — звичайні етапи з явним review. Чинна схема/domain реалізація й межі — [cooking-templates.md](../cooking-templates.md), [SQL17](../17_cooking_templates.sql), [SQL18](../18_cooking_selection.sql); чинна версія обирається admin явно, publish не активує її. Filament/API/React і production — наступні окремі PR.
 
 ## 1. Предметні межі та багаторазовий шаблон
 

@@ -475,7 +475,7 @@ Readonly resolver і decimal scale/округлення описані в [meal-
 
 ## Кухонні шаблони SQL17
 
-Канонічні поля, FK й guards — [SQL17](17_cooking_templates.sql), семантика та
+Канонічні поля, FK й guards — [SQL17](17_cooking_templates.sql), [SQL18](18_cooking_selection.sql), семантика та
 межа реалізації — [cooking-templates.md](cooking-templates.md).
 
 | Сутність | Ключі й дані |
@@ -485,6 +485,7 @@ Readonly resolver і decimal scale/округлення описані в [meal-
 | CookingSession / cooking_sessions | integer identity; composite UNIQUE(id,version_id); position і day UNIQUE у версії, day 1–7, introduction/equipment/estimated_seconds вручну, content JSONB v1 зі stable IDs. |
 | CookingOutput / cooking_outputs | integer identity; composite FK session/version, exact recipe_version, nullable format composite FK, portion_divisor = cooked. Один рядок — один фізичний batch. |
 | CookingAllocation / cooking_allocations | PK(version,day,meal_position,item_position); composite FK output/version, exact portions. Покриття recipe slots, selector/day/aggregate guards перед publish. |
+| CookingSelection / cooking_selections | PK(template_id,mode,menu_fingerprint); version_id → exact published version тієї ж серії/режиму/pattern, revision > 0. Admin explicit CAS selection/replacement; publish не активує; повне порівняння pattern, без delete/key mutation/latest fallback. |
 
 `cooking_output_balances` — view: cooked/allocated/left_over. Ingredient slots
 входять до повного pattern. Часткові тижні unavailable; автоматичний DEC-5M
