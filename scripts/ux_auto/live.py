@@ -1,6 +1,7 @@
 """Owner CLI: preflight, ізольований sandbox і керований live через наявний tick."""
 import argparse
 from copy import deepcopy
+import datetime
 import json
 import os
 import signal
@@ -56,9 +57,11 @@ def sandbox(config, session, token, api_key):
     receipt = backend.merge('SANDBOX', pr['head'], pr['base_sha'], 'sandbox:merge:' + pr['head'])
     if not backend.confirm('SANDBOX', receipt):
         raise Blocked('Sandbox merge не підтверджено')
+    merged_at = api.pr(pr['number'])['merged_at']
+    tested_at = datetime.datetime.fromisoformat(merged_at.replace('Z', '+00:00')).timestamp()
     record = {'status': 'success', 'config_sha': config['identity'], 'repository': config['sandbox_repository'],
               'pr': pr['number'], 'head': pr['head'], 'base': pr['base_sha'], 'merge_sha': receipt['merge_sha'],
-              'ci': proof['ci'], 'review': proof['review'], 'browser': proof['browser'], 'time': time.time()}
+              'ci': proof['ci'], 'review': proof['review'], 'browser': proof['browser'], 'time': tested_at}
     session.update(lambda state: state.__setitem__('sandbox', record))
     return {'status': 'success', 'sandbox_pr': pr['url'], 'live_enabled': False}
 

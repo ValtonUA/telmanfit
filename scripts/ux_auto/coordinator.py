@@ -266,7 +266,7 @@ def main():
     parser.add_argument("--trigger", default="simulate")
     args = parser.parse_args()
     if args.command == "live":
-        parser.error("LIVE_DISABLED: credentials/permissions/PR-event CI/E2E vertical slice не перевірено; live adapter відсутній")
+        parser.error("LIVE_DISABLED: використайте scripts.ux_auto.live із config, sandbox receipt та окремою activation")
     if args.trigger != "simulate":
         parser.error("Неоднозначний або недовірений trigger; дозволено лише simulate")
     from scripts.ux_auto.mock import MockBackend
