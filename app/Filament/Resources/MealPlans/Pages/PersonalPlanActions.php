@@ -49,7 +49,7 @@ trait PersonalPlanActions
                 return ['confirmation' => $p['confirmation']];
             })->action(function (array $arguments, array $data): void {
                 $copy = $this->copyValidation(fn () => app(MealPlanCopier::class)->copy(auth()->user(), $this->getRecord()->id, (int) $arguments['owner'], $arguments['title'], $data['confirmation']));
-                $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $copy]), navigate: false);
+                $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $copy]), navigate: true);
             });
     }
 

@@ -2,7 +2,7 @@
     <div class="batch-editor space-y-6">
         <div class="flex flex-wrap gap-3">
             <x-filament::button wire:click="createDraft" wire:loading.attr="disabled">Нова чернетка A/B/C</x-filament::button>
-            <label class="min-w-0 flex-1">Версія рецепта<x-filament::input.wrapper><x-filament::input.select aria-label="Версія рецепта" onchange="if(this.value) window.location.href=this.value"><option value="">Оберіть рецепт</option>@foreach ($versions as $item)<option value="{{ static::getUrl(['version' => $item->id]) }}" @selected($version === $item->id)>#{{ $item->id }} {{ $item->title }} · {{ $item->status === 'draft' ? 'Чернетка' : 'Опубліковано' }} · {{ $item->editor_contract === 'batch_v1' ? 'A/B/C' : 'Старий формат' }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
+            <label class="min-w-0 flex-1">Версія рецепта<x-filament::input.wrapper><x-filament::input.select aria-label="Версія рецепта" onchange="if(this.value) Livewire.navigate(this.value)"><option value="">Оберіть рецепт</option>@foreach ($versions as $item)<option value="{{ static::getUrl(['version' => $item->id]) }}" @selected($version === $item->id)>#{{ $item->id }} {{ $item->title }} · {{ $item->status === 'draft' ? 'Чернетка' : 'Опубліковано' }} · {{ $item->editor_contract === 'batch_v1' ? 'A/B/C' : 'Старий формат' }}</option>@endforeach</x-filament::input.select></x-filament::input.wrapper></label>
         </div>
         @if ($ownerClientId)<p role="status">Персональний рецепт клієнта #{{ $ownerClientId }}@if ($parentRecipeId) · батьківський рецепт #{{ $parentRecipeId }}@endif. Зміни стосуються цієї копії.</p>@endif
         @if ($message)<p role="status">{{ $message }}</p>@endif

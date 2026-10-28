@@ -55,7 +55,7 @@
                         @if ($editable)
                             <x-filament::button tag="a" :href="\App\Filament\Resources\MealPlans\MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $day->id])" class="plan-day-cta">{{ $items ? 'Редагувати день' : 'Заповнити день' }}</x-filament::button>
                         @else
-                            <a class="plan-read-link" href="{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $day->id]) }}">Переглянути день</a>
+                            <a wire:navigate class="plan-read-link" href="{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $day->id]) }}">Переглянути день</a>
                         @endif
                     </article>
                 @endforeach

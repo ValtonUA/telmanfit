@@ -77,6 +77,10 @@ with sync_playwright() as p:
         if name == 'Оновити preview':
             expect(target.get_by_text('Preview готовий. Збереження та публікація — окремі явні дії.', exact=True)).to_be_visible()
 
+    from filament_navigation import run_navigation
+    run_navigation(page, base)
+    checks.append('UX-2: real SPA navigation and cached history/auth gate')
+
     # Кухонний fixture додає раціон; це має відбутися до глобальних
     # structure-hash snapshots перевірок незмінності та відкликання доступу.
     from cooking import run_cooking

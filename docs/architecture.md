@@ -151,6 +151,8 @@ PWA і Telegram Mini App використовують максимально о�
 - Майбутнє (за [roadmap.md](roadmap.md)): бізнес-ресурси Filament, Policy/Gate для прав тренера та ізоляції клієнтських даних. Поточний доступ лише для `admin` не визначає майбутніх прав `coach` і не закриває G1.
 - Тренер працює **лише** через Filament; окремого тренерського SPA не планується.
 
+Адміністративна навігація використовує штатний Filament SPA; межі auth/React та захист cached history визначені в [контракті UX-2](admin-navigation.md).
+
 ## 8. Клієнтський SPA
 
 - Окремий npm-проєкт у `client/` (React 19 + TypeScript + Vite 8), не частина Laravel-конвеєра Vite (`vite.config.js` обслуговує лише Blade-ресурси `resources/css/app.css`, `resources/js/app.js`).

@@ -169,7 +169,7 @@ try:
         other.close()
         page.goto(base + '/admin')
         page.get_by_role('button', name='Меню користувача').click()
-        page.get_by_role('button', name='Вийти', exact=True).click()
+        page.get_by_role('menuitem', name='Вийти', exact=True).click()
         page.wait_for_url('**/admin/login')
         assert context.request.get(base + '/admin/clients').status == 403
         checks.append('Native Filament logout destroys session and returns to restricted login')

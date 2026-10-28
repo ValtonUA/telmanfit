@@ -37,6 +37,20 @@ class AdminLocaleTest extends TestCase
         $this->assertSame('Обране значення поля «Статус супроводу» недійсне.', $errors->first('status'));
     }
 
+    public function test_panel_spa_keeps_auth_and_client_app_boundaries_native(): void
+    {
+        $panel = Filament::getPanel('admin');
+        $this->assertTrue($panel->hasSpaMode());
+        $this->assertFalse($panel->hasSpaPrefetching());
+        foreach (['/admin/login', '/admin/auth/challenge', '/app', '/app/profile', '/api/me'] as $path) {
+            $this->assertTrue(str(url($path))->is($panel->getSpaUrlExceptions()));
+        }
+        $this->assertFalse(str(url('/admin/clients'))->is($panel->getSpaUrlExceptions()));
+        $response = $this->get('/admin/login')->assertOk();
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->assertStringContainsString('private', $response->headers->get('Cache-Control'));
+    }
+
     public function test_panel_avatar_is_a_local_asset_for_any_name(): void
     {
         $panel = Filament::getPanel('admin');
