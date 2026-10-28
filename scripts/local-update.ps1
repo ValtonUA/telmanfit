@@ -129,7 +129,7 @@ function ConvertFrom-NativeOutput {
 function Invoke-Native {
     param(
         [Parameter(Mandatory)][string] $Command,
-        [Parameter(Mandatory)][string[]] $Arguments,
+        [Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments,
         [switch] $AllowFailure
     )
 
@@ -177,12 +177,12 @@ function Invoke-Native {
 }
 
 function Invoke-Git {
-    param([Parameter(Mandatory)][string[]] $Arguments, [switch] $AllowFailure)
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments, [switch] $AllowFailure)
     return Invoke-Native -Command 'git' -Arguments $Arguments -AllowFailure:$AllowFailure
 }
 
 function Invoke-Docker {
-    param([Parameter(Mandatory)][string[]] $Arguments, [switch] $AllowFailure)
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments, [switch] $AllowFailure)
     return Invoke-Native -Command 'docker' -Arguments $Arguments -AllowFailure:$AllowFailure
 }
 
@@ -192,7 +192,7 @@ function Get-OutputText {
 }
 
 function Invoke-Compose {
-    param([Parameter(Mandatory)][string[]] $Arguments, [switch] $AllowFailure)
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments, [switch] $AllowFailure)
     return Invoke-Docker -Arguments (@('compose') + $script:ComposeArguments + $Arguments) -AllowFailure:$AllowFailure
 }
 
