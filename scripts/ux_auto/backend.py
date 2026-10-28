@@ -41,7 +41,7 @@ class Backend:
                'GIT_CONFIG_VALUE_0': 'AUTHORIZATION: basic ' + encoded,
                'GIT_TERMINAL_PROMPT': '0'}
         run(['git', '-c', 'core.hooksPath=/dev/null', '-C', str(self.workers.source),
-             'fetch', '--no-tags', 'https://github.com/' + self.repo + '.git', sha], env=env)
+             'fetch', '--no-tags', 'https://github.com/' + self.repo + '.git', sha], env=env, file_limit=512000000)
 
     def publish(self, stage, attempt, key, feedback):
         self.effect()

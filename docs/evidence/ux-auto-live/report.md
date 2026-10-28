@@ -16,8 +16,8 @@ PG18/browser launcher, owner CLI/workflow та status writeback comments до #1
 
 ## Локальні тести
 
-- `python3 -m unittest discover -s tests/ci -v`: **88 PASS**; 20 попередніх coordinator
-  тестів і 28 нових live adapter тестів, включно з negative subtests.
+- `python3 -m unittest discover -s tests/ci -v`: **89 PASS**; 20 попередніх coordinator
+  тестів і 29 нових live adapter тестів, включно з negative subtests.
 - `python3 -m unittest discover -s tests/docs -v`: **11 PASS**.
 - Шість transport-сценаріїв: [contracts.json](contracts.json). GitHub та Codex там
   **фіктивні**, API-поверхні/state/branch/PR/merge/CAS мають production-shaped payloads.
@@ -62,6 +62,11 @@ version/readiness/connectivity на internal network без published ports. **0
 cap-drop/read-only/no-new-privileges; після виправлення всі три Docker probe PASS.
 Full Codex worker image не будувався; тут використовувався мінімальний pinned Python
 image для перевірки transport/isolation, а не для імітації реального Codex.
+
+GitHub adapter CI першого head виявив SIGXFSZ при clone packed repository:
+загальний 8 MB file limit зачіпав не лише stdout, а й Git packfile. Довірені
+clone/fetch отримали окрему bounded 512 MB межу, ліміт worker output збережено.
+Додано regression test з реальним synthetic 9 MB packfile; тести/guards не вимикалися.
 
 ## Неперевірене та блокери активації
 

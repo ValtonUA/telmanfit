@@ -31,11 +31,11 @@ def dependencies(workspace):
         path.symlink_to('/opt/ux-auto/deps/' + target)
 
 
-def run(command, *, timeout=60, cwd=None, env=None, stdin=None):
+def run(command, *, timeout=60, cwd=None, env=None, stdin=None, file_limit=8000000):
     with tempfile.TemporaryFile() as output:
         process = subprocess.Popen(command, cwd=cwd, env=env or clean_env(), stdin=subprocess.PIPE,
                                    stdout=output, stderr=output, start_new_session=True,
-                                   preexec_fn=lambda: resource.setrlimit(resource.RLIMIT_FSIZE, (8000000, 8000000)))
+                                   preexec_fn=lambda: resource.setrlimit(resource.RLIMIT_FSIZE, (file_limit, file_limit)))
         try:
             process.communicate(stdin.encode() if stdin is not None else None, timeout=timeout)
         except subprocess.TimeoutExpired as exc:
@@ -52,7 +52,7 @@ def run(command, *, timeout=60, cwd=None, env=None, stdin=None):
         text = output.read().decode(errors='replace')
         if process.returncode:
             # Логи зберігаються тільки як недовірені дані, не виконуються publisher.
-            raise Blocked('Worker failed: ' + text[-4000:])
+            raise Blocked(f'Worker failed (exit {process.returncode}): ' + text[-4000:])
         return text
 
 
@@ -62,12 +62,12 @@ def docker(*args):
 
 def git(directory, *args):
     return run(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
-                '-C', str(directory), *args])
+                '-C', str(directory), *args], file_limit=512000000)
 
 
 def checkout(source, ref, target):
     # Локальний trusted object store, без remote credentials/config/hooks з checkout.
-    run(['git', 'clone', '--no-hardlinks', '--no-checkout', str(source), str(target)])
+    run(['git', 'clone', '--no-hardlinks', '--no-checkout', str(source), str(target)], file_limit=512000000)
     git(target, 'checkout', '--detach', ref)
     git(target, 'remote', 'remove', 'origin')
     if git(target, 'rev-parse', 'HEAD').strip() != ref:

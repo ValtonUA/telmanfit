@@ -590,3 +590,19 @@ class LiveTests(unittest.TestCase):
                      {'input': [{'image_url': 'https://remote/image.png'}]}, {'input': [{'type': 'compaction'}]}):
             with self.assertRaises(ValueError):
                 Budget(self.cfg).request(json.dumps({'model': self.cfg['model'], **body}).encode())
+
+    def test_trusted_clone_large_pack_does_not_inherit_worker_log_file_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'source'
+            source.mkdir()
+            subprocess.run(['git', 'init', '-q', str(source)], check=True)
+            (source / 'synthetic.bin').write_bytes(os.urandom(9000000))
+            subprocess.run(['git', '-C', str(source), 'add', 'synthetic.bin'], check=True)
+            subprocess.run(['git', '-C', str(source), '-c', 'user.name=Fixture', '-c',
+                            'user.email=fixture@localhost', 'commit', '-qm', 'Synthetic large pack'], check=True)
+            subprocess.run(['git', '-C', str(source), 'gc', '--prune=now', '--quiet'], check=True)
+            self.assertTrue(any(p.stat().st_size > 8000000 for p in (source / '.git/objects/pack').glob('*.pack')))
+            ref = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+            target = Path(directory) / 'candidate'
+            checkout(source, ref, target)
+            self.assertEqual((target / 'synthetic.bin').stat().st_size, 9000000)
