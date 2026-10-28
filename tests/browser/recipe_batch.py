@@ -77,6 +77,11 @@ with sync_playwright() as p:
         if name == 'Оновити preview':
             expect(target.get_by_text('Preview готовий. Збереження та публікація — окремі явні дії.', exact=True)).to_be_visible()
 
+    # Кухонний fixture додає раціон; це має відбутися до глобальних
+    # structure-hash snapshots перевірок незмінності та відкликання доступу.
+    from cooking import run_cooking
+    run_cooking(page, base)
+
     from meal_plans import run_meal_plans, verify_meal_plan_revocation
     meal_plan_browser_state = run_meal_plans(page, base)
 

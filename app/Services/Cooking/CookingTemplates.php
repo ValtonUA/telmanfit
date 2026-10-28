@@ -7,7 +7,7 @@ use App\Support\Presentation\PublicImageUrl;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Доменні primitives для наступних PR; routes/UI та activation відсутні. */
+/** Перевірка, незмінна публікація та окремий явний вибір чинної версії. */
 final class CookingTemplates
 {
     public function select(User $actor, int $version, int $expectedSelectionRevision): int
@@ -45,7 +45,7 @@ final class CookingTemplates
 
     private function draft(User $actor, int $version, int $expectedRevision): object
     {
-        abort_unless(DB::table('users')->where('id', $actor->id)->where('role', 'admin')->exists(), 403);
+        abort_unless(DB::table('users')->where('id', $actor->id)->where('role', 'admin')->sharedLock()->exists(), 403);
         // Спільний порядок template → version; SQLSTATE 40001/40P01 не повторюється.
         $template = DB::table('cooking_template_versions')->where('id', $version)->value('template_id');
         abort_unless($template !== null, 404);
@@ -72,6 +72,13 @@ final class CookingTemplates
             $content = json_decode($session->content, true, flags: JSON_THROW_ON_ERROR);
             foreach ($content['stages'] as $stage) {
                 foreach ($stage['blocks'] as $block) {
+                    if ($block['type'] === 'action') {
+                        foreach ($block['parts'] as $part) {
+                            if (is_array($part)) {
+                                app(CookingEditor::class)->token($session->id, $part);
+                            }
+                        }
+                    }
                     if ($block['type'] === 'image' && $images->safe($block['url']) === null) {
                         throw ValidationException::withMessages(['content' => 'Недозволене зображення.']);
                     }
