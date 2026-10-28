@@ -19,6 +19,7 @@ final class ClientCookingController
         try {
             return $this->readSnapshot(function () use ($request, $sessions, $cooking, $data): JsonResponse {
                 $client = $this->clientId($request, $sessions);
+
                 return response()->json($cooking->choices($client, (int) $data['week'], now(config('app.timezone'))->toDateString()));
             });
         } catch (DomainException|JsonException) {
@@ -34,6 +35,7 @@ final class ClientCookingController
         try {
             return $this->readSnapshot(function () use ($request, $sessions, $cooking, $data, $version, $session): JsonResponse {
                 $client = $this->clientId($request, $sessions);
+
                 return response()->json($cooking->session($client, (int) $data['week'], (int) $data['mode'], (int) $version, (int) $session,
                     now(config('app.timezone'))->toDateString()));
             });

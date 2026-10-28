@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\User;
+use App\Services\Cooking\CookingEditor;
+use App\Services\Cooking\CookingTemplates;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -54,9 +57,9 @@ if ($mode !== 'setup') {
                 'start_date' => now()->toDateString(), 'end_date' => now()->addDays(6)->toDateString()]);
 
             $adminId = DB::table('users')->where('role', 'admin')->value('id');
-            $actor = App\Models\User::findOrFail($adminId);
-            $editor = app(App\Services\Cooking\CookingEditor::class);
-            $cooking = app(App\Services\Cooking\CookingTemplates::class);
+            $actor = User::findOrFail($adminId);
+            $editor = app(CookingEditor::class);
+            $cooking = app(CookingTemplates::class);
             $version = $editor->create($actor, ['title' => 'Синтетичний помічник приготування', 'source_plan_version_id' => $planVersion, 'source_week' => 1, 'mode' => 1]);
             $equipment = DB::table('kitchen_equipment')->insertGetId(['name' => 'Синтетична каструля для демо', 'image_url' => 'https://images.example.com/equipment.jpg']);
             $session = $editor->session($actor, $version, 0, ['day' => 1, 'position' => 1, 'estimated_seconds' => 1800,
@@ -118,8 +121,7 @@ if ($mode !== 'setup') {
     } elseif (in_array($mode, ['replace', 'reset'], true)) {
         DB::transaction(function () use ($client, $mode): void {
             DB::table('client_meal_plan_assignments')->where('client_id', $client)->delete();
-            $fixture = new class
-            {
+            $fixture = new class {
                 use ClientMenuFixture;
             };
             $f = $fixture->menuVersion($mode === 'reset' ? 14 : 7, $mode === 'reset' ? 1 : (int) now()->isoWeekday(), $client, static function (array $batch): void {
@@ -158,8 +160,7 @@ DB::transaction(function () use ($email): void {
     $coach = DB::table('users')->insertGetId(['name' => 'Тестовий тренер', 'role' => 'admin']);
     $user = DB::table('users')->insertGetId(['name' => 'Тестовий клієнт', 'email' => $email, 'email_normalized' => $email, 'email_verified_at' => now()]);
     $client = DB::table('clients')->insertGetId(['user_id' => $user, 'coach_user_id' => $coach]);
-    $fixture = new class
-    {
+    $fixture = new class {
         use ClientMenuFixture;
     };
     $f = $fixture->menuVersion(14);

@@ -59,6 +59,7 @@ class ClientCookingTest extends TestCase
             $name = '"'.str_replace('"', '""', $table->tablename).'"';
             $result[$table->tablename] = DB::selectOne("SELECT md5(coalesce(string_agg(to_jsonb(t)::text || t.xmin::text, '' ORDER BY to_jsonb(t)::text), '')) AS hash FROM $name t")->hash;
         }
+
         return $result;
     }
 

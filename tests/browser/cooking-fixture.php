@@ -35,7 +35,9 @@ if (($argv[1] ?? '') === 'client') {
         $cookingVersion = DB::table('cooking_template_versions')->where('id', (int) ($argv[2] ?? 0))->firstOrFail();
         $plan = DB::table('meal_plan_versions as v')->join('meal_plans as p', 'p.id', '=', 'v.meal_plan_id')
             ->where('v.id', $cookingVersion->source_plan_version_id)->first(['v.id', 'p.week_start_weekday']);
-        if (! $plan) throw new RuntimeException('Synthetic cooking source plan missing.');
+        if (! $plan) {
+            throw new RuntimeException('Synthetic cooking source plan missing.');
+        }
         $email = 'cooking-client@example.invalid';
         $user = User::where('email_normalized', $email)->first() ?? User::findOrFail(DB::table('users')->insertGetId([
             'name' => 'Синтетичний клієнт кухні', 'role' => 'client', 'email' => $email,
@@ -59,8 +61,7 @@ DB::transaction(function () {
     }
     DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     $actor = User::where('email', 'cooking-browser@example.invalid')->first() ?? User::findOrFail(DB::table('users')->insertGetId(['name' => 'Синтетичний автор кухні', 'role' => 'admin', 'email' => 'cooking-browser@example.invalid', 'password' => Hash::make('Synthetic-Cooking-Only!')]));
-    $fixture = new class
-    {
+    $fixture = new class {
         use BatchFixture;
 
         public function make(): array
@@ -68,7 +69,9 @@ DB::transaction(function () {
             $batch = $this->batch();
             $this->publish($batch['version']);
             $serving = DB::table('uoms')->where('code', 'serving')->value('id');
-            if (! $serving) $serving = DB::table('uoms')->insertGetId(['code' => 'serving', 'kind' => 'serving', 'label' => 'порція']);
+            if (! $serving) {
+                $serving = DB::table('uoms')->insertGetId(['code' => 'serving', 'kind' => 'serving', 'label' => 'порція']);
+            }
             $weekday = (int) now()->isoWeekday();
             $plan = DB::table('meal_plans')->insertGetId(['title' => 'Синтетичний reusable cooking plan', 'week_start_weekday' => $weekday]);
             $version = DB::table('meal_plan_versions')->insertGetId(['meal_plan_id' => $plan]);
