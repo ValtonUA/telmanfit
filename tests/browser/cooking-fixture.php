@@ -6,12 +6,10 @@ use App\Services\Cooking\CookingEditor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 use Tests\Recipes\BatchFixture;
-use Throwable;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
-set_exception_handler(function (Throwable $e) {
+set_exception_handler(function (\Throwable $e) {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
 });
@@ -38,7 +36,7 @@ final class CookingBrowserFixture
             $meal = DB::table('meals')->insertGetId(['meal_plan_day_id' => $dayId, 'meal_type_id' => $type, 'title' => 'Синтетична страва']);
             DB::table('meal_items')->insert(['meal_id' => $meal, 'food_id' => DB::table('recipe_versions')->where('id', $batch['version'])->value('food_id'),
                 'quantity' => '1.00', 'uom_id' => $serving, 'recipe_version_id' => $batch['version'],
-                'recipe_batch_format_id' => $batch['formats']['single'], 'recipe_portion_divisor' => '1.00']);
+                'recipe_batch_format_id' => $batch['formats']['single'], 'recipe_portion_divisor' => 1]);
         }
         DB::table('meal_plan_versions')->where('id', $version)->update(['status' => 'published', 'version_number' => 1, 'published_at' => now()]);
         DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
@@ -67,7 +65,7 @@ if (($argv[1] ?? '') === 'client') {
         $plan = DB::table('meal_plan_versions as v')->join('meal_plans as p', 'p.id', '=', 'v.meal_plan_id')
             ->where('v.id', $cookingVersion->source_plan_version_id)->first(['v.id', 'p.week_start_weekday']);
         if ($plan === null) {
-            throw new RuntimeException('Synthetic cooking source plan missing.');
+            throw new \RuntimeException('Synthetic cooking source plan missing.');
         }
         $email = 'cooking-client@example.invalid';
         $user = User::where('email_normalized', $email)->first() ?? User::findOrFail(DB::table('users')->insertGetId([
