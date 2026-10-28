@@ -3,6 +3,7 @@ x-app: &app
   image: telmanfit-local-app
   environment:
     TELMANFIT_LOCAL_RECIPE_EDITOR: "true"
+    PUBLIC_IMAGE_HOSTS: "${PUBLIC_IMAGE_HOSTS:-}"
   volumes:
     - local-state:/tmp/telmanfit-auth4-compose
     - epoch:/run/telmanfit-epoch:ro

@@ -8,6 +8,27 @@
 
 ## Підтверджені факти й межі
 
+### Зображення R2: підготовка локального застосування
+
+Погоджені aliases охоплюють 85 реальних записів локальних каталогів: 47 ingredients,
+37 kitchen_equipment і 1 recipes. Read-only перевірка виправленого matcher-а:
+132 об’єкти R2, 85 confident, 0 ambiguous, 10 unmatched, 37 legacy equipment/ ignored.
+Усі 85 запропонованих URL на assets.telmanfit.com.ua пройшли HTTPS HEAD 200
+з image MIME та перевіркою TLS; allowlist перевірено у dry-run процесі.
+Поточні 108 image_url залишилися NULL. Наявні app/worker/scheduler не
+перезапускалися; перенесення PUBLIC_IMAGE_HOSTS у ці процеси — обов’язкова
+передумова окремо погодженого rollout. Застосування до БД не виконувалося.
+
+Локально: 19 Unit/Feature тестів (119 assertions), 20 ізольованих PostgreSQL18
+тестів на synthetic таблицях (254 assertions), без міграцій/seeders;
+Pint — 6 файлів PASS; CI selector — 5 тестів PASS. Повторне застосування, збереження URL у трьох каталогах,
+канонічний префікс і відмова для недозволеного host перевірені.
+Manifest тепер перевіряється автоматично за table/ID/name/key/URL перед
+записом у тій самій PostgreSQL READ COMMITTED транзакції під блокуванням
+трьох каталогів. Зміна набору або інший наявний URL блокує всю операцію;
+реальний apply не виконувався.
+[Механізм](r2-image-matching.md), [план і перевірки](r2-image-application-plan.md).
+
 ### T5.7b — schema/domain v1
 
 FEASIBILITY PASS на master `66cb162ec343f8e03e5bd9f55f4826c30170127f`:

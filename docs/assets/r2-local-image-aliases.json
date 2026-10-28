@@ -1,0 +1,263 @@
+{
+  "ingredients": {
+    "47": [
+      "almonds"
+    ],
+    "21": [
+      "bell_pepper"
+    ],
+    "61": [
+      "black_pepper"
+    ],
+    "15": [
+      "broccoli"
+    ],
+    "27": [
+      "buckwheat"
+    ],
+    "56": [
+      "butter_82_percent"
+    ],
+    "17": [
+      "carrot"
+    ],
+    "44": [
+      "chicken_egg"
+    ],
+    "1": [
+      "chicken_fillet"
+    ],
+    "6": [
+      "chicken_liver"
+    ],
+    "2": [
+      "chicken_thigh_skinless_fillet"
+    ],
+    "32": [
+      "corn_canned"
+    ],
+    "38": [
+      "cottage_cheese_0_percent"
+    ],
+    "39": [
+      "cottage_cheese_5_percent"
+    ],
+    "14": [
+      "cucumber"
+    ],
+    "59": [
+      "dijon_mustard"
+    ],
+    "31": [
+      "durum_pasta"
+    ],
+    "19": [
+      "eggplant"
+    ],
+    "66": [
+      "garlic"
+    ],
+    "37": [
+      "green_peas_canned"
+    ],
+    "63": [
+      "lemon"
+    ],
+    "43": [
+      "milk_2_5_percent"
+    ],
+    "58": [
+      "mustard"
+    ],
+    "30": [
+      "oats"
+    ],
+    "55": [
+      "olive_oil"
+    ],
+    "20": [
+      "onion"
+    ],
+    "62": [
+      "paprika"
+    ],
+    "5": [
+      "pork_tenderloin"
+    ],
+    "33": [
+      "red_lentils"
+    ],
+    "29": [
+      "rice_basmati"
+    ],
+    "9": [
+      "salmon"
+    ],
+    "60": [
+      "salt"
+    ],
+    "65": [
+      "soy_sauce"
+    ],
+    "54": [
+      "sunflower_oil"
+    ],
+    "7": [
+      "tilapia_fillet"
+    ],
+    "13": [
+      "tomato"
+    ],
+    "10": [
+      "tuna_canned_water"
+    ],
+    "3": [
+      "turkey_fillet"
+    ],
+    "68": [
+      "water"
+    ],
+    "67": [
+      "whey_protein"
+    ],
+    "18": [
+      "zucchini"
+    ],
+    "4": [
+      "beef_top_round"
+    ],
+    "22": [
+      "mushrooms"
+    ],
+    "52": [
+      "lavash"
+    ],
+    "40": [
+      "yogurt_2_5_percent"
+    ],
+    "42": [
+      "cheese"
+    ],
+    "28": [
+      "rice"
+    ]
+  },
+  "kitchen_equipment": {
+    "15": [
+      "air_fryer"
+    ],
+    "5": [
+      "baking_dish"
+    ],
+    "4": [
+      "baking_tray"
+    ],
+    "18": [
+      "blender"
+    ],
+    "31": [
+      "can_opener"
+    ],
+    "24": [
+      "chef_knife"
+    ],
+    "7": [
+      "colander"
+    ],
+    "20": [
+      "contact_grill"
+    ],
+    "25": [
+      "cutting_board"
+    ],
+    "33": [
+      "foil"
+    ],
+    "11": [
+      "food_container"
+    ],
+    "12": [
+      "food_vessel"
+    ],
+    "3": [
+      "frying_pan"
+    ],
+    "34": [
+      "heavy_duty_foil"
+    ],
+    "19": [
+      "immersion_blender"
+    ],
+    "23": [
+      "jewelry_scales"
+    ],
+    "22": [
+      "kitchen_scale"
+    ],
+    "27": [
+      "kitchen_scissors"
+    ],
+    "17": [
+      "microwave"
+    ],
+    "9": [
+      "mixing_bowl"
+    ],
+    "16": [
+      "multicooker"
+    ],
+    "14": [
+      "oven"
+    ],
+    "6": [
+      "oven_rack"
+    ],
+    "36": [
+      "paper_towels"
+    ],
+    "1": [
+      "pot"
+    ],
+    "35": [
+      "roasting_sleeve"
+    ],
+    "2": [
+      "saucepan"
+    ],
+    "10": [
+      "small_bowl"
+    ],
+    "21": [
+      "sous_vide_circulator"
+    ],
+    "29": [
+      "spatula"
+    ],
+    "8": [
+      "steamer_insert"
+    ],
+    "13": [
+      "stovetop"
+    ],
+    "30": [
+      "tongs"
+    ],
+    "26": [
+      "vegetable_peeler"
+    ],
+    "28": [
+      "whisk"
+    ],
+    "38": [
+      "zip_bag_15x30"
+    ],
+    "32": [
+      "parchment"
+    ]
+  },
+  "recipes": {
+    "1": [
+      "buckwheat_mushrooms"
+    ]
+  }
+}

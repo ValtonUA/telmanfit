@@ -7,14 +7,18 @@ use Illuminate\Support\Str;
 final class R2ImageMatcher
 {
     /** @param list<array{key: string}> $objects @param array<string, list<array{id: int, name: string, image_url: ?string}>> $records @param array<string, array<string, list<string>>> $aliases */
-    public function plan(array $objects, array $records, array $aliases = []): array
+    public function plan(array $objects, array $records, array $aliases = [], bool $exactOnly = false): array
     {
         $plan = [];
 
         foreach ($objects as $object) {
             $key = $object['key'];
             [$type, $basename] = array_pad(explode('/', $key, 2), 2, '');
-            $type = $type === 'equipment' ? 'kitchen_equipment' : $type;
+            if ($type === 'equipment') {
+                $plan[] = ['key' => $key, 'type' => $type, 'status' => 'ignored', 'suggestions' => [], 'reason' => 'Канонічна папка обладнання — kitchen_equipment/; legacy equipment/ пропущено.'];
+
+                continue;
+            }
             $filename = pathinfo($basename, PATHINFO_FILENAME);
             $needle = self::normalize($filename);
 
@@ -32,7 +36,7 @@ final class R2ImageMatcher
                 $exact = in_array($needle, $normalized, true);
                 $score = $exact ? 1.0 : max(array_map(fn (string $name): float => self::similarity($needle, $name), $normalized ?: ['']));
 
-                if ($exact || $score >= 0.48) {
+                if ($exact || (! $exactOnly && $score >= 0.48)) {
                     $candidates[] = [
                         'id' => (int) $record['id'],
                         'name' => $record['name'],
