@@ -29,7 +29,7 @@ if (($argv[1] ?? '') === 'touch') {
         'content' => ['schema_version' => 1, 'stages' => [['id' => 'concurrent', 'title' => 'Змінено іншим автором', 'blocks' => [
             ['id' => 'a', 'type' => 'action', 'parts' => ['Перевірте нову редакцію.']],
             ['id' => 'timer', 'type' => 'timer', 'label' => 'Синтетичний таймер', 'seconds' => 120, 'message' => 'Демо час автора.'],
-            ['id' => 'image', 'type' => 'image', 'url' => 'https://images.example.com/step.jpg', 'alt' => 'Синтетичний таймер'],
+            ['id' => 'image', 'type' => 'image', 'url' => 'https://images.example.com/step.jpg', 'alt' => 'Синтетичне фото'],
         ]]]]], $session->id);
     exit;
 }
@@ -70,18 +70,18 @@ DB::transaction(function () {
         (require database_path('migrations/2026_10_28_010000_add_cooking_selection.php'))->up();
     }
     if (Schema::hasTable('cooking_session_equipment') === false) {
-        (require database_pathh('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
+        (require database_path('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
     }
-    DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL , 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
+    DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     $actor = User::where('email', 'cooking-browser@example.invalid')->first() ?? User::findOrFail(DB::table('users')->insertGetId(['name' => 'Синтетичний автор кухні', 'role' => 'admin', 'email' => 'cooking-browser@example.invalid', 'password' => Hash::make('Synthetic-Cooking-Only!')]));
     $fixture = new CookingBrowserFixture;
     fwrite(STDERR, "Cooking fixture: synthetic plan\n");
     $plan = $fixture->make();
     fwrite(STDERR, "Cooking fixture: template\n");
     $editor = app(CookingEditor::class);
-    $v = $editor->create($actor, ['title' => 'Синтетотування', 'source_plan_version_id' => $plan['version'], 'source_week' => 1, 'mode' => 1]);
+    $v = $editor->create($actor, ['title' => 'Синтетична кухня', 'source_plan_version_id' => $plan['version'], 'source_week' => 1, 'mode' => 1]);
     fwrite(STDERR, "Cooking fixture: session\n");
-    $equipment = DB::table('kitchen_equipment')->insertGetId(['name' => 'Каструля » склокати чережа fixture', 'image_url' => 'https://images.example.com/pot.jpg']);
+    $equipment = DB::table('kitchen_equipment')->insertGetId(['name' => 'Каструля · синтетичний fixture', 'image_url' => 'https://images.example.com/pot.jpg']);
     $s = $editor->session($actor, $v, 0, ['day' => 1, 'position' => 1, 'estimated_seconds' => 60,
         'introduction' => 'Синтетичний вступ автора.', 'equipment' => 'Додаткове авторське пояснення.', 'equipment_items' => [['equipment_id' => $equipment]],
         'content' => ['schema_version' => 1, 'stages' => [['id' => 'prepare', 'title' => 'Приготування', 'blocks' => [['id' => 'a', 'type' => 'action', 'parts' => ['Вода 700 мл — авторський параметр.']]]]]]]);
