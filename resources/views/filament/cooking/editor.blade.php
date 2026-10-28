@@ -3,7 +3,7 @@
         <x-filament::section heading="Версії кухонних шаблонів">
             <div class="space-y-4">
             @forelse ($this->versions() as $v)
-                <p><a class="underline" href="{{ static::getUrl(['version' => $v->id]) }}">{{ $v->title }} · #{{ $v->id }} · {{ $v->status === 'published' ? 'Опублікована' : 'Чернетка' }} · {{ $v->mode }} сесій</a></p>
+                <p><a wire:navigate class="underline" href="{{ static::getUrl(['version' => $v->id]) }}">{{ $v->title }} · #{{ $v->id }} · {{ $v->status === 'published' ? 'Опублікована' : 'Чернетка' }} · {{ $v->mode }} сесій</a></p>
             @empty
                 <p>Створіть шаблон для повного тижня опублікованого раціону.</p>
             @endforelse
@@ -19,7 +19,7 @@
                 <p>Чинна версія цього слота: #{{ \Illuminate\Support\Facades\DB::table('cooking_selections')->where('template_id', $v->template_id)->where('mode', $v->mode)->where('menu_fingerprint', $v->menu_fingerprint)->value('version_id') ?? 'не обрана' }}</p>
                 <p>Вода, обладнання, температура та час задаються автором. Режим не гарантує безпеки зберігання. Публікація й активація — окремі дії.</p>
                 <div class="flex flex-wrap gap-3">@if ($v->status === 'draft') {{ $this->sessionAction }} {{ $this->outputAction }} @else {{ $this->nextAction }} @endif</div>
-                <a class="underline" href="{{ static::getUrl() }}">Усі шаблони</a>
+                <a wire:navigate class="underline" href="{{ static::getUrl() }}">Усі шаблони</a>
             </div>
         </x-filament::section>
         <x-filament::section heading="Приготування та залишки">

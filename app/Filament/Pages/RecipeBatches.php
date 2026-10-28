@@ -87,7 +87,7 @@ final class RecipeBatches extends Page
         $this->attempt(function () {
             $id = app(BatchEditor::class)->convertLegacy($this->actor(), $this->version, $this->revision,
                 $this->legacyPreview['token'] ?? '', $this->legacySourcesAccepted, $this->legacyReviewed);
-            $this->redirect(self::getUrl(['version' => $id]));
+            $this->redirect(self::getUrl(['version' => $id]), navigate: true);
         });
     }
 
@@ -116,7 +116,7 @@ final class RecipeBatches extends Page
     public function createDraft(): void
     {
         $id = app(BatchEditor::class)->create($this->actor());
-        $this->redirect(self::getUrl(['version' => $id]));
+        $this->redirect(self::getUrl(['version' => $id]), navigate: true);
     }
 
     public function reload(): void
@@ -145,7 +145,7 @@ final class RecipeBatches extends Page
     {
         $this->attempt(function () {
             $id = app(BatchEditor::class)->createVersion($this->actor(), $this->version, $this->revision);
-            $this->redirect(self::getUrl(['version' => $id]));
+            $this->redirect(self::getUrl(['version' => $id]), navigate: true);
         });
     }
 
@@ -157,7 +157,7 @@ final class RecipeBatches extends Page
                 throw ValidationException::withMessages(['batch' => 'Оберіть клієнта для персональної копії.']);
             }
             $id = app(BatchEditor::class)->createPersonalCopy($actor, $this->version, $this->revision, (int) $this->copyOwnerId);
-            $this->redirect(self::getUrl(['version' => $id]));
+            $this->redirect(self::getUrl(['version' => $id]), navigate: true);
         });
     }
 

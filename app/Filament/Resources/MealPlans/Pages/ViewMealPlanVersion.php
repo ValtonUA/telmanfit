@@ -112,7 +112,7 @@ class ViewMealPlanVersion extends ViewRecord
                 ->action(function (array $data, Action $action): void {
                     $this->withStructureValidation($action, fn () => app(MealPlanPublisher::class)->publish(auth()->user(), $this->getRecord(), $data['expected']));
                     Notification::make()->success()->title('Версію раціону опубліковано')->send();
-                    $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord()]), navigate: false);
+                    $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord()]), navigate: true);
                 }),
             ...$this->itemActions(),
             ...$this->weekRepetitionActions(),
@@ -264,7 +264,7 @@ class ViewMealPlanVersion extends ViewRecord
     {
         $this->command($action, fn () => app(MealPlanWeekRepeater::class)->repeat(auth()->user(), $this->getRecord(), $input));
         // У редакторі цільового дня його ID вже замінено: повертаємося до огляду.
-        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => $this->week]), navigate: false);
+        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => $this->week]), navigate: true);
     }
 
     protected function editable(): bool
@@ -365,6 +365,6 @@ class ViewMealPlanVersion extends ViewRecord
     {
         $this->getRecord()->refresh();
         Notification::make()->title('Структуру збережено')->success()->send();
-        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), ...($this->week > 1 ? ['week' => $this->week] : [])]), navigate: false);
+        $this->redirect(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), ...($this->week > 1 ? ['week' => $this->week] : [])]), navigate: true);
     }
 }

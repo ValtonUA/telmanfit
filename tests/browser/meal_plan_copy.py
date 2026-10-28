@@ -92,8 +92,8 @@ with sync_playwright() as p:
             page.get_by_role('option').filter(has_text='Клієнт #' + str(f['client']) + ' —').click()
             page.get_by_role('button', name='Перевірити копію', exact=True).click()
             expect(page.get_by_text('Призначення не створюється.', exact=False)).to_be_visible()
-            with page.expect_navigation(wait_until='load'):
-                page.get_by_role('button', name='Так, створити копію', exact=True).click()
+            page.get_by_role('button', name='Так, створити копію', exact=True).click()
+            page.wait_for_url(lambda current: current != base + '/admin/meal-plan-versions/' + str(f['version']))
             assert page.url != base + '/admin/meal-plan-versions/' + str(f['version'])
             expect(page.get_by_text('Чернетка', exact=True)).to_be_visible()
     assert not errors, errors

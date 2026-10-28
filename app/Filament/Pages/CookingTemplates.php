@@ -119,7 +119,7 @@ class CookingTemplates extends Page
         return Action::make('create')->label('Новий шаблон')->schema($this->sourceFields())->action(function (array $data) {
             $this->command(function () use ($data) {
                 $id = app(CookingEditor::class)->create($this->actor(), $data);
-                $this->redirect(static::getUrl(['version' => $id]));
+                $this->redirect(static::getUrl(['version' => $id]), navigate: true);
             });
         });
     }
@@ -138,7 +138,7 @@ class CookingTemplates extends Page
             ->fillForm(fn () => (array) $this->record())->action(function (array $data) {
                 $this->command(function () use ($data) {
                     $id = app(CookingEditor::class)->create($this->actor(), $data, $this->version);
-                    $this->redirect(static::getUrl(['version' => $id]));
+                    $this->redirect(static::getUrl(['version' => $id]), navigate: true);
                 });
             });
     }

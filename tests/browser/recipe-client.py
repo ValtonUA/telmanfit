@@ -35,6 +35,20 @@ def fixture(mode):
 
 
 checks = []
+
+
+def expect_wake_probe(page, key, expected):
+    # waitForFunction виконує eval у сторінці й залежить від Chromium/CSP.
+    # Пряме protocol evaluate не потребує послаблення script-src застосунку.
+    deadline = time.monotonic() + 15
+    while True:
+        actual = page.evaluate('(key) => window.__wakeProbe[key]', key)
+        if actual == expected:
+            return
+        assert time.monotonic() < deadline, (key, actual, expected)
+        time.sleep(.05)
+
+
 with sync_playwright() as p:
     options = {'headless': True}
     if os.environ.get('CLIENT_RECIPE_CHROMIUM'):
@@ -287,12 +301,12 @@ with sync_playwright() as p:
         # UX-1: SPA unmount звільняє Wake Lock; history повертає persisted таймер.
         page.evaluate(WAKE_LOCK_PROBE)
         page.get_by_role('checkbox', name='Не вимикати екран').check()
-        page.wait_for_function('window.__wakeProbe.calls === 1')
+        expect_wake_probe(page, 'calls', 1)
         page.evaluate('window.__wakeProbe.resolve()')
-        page.wait_for_function('window.__wakeProbe.active === 1')
+        expect_wake_probe(page, 'active', 1)
         page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name='Прогрес').click()
         expect(page.get_by_role('heading', name='Прогрес', exact=True)).to_be_visible()
-        page.wait_for_function('window.__wakeProbe.active === 0')
+        expect_wake_probe(page, 'active', 0)
         page.go_back()
         expect(page.get_by_role('heading', name='Завершіть приготування')).to_be_visible()
         expect(page.get_by_role('region', name='Активні таймери')).to_be_visible()

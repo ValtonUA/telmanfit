@@ -17,7 +17,12 @@ final class AdminSessionContext
         }
 
         try {
-            return $next($request);
+            $response = $next($request);
+            if ($request->is('admin', 'admin/*')) {
+                $response->headers->set('Cache-Control', 'no-store, private');
+            }
+
+            return $response;
         } finally {
             config(['session' => $original]);
         }

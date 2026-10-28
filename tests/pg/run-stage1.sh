@@ -151,6 +151,14 @@ if [[ ${AUTH6_ONLY:-0} == 1 ]]; then
     bash tests/http/auth6-in-context.sh
     exit
 fi
+# UX-2: найменший browser прохід на новій ізольованій БД.
+if [[ ${ADMIN_NAV_ONLY:-0} == 1 ]]; then
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth3.xml --display-all-issues
+    bash tests/browser/recipe-batch-in-context.sh
+    exit
+fi
 # AUTH-5 завжди на новій ізольованій БД із тим самим fail-closed guard.
 if [[ ${AUTH5_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
