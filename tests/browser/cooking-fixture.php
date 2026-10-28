@@ -35,7 +35,7 @@ if (($argv[1] ?? '') === 'client') {
         $cookingVersion = DB::table('cooking_template_versions')->where('id', (int) ($argv[2] ?? 0))->firstOrFail();
         $plan = DB::table('meal_plan_versions as v')->join('meal_plans as p', 'p.id', '=', 'v.meal_plan_id')
             ->where('v.id', $cookingVersion->source_plan_version_id)->first(['v.id', 'p.week_start_weekday']);
-        if (! $plan) {
+        if ($plan === null) {
             throw new RuntimeException('Synthetic cooking source plan missing.');
         }
         $email = 'cooking-client@example.invalid';
@@ -55,7 +55,7 @@ if (($argv[1] ?? '') === 'client') {
     exit;
 }
 DB::transaction(function () {
-    if (! Schema::hasTable('cooking_templates')) {
+    if (Schema::hasTable('cooking_templates') === false) {
         (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->up();
         (require database_path('migrations/2026_10_28_010000_add_cooking_selection.php'))->up();
     }
@@ -69,7 +69,7 @@ DB::transaction(function () {
             $batch = $this->batch();
             $this->publish($batch['version']);
             $serving = DB::table('uoms')->where('code', 'serving')->value('id');
-            if (! $serving) {
+            if ($serving === null) {
                 $serving = DB::table('uoms')->insertGetId(['code' => 'serving', 'kind' => 'serving', 'label' => 'порція']);
             }
             $weekday = (int) now()->isoWeekday();
@@ -84,7 +84,8 @@ DB::transaction(function () {
                     'recipe_batch_format_id' => $batch['formats']['single'], 'recipe_portion_divisor' => '1.00']);
             }
             DB::table('meal_plan_versions')->where('id', $version)->update(['status' => 'published', 'version_number' => 1, 'published_at' => now()]);
-            DB::statement('SET CONSTRAINTS ALL IMMEDIATE'); DB::statement('SET CONSTRAINTS ALL DEFERRED');
+            DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+            DB::statement('SET CONSTRAINTS ALL DEFERRED');
             return ['version' => $version, 'recipe_version' => $batch['version'], 'format' => $batch['formats']['single']];
         }
     };

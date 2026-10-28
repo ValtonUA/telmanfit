@@ -50,6 +50,7 @@ final class ClientCookingController
             if (DB::transactionLevel() === 1) {
                 DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
             }
+
             return $callback();
         })->header('Cache-Control', 'no-store, private');
     }
@@ -61,6 +62,7 @@ final class ClientCookingController
         if ($client === null) {
             throw new AuthDenied('unauthenticated', 401);
         }
+
         return (int) $client;
     }
 }

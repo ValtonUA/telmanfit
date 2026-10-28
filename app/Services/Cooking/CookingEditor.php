@@ -69,7 +69,8 @@ final class CookingEditor
             }
             $equipment = collect();
             if ($equipmentIds !== []) {
-                $equipment = DB::table('kitchen_equipment')->whereIn('id', $equipmentIds)->orderBy('id')->lockForShare()->get()->keyBy('id');
+                $equipment = DB::table('kitchen_equipment')->whereIn('id', $equipmentIds)->orderBy('id')
+                    ->get(['id', 'name', 'image_url'])->keyBy('id');
                 if ($equipment->count() !== count($equipmentIds)
                     || $equipment->contains(fn ($item) => ! is_string($item->name) || mb_strlen(trim($item->name)) < 1 || mb_strlen(trim($item->name)) > 300)) {
                     throw ValidationException::withMessages(['equipment_items' => 'Оберіть наявні предмети з каталогу обладнання.']);

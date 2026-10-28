@@ -17,29 +17,29 @@ if ($mode !== 'setup') {
     $client = DB::table('clients')->where('user_id', $user)->value('id');
     if ($mode === 'cooking') {
         DB::transaction(function () use ($client): void {
-            if (! Schema::hasTable('cooking_session_equipment')) {
+            if (Schema::hasTable('cooking_session_equipment') === false) {
                 (require database_path('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
             }
             $old = DB::table('client_meal_plan_assignments')->where('client_id', $client)->orderByDesc('id')->first();
-            if (! $old) {
+            if ($old === null) {
                 throw new RuntimeException('Synthetic active assignment missing.');
             }
             $slot = DB::table('meal_items as i')->join('meals as m', 'm.id', '=', 'i.meal_id')->join('meal_plan_days as d', 'd.id', '=', 'm.meal_plan_day_id')
                 ->join('recipe_versions as r', 'r.id', '=', 'i.recipe_version_id')->where('d.meal_plan_version_id', $old->meal_plan_version_id)
                 ->whereNotNull('i.recipe_version_id')->orderBy('d.day_number')->orderBy('m.id')->orderBy('i.id')
                 ->first(['i.recipe_version_id', 'i.recipe_batch_format_id', 'r.food_id']);
-            if (! $slot) {
+            if ($slot === null) {
                 throw new RuntimeException('Synthetic published recipe missing.');
             }
             $format = DB::table('recipe_batch_formats')->where('recipe_version_id', $slot->recipe_version_id)->where('code', 'single')->first();
-            if (! $format) {
+            if ($format === null) {
                 throw new RuntimeException('Synthetic single recipe format missing.');
             }
             $weekday = (int) now()->isoWeekday();
             $plan = DB::table('meal_plans')->insertGetId(['title' => 'Синтетичний тиждень кухонного помічника', 'week_start_weekday' => $weekday]);
             $planVersion = DB::table('meal_plan_versions')->insertGetId(['meal_plan_id' => $plan]);
             $serving = DB::table('uoms')->where('code', 'serving')->value('id');
-            if (! $serving) {
+            if ($serving === null) {
                 $serving = DB::table('uoms')->insertGetId(['code' => 'serving', 'kind' => 'serving', 'label' => 'порція']);
             }
             $mealType = DB::table('meal_types')->insertGetId(['code' => 'cook-'.bin2hex(random_bytes(4)), 'title' => 'Обід']);
