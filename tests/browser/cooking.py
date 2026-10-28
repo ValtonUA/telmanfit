@@ -89,7 +89,11 @@ def run_cooking(page, base, fixture=None):
     client.get_by_role('button', name='Отримати код', exact=True).click()
     expect(client.get_by_label('Код із листа', exact=True)).to_be_visible()
     subprocess.check_output(['php', 'artisan', 'queue:work', '--stop-when-empty', '--tries=1', '--sleep=0'], text=True)
-    code = subprocess.check_output(['php', 'tests/browser/auth5-fixture.php', 'mail', 'cooking-client@example.invalid'], text=True).strip()
+    try:
+        code = subprocess.check_output(['php', 'tests/browser/auth5-fixture.php', 'mail', 'cooking-client@example.invalid'], text=True).strip()
+    except subprocess.CalledProcessError as error:
+        health = subprocess.check_output(['php', 'tests/browser/auth5-fixture.php', 'queue-health'], text=True).strip()
+        raise AssertionError(f'Synthetic OTP fixture unavailable; queue health: {health}') from error
     client.get_by_label('Код із листа', exact=True).fill(code)
     client.get_by_role('button', name='Підтвердити', exact=True).click()
     client.goto(base + '/app/meal-plan')
