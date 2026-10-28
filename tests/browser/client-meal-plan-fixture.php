@@ -1,10 +1,13 @@
 <?php
 
+namespace Tests\Browser;
+
 use App\Models\User;
 use App\Services\Cooking\CookingEditor;
 use App\Services\Cooking\CookingTemplates;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\MealPlans\ClientMenuFixture;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
@@ -24,18 +27,18 @@ if ($mode !== 'setup') {
             }
             $old = DB::table('client_meal_plan_assignments')->where('client_id', $client)->orderByDesc('id')->first();
             if ($old === null) {
-                throw new \RuntimeException('Synthetic active assignment missing.');
+                throw new RuntimeException('Synthetic active assignment missing.');
             }
             $slot = DB::table('meal_items as i')->join('meals as m', 'm.id', '=', 'i.meal_id')->join('meal_plan_days as d', 'd.id', '=', 'm.meal_plan_day_id')
                 ->join('recipe_versions as r', 'r.id', '=', 'i.recipe_version_id')->where('d.meal_plan_version_id', $old->meal_plan_version_id)
                 ->whereNotNull('i.recipe_version_id')->orderBy('d.day_number')->orderBy('m.id')->orderBy('i.id')
                 ->first(['i.recipe_version_id', 'i.recipe_batch_format_id', 'r.food_id']);
             if ($slot === null) {
-                throw new \RuntimeException('Synthetic published recipe missing.');
+                throw new RuntimeException('Synthetic published recipe missing.');
             }
             $format = DB::table('recipe_batch_formats')->where('recipe_version_id', $slot->recipe_version_id)->where('code', 'single')->first();
             if ($format === null) {
-                throw new \RuntimeException('Synthetic single recipe format missing.');
+                throw new RuntimeException('Synthetic single recipe format missing.');
             }
             $weekday = (int) now()->isoWeekday();
             $plan = DB::table('meal_plans')->insertGetId(['title' => 'Синтетичний тиждень кухонного помічника', 'week_start_weekday' => $weekday]);
@@ -154,7 +157,7 @@ if ($mode !== 'setup') {
             }
         });
     } else {
-        throw new \RuntimeException('Невідома synthetic дія.');
+        throw new RuntimeException('Невідома synthetic дія.');
     }
     echo "T5.2 fixture action complete\n";
     exit;
