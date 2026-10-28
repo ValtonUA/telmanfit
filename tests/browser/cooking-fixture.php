@@ -54,6 +54,7 @@ if (($argv[1] ?? '') === 'client') {
     echo 'Synthetic client assignment ready';
     exit;
 }
+
 DB::transaction(function () {
     if (Schema::hasTable('cooking_templates') === false) {
         (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->up();
@@ -61,7 +62,8 @@ DB::transaction(function () {
     }
     DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     $actor = User::where('email', 'cooking-browser@example.invalid')->first() ?? User::findOrFail(DB::table('users')->insertGetId(['name' => 'Синтетичний автор кухні', 'role' => 'admin', 'email' => 'cooking-browser@example.invalid', 'password' => Hash::make('Synthetic-Cooking-Only!')]));
-    $fixture = new class {
+    $fixture = new class
+    {
         use BatchFixture;
 
         public function make(): array
@@ -106,3 +108,4 @@ DB::transaction(function () {
     }
     echo $v;
 });
+

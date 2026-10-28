@@ -121,7 +121,8 @@ if ($mode !== 'setup') {
     } elseif (in_array($mode, ['replace', 'reset'], true)) {
         DB::transaction(function () use ($client, $mode): void {
             DB::table('client_meal_plan_assignments')->where('client_id', $client)->delete();
-            $fixture = new class {
+            $fixture = new class
+            {
                 use ClientMenuFixture;
             };
             $f = $fixture->menuVersion($mode === 'reset' ? 14 : 7, $mode === 'reset' ? 1 : (int) now()->isoWeekday(), $client, static function (array $batch): void {
@@ -160,7 +161,8 @@ DB::transaction(function () use ($email): void {
     $coach = DB::table('users')->insertGetId(['name' => 'Тестовий тренер', 'role' => 'admin']);
     $user = DB::table('users')->insertGetId(['name' => 'Тестовий клієнт', 'email' => $email, 'email_normalized' => $email, 'email_verified_at' => now()]);
     $client = DB::table('clients')->insertGetId(['user_id' => $user, 'coach_user_id' => $coach]);
-    $fixture = new class {
+    $fixture = new class
+    {
         use ClientMenuFixture;
     };
     $f = $fixture->menuVersion(14);
