@@ -36,11 +36,12 @@ def run_plan_publication(page, base, f, suffix, submit, from_day=False):
     management(page, 'Опублікувати')
     expect(dialog).to_be_visible()
     page.screenshot(path=str(Path('docs/evidence/meal-plans') / f'publish-confirm-{suffix}.png'), full_page=True)
-    with page.expect_navigation(wait_until='load'):
-        with page.expect_response(lambda r: '/livewire/update' in r.url) as response:
-            dialog.get_by_role('button', name='Опублікувати', exact=True).click()
+    with page.expect_response(lambda r: '/livewire/update' in r.url) as response:
+        dialog.get_by_role('button', name='Опублікувати', exact=True).click()
     assert response.value.status == 200
-    assert page.url == url
+    # SPA redirect завершується після HTTP commit; чекати кінцеву адресу та DOM.
+    expect(page).to_have_url(url)
+    expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
     page.reload()
     livewire_ready(page)
     expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()

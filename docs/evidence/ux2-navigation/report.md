@@ -19,6 +19,7 @@
 3. Asset URL не можна створювати під час ранньої panel registration до request binding — використано lazy render hook та hash asset URL з data-navigate-once/track.
 4. Test actions до Alpine initialization та offscreen mobile sidebar — очікування реального `livewire:navigated` і відкриття sidebar через видиму кнопку; deprecated button selector logout замінено на semantic menuitem.
 5. Новий локальний test selector очищується на вході чинного CI worker, щоб inherited environment не звузило required coverage. Чинний workflow доповнено лише шляхами browser evidence, без нових jobs/координаторів.
+6. Required Targeted виявив застаріле очікування повного navigation у тесті публікації з редактора дня: URL ще не встигав перейти до огляду. Тест очікує кінцеву адресу та статус «Опублікована» після Livewire response, а потім перевіряє reload/readonly. Перевірки публікації не послаблено.
 
 ## Межі
 
