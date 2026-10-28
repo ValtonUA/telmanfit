@@ -2,7 +2,10 @@
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $script:LocalUpdateLibraryOnly = $true
-. (Join-Path $root 'scripts/local-update.ps1')
+$coordinatorSource = [IO.File]::ReadAllText((Join-Path $root 'scripts/local-update.ps1'))
+$coordinatorSource = [regex]::Replace($coordinatorSource, '\A\[CmdletBinding\(\)\]\s*param\(.*?\)\s*', '', [Text.RegularExpressions.RegexOptions]::Singleline)
+$coordinatorSource = $coordinatorSource.Replace('$PSScriptRoot', "'$(Join-Path $root 'scripts')'")
+Invoke-Expression $coordinatorSource
 
 $script:assertions = 0
 function Assert-True {
@@ -17,6 +20,30 @@ function Assert-Throws {
     try { & $Action } catch { return }
     throw "FAIL: expected refusal: $Message"
 }
+
+$defaultProject = $script:ProjectName
+Assert-True ($defaultProject -eq 'telmanfit-local' -and (Get-ContainerName database) -eq 'telmanfit-local-database-1') 'ordinary coordinator defaults remain pinned to telmanfit-local'
+Assert-Throws { New-IsolatedTestContext -ProjectName 'telmanfit-local' -Port 28981 } 'isolated mode refuses the working project name'
+Assert-Throws { New-IsolatedTestContext -ProjectName 'telmanfit-e2e-not-a-guid' -Port 28981 } 'isolated mode requires a unique hexadecimal project suffix'
+Assert-Throws { New-IsolatedTestContext -ProjectName 'telmanfit-e2e-0123456789ab' -Port 8098 } 'isolated mode refuses the working web port'
+$isolated = New-IsolatedTestContext -ProjectName 'telmanfit-e2e-0123456789ab' -Port 28981
+Assert-True ($isolated.project -eq 'telmanfit-e2e-0123456789ab') 'test Compose project uses its explicit unique namespace'
+Assert-True (@($isolated.volumes | Where-Object { $_ -like 'telmanfit-local_*' }).Count -eq 0) 'test volumes cannot use working volume names'
+Assert-True (@($isolated.images | Where-Object { $_ -like 'telmanfit-local-*' }).Count -eq 0) 'test images cannot replace working image tags'
+Assert-True ($isolated.port -ne 8098 -and $isolated.backup_root -like '*TelmanFit-E2E*') 'test port and backup root are isolated'
+
+$script:ProjectName = $isolated.project
+$script:ProjectPrefix = $isolated.project
+$script:PublishedPort = [string]$isolated.port
+$script:TestMode = $true
+Assert-True ((Get-ContainerName app) -eq "$($isolated.project)-app-1") 'test coordinator addresses only its app container'
+Assert-True ((Get-VolumeName database) -eq "$($isolated.project)_database") 'test coordinator addresses only its database volume'
+Assert-True ((Get-ImageName app) -eq "$($isolated.project)-app") 'test coordinator builds a unique app image tag'
+Assert-Throws { Assert-ComposeConfig -Config ([pscustomobject]@{ name = 'telmanfit-local'; services = [pscustomobject]@{}; volumes = [pscustomobject]@{} }) } 'test config refuses effective project-name collision'
+$script:ProjectName = 'telmanfit-local'
+$script:ProjectPrefix = 'telmanfit-local'
+$script:PublishedPort = '8098'
+$script:TestMode = $false
 
 function New-Snapshot {
     param([string[]] $Pending = @())
@@ -109,5 +136,12 @@ Assert-Throws { Invoke-Native -Command 'cmd.exe' -Arguments @('/c', 'exit', '29'
 Assert-Throws { Invoke-Native -Command 'cmd.exe' -Arguments @('/c', 'exit', '30') } 'migration command failure propagates as fatal error'
 $coordinatorSource = Get-Content -LiteralPath (Join-Path $root 'scripts/local-update.ps1') -Raw
 Assert-True ($coordinatorSource -notmatch 'migrate:rollback|db:wipe|docker\s+compose\s+down\s+-v|git\s+reset\b|git\s+clean\b|--force-push') 'coordinator contains no automatic destructive recovery/reset path'
+Assert-True ($coordinatorSource -match 'script:ProjectName' -and $coordinatorSource -match 'Get-VolumeName' -and $coordinatorSource -match 'Get-ContainerName app') 'all Compose/container/volume selection is derived from the locked project identity'
+Assert-True ($coordinatorSource -match 'Assert-TestProjectDisjoint' -and $coordinatorSource -match 'TestComposeOverride') 'isolated mode validates ownership and an explicit private override before work'
+$e2eSource = Get-Content -LiteralPath (Join-Path $root 'tests/local-update-e2e.ps1') -Raw
+Assert-True ($e2eSource -match 'telmanfit-e2e-.*12' -and $e2eSource -match 'telmanfit-local_database-secrets' -and $e2eSource -match 'Test volume collides') 'E2E runner rejects project and working-volume collisions'
+Assert-True ($e2eSource -match 'telmanfit.e2e.project' -and $e2eSource -match 'com.docker.compose.project' -and $e2eSource -match 'Refusing cleanup') 'E2E cleanup verifies exact resource ownership labels'
+Assert-True ($e2eSource -notmatch 'docker\s+compose\s+down\s+-v' -and $e2eSource -match 'volume.*rm') 'E2E cleanup never uses compose down -v and removes only individually inspected volumes'
 
 Write-Output "Local coordinator unit checks: PASS ($script:assertions assertions)"
+

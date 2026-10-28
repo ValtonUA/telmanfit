@@ -1,12 +1,88 @@
+Warning: truncated output (original token count: 13704)
+Total output lines: 877
+
 [CmdletBinding()]
 param(
     [switch] $NoGitSync,
     [string] $ExpectedHead,
-    [string] $AcknowledgeJournal
+    [string] $AcknowledgeJournal,
+    [switch] $IsolatedTestMode,
+    [string] $TestProjectName,
+    [int] $TestPort,
+    [string] $TestComposeOverride
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$script:ProjectName = 'telmanfit-local'
+$script:ProjectPrefix = 'telmanfit-local'
+$script:PublishedPort = '8098'
+$script:TestMode = $false
+
+function Initialize-IsolationMode {
+    if (-not $IsolatedTestMode) {
+        if ($TestProjectName -or $TestPort -or $TestComposeOverride) { throw 'Test-only parameters require -IsolatedTestMode.' }
+        return
+    }
+    if (-not $NoGitSync -or -not $ExpectedHead) { throw 'Isolated mode requires -NoGitSync and -ExpectedHead.' }
+    $context = New-IsolatedTestContext -ProjectName $TestProjectName -Port $TestPort
+    if (-not $TestComposeOverride) { throw 'Isolated mode requires a test Compose override.' }
+    $tempRoot = [IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) 'TelmanFit-E2E')).TrimEnd('\')
+    $override = [IO.Path]::GetFullPath($TestComposeOverride)
+    if (-not $override.StartsWith($tempRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Isolated Compose override must be inside the private TelmanFit-E2E temp directory.'
+    }
+    if (-not (Test-Path -LiteralPath $override -PathType Leaf)) { throw 'Isolated Compose override does not exist.' }
+    $script:ProjectName = $context.project
+    $script:ProjectPrefix = $context.project
+    $script:PublishedPort = [string] $context.port
+    $env:TELMANFIT_LOCAL_WEB_PORT = $script:PublishedPort
+    $script:TestMode = $true
+}
+
+function Get-ContainerName {
+    param([Parameter(Mandatory)][string] $Service)
+    return "$($script:ProjectName)-$Service-1"
+}
+
+function Get-VolumeName {
+    param([Parameter(Mandatory)][string] $Volume)
+    return "$($script:ProjectName)_$Volume"
+}
+
+function Get-ImageName {
+    param([Parameter(Mandatory)][string] $Service)
+    if ($script:TestMode) { return "$($script:ProjectName)-$Service" }
+    return "telmanfit-local-$Service"
+}
+
+function New-IsolatedTestContext {
+    param([Parameter(Mandatory)][string] $ProjectName, [Parameter(Mandatory)][int] $Port)
+    if ($ProjectName -cnotmatch '^telmanfit-e2e-[a-f0-9]{12}$' -or $ProjectName -ceq 'telmanfit-local') {
+        throw 'Ізольований проєкт має формат telmanfit-e2e-<12 lowercase hex>.'
+    }
+    if ($Port -lt 20000 -or $Port -gt 59999 -or $Port -eq 8098) { throw 'Ізольований порт має бути в діапазоні 20000..59999.' }
+    $kinds = @('database', 'database-secrets', 'local-state', 'epoch', 'storage')
+    $workingVolumes = @($kinds | ForEach-Object { "telmanfit-local_$_" })
+    $testVolumes = @($kinds | ForEach-Object { "${ProjectName}_$_" })
+    if (@($testVolumes | Where-Object { $_ -in $workingVolumes }).Count -ne 0) { throw 'Ізольований volume name зіставився з робочим TelmanFit volume.' }
+    $services = @('setup', 'database', 'app', 'worker', 'scheduler', 'web')
+    $imageNames = @('app', 'web', 'database')
+    [pscustomobject]@{
+        project = $ProjectName
+        port = $Port
+        containers = @($services | ForEach-Object { "$ProjectName-$_-1" })
+        volumes = $testVolumes
+        images = @($imageNames | ForEach-Object { "$ProjectName-$_" })
+        backup_root = Join-Path (Join-Path ([IO.Path]::GetTempPath()) 'TelmanFit-E2E') $ProjectName
+    }
+}
+
+function Get-IsolatedTestResourceNames {
+    param([Parameter(Mandatory)][string] $ProjectName)
+    $services = @('setup', 'database', 'app', 'worker', 'scheduler', 'web')
+    [pscustomobject]@{ containers = @($services | ForEach-Object { "$ProjectName-$_-1" }) }
+}
 
 function Write-UpdateLog {
     param([Parameter(Mandatory)][string] $Message)
@@ -220,7 +296,7 @@ function Assert-SnapshotUnchanged {
 function Assert-ComposeConfig {
     param([Parameter(Mandatory)] $Config)
 
-    if ($Config.name -ne 'telmanfit-local') { throw 'Compose project name має бути telmanfit-local.' }
+    if ($Config.name -cne $script:ProjectName) { throw "Compose project name має бути '$script:ProjectName'." }
     $expectedServices = @('setup', 'database', 'app', 'worker', 'scheduler', 'web')
     $serviceNames = @($Config.services.PSObject.Properties.Name | Sort-Object)
     if (($serviceNames -join ',') -cne (($expectedServices | Sort-Object) -join ',')) {
@@ -233,8 +309,15 @@ function Assert-ComposeConfig {
     }
     if (@($Config.services.database.ports).Count -ne 0) { throw 'PostgreSQL не повинен мати опублікованого порту.' }
     $webPorts = @($Config.services.web.ports)
-    if ($webPorts.Count -ne 1 -or $webPorts[0].published -ne '8098' -or $webPorts[0].host_ip -ne '127.0.0.1') {
+    if ($webPorts.Count -ne 1 -or [string]$webPorts[0].published -ne $script:PublishedPort -or $webPorts[0].host_ip -ne '127.0.0.1') {
         throw 'Web port не відповідає loopback-only конфігурації.'
+    }
+    if ($script:TestMode) {
+        if ($Config.networks.local.internal -ne $true) { throw 'Ізольована Compose network має бути internal.' }
+        foreach ($service in @('setup', 'app', 'worker', 'scheduler', 'web', 'database')) {
+            $expectedImageService = if ($service -in @('setup', 'app', 'worker', 'scheduler')) { 'app' } else { $service }
+            if ($Config.services.$service.image -cne (Get-ImageName -Service $expectedImageService)) { throw "Ізольований образ сервісу $service має неунікальне ім’я." }
+        }
     }
     foreach ($service in @('app', 'worker', 'scheduler')) {
         $sources = @($Config.services.$service.volumes | ForEach-Object { $_.source } | Sort-Object)
@@ -287,7 +370,7 @@ function Get-ArchiveInventory {
 }
 
 function Get-ProjectContainers {
-    $result = Invoke-Docker -Arguments @('ps', '-aq', '--filter', 'label=com.docker.compose.project=telmanfit-local')
+    $result = Invoke-Docker -Arguments @('ps', '-aq', '--filter', "label=com.docker.compose.project=$script:ProjectName")
     return @($result.Output | ForEach-Object { ([string] $_).Trim() } | Where-Object { $_ })
 }
 
@@ -299,21 +382,21 @@ function Assert-LocalProject {
     $osType = Get-OutputText (Invoke-Docker -Arguments @('info', '--format', '{{.OSType}}'))
     if ($osType -ne 'linux') { throw 'Потрібен локальний Docker Desktop з Linux containers.' }
     $containers = Get-ProjectContainers
-    if (-not $containers.Count) { throw 'Не знайдено існуючих контейнерів telmanfit-local; coordinator оновлює лише створене локальне середовище.' }
+    if (-not $containers.Count) { throw "Не знайдено попередньо створених контейнерів '$script:ProjectName'." }
 
     $databaseContainers = @()
     $expectedMounts = @{
-        'setup' = @('telmanfit-local_database-secrets', 'telmanfit-local_epoch', 'telmanfit-local_local-state')
-        'database' = @('telmanfit-local_database', 'telmanfit-local_database-secrets')
-        'app' = @('telmanfit-local_epoch', 'telmanfit-local_local-state', 'telmanfit-local_storage')
-        'worker' = @('telmanfit-local_epoch', 'telmanfit-local_local-state', 'telmanfit-local_storage')
-        'scheduler' = @('telmanfit-local_epoch', 'telmanfit-local_local-state', 'telmanfit-local_storage')
+        'setup' = @((Get-VolumeName database-secrets), (Get-VolumeName epoch), (Get-VolumeName local-state))
+        'database' = @((Get-VolumeName database), (Get-VolumeName database-secrets))
+        'app' = @((Get-VolumeName epoch), (Get-VolumeName local-state), (Get-VolumeName storage))
+        'worker' = @((Get-VolumeName epoch), (Get-VolumeName local-state), (Get-VolumeName storage))
+        'scheduler' = @((Get-VolumeName epoch), (Get-VolumeName local-state), (Get-VolumeName storage))
         'web' = @()
     }
     foreach ($id in $containers) {
         $inspect = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
         $labels = $inspect.Config.Labels
-        if ($labels.'com.docker.compose.project' -ne 'telmanfit-local') { throw 'Знайдено контейнер з неочікуваним Compose project label.' }
+        if ($labels.'com.docker.compose.project' -cne $script:ProjectName) { throw 'Знайдено контейнер з неочікуваним Compose project label.' }
         if ([IO.Path]::GetFullPath($labels.'com.docker.compose.project.working_dir').TrimEnd('\') -ine $Root.TrimEnd('\')) {
             throw 'Compose container належить іншому робочому каталогу.'
         }
@@ -324,83 +407,40 @@ function Assert-LocalProject {
         if (($mounts -join ',') -cne ($serviceMounts -join ',')) { throw "Container '$service' має несподівані Docker volumes." }
         if ($service -eq 'database') { $databaseContainers += $inspect }
     }
-    if ($databaseContainers.Count -ne 1) { throw 'Очікується рівно один telmanfit-local database container.' }
+    if ($databaseContainers.Count -ne 1) { throw "Очікується рівно один '$script:ProjectName' database container." }
     $database = $databaseContainers[0]
     if ($database.State.Running -ne $true -or $database.State.Health.Status -ne 'healthy') { throw 'Робочий PostgreSQL має бути healthy до оновлення.' }
     $mountVolumes = @($database.Mounts | Where-Object { $_.Type -eq 'volume' } | ForEach-Object { $_.Name } | Sort-Object)
-    if (($mountVolumes -join ',') -cne 'telmanfit-local_database,telmanfit-local_database-secrets') {
+    if (($mountVolumes -join ',') -cne "$(Get-VolumeName database),$(Get-VolumeName database-secrets)") {
         throw 'Database container не використовує очікувані TelmanFit volumes.'
     }
     $configFiles = @($database.Config.Labels.'com.docker.compose.project.config_files' -split ',')
-    if ($configFiles.Count -ne 1 -or [IO.Path]::GetFileName($configFiles[0]) -cne 'compose.yaml') {
+    $expectedConfigCount = if ($script:TestMode) { 2 } else { 1 }
+    if ($configFiles.Count -ne $expectedConfigCount -or [IO.Path]::GetFileName($configFiles[0]) -cne 'compose.yaml' -or ($script:TestMode -and [IO.Path]::GetFullPath($configFiles[1]) -ine [IO.Path]::GetFullPath($TestComposeOverride))) {
         throw 'Активний Compose використовує інші config files. Зупинено, щоб не змінити overlay або інший проєкт.'
     }
     return $database
 }
 
-function Get-SafeComposeConfig {
-    param([Parameter(Mandatory)][string] $Root)
-
-    $result = Invoke-Compose -Arguments @('config', '--format', 'json')
-    $text = Get-OutputText $result
-    try { $config = $text | ConvertFrom-Json } catch { throw 'docker compose config повернув некоректну JSON конфігурацію.' }
-    Assert-ComposeConfig -Config $config
-    return $config
-}
-
-function Set-Phase {
-    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][string] $State)
-    $script:Phase = $Name
-    Write-UpdateLog "phase=$Name state=$State"
-    if ($script:JournalPath) {
-        $journal = [ordered]@{
-            run_id = $script:RunId
-            phase = $Name
-            state = $State
-            updated_utc = (Get-Date).ToUniversalTime().ToString('o')
-            repository_sha = $script:RepositoryHead
-            backup_directory = $script:BackupDirectory
-        }
-        $journal | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:JournalPath -Encoding utf8
+function Assert-TestProjectDisjoint {
+    if (-not $script:TestMode) { return }
+    $workingProject = 'telmanfit-local'
+    if ($script:ProjectName -ceq $workingProject -or $script:ProjectName -notmatch '^telmanfit-e2e-[a-f0-9]{12}$') {
+        throw 'Ізольований Compose project name збігається з робочим або має недозволений формат.'
     }
-}
+    $volumeKinds = @('database', 'database-secrets', 'local-state', 'epoch', 'storage')
+    $workingVolumes = @($volumeKinds | ForEach-Object { "${workingProject}_$_" })
+    $testVolumes = @($volumeKinds | ForEach-Object { Get-VolumeName $_ })
+    if (@($testVolumes | Where-Object { $_ -in $workingVolumes }).Count -gt 0) { throw 'Test volume name збігається з робочим TelmanFit volume.' }
 
-function Assert-NoUnresolvedJournals {
-    param([Parameter(Mandatory)][string] $Directory, [string] $AcknowledgedRunId)
-
-    if (-not (Test-Path -LiteralPath $Directory -PathType Container)) { return }
-    foreach ($path in Get-ChildItem -LiteralPath $Directory -Filter '*.json' -File) {
-        if ($path.Name.EndsWith('.acknowledged.json')) { continue }
-        try { $journal = Get-Content -LiteralPath $path.FullName -Raw | ConvertFrom-Json } catch { throw "Журнал upgrade некоректний; потрібна ручна перевірка: $($path.FullName)" }
-        if ($journal.phase -eq 'complete' -and $journal.state -eq 'PASS') { continue }
-        $acknowledgementPath = "$($path.FullName).acknowledged.json"
-        if (Test-Path -LiteralPath $acknowledgementPath -PathType Leaf) {
-            try { $acknowledgement = Get-Content -LiteralPath $acknowledgementPath -Raw | ConvertFrom-Json } catch { throw "Журнал підтвердження некоректний: $acknowledgementPath" }
-            if ($acknowledgement.run_id -cne $journal.run_id) { throw "Журнал підтвердження не відповідає run_id: $acknowledgementPath" }
-            continue
-        }
-        if ($AcknowledgedRunId -and $journal.run_id -ceq $AcknowledgedRunId) {
-            [ordered]@{ run_id = $journal.run_id; acknowledged_utc = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $acknowledgementPath -Encoding utf8
-            Write-UpdateLog "prior_journal_acknowledged=$($journal.run_id) phase=$($journal.phase) state=$($journal.state)"
-            continue
-        }
-        throw "Є незавершена/невдала операція upgrade ($($journal.run_id), phase=$($journal.phase), state=$($journal.state)). Перегляньте журнал '$($path.FullName)' та після ручної перевірки повторіть з -AcknowledgeJournal '$($journal.run_id)'. Автовідновлення не виконується."
+    $volumeNames = @(Invoke-Docker -Arguments @('volume', 'ls', '-q')).Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }
+    foreach ($volume in $testVolumes) {
+        if ($volume -notin $volumeNames) { throw "Ізольований volume '$volume' не створено runner-ом." }
+        $details = (Get-OutputText (Invoke-Docker -Arguments @('volume', 'inspect', $volume)) | ConvertFrom-Json)[0]
+        if ($details.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Volume '$volume' не має очікуваного Compose owner label." }
     }
-}
-
-function Assert-BackupMetadata {
-    param([Parameter(Mandatory)][string] $Path)
-
-    $hash = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
-    $bytes = (Get-Item -LiteralPath $Path).Length
-    if ($bytes -le 0) { throw "Backup file '$Path' is empty." }
-    return [pscustomobject]@{ bytes = $bytes; sha256 = $hash }
-}
-
-function Start-LocalDatabase {
-    $null = Invoke-Compose -Arguments @('up', '-d', '--no-deps', 'database')
-    for ($i = 0; $i -lt 90; $i++) {
-        $status = Get-OutputText (Invoke-Docker -Arguments @('inspect', '--format', '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}', 'telmanfit-local-database-1'))
+    foreach ($volume in $workingVolumes) {
+        if ($volume -in $testVolumes) { throw "Небезпечне зіставлення із робочим …1704 tokens truncated…{{else}}{{.State.Status}}{{end}}', (Get-ContainerName database)))
         if ($status -eq 'healthy') { return }
         Start-Sleep -Seconds 2
     }
@@ -508,12 +548,14 @@ function Invoke-BackupRestoreRehearsal {
 }
 
 function Invoke-LocalUpdate {
+    Initialize-IsolationMode
     $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
     $actualRoot = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'rev-parse', '--show-toplevel'))
     if ([IO.Path]::GetFullPath($actualRoot).TrimEnd('\') -ine $root) { throw 'Скрипт має запускатися з кореня репозиторію.' }
 
     if (-not $env:LOCALAPPDATA) { throw 'LOCALAPPDATA не визначено; coordinator потребує локального приватного сховища backup/log.' }
-    $stateRoot = Join-Path $env:LOCALAPPDATA 'TelmanFit'
+    $stateRoot = if ($script:TestMode) { Join-Path (Join-Path $env:TEMP 'TelmanFit-E2E') $script:ProjectName } else { Join-Path $env:LOCALAPPDATA 'TelmanFit' }
+    if ($script:TestMode -and (Test-Path -LiteralPath $stateRoot)) { throw 'Ізольований backup/log каталог уже існує; відмова використовувати чи перезаписувати його.' }
     Set-PrivateDirectoryAcl -Path $stateRoot
     $lockStream = Enter-UpdateLock -LockPath (Join-Path $stateRoot 'local-update.lock')
     $script:RunId = '{0}-{1}' -f (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'), ([guid]::NewGuid().ToString('N').Substring(0, 8))
@@ -531,7 +573,7 @@ function Invoke-LocalUpdate {
             $script:Phase = 'journal_gate_blocked'
             throw
         }
-        Write-UpdateLog 'local update started; target=telmanfit-local; no production credentials are read'
+        Write-UpdateLog "local update started; target=$script:ProjectName; isolated_test=$($script:TestMode.ToString().ToLowerInvariant()); no production credentials are read"
         $remote = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'remote', 'get-url', 'origin'))
         if (-not (Test-ExpectedRemote -Remote $remote)) { throw 'Git origin не відповідає ValtonUA/telmanfit.' }
         Assert-SafeGitTree -Root $root
@@ -565,17 +607,20 @@ function Invoke-LocalUpdate {
         if ($context -ne 'desktop-linux' -or (Get-OutputText (Invoke-Docker -Arguments @('info', '--format', '{{.OSType}}'))) -ne 'linux') {
             throw 'Docker Desktop desktop-linux/Linux containers не доступні.'
         }
+        $script:ComposeArguments = @('-p', $script:ProjectName, '--project-directory', $root, '-f', (Join-Path $root 'compose.yaml'))
+        if ($script:TestMode) { $script:ComposeArguments += @('-f', [IO.Path]::GetFullPath($TestComposeOverride)) }
+        $composeConfig = Get-SafeComposeConfig -Root $root
+        Assert-TestProjectDisjoint
         $databaseContainer = Assert-LocalProject -Root $root
         $script:DatabaseImage = $databaseContainer.Image
-        $script:AppImage = (Get-OutputText (Invoke-Docker -Arguments @('inspect', 'telmanfit-local-app-1', '--format', '{{.Image}}')))
+        $appInspect = Invoke-Docker -Arguments @('inspect', (Get-ContainerName app), '--format', '{{.Image}}') -AllowFailure
+        $script:AppImage = if ($appInspect.ExitCode -eq 0) { Get-OutputText $appInspect } elseif ($script:TestMode) { Get-OutputText (Invoke-Docker -Arguments @('image', 'inspect', (Get-ImageName app), '--format', '{{.Id}}')) } else { $null }
         if (-not $script:AppImage) { throw 'Не вдалося визначити локальний app image.' }
-        $script:ComposeArguments = @('-p', 'telmanfit-local', '--project-directory', $root, '-f', (Join-Path $root 'compose.yaml'))
-        $composeConfig = Get-SafeComposeConfig -Root $root
 
         Set-Phase -Name 'build' -State 'started'
         $null = Invoke-Compose -Arguments @('build', 'app', 'web')
         Set-Phase -Name 'build' -State 'complete'
-        $script:AppImage = Get-OutputText (Invoke-Docker -Arguments @('image', 'inspect', 'telmanfit-local-app', '--format', '{{.Id}}'))
+        $script:AppImage = Get-OutputText (Invoke-Docker -Arguments @('image', 'inspect', (Get-ImageName app), '--format', '{{.Id}}'))
 
         Set-Phase -Name 'identity_and_migrations' -State 'started'
         $before = Get-DatabaseSnapshot
@@ -609,7 +654,7 @@ function Invoke-LocalUpdate {
             Set-Phase -Name 'backup' -State 'started'
             $null = Invoke-Compose -Arguments @('exec', '-T', 'database', 'pg_dump', '--format=custom', '--no-owner', '--no-privileges', '-U', 'postgres', '-d', $script:DatabaseName, '-f', $containerDump)
             $dumpPath = Join-Path $script:BackupDirectory 'postgresql.dump'
-            $null = Invoke-Docker -Arguments @('cp', "telmanfit-local-database-1:$containerDump", $dumpPath)
+            $null = Invoke-Docker -Arguments @('cp', "$(Get-ContainerName database):$containerDump", $dumpPath)
             $tocResult = Invoke-Compose -Arguments @('exec', '-T', 'database', 'pg_restore', '--list', $containerDump)
             if (@($tocResult.Output).Count -lt 10) { throw 'pg_restore не прочитав custom-format backup TOC.' }
             $null = Invoke-Compose -Arguments @('exec', '-T', 'database', 'rm', '-f', $containerDump)
@@ -617,7 +662,7 @@ function Invoke-LocalUpdate {
 
             $null = Invoke-Compose -Arguments @('stop', '--timeout', '60', 'database')
             foreach ($volume in @('database', 'database-secrets', 'local-state', 'epoch', 'storage')) {
-                $volumeName = "telmanfit-local_$volume"
+                $volumeName = Get-VolumeName $volume
                 $null = Invoke-Docker -Arguments @('volume', 'inspect', $volumeName)
                 Invoke-TarArchive -DatabaseImage $script:DatabaseImage -Volume $volumeName -BackupDirectory $script:BackupDirectory -Archive "$volume.tar"
                 Invoke-TarArchive -DatabaseImage $script:DatabaseImage -Volume $volumeName -BackupDirectory $script:BackupDirectory -Archive "$volume.tar" -Compare
@@ -628,13 +673,13 @@ function Invoke-LocalUpdate {
                 $archive = "$volume.tar"
                 $metadata = Assert-BackupMetadata -Path (Join-Path $script:BackupDirectory $archive)
                 $entries = Get-ArchiveInventory -DatabaseImage $script:DatabaseImage -BackupDirectory $script:BackupDirectory -Archive $archive
-                $volumeManifest += [ordered]@{ volume = "telmanfit-local_$volume"; archive = $archive; bytes = $metadata.bytes; sha256 = $metadata.sha256; entries = $entries }
+                $volumeManifest += [ordered]@{ volume = (Get-VolumeName $volume); archive = $archive; bytes = $metadata.bytes; sha256 = $metadata.sha256; entries = $entries }
             }
             $manifest = [ordered]@{
                 format_version = 1
                 run_id = $script:RunId
                 created_utc = (Get-Date).ToUniversalTime().ToString('o')
-                project = 'telmanfit-local'
+                project = $script:ProjectName
                 source_sha = $script:RepositoryHead
                 database = $script:DatabaseName
                 postgres_major = 18
@@ -695,7 +740,7 @@ function Invoke-LocalUpdate {
         do {
             $states = @{}
             foreach ($service in $expected.Keys) {
-                $name = "telmanfit-local-$service-1"
+                $name = Get-ContainerName $service
                 $format = if ($service -in @('database', 'app', 'web')) { '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' } else { '{{.State.Status}}' }
                 $result = Invoke-Docker -Arguments @('inspect', '--format', $format, $name) -AllowFailure
                 $states[$service] = if ($result.ExitCode -eq 0) { Get-OutputText $result } else { 'missing' }
@@ -728,3 +773,4 @@ function Invoke-LocalUpdate {
 if ($MyInvocation.InvocationName -ne '.' -and -not $script:LocalUpdateLibraryOnly) {
     Invoke-LocalUpdate
 }
+

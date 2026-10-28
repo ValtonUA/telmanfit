@@ -144,6 +144,29 @@ Desktop використовує ті самі volumes. Не запускайт�
 volumes при зупинених сервісах. Втрата/невідповідність epoch закриває доступ;
 автоматичної підміни epoch або скидання MFA немає.
 
+Для розробки coordinator-а є окремий E2E runner. Read-only preflight ефективної
+конфігурації та наявних Docker ресурсів:
+
+```powershell
+pwsh -NoProfile -File tests/local-update-e2e.ps1
+```
+
+Повний disposable E2E після read-only preflight:
+
+```powershell
+pwsh -NoProfile -File tests/local-update-e2e.ps1 -Run
+```
+
+`-Run` створює disposable Compose project із випадковим
+суфіксом, окремими volumes і image tags, loopback портом та синтетичними даними.
+Coordinator у тесті запускається лише з `-IsolatedTestMode`, `-NoGitSync`, точним
+`-ExpectedHead` та Compose override у `%TEMP%\TelmanFit-E2E`. Звичайний виклик
+`scripts/local-update.ps1` лишається зафіксованим на `telmanfit-local`. Runner до
+створення перевіряє проєкт, п’ять робочих volumes, image tags, контейнери, мережу
+й порт; будь-який збіг завершує тест до Docker-запису. Cleanup перевіряє owner
+labels і volume attachments кожного ресурсу та видаляє їх по одному;
+`docker compose down -v` не використовується.
+
 PostgreSQL не має host-порту. Вебпорт доступний лише на loopback; використовуйте
 саме `127.0.0.1`, щоб cookie-контексти лишалися узгодженими. Наявні `.env`, БД і
 production секрети не використовуються. Роль застосунку не є superuser і не має
@@ -166,3 +189,4 @@ Stage 3 і бізнес-схема не змінюються. Анкета мі�
 `TELMANFIT_FILAMENT_THEME_BROWSER=1 python3 tests/browser/local_compose.py`.
 Вона охоплює запрошення, клієнтів, анкету, dropdown і сповіщення у двох темах на
 1440/390/320 px; [причина виправлення та докази](filament-theme.md).
+
