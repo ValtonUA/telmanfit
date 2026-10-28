@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\ClientAuthController;
+use App\Http\Controllers\Api\ClientCookingController;
 use App\Http\Controllers\Api\ClientLibraryController;
 use App\Http\Controllers\Api\ClientMealItemRecipeController;
 use App\Http\Controllers\Api\ClientMealPlanController;
-use App\Http\Controllers\Api\ClientCookingController;
 use App\Http\Controllers\Api\ClientMealPlanDaysController;
 use App\Http\Controllers\Api\ClientOnboardingController;
 use App\Http\Controllers\Api\ClientSecurityController;

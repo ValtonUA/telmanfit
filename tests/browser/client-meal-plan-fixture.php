@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\MealPlans\ClientMenuFixture;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';

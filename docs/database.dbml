@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 12510)
-Total output lines: 1247
-
 // TelmanFit — логічна ER-модель (джерело структури таблиць і полів).
 // Enum-блоки нижче є логічними: у PostgreSQL відповідні поля реалізовані як text + CHECK.
 // DBML не виражає CHECK, часткові UNIQUE-індекси, EXCLUDE та тригери;
@@ -601,7 +598,222 @@ TableGroup "Messaging & Automation" [color: #A21CAF] {
 // PostgreSQL-only constraints (not expressible in DBML)
 // ============================================================
 // Logical enums in this file are text + CHECK in PostgreSQL:
-//   uoms.kind, fo…2510 tokens truncated…n закриті.
+//   uoms.kind, foods.food_type, recipe_versions.status,
+//   meal_plan_versions.status, recipe_kitchen_equipment.scaling_mode.
+//
+// CHECK constraints (01_nutrition_schema.sql):
+//   ingredients: kcal/protein/fat/carbs_per_100g >= 0
+//   ingredient_uoms: grams_per_uom > 0
+//   recipe_versions: published => food_id, version_number, published_at
+//     and all *_per_serving values are NOT NULL; servings_count > 0;
+//     per-serving values >= 0
+//   recipe_ingredients: quantity > 0, quantity_grams > 0
+//   recipe_directions: direction_number > 0
+//   meal_plan_days: day_number > 0
+//   meal_items: quantity > 0, resolved_quantity_grams > 0
+//   recipes / meal_plans: parent_*_id IS DISTINCT FROM id
+//   client_meal_plan_assignments: end_date >= start_date;
+//     replaced_by_assignment_id IS DISTINCT FROM id (no self-replacement)
+//   client_weekly_reports: week_start_date is Monday; status/submitted_at agree
+//   client_metrics: source != weekly_report OR weekly_report_id IS NOT NULL
+//   metrics: min_value <= max_value; value_kind in (decimal, integer)
+//   client_progress_photos: view_label in (front, side, back, other)
+//   outbound_messages: status/sent_at agree; rendered_markup is object/array
+//   client_events: event_data is object
+//
+// Partial UNIQUE indexes:
+//   ingredient_uoms_one_default: one is_default per ingredient
+//   recipe_one_draft: one draft per recipe
+//   meal_plan_one_draft: one draft per meal plan
+//   client_metric_one_current_assignment: one current assignment per client+metric
+//
+// Exclusion:
+//   no_overlapping_client_plan_dates on client_meal_plan_assignments
+//   (client_id =, daterange(start_date, end_date, []) &&), DEFERRABLE.
+//
+// Triggers:
+//   published recipe_versions / meal_plan_versions and their children are
+//   immutable; direct INSERT with status=published is rejected;
+//   foods must have exactly one typed child (deferred constraint trigger);
+//   typed child food_id cannot be detached; uoms.code is immutable;
+//   meal_items / recipe_ingredients units and resolved grams are validated
+//   at publication; only published meal_plan_versions can be assigned.
+//
+// Cross-module FKs (02_users_clients.sql):
+//   recipes.owner_client_id -> clients.id
+//   meal_plans.owner_client_id -> clients.id
+//   client_meal_plan_assignments.client_id -> clients.id
+//   client_meal_plan_assignments.created_by -> users.id
+// ============================================================
+
+// AUTH-2 — P1/P2/P4, затверджено 22.10.2026; точні CHECK/індекси/тригери: 05_auth_schema.sql.
+Table client_invitations [headercolor: #B45309] {
+ id bigint [pk, increment]
+ token_hash text [not null, unique]
+ created_by_user_id bigint [not null]
+ coach_user_id bigint [not null]
+ target_client_id integer
+ created_at timestamptz [not null, default: `now()`]
+ expires_at timestamptz [note: 'NULL — без автоматичного строку; заданий expiry перевіряється під час consume']
+ revoked_at timestamptz
+ revoked_by_user_id bigint
+ consumed_at timestamptz
+ consumed_by_user_id bigint
+ indexes {
+  (coach_user_id) [name: 'auth2_invitation_coach']
+  (created_by_user_id) [name: 'auth2_invitation_creator']
+  (consumed_by_user_id) [name: 'auth2_invitation_consumer']
+  (revoked_by_user_id) [name: 'auth2_invitation_revoker']
+ }
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+Table auth_flows [headercolor: #B45309] {
+ id bigint [pk, increment]
+ public_id uuid [not null, unique]
+ browser_binding_hash text [not null]
+ audience text [not null]
+ purpose text [not null]
+ user_id bigint
+ invitation_id bigint
+ auth_version_at_start bigint
+ state text [not null, default: 'pending']
+ generation integer [not null, default: 1]
+ primary_verified_at timestamptz
+ created_at timestamptz [not null, default: `now()`]
+ expires_at timestamptz [not null]
+ consumed_at timestamptz
+ invalidated_at timestamptz
+ capability_hash text [unique]
+ action text
+ session_binding_hash text
+ indexes {
+  (user_id) [name: 'auth2_flow_user']
+  (invitation_id) [name: 'auth2_flow_invitation']
+ }
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+Table auth_challenges [headercolor: #B45309] {
+ id bigint [pk, increment]
+ public_id uuid [not null, unique]
+ flow_id bigint [not null]
+ generation integer [not null]
+ email_normalized varchar(254) [not null]
+ code_mac text [not null]
+ key_version text [not null]
+ attempts integer [not null, default: 0]
+ max_attempts integer [not null]
+ created_at timestamptz [not null, default: `now()`]
+ expires_at timestamptz [not null]
+ consumed_at timestamptz
+ invalidated_at timestamptz
+ indexes {
+  (flow_id, generation) [unique]
+  (email_normalized,created_at) [name: 'auth2_challenge_email']
+ }
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+Table user_totp_factors [headercolor: #B45309] {
+ user_id bigint [pk]
+ secret_ciphertext text
+ key_version text
+ confirmed_at timestamptz
+ disabled_at timestamptz [note: 'Активний фактор: confirmed_at NOT NULL AND disabled_at IS NULL; вимкнення очищає ciphertext і batch, зберігає watermark/історію']
+ pending_secret_ciphertext text
+ pending_key_version text
+ pending_expires_at timestamptz
+ last_used_step bigint
+ recovery_batch_id uuid
+ created_at timestamptz [not null, default: `now()`]
+ updated_at timestamptz [not null, default: `now()`]
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+Table mfa_recovery_codes [headercolor: #B45309] {
+ id bigint [pk, increment]
+ user_id bigint [not null]
+ selector uuid [not null, unique]
+ code_hash text [not null]
+ batch_id uuid [not null]
+ created_at timestamptz [not null, default: `now()`]
+ used_at timestamptz
+ revoked_at timestamptz
+ indexes {
+  (user_id,batch_id) [name: 'auth2_recovery_user_batch']
+ }
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+Table auth_session_states [headercolor: #B45309] {
+ session_id varchar(255) [pk]
+ user_id bigint [not null]
+ audience text [not null]
+ browser_binding_hash text [not null]
+ auth_version bigint [not null]
+ primary_method text [not null]
+ primary_verified_at timestamptz [not null]
+ mfa_verified_at timestamptz
+ mfa_method text
+ reauthenticated_at timestamptz
+ absolute_expires_at timestamptz [not null]
+ revoked_at timestamptz
+ indexes {
+  (user_id,audience) [name: 'auth2_session_user_audience']
+  (absolute_expires_at) [name: 'auth2_session_expiry']
+ }
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+Table auth_audit_events [headercolor: #B45309] {
+ id bigint [pk, increment]
+ occurred_at timestamptz [not null, default: `now()`]
+ actor_user_id bigint
+ subject_user_id bigint
+ event_type text [not null]
+ outcome text [not null]
+ request_id uuid [not null]
+ session_fingerprint text
+ ip_fingerprint text
+ user_agent_fingerprint text
+ reason_code text
+ case_reference uuid
+ indexes {
+  (occurred_at,id) [name: 'auth2_audit_time']
+  (actor_user_id,occurred_at) [name: 'auth2_audit_actor']
+  (subject_user_id,occurred_at) [name: 'auth2_audit_subject']
+  (request_id) [name: 'auth2_audit_request']
+ }
+ Note: 'Повні перевірки, індекси та незворотні переходи: docs/05_auth_schema.sql. TTL без default; сховище не є авторизацією.'
+}
+
+// Зовнішня службова таблиця Laravel, створена історичною міграцією; payload не дублюється.
+Table sessions {
+ id varchar(255) [pk]
+ user_id bigint
+ ip_address varchar(45)
+ user_agent text
+ payload text [not null]
+ last_activity integer [not null]
+}
+Ref: client_invitations.created_by_user_id > users.id [delete: restrict]
+Ref: client_invitations.coach_user_id > users.id [delete: restrict]
+Ref: client_invitations.target_client_id > clients.id [delete: restrict]
+Ref: client_invitations.revoked_by_user_id > users.id [delete: restrict]
+Ref: client_invitations.consumed_by_user_id > users.id [delete: restrict]
+Ref: auth_flows.user_id > users.id [delete: restrict]
+Ref: auth_flows.invitation_id > client_invitations.id [delete: restrict]
+Ref: auth_challenges.flow_id > auth_flows.id [delete: restrict]
+Ref: user_totp_factors.user_id > users.id [delete: restrict]
+Ref: mfa_recovery_codes.user_id > user_totp_factors.user_id [delete: restrict]
+Ref: auth_session_states.session_id > sessions.id [delete: cascade]
+Ref: auth_session_states.user_id > users.id [delete: restrict]
+Ref: auth_audit_events.actor_user_id > users.id [delete: restrict]
+Ref: auth_audit_events.subject_user_id > users.id [delete: restrict]
+
+// AUTH-2 PostgreSQL-only: users.email_normalized COLLATE C UNIQUE, auth_version monotonic trigger;
+// partial UNIQUE invitation target slot та flow browser/audience/purpose slot;
+// partial expiry indexes; irreversible invitation/flow/challenge/recovery/session transitions;
+// TOTP watermark monotonic trigger; audit UPDATE/DELETE/TRUNCATE forbidden.
+// Усі точні CHECK/імена FK/індекси/функції та nullable-парність — docs/05_auth_schema.sql.
+// PostgreSQL типи text+CHECK лишаються text у цій auth-проєкції без непогоджених enum.
+
+// AUTH-6B/B3: D1/D2 затверджено 22.10.2026; D3/B4/production закриті.
 Table auth_recovery_principals [headercolor: #7C3AED] {
  id uuid [pk]
  linked_user_id bigint [unique]

@@ -46,7 +46,9 @@ class ClientCookingTest extends TestCase
 
     protected function tearDown(): void
     {
-        while (DB::transactionLevel() > 0) DB::rollBack();
+        while (DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
         parent::tearDown();
     }
 

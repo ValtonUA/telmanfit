@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Tests\Recipes\BatchFixture;
+use RuntimeException;
+use Throwable;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
 set_exception_handler(function (Throwable $e) {

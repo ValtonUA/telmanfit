@@ -2,7 +2,9 @@
 
 namespace Tests\Postgres;
 
+use App\Filament\Pages\CookingTemplates as CookingTemplatesPage;
 use App\Models\User;
+use App\Services\Cooking\ClientCooking;
 use App\Services\Cooking\CookingEditor;
 use App\Services\Cooking\CookingTemplates;
 use Filament\Facades\Filament;
@@ -11,9 +13,11 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\MealPlans\PlanFixture;
 use Tests\Recipes\BatchFixture;
+use Throwable;
 
 class CookingTemplatesTest extends PostgresTestCase
 {
@@ -34,6 +38,7 @@ class CookingTemplatesTest extends PostgresTestCase
         parent::setUp();
         $this->installAuthSchema();
         $this->installMealItemSchema();
+        (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic cooking admin', 'role' => 'admin']));
         DB::table('uoms')->insert(['code' => 'g', 'label' => 'gram', 'kind' => 'mass']);
         $legacy = $this->populatedPlan($this->actor->id);
@@ -160,7 +165,7 @@ class CookingTemplatesTest extends PostgresTestCase
         $this->rejected(fn () => DB::select('SELECT cooking_assert_revision(?,NULL)', [$d['v']]));
         $this->rejected(fn () => DB::table('cooking_selections')->update(['mode' => 2, 'revision' => 2]));
         $this->assertTrue($available($d['v']));
-        $projection = app(\App\Services\Cooking\ClientCooking::class)->choices($client, 1, $today);
+        $projection = app(ClientCooking::class)->choices($client, 1, $today);
         $this->assertSame((string) $d['v'], $projection['modes'][0]['templates'][0]['version_id']);
         $this->assertSame(1, $projection['modes'][0]['mode']);
         $next = $this->replacement($d);
@@ -245,7 +250,7 @@ class CookingTemplatesTest extends PostgresTestCase
         try {
             $f();
             $this->fail('Невалідна операція повинна бути відхилена');
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->assertInstanceOf($class, $e);
         } finally {
             DB::rollBack();
@@ -270,7 +275,7 @@ class CookingTemplatesTest extends PostgresTestCase
         $this->rejected(fn () => DB::table('cooking_allocations')->where('version_id', $d['v'])->delete());
         $next = DB::table('cooking_template_versions')->insertGetId(['template_id' => $d['template'], 'version_number' => 2, 'previous_version_id' => $d['v'], 'source_plan_version_id' => $d['source'], 'source_week' => 1, 'mode' => 1]);
         $this->assertNotSame($d['v'], $next);
-        $this->rejected(fn () => (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->down(), \RuntimeException::class);
+        $this->rejected(fn () => (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->down(), RuntimeException::class);
     }
 
     public function test_reuse_compares_entire_existing_week_excludes_ids_and_never_cycles(): void
@@ -483,7 +488,7 @@ class CookingTemplatesTest extends PostgresTestCase
         }
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
-        $page = Livewire::test(\App\Filament\Pages\CookingTemplates::class, ['version' => $v])->assertSuccessful()->assertSee('Попередній перегляд');
+        $page = Livewire::test(CookingTemplatesPage::class, ['version' => $v])->assertSuccessful()->assertSee('Попередній перегляд');
         $page->callAction('review', data: ['suitability' => true, 'safety' => true, 'manual_parameters' => true, 'no_process_water_tokens' => true])->assertHasNoActionErrors();
         $page->callAction('publish')->assertHasNoActionErrors();
         $this->assertSame('published', DB::table('cooking_template_versions')->where('id', $v)->value('status'));
@@ -505,14 +510,14 @@ class CookingTemplatesTest extends PostgresTestCase
         $this->assertSame($revision, $this->revision($d['v']));
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
-        $stale = Livewire::test(\App\Filament\Pages\CookingTemplates::class, ['version' => $d['v']]);
+        $stale = Livewire::test(CookingTemplatesPage::class, ['version' => $d['v']]);
         $editor->allocate($this->actor, $d['v'], $revision, 1, 1, 2, null);
         $stale->callAction('review', data: ['suitability' => true, 'safety' => true, 'manual_parameters' => true, 'no_process_water_tokens' => true]);
         $this->assertNull(DB::table('cooking_template_versions')->where('id', $d['v'])->value('reviewed_revision'));
         foreach (['coach', 'client'] as $role) {
             DB::table('users')->where('id', $this->actor->id)->update(['role' => $role]);
             $this->actingAs($this->actor->fresh());
-            Livewire::test(\App\Filament\Pages\CookingTemplates::class)->assertForbidden();
+            Livewire::test(CookingTemplatesPage::class)->assertForbidden();
             $this->rejected(fn () => $editor->remove($this->actor, $d['v'], $this->revision($d['v']), 'outputs', $d['outputs'][0]), HttpException::class);
         }
     }
@@ -522,7 +527,7 @@ class CookingTemplatesTest extends PostgresTestCase
         $d = $this->draft();
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
-        $page = Livewire::test(\App\Filament\Pages\CookingTemplates::class, ['version' => $d['v']]);
+        $page = Livewire::test(CookingTemplatesPage::class, ['version' => $d['v']]);
         $stage = ['id' => 'stable-stage', 'title' => 'Фасування', 'blocks' => [
             ['id' => 'stable-action', 'type' => 'action', 'parts' => [['kind' => 'text', 'text' => 'Візьміть '],
                 ['kind' => 'token', 'metric' => 'grams', 'sources' => [$d['outputs'][0].':'.$this->recipes[0]['row']]]]],

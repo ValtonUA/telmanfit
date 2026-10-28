@@ -7,7 +7,6 @@ use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use JsonException;
 
 /** Read-only client projection; callers keep every read in one PG18 snapshot. */
 final class ClientCooking
@@ -115,13 +114,13 @@ final class ClientCooking
 
     private function available(int $client, int $assignment, int $version, int $week, int $mode, string $today): bool
     {
-        if (! (bool) DB::selectOne('SELECT cooking_available(?,?,?,?,?,?::date) AS available',
+        if (!(bool) DB::selectOne('SELECT cooking_available(?,?,?,?,?,?::date) AS available',
             [$client, $assignment, $version, $week, $mode, $today])->available) {
             return false;
         }
         // SQL17 permits a client's own personal recipe inside an owner plan. T5.7b
         // deliberately excludes every personal recipe from the reusable client flow.
-        return ! (bool) DB::selectOne("SELECT EXISTS (
+        return !(bool) DB::selectOne("SELECT EXISTS (
             SELECT FROM cooking_template_versions v
             CROSS JOIN LATERAL jsonb_array_elements(v.menu_pattern->'items') item
             JOIN recipe_versions rv ON rv.id=(item->>'recipe_version_id')::integer
