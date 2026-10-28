@@ -1,0 +1,28 @@
+name: Local update PowerShell compatibility
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  parse-coordinator:
+    name: Parse coordinator with ${{ matrix.host }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: Windows PowerShell 5.1
+            executable: powershell.exe
+          - host: PowerShell 7
+            executable: pwsh.exe
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify coordinator encoding and syntax without running it
+        shell: cmd
+        run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/local-update-powershell-compat.ps1

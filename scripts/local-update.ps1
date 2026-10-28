@@ -1,7 +1,4 @@
-Warning: truncated output (original token count: 14133)
-Total output lines: 903
-
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [switch] $NoGitSync,
     [string] $ExpectedHead,
@@ -343,7 +340,319 @@ function Get-DatabaseSnapshot {
 }
 
 function Test-VolumeDetached {
-    param([P…5633 tokens truncated…s.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
+    param([Parameter(Mandatory)][string] $Volume)
+    $running = Invoke-Docker -Arguments @('ps', '-q', '--filter', "volume=$Volume")
+    if ((Get-OutputText $running)) { throw "Volume '$Volume' усе ще приєднаний до running container." }
+}
+
+function Invoke-TarArchive {
+    param(
+        [Parameter(Mandatory)][string] $DatabaseImage,
+        [Parameter(Mandatory)][string] $Volume,
+        [Parameter(Mandatory)][string] $BackupDirectory,
+        [Parameter(Mandatory)][string] $Archive,
+        [switch] $Compare
+    )
+
+    Test-VolumeDetached -Volume $Volume
+    $archivePath = Join-Path $BackupDirectory $Archive
+    if ($Compare) {
+        $arguments = @('run', '--rm', '--network', 'none', '--read-only', '--user', '0', '--entrypoint', 'tar', '--mount', "type=volume,source=$Volume,target=/source,readonly", '--mount', "type=bind,source=$BackupDirectory,target=/backup,readonly", $DatabaseImage, '--numeric-owner', '-dpf', "/backup/$Archive", '-C', '/source')
+    } else {
+        if (Test-Path -LiteralPath $archivePath) { throw "Відмова перезаписати існуючий архів $archivePath" }
+        $arguments = @('run', '--rm', '--network', 'none', '--read-only', '--user', '0', '--entrypoint', 'tar', '--mount', "type=volume,source=$Volume,target=/source,readonly", '--mount', "type=bind,source=$BackupDirectory,target=/backup", $DatabaseImage, '--numeric-owner', '-cpf', "/backup/$Archive", '-C', '/source', '.')
+    }
+    $null = Invoke-Docker -Arguments $arguments
+    if (-not $Compare -and -not (Test-Path -LiteralPath $archivePath -PathType Leaf)) { throw "Архів '$Archive' після tar відсутній." }
+}
+
+function Get-ArchiveInventory {
+    param([Parameter(Mandatory)][string] $DatabaseImage, [Parameter(Mandatory)][string] $BackupDirectory, [Parameter(Mandatory)][string] $Archive)
+
+    $result = Invoke-Docker -Arguments @('run', '--rm', '--network', 'none', '--read-only', '--entrypoint', 'tar', '--mount', "type=bind,source=$BackupDirectory,target=/backup,readonly", $DatabaseImage, '-tf', "/backup/$Archive")
+    $entries = @($result.Output | ForEach-Object { [string] $_ } | Where-Object { $_.Trim() })
+    if (-not $entries.Count) { throw "Архів '$Archive' порожній." }
+    return $entries.Count
+}
+
+function Get-ProjectContainers {
+    $result = Invoke-Docker -Arguments @('ps', '-aq', '--filter', "label=com.docker.compose.project=$script:ProjectName")
+    return @($result.Output | ForEach-Object { ([string] $_).Trim() } | Where-Object { $_ })
+}
+
+function Assert-LocalProject {
+    param([Parameter(Mandatory)][string] $Root)
+
+    $context = Get-OutputText (Invoke-Docker -Arguments @('context', 'show'))
+    if ($context -ne 'desktop-linux') { throw "Docker context має бути desktop-linux, отримано '$context'." }
+    $osType = Get-OutputText (Invoke-Docker -Arguments @('info', '--format', '{{.OSType}}'))
+    if ($osType -ne 'linux') { throw 'Потрібен локальний Docker Desktop з Linux containers.' }
+    $containers = Get-ProjectContainers
+    if (-not $containers.Count) { throw "Не знайдено попередньо створених контейнерів '$script:ProjectName'." }
+
+    $databaseContainers = @()
+    $expectedMounts = @{
+        'setup' = @((Get-VolumeName database-secrets), (Get-VolumeName epoch), (Get-VolumeName local-state))
+        'database' = @((Get-VolumeName database), (Get-VolumeName database-secrets))
+        'app' = @((Get-VolumeName epoch), (Get-VolumeName local-state), (Get-VolumeName storage))
+        'worker' = @((Get-VolumeName epoch), (Get-VolumeName local-state), (Get-VolumeName storage))
+        'scheduler' = @((Get-VolumeName epoch), (Get-VolumeName local-state), (Get-VolumeName storage))
+        'web' = @()
+    }
+    foreach ($id in $containers) {
+        $inspect = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
+        $labels = $inspect.Config.Labels
+        if ($labels.'com.docker.compose.project' -cne $script:ProjectName) { throw 'Знайдено контейнер з неочікуваним Compose project label.' }
+        if ([IO.Path]::GetFullPath($labels.'com.docker.compose.project.working_dir').TrimEnd('\') -ine $Root.TrimEnd('\')) {
+            throw 'Compose container належить іншому робочому каталогу.'
+        }
+        $service = $labels.'com.docker.compose.service'
+        if (-not $expectedMounts.ContainsKey($service)) { throw "Невідомий Compose service container: '$service'." }
+        $mounts = @($inspect.Mounts | Where-Object { $_.Type -eq 'volume' } | ForEach-Object { $_.Name } | Sort-Object)
+        $serviceMounts = @($expectedMounts[$service] | Sort-Object)
+        if (($mounts -join ',') -cne ($serviceMounts -join ',')) { throw "Container '$service' має несподівані Docker volumes." }
+        if ($service -eq 'database') { $databaseContainers += $inspect }
+    }
+    if ($databaseContainers.Count -ne 1) { throw "Очікується рівно один '$script:ProjectName' database container." }
+    $database = $databaseContainers[0]
+    if ($database.State.Running -ne $true -or $database.State.Health.Status -ne 'healthy') { throw 'Робочий PostgreSQL має бути healthy до оновлення.' }
+    $mountVolumes = @($database.Mounts | Where-Object { $_.Type -eq 'volume' } | ForEach-Object { $_.Name } | Sort-Object)
+    if (($mountVolumes -join ',') -cne "$(Get-VolumeName database),$(Get-VolumeName database-secrets)") {
+        throw 'Database container не використовує очікувані TelmanFit volumes.'
+    }
+    $configFiles = @($database.Config.Labels.'com.docker.compose.project.config_files' -split ',')
+    $expectedConfigCount = if ($script:TestMode) { 2 } else { 1 }
+    if ($configFiles.Count -ne $expectedConfigCount -or [IO.Path]::GetFileName($configFiles[0]) -cne 'compose.yaml' -or ($script:TestMode -and [IO.Path]::GetFullPath($configFiles[1]) -ine [IO.Path]::GetFullPath($TestComposeOverride))) {
+        throw 'Активний Compose використовує інші config files. Зупинено, щоб не змінити overlay або інший проєкт.'
+    }
+    return $database
+}
+
+function Assert-TestProjectDisjoint {
+    if (-not $script:TestMode) { return }
+    $workingProject = 'telmanfit-local'
+    if ($script:ProjectName -ceq $workingProject -or $script:ProjectName -notmatch '^telmanfit-e2e-[a-f0-9]{12}$') {
+        throw 'Ізольований Compose project name збігається з робочим або має недозволений формат.'
+    }
+    $volumeKinds = @('database', 'database-secrets', 'local-state', 'epoch', 'storage')
+    $workingVolumes = @($volumeKinds | ForEach-Object { "${workingProject}_$_" })
+    $testVolumes = @($volumeKinds | ForEach-Object { Get-VolumeName $_ })
+    if (@($testVolumes | Where-Object { $_ -in $workingVolumes }).Count -gt 0) { throw 'Test volume name збігається з робочим TelmanFit volume.' }
+
+    $volumeNames = @(Invoke-Docker -Arguments @('volume', 'ls', '-q')).Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }
+    foreach ($volume in $testVolumes) {
+        if ($volume -notin $volumeNames) { throw "Ізольований volume '$volume' не створено runner-ом." }
+        $details = (Get-OutputText (Invoke-Docker -Arguments @('volume', 'inspect', $volume)) | ConvertFrom-Json)[0]
+        if ($details.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Volume '$volume' не має очікуваного Compose owner label." }
+    }
+    foreach ($volume in $workingVolumes) {
+        if ($volume -in $testVolumes) { throw "Небезпечне зіставлення із робочим volume '$volume'." }
+        $details = (Get-OutputText (Invoke-Docker -Arguments @('volume', 'inspect', $volume)) | ConvertFrom-Json)[0]
+        if ($details.Labels.'com.docker.compose.project' -cne $workingProject) { throw "Робочий volume '$volume' не має очікуваного owner label." }
+    }
+
+    $ids = @(Invoke-Docker -Arguments @('ps', '-aq')).Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }
+    $expectedNames = @(Get-IsolatedTestResourceNames -ProjectName $script:ProjectName).containers
+    foreach ($id in $ids) {
+        $details = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
+        $labels = $details.Config.Labels
+        $containerName = $details.Name.TrimStart('/')
+        if ($containerName -like "$($script:ProjectName)-*" -and $labels.'com.docker.compose.project' -cne $script:ProjectName) {
+            throw "Test container name collision with a resource owned by another project: $containerName."
+        }
+        if ($labels.'com.docker.compose.project' -ceq $script:ProjectName) {
+            if ($containerName -notlike "$($script:ProjectName)-*" -or ($containerName -notin $expectedNames -and $containerName -notmatch "^$([regex]::Escape($script:ProjectName))-app-run-")) { throw 'Test container має назву поза унікальним project namespace.' }
+            foreach ($mount in @($details.Mounts | Where-Object { $_.Type -eq 'volume' })) {
+                if ($mount.Name -in $workingVolumes) { throw "Ізольований container використовує робочий volume '$($mount.Name)'." }
+            }
+        }
+    }
+    foreach ($service in @('app', 'web', 'database')) {
+        $imageName = Get-ImageName $service
+        $imageResult = Invoke-Docker -Arguments @('image', 'inspect', $imageName) -AllowFailure
+        if ($imageResult.ExitCode -eq 0) {
+            $image = (Get-OutputText $imageResult | ConvertFrom-Json)[0]
+            if ($image.Config.Labels.'telmanfit.e2e.project' -cne $script:ProjectName) { throw "Test image tag collision with a resource owned by another project: $imageName." }
+        }
+    }
+    $networkName = "$($script:ProjectName)_local"
+    $networkResult = Invoke-Docker -Arguments @('network', 'inspect', $networkName) -AllowFailure
+    if ($networkResult.ExitCode -eq 0) {
+        $network = (Get-OutputText $networkResult | ConvertFrom-Json)[0]
+        if ($network.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Test network name collision with a resource owned by another project: $networkName." }
+    }
+    $portUsersResult = Invoke-Docker -Arguments @('ps', '-q', '--filter', "publish=$script:PublishedPort")
+    $portUsers = @($portUsersResult.Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
+    foreach ($id in $portUsers) {
+        $labels = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0].Config.Labels
+        if ($labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Test host port $script:PublishedPort зайнятий стороннім контейнером." }
+    }
+}
+
+function Get-SafeComposeConfig {
+    param([Parameter(Mandatory)][string] $Root)
+
+    $result = Invoke-Compose -Arguments @('config', '--format', 'json')
+    $text = Get-OutputText $result
+    try { $config = $text | ConvertFrom-Json } catch { throw 'docker compose config повернув некоректну JSON конфігурацію.' }
+    Assert-ComposeConfig -Config $config
+    return $config
+}
+
+function Set-Phase {
+    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][string] $State)
+    $script:Phase = $Name
+    Write-UpdateLog "phase=$Name state=$State"
+    if ($script:JournalPath) {
+        $journal = [ordered]@{
+            run_id = $script:RunId
+            phase = $Name
+            state = $State
+            updated_utc = (Get-Date).ToUniversalTime().ToString('o')
+            repository_sha = $script:RepositoryHead
+            backup_directory = $script:BackupDirectory
+        }
+        $journal | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:JournalPath -Encoding utf8
+    }
+}
+
+function Assert-NoUnresolvedJournals {
+    param([Parameter(Mandatory)][string] $Directory, [string] $AcknowledgedRunId)
+
+    if (-not (Test-Path -LiteralPath $Directory -PathType Container)) { return }
+    foreach ($path in Get-ChildItem -LiteralPath $Directory -Filter '*.json' -File) {
+        if ($path.Name.EndsWith('.acknowledged.json')) { continue }
+        try { $journal = Get-Content -LiteralPath $path.FullName -Raw | ConvertFrom-Json } catch { throw "Журнал upgrade некоректний; потрібна ручна перевірка: $($path.FullName)" }
+        if ($journal.phase -eq 'complete' -and $journal.state -eq 'PASS') { continue }
+        $acknowledgementPath = "$($path.FullName).acknowledged.json"
+        if (Test-Path -LiteralPath $acknowledgementPath -PathType Leaf) {
+            try { $acknowledgement = Get-Content -LiteralPath $acknowledgementPath -Raw | ConvertFrom-Json } catch { throw "Журнал підтвердження некоректний: $acknowledgementPath" }
+            if ($acknowledgement.run_id -cne $journal.run_id) { throw "Журнал підтвердження не відповідає run_id: $acknowledgementPath" }
+            continue
+        }
+        if ($AcknowledgedRunId -and $journal.run_id -ceq $AcknowledgedRunId) {
+            [ordered]@{ run_id = $journal.run_id; acknowledged_utc = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $acknowledgementPath -Encoding utf8
+            Write-UpdateLog "prior_journal_acknowledged=$($journal.run_id) phase=$($journal.phase) state=$($journal.state)"
+            continue
+        }
+        throw "Є незавершена/невдала операція upgrade ($($journal.run_id), phase=$($journal.phase), state=$($journal.state)). Перегляньте журнал '$($path.FullName)' та після ручної перевірки повторіть з -AcknowledgeJournal '$($journal.run_id)'. Автовідновлення не виконується."
+    }
+}
+
+function Assert-BackupMetadata {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $hash = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+    $bytes = (Get-Item -LiteralPath $Path).Length
+    if ($bytes -le 0) { throw "Backup file '$Path' is empty." }
+    return [pscustomobject]@{ bytes = $bytes; sha256 = $hash }
+}
+
+function Start-LocalDatabase {
+    $null = Invoke-Compose -Arguments @('up', '-d', '--no-deps', 'database')
+    for ($i = 0; $i -lt 90; $i++) {
+        $status = Get-OutputText (Invoke-Docker -Arguments @('inspect', '--format', '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}', (Get-ContainerName database)))
+        if ($status -eq 'healthy') { return }
+        Start-Sleep -Seconds 2
+    }
+    throw 'PostgreSQL не повернувся у healthy стан за 180 секунд.'
+}
+
+function Assert-WritersStopped {
+    $running = Get-ProjectContainers
+    foreach ($id in $running) {
+        $inspect = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
+        if (-not $inspect.State.Running) { continue }
+        $service = $inspect.Config.Labels.'com.docker.compose.service'
+        if ($service -in @('app', 'worker', 'scheduler', 'web', 'setup')) {
+            throw "Writer-сервіс '$service' усе ще працює після docker compose stop."
+        }
+    }
+    $query = 'SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()'
+    $sessions = Get-OutputText (Invoke-Compose -Arguments @('exec', '-T', 'database', 'psql', '-X', '-U', 'postgres', '-d', $script:DatabaseName, '-Atc', $query))
+    if ($sessions -ne '0') { throw "У БД залишились $sessions application sessions після зупинки writer-сервісів." }
+}
+
+function Invoke-BackupRestoreRehearsal {
+    param(
+        [Parameter(Mandatory)][string] $BackupDirectory,
+        [Parameter(Mandatory)][string] $DatabaseImage,
+        [Parameter(Mandatory)] $BeforeSnapshot,
+        [Parameter(Mandatory)][string] $CustomDump
+    )
+
+    $suffix = [guid]::NewGuid().ToString('N').Substring(0, 12)
+    $project = "telmanfit-restore-$suffix"
+    $network = "${project}_isolated"
+    $container = "${project}-database"
+    $volumeNames = @('database', 'database-secrets', 'local-state', 'epoch', 'storage')
+    $createdVolumes = @()
+    $networkCreated = $false
+    $containerCreated = $false
+    try {
+        $null = Invoke-Docker -Arguments @('network', 'create', '--internal', '--label', "telmanfit.local-update=$script:RunId", $network)
+        $networkCreated = $true
+        foreach ($volume in $volumeNames) {
+            $name = "${project}_$volume"
+            $null = Invoke-Docker -Arguments @('volume', 'create', '--label', "telmanfit.local-update=$script:RunId", $name)
+            $createdVolumes += $name
+            $archive = "$volume.tar"
+            $null = Invoke-Docker -Arguments @('run', '--rm', '--network', 'none', '--read-only', '--user', '0', '--entrypoint', 'tar', '--mount', "type=volume,source=$name,target=/restore", '--mount', "type=bind,source=$BackupDirectory,target=/backup,readonly", $DatabaseImage, '--numeric-owner', '-xpf', "/backup/$archive", '-C', '/restore')
+            $null = Invoke-Docker -Arguments @('run', '--rm', '--network', 'none', '--read-only', '--user', '0', '--entrypoint', 'tar', '--mount', "type=volume,source=$name,target=/restore,readonly", '--mount', "type=bind,source=$BackupDirectory,target=/backup,readonly", $DatabaseImage, '--numeric-owner', '-dpf', "/backup/$archive", '-C', '/restore')
+        }
+        $null = Invoke-Docker -Arguments @('run', '-d', '--name', $container, '--label', "telmanfit.local-update=$script:RunId", '--network', $network, '--network-alias', 'database', '--mount', "type=volume,source=${project}_database,target=/var/lib/postgresql", '--mount', "type=volume,source=${project}_database-secrets,target=/run/database-secrets,readonly", '-e', 'POSTGRES_PASSWORD_FILE=/run/database-secrets/password', $DatabaseImage)
+        $containerCreated = $true
+        $ready = $false
+        for ($i = 0; $i -lt 60; $i++) {
+            $probe = Invoke-Docker -Arguments @('exec', $container, 'pg_isready', '-U', 'postgres', '-d', $script:DatabaseName) -AllowFailure
+            if ($probe.ExitCode -eq 0) { $ready = $true; break }
+            Start-Sleep -Seconds 2
+        }
+        if (-not $ready) { throw 'Відновлений із volume backup PostgreSQL не став готовим.' }
+
+        $restoreSnapshot = Invoke-Docker -Arguments @('run', '--rm', '--network', $network, '--mount', "type=volume,source=${project}_local-state,target=/tmp/telmanfit-auth4-compose,readonly", '--mount', "type=volume,source=${project}_epoch,target=/run/telmanfit-epoch,readonly", '--mount', "type=volume,source=${project}_storage,target=/var/www/html/storage,readonly", '--entrypoint', 'php', $script:AppImage, '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'docker/local/upgrade-check.php')
+        $restored = (Get-OutputText $restoreSnapshot) | ConvertFrom-Json
+        Assert-SnapshotUnchanged -Before $BeforeSnapshot -After $restored
+
+        $dumpName = 'upgrade-recoverability-check.dump'
+        $null = Invoke-Docker -Arguments @('cp', $CustomDump, "${container}:/tmp/$dumpName")
+        $toc = Invoke-Docker -Arguments @('exec', $container, 'pg_restore', '--list', "/tmp/$dumpName")
+        if (@($toc.Output).Count -lt 10) { throw 'pg_restore не прочитав TOC custom-format backup.' }
+        $restoreDatabase = 'telmanfit_dump_restore_check'
+        $null = Invoke-Docker -Arguments @('exec', $container, 'createdb', '-U', 'postgres', '--template=template0', '--encoding=UTF8', $restoreDatabase)
+        $null = Invoke-Docker -Arguments @('exec', $container, 'pg_restore', '--exit-on-error', '--no-owner', '--no-privileges', '-U', 'postgres', '-d', $restoreDatabase, "/tmp/$dumpName")
+        $sql = "SELECT (SELECT count(*) FILTER (WHERE image_url IS NOT NULL)||'/'||count(*) FROM (SELECT image_url FROM ingredients UNION ALL SELECT image_url FROM kitchen_equipment UNION ALL SELECT image_url FROM recipes) s)||'/'||(SELECT count(*) FROM migrations)"
+        $dumpResult = Get-OutputText (Invoke-Docker -Arguments @('exec', $container, 'psql', '-X', '-U', 'postgres', '-d', $restoreDatabase, '-Atc', $sql))
+        $expectedMigrationCount = @($BeforeSnapshot.migrations.ran).Count
+        if ($dumpResult -cne "85/108/$expectedMigrationCount") {
+            throw "Custom dump restore не підтвердив catalog URL або migration history (counts=$dumpResult)."
+        }
+        Write-UpdateLog 'backup_restore_rehearsal=PASS physical_volumes=5 custom_dump=PASS catalog_urls=85'
+    } finally {
+        if ($containerCreated) {
+            $inspectResult = Invoke-Docker -Arguments @('inspect', $container) -AllowFailure
+            if ($inspectResult.ExitCode -eq 0) {
+                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
+                if ($details.Config.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal container.' }
+                $null = Invoke-Docker -Arguments @('stop', '--time', '30', $container) -AllowFailure
+                $null = Invoke-Docker -Arguments @('rm', $container)
+            }
+        }
+        foreach ($name in $createdVolumes) {
+            $inspectResult = Invoke-Docker -Arguments @('volume', 'inspect', $name) -AllowFailure
+            if ($inspectResult.ExitCode -eq 0) {
+                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
+                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal volume.' }
+                $attached = Invoke-Docker -Arguments @('ps', '-aq', '--filter', "volume=$name")
+                if ((Get-OutputText $attached)) { throw "Rehearsal volume $name усе ще використовується." }
+                $null = Invoke-Docker -Arguments @('volume', 'rm', $name)
+            }
+        }
+        if ($networkCreated) {
+            $inspectResult = Invoke-Docker -Arguments @('network', 'inspect', $network) -AllowFailure
+            if ($inspectResult.ExitCode -eq 0) {
+                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
+                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
                 $null = Invoke-Docker -Arguments @('network', 'rm', $network)
             }
         }
