@@ -104,8 +104,12 @@ class Session:
         self.update(mutate)
 
     def release(self):
-        self.guard()
-        value = deepcopy(self.value)
+        # Pause змінює revision, але той самий owner може звільнити лише свій lease,
+        # зберігши актуальний pause/checkpoint. Нового owner захищає root CAS.
+        revision, value = self.read()
+        if value.get('lease', {}).get('owner') != self.owner:
+            raise Blocked('Не можна звільняти lease іншого owner')
+        self.revision = revision
         value['lease'] = {}
         self.save(value)
 

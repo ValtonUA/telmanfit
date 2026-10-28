@@ -606,3 +606,16 @@ class LiveTests(unittest.TestCase):
             target = Path(directory) / 'candidate'
             checkout(source, ref, target)
             self.assertEqual((target / 'synthetic.bin').stat().st_size, 9000000)
+
+    def test_owner_can_release_after_pause_without_waiting_expiry_or_losing_pause(self):
+        operator = Session(self.api, self.cfg, maintenance=True)
+        operator.revision, value = operator.read()
+        value['paused'] = True
+        operator.save(value)
+        self.session.release()
+        _, saved = operator.read()
+        self.assertTrue(saved['paused'])
+        self.assertEqual(saved['lease'], {})
+        operator.acquire()
+        with self.assertRaises(c.Blocked):
+            self.session.release()

@@ -16,8 +16,8 @@ PG18/browser launcher, owner CLI/workflow та status writeback comments до #1
 
 ## Локальні тести
 
-- `python3 -m unittest discover -s tests/ci -v`: **89 PASS**; 20 попередніх coordinator
-  тестів і 29 нових live adapter тестів, включно з negative subtests.
+- `python3 -m unittest discover -s tests/ci -v`: **90 PASS**; 20 попередніх coordinator
+  тестів і 30 нових live adapter тестів, включно з negative subtests.
 - `python3 -m unittest discover -s tests/docs -v`: **11 PASS**.
 - Шість transport-сценаріїв: [contracts.json](contracts.json). GitHub та Codex там
   **фіктивні**, API-поверхні/state/branch/PR/merge/CAS мають production-shaped payloads.
