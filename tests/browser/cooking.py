@@ -9,7 +9,11 @@ def run_cooking(page, base, fixture=None):
     def invoke(*args):
         if fixture:
             return fixture(*args)
-        return subprocess.check_output(['php', 'tests/browser/cooking-fixture.php', *map(str, args)], text=True, stderr=subprocess.STDOUT).strip()
+        result = subprocess.run(['php', 'tests/browser/cooking-fixture.php', *map(str, args)], text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        if result.returncode != 0:
+            raise AssertionError(f'Cooking fixture failed: {result.stdout}')
+        return result.stdout.strip()
 
     version = invoke()
     url = base + '/admin/cooking-templates/' + str(version)
