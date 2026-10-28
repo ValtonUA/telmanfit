@@ -1,0 +1,28 @@
+name: UX-AUTO adapter contracts
+on:
+  pull_request:
+    branches: [master, feat/ux-auto-bootstrap]
+permissions:
+  contents: read
+concurrency:
+  group: ux-auto-adapters-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    name: UX-AUTO live adapter contracts (no secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: All controller and CI regression tests
+        run: python3 -m unittest discover -s tests/ci -p 'test_*.py' -v
+      - name: Documentation regression and PR impact
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 -m unittest discover -s tests/docs -v
+          python3 scripts/docs_guard.py --pr-base "$BASE_SHA"

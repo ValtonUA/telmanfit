@@ -1,0 +1,57 @@
+name: UX-AUTO controlled live adapters
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Owner operation; run потребує sandbox receipt та окремої активації'
+        type: choice
+        options: [preflight, seed, sandbox, activate, run, pause, resume, status]
+        default: preflight
+permissions:
+  contents: read
+concurrency:
+  group: ux-auto-live-controller
+  cancel-in-progress: false
+jobs:
+  controller:
+    if: vars.UX_AUTO_LIVE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout pinned trusted controller
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ vars.UX_AUTO_TRUSTED_REF }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Repository-scoped publisher token
+        id: app
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ secrets.UX_AUTO_APP_ID }}
+          private-key: ${{ secrets.UX_AUTO_APP_PRIVATE_KEY }}
+          owner: ValtonUA
+          repositories: telmanfit
+      - name: Separate sandbox installation token
+        id: sandbox
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ secrets.UX_AUTO_APP_ID }}
+          private-key: ${{ secrets.UX_AUTO_APP_PRIVATE_KEY }}
+          owner: ValtonUA
+          repositories: ${{ vars.UX_AUTO_SANDBOX_REPOSITORY }}
+      - name: Materialize public bounded configuration outside checkout
+        env:
+          CONFIG: ${{ vars.UX_AUTO_CONFIG }}
+        run: |
+          umask 077
+          python3 -c 'import os,pathlib; pathlib.Path("/tmp/ux-auto-config.json").write_text(os.environ["CONFIG"])'
+      - name: Owner-controlled operation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          UX_AUTO_APP_ID: ${{ secrets.UX_AUTO_APP_ID }}
+          UX_AUTO_APP_PRIVATE_KEY: ${{ secrets.UX_AUTO_APP_PRIVATE_KEY }}
+          UX_AUTO_GH_TOKEN: ${{ steps.app.outputs.token }}
+          UX_AUTO_SANDBOX_GH_TOKEN: ${{ steps.sandbox.outputs.token }}
+          UX_AUTO_OPENAI_API_KEY: ${{ secrets.UX_AUTO_OPENAI_API_KEY }}
+        run: python3 -m scripts.ux_auto.live "$OPERATION" --config /tmp/ux-auto-config.json

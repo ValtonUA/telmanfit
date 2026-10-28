@@ -8,21 +8,26 @@
 
 ## Підтверджені факти й межі
 
-### UX-AUTO: неактивний контролер
+### UX-AUTO: контролер і неактивні live-адаптери
 
-`scripts/ux_auto/coordinator.py` реалізує послідовний mock UX-1–UX-6, атомарний
-JSON checkpoint, exclusive lock, pause/resume, bounded retry й перевірку SHA/base,
-незалежного structured review та browser matrix. Окремий durable mock journal
-відтворює падіння між side effect і локальним checkpoint без дубльованих PR/merge.
-Snapshot Issue #106 прив'язаний digest до довіреної специфікації; коментарі/PR payload
-не використовуються як команди. `live` явно відхиляється, API-витрати — нульові.
-[Операційні межі](ux-auto.md), [локальні докази](evidence/ux-auto/report.md).
+`scripts/ux_auto/coordinator.py` зберігає послідовний контролер UX-1–UX-6 і mock
+симуляцію. `backend.py` реалізує GitHub branch/Draft PR publication, CI polling,
+незалежний Codex review, browser evidence та SHA-locked merge з reconciliation.
+`store.py` використовує GitHub Contents CAS/lease й immutable JSON objects;
+API reservation ledger переживає restart. `app_token.py` поновлює installation
+tokens без передачі private key або write-token model worker.
 
-Workflow `ux-auto.yml` виконує тільки симуляцію; tests/ci перевіряє шість етапів,
-restart, stale CI/SHA/base, approval, rejected review/browser, retry/stop і recovery.
-Реального Codex reviewer, browser acceptance, GitHub publishing/merge адаптерів
-і Issue #106 status writeback цей bootstrap не виконує. Фіктивні PR, CI,
-скриншоти та merge SHA не є E2E доказом. Реальні UX-етапи не запускалися.
+`worker.py` запускає Codex coder/reviewer у різних Docker containers; API key
+доступний лише bounded Responses relay, browser/PG18 мають власну internal network.
+Path/scope/hash/size guards не допускають змін workflows, gates, migrations або secrets.
+`live.py` підтримує read-only preflight, окремий harmless sandbox probe, activation,
+run/pause/resume/status; workflow manual-only і default-disabled.
+
+[Bootstrap докази](evidence/ux-auto/report.md) та [перевірки адаптерів](evidence/ux-auto-live/report.md)
+відокремлюють synthetic GitHub/Codex contracts від локальних Chromium/Docker probe.
+Це не реальний Codex API/bot PR vertical slice. Live activation не виконано;
+UX-1–UX-6, production, робочі БД та feature flags не змінено. Вимоги налаштування й
+неперевірені межі — [live runbook](ux-auto-live.md).
 
 ### Зображення R2: підготовка локального застосування
 

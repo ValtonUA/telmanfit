@@ -1,10 +1,11 @@
-# UX-AUTO: неактивний bootstrap/mock
+# UX-AUTO: координатор та неактивні live-адаптери
 
 [Issue #107](https://github.com/ValtonUA/telmanfit/issues/107) координує шість
 послідовних PR із [Issue #106](https://github.com/ValtonUA/telmanfit/issues/106).
-Ця реалізація покриває окремо погоджений **bootstrap/mock scope**. Вона не виконує
-Codex API, GitHub writes, browser або справжній merge. Команда `live` завжди
-завершується `LIVE_DISABLED`; додавання secrets чи repository variables не знімає блокування.
+Bootstrap/mock і його команди збережено. Окремі [live-адаптери](ux-auto-live.md)
+реалізують Codex/GitHub/browser/state/merge transport, але **не активовані**.
+Bootstrap-команда `coordinator live` залишається заблокованою; реальний CLI —
+`scripts.ux_auto.live`. Саме додавання secrets не замінює sandbox receipt та активацію.
 
 ## Запуск і докази
 
@@ -44,7 +45,8 @@ python3 -m scripts.ux_auto.coordinator status --directory /tmp/ux-auto-success
 падіння після publish/merge до checkpoint повторює ту саму операцію без дублювання.
 Кодер і reviewer мають різні invocation IDs; review перевіряє конкретні технічні
 категорії, SHA/base і evidence, а не слово PASS. Це валідація mock-контракту,
-не доказ реальної незалежності або достовірності evidence.
+не доказ реальної незалежності або достовірності evidence. Live backend отримує
+evidence від власних ізольованих workers, а не з PR payload.
 
 ```sh
 python3 -m scripts.ux_auto.coordinator pause --directory /tmp/ux-auto-success
@@ -74,64 +76,16 @@ gate, включно з exact head, PR event, latest attempt, ancestry і requir
 пропустити browser acceptance координатора.
 
 Ліміти mock: три спроби на stage, 200 ticks, 60 секунд на процес, API-витрати 0.
-Workflow timeout охоплює запуск і тести. Відсутні мережеві клієнти та live write adapter;
-модель не отримує секретів чи доступу до робочих БД.
+Workflow timeout охоплює запуск і тести. Ці CLI-команди не використовують live backend.
 
-## Контракт live-адаптерів перед активацією
+## Live-інтеграція
 
-Це наступна інтеграція, **ще не реалізована**. Не достатньо ввімкнути variable:
+Наявний `tick()` використовується без переписування: додано `Waiting` без втрати
+спроби для CI, live mode та окремий sandbox evidence contract. Реалізація адаптерів,
+межі ізоляції, configuration/secrets, бюджет, одноразове налаштування та команди
+preflight/sandbox/activate/run описані в [операційній інструкції](ux-auto-live.md).
 
-1. У довіреному controller job отримати стан із durable storage з compare-and-swap
-   та lease, звірити свіжий `master`, Issue #106/spec, лише один активний stage.
-   Ідентичність запуску: owner-controlled dispatch із pinned trusted ref; довільний
-   issue/comment event не є авторизацією. Пауза перевіряється до кожного side effect.
-2. Окремий coder runner: pinned `openai/codex-action` або перевірений CLI,
-   workspace sandbox, read-only checkout token, без App write key, production/R2/DB
-   secrets. API credential передається тільки action/CLI, не всьому untrusted job.
-   Лише synthetic PG18, окремі storage/network межі. Artifact — patch і логи,
-   не виконуваний сценарій для privileged publisher.
-3. Publisher на окремому runner без виконання PR code перевіряє шляхи/розмір patch,
-   забороняє scope escape, workflows/gates/secrets зміни, перевіряє expected base/head,
-   застосовує diff як дані й пише лише stage branch; той самий PR при retry.
-   App installation token: Contents/Pull requests/Issues write, Actions read,
-   Metadata read, лише цей repository. App private key доступний лише publisher/controller.
-   Не використовувати default GITHUB_TOKEN для створення PR з припущенням запуску CI.
-4. Реальний малий sandbox PR мусить довести Fast/Docs/Targeted `pull_request` runs
-   на exact head без ручного approval. Чинний gate не приймає `workflow_dispatch`
-   замість PR event. Немає PR-event runs — блокування, без зміни gate.
-5. Інший read-only Codex invocation виконує предметний review diff; controller
-   отримує report через trusted transport, перевіряє schema/provenance/head/base.
-   Browser runner без write-token виконує stage-specific assertions, шість viewport/theme
-   комбінацій, зберігає реальні screenshots та stdout із SHA. Для UX-6 — незалежні
-   сім днів і publish; для UX-1/2 — document navigation/auth/Back/Forward.
-   Mock evidence не приймається live-адаптером.
-6. Controller запускає `python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit`
-   із довіреного checkout, перевіряє свіжі review/browser і поточний base; виконує
-   SHA-locked merge (`gh pr merge --match-head-commit <SHA>` або REST expected sha).
-   При base race — новий ancestry/gate/review цикл; після API timeout reconcile PR
-   merged/head/merge SHA, не повторювати blind publish/merge. Лише підтверджений receipt
-   відкриває наступний stage. Bootstrap PR та сторонні PR заборонені для цього adapter.
-7. Оновлення checklist #106 — bounded structured writeback із PR URL, tested SHA,
-   CI/review/browser URL, merge SHA/blocked reason; не перезаписувати сторонній body
-   без перевірки версії. При завершенні UX-6 — підсумковий report, при блокері —
-   конкретний log/action. Ці writes у mock замінено локальними JSON reports.
-
-## Одноразове налаштування та go/no-go
-
-Потрібні `OPENAI_API_KEY` як GitHub Secret (API billing окремо від ChatGPT Plus),
-GitHub App installation/private key з наведеними правами, погоджений model і
-числовий API budget. Перед додаванням live adapter встановити максимальні output
- tokens/turns, timeout invocation/job/run, три retries, щоденний/загальний spend
-cap і облік фактичного usage між перезапусками. Без числових лімітів live fail closed.
-Не виносити ключі у загальний job env, artifact, prompt чи репозиторій.
-
-Live activation gate поки **PARTIAL**: не підтверджені API credential/неінтерактивний
-Codex, App permissions, автоматичні PR-event checks для bot PR, реальний незалежний
-review і browser/PG acceptance в ізольованих runners. Також треба реалізувати й
-перевірити live transport, durable state/CAS, publisher і status writeback за контрактом.
-Локальна наявність Codex/Chromium/Docker не доводить їхню працездатність у Actions.
-
-Після реалізації адаптерів і налаштування secrets: read-only preflight → реальний
-малий sandbox vertical slice → перевірка SHA/CI/review/browser/receipt і cost →
-окремий owner activation dispatch з pinned trusted ref. До PASS усіх пунктів
-UX-1…UX-6 залишаються заблокованими. Поточний workflow не має live dispatch.
+Live feasibility залишається PARTIAL до реального isolated vertical slice.
+[Локальні докази адаптерів](evidence/ux-auto-live/report.md) відокремлюють
+synthetic transport tests від справжнього Chromium та Docker probe. Вони не є
+доказом реального Codex API або bot-created PR CI. UX-1…UX-6 не запускалися.

@@ -182,3 +182,15 @@ bootstrap PR координатора. GitHub auto-merge не використо
 Симуляційні CI snapshots проходять справжню функцію `pre_merge.evaluate`, але
 не є реальними PR-event runs. Fast/Docs/Targeted і правила gate не послаблено.
 Підтвердження bot-created PR-event runs без ручного approval — окремий блокер live.
+
+
+### Live adapter contracts
+
+`ux-auto-adapters-tests.yml` запускає без секретів CI/controller та docs regressions
+для PR до master і stacked bootstrap branch. Він не замінює required Fast/Docs/Targeted;
+після merge dependency і retarget до master ці три required checks мусять пройти заново.
+`ux-auto-live.yml` — лише owner dispatch із pinned controller ref та default-disabled
+variable; не використовує PR events, `pull_request_target`, untrusted inline commands
+або GitHub auto-merge. App private key/API key доступні тільки trusted controller
+step/relay; worker containers отримують clean environment без write-token.
+[Операційні умови й блокери](ux-auto-live.md). `pre_merge.py` не змінено.

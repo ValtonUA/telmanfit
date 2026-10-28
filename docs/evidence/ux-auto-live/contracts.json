@@ -1,0 +1,311 @@
+{
+  "scope": "synthetic GitHub/Codex transport fixtures; not real end-to-end",
+  "results": [
+    {
+      "scenario": "success",
+      "complete": true,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "3e0874cb7117831034e240a7bd3889a6e0315aeb"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "7710116c1b259a05702b2ef61ed0a083e1db0524"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "7a39832317b71d0b045ea0f044a964ff20954fa4"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "7c74b1bbb24e2d98448ad3bc4e2850f16ad4a0fd"
+        },
+        {
+          "id": "UX-5",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "c864817cff2df2633570512f9088a624d9e83f97"
+        },
+        {
+          "id": "UX-6",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "a859d9bd64b766426457706271003f352c0c4413"
+        }
+      ],
+      "model_invocations": 12,
+      "created_prs": 6,
+      "merge_requests": 6
+    },
+    {
+      "scenario": "rejected_review",
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 3,
+          "reason": "Вичерпано 3 спроб: Незалежний review відсутній, застарілий або відхилений: [\"fixture: missing rollback assertion\"]",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ],
+      "model_invocations": 6,
+      "created_prs": 1,
+      "merge_requests": 0
+    },
+    {
+      "scenario": "failed_browser",
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 3,
+          "reason": "Вичерпано 3 спроб: Browser evidence відсутній, неповний або застарілий",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ],
+      "model_invocations": 6,
+      "created_prs": 1,
+      "merge_requests": 0
+    },
+    {
+      "scenario": "ci_approval",
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "verifying",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ],
+      "model_invocations": 1,
+      "created_prs": 1,
+      "merge_requests": 0
+    },
+    {
+      "scenario": "disabled",
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 1,
+          "reason": "LIVE_DISABLED: немає окремої активації для цього config",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ],
+      "model_invocations": 0,
+      "created_prs": 0,
+      "merge_requests": 0
+    },
+    {
+      "scenario": "budget",
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 1,
+          "reason": "LIVE_DISABLED: немає окремої активації для цього config",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ],
+      "model_invocations": 0,
+      "created_prs": 0,
+      "merge_requests": 0
+    }
+  ]
+}

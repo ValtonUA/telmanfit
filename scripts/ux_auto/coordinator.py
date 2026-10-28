@@ -32,6 +32,10 @@ class Blocked(ValueError):
     pass
 
 
+class Waiting(Exception):
+    """Зовнішня перевірка ще працює; не витрачати спробу кодера."""
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
@@ -45,7 +49,7 @@ def initial(spec_sha):
 
 
 def validate(state, spec_sha):
-    if (state.get("version") != 1 or state.get("mode") != "mock"
+    if (state.get("version") != 1 or state.get("mode") not in {"mock", "live"}
             or state.get("spec_sha") != spec_sha
             or [s.get("id") for s in state.get("stages", [])] != list(STAGES)):
         raise Blocked("Несумісний стан або змінена довірена специфікація")
@@ -102,15 +106,17 @@ def locked(path):
 
 
 def acceptance(stage):
+    if stage == "SANDBOX":
+        return ["probe_artifacts", "probe_navigation", "probe_theme"]
     checks = BROWSER_COMMON | (BROWSER_NAV if stage in STAGES[:2] else BROWSER_PLAN)
     if stage == "UX-6":
         checks |= {"copy_seven_independent_days", "publish"}
     return sorted(checks)
 
 
-def check_evidence(stage, pr, evidence, spec_sha):
-    """Приймає лише структурований mock evidence; live transport відсутній."""
-    if (pr.get("stage") != stage or pr.get("repository") != REPOSITORY
+def check_evidence(stage, pr, evidence, spec_sha, repository=REPOSITORY):
+    """Спільний gate; live backend додатково перевіряє походження evidence."""
+    if (pr.get("stage") != stage or pr.get("repository") != repository
             or pr.get("base") != "master" or pr.get("branch") != f"ux-auto/{stage.lower()}"
             or pr.get("conflicts") is not False or pr.get("spec_sha") != spec_sha):
         raise Blocked("Чужий PR, неправильний base/scope/spec або конфлікт")
@@ -120,7 +126,7 @@ def check_evidence(stage, pr, evidence, spec_sha):
     snapshot = evidence["ci"]
     gate = evaluate(snapshot)
     if (not gate["eligible"] or gate["head_sha"] != sha
-            or gate["repository"] != REPOSITORY or gate["pr"] != pr["number"]
+            or gate["repository"] != repository or gate["pr"] != pr["number"]
             or snapshot["pr"]["head"]["ref"] != pr["branch"]
             or snapshot["pr"]["base"]["sha"] != pr["base_sha"]):
         raise Blocked("CI gate: " + "; ".join(gate["errors"] or ["SHA/PR/base mismatch"]))
@@ -196,6 +202,8 @@ def tick(state, backend, spec_sha):
                     raise Blocked("Merge не підтверджено; наступний stage заборонено")
                 s.update(state="merged", merge_sha=receipt["merge_sha"], reason=None)
         s["history"].append({"from": old, "to": s["state"], "attempt": s["attempt"]})
+    except Waiting:
+        return deepcopy(state)
     except (Blocked, KeyError, TypeError, ValueError, AttributeError) as exc:
         block(s, str(exc))
     validate(result, spec_sha)
@@ -219,7 +227,7 @@ def resume(state, spec_sha):
 
 
 def summary(state):
-    return {"mode": "mock", "live_enabled": False,
+    return {"mode": state["mode"], "live_enabled": state.get("live_authorized", False),
             "complete": all(s["state"] == "merged" for s in state["stages"]),
             "stages": [{k: s.get(k) for k in ("id", "state", "attempt", "reason", "pr", "merge_sha", "verified")}
                        for s in state["stages"]]}

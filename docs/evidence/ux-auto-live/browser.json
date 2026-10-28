@@ -1,0 +1,63 @@
+{
+  "head": "cf5e52eb8630cb91c326a48e0c1a5a3b54b15842",
+  "status": "success",
+  "checks": [
+    "probe_artifacts",
+    "probe_navigation",
+    "probe_theme"
+  ],
+  "assertions": {
+    "probe_artifacts": "passed",
+    "probe_navigation": "passed",
+    "probe_theme": "passed"
+  },
+  "matrix": [
+    "1440/light",
+    "1440/dark",
+    "390/light",
+    "390/dark",
+    "320/light",
+    "320/dark"
+  ],
+  "screenshots": [
+    "1440-light.png",
+    "1440-dark.png",
+    "390-light.png",
+    "390-dark.png",
+    "320-light.png",
+    "320-dark.png"
+  ],
+  "artifacts": [
+    {
+      "name": "1440-light.png",
+      "sha256": "fd3fbd8ca9c687c5acf8f39498deca1686f280e18c726e7c41ffdcbcb635d607",
+      "bytes": 13076
+    },
+    {
+      "name": "1440-dark.png",
+      "sha256": "854248545374424e0e02ef32970105490e88c0f153e85f6903bfb940b29c24e4",
+      "bytes": 13082
+    },
+    {
+      "name": "390-light.png",
+      "sha256": "2e5e343ba25f59a9c5e28a50b13d7be527449a16a096ee653a897408f916e57a",
+      "bytes": 9601
+    },
+    {
+      "name": "390-dark.png",
+      "sha256": "7ce5e272b974358f94f284912fb7a959f25cc21eb5a447f78d75752a7e108d94",
+      "bytes": 9593
+    },
+    {
+      "name": "320-light.png",
+      "sha256": "5d1bea5324d1d5369c325c77ed4c7ba04502a3b9c60233a185613d70bc74fd9e",
+      "bytes": 9647
+    },
+    {
+      "name": "320-dark.png",
+      "sha256": "7716984dfe0613f875f2b66bc83285a6358d28e22111c02b8a0758f23c354a1a",
+      "bytes": 9675
+    }
+  ],
+  "scope": "real local Chromium synthetic probe; no UX application acceptance, no Codex/GitHub API"
+}

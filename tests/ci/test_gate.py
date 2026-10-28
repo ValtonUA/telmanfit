@@ -167,7 +167,7 @@ class WorkflowTests(unittest.TestCase):
         self.workflows = {p.name: p.read_text() for p in (ROOT / ".github/workflows").glob("*.yml")}
 
     def test_triggers_permissions_and_pins(self):
-        self.assertEqual(set(self.workflows), {"fast.yml", "docs-health.yml", "targeted.yml", "stage1.yml", "php-runtime.yml", "local-compose.yml", "local-update-powershell-compat.yml", "ux-auto.yml"})
+        self.assertEqual(set(self.workflows), {"fast.yml", "docs-health.yml", "targeted.yml", "stage1.yml", "php-runtime.yml", "local-compose.yml", "local-update-powershell-compat.yml", "ux-auto.yml", "ux-auto-live.yml", "ux-auto-adapters-tests.yml"})
         self.assertFalse((ROOT / ".github/workflows/full.yml").exists())
         self.assertFalse((ROOT / "scripts/ci/request_full.py").exists())
         for name, text in self.workflows.items():
