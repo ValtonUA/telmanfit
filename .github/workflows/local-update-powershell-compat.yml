@@ -3,11 +3,6 @@ name: Local update PowerShell compatibility
 on:
   pull_request:
     branches: [master]
-    paths:
-      - 'scripts/local-update.ps1'
-      - 'tests/local-update-powershell-compat.ps1'
-      - 'docs/local-compose.md'
-      - '.github/workflows/local-update-powershell-compat.yml'
 
 permissions:
   contents: read
