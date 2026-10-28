@@ -189,8 +189,7 @@ function Invoke-Coordinator {
     $coordinatorPath = Join-Path $root 'scripts/local-update.ps1'
     $coordinatorSource = [IO.File]::ReadAllText($coordinatorPath).Replace('$PSScriptRoot', "'$(Split-Path $coordinatorPath -Parent)'")
     $coordinatorScript = [scriptblock]::Create($coordinatorSource)
-    $coordinatorArguments = @('-NoGitSync', '-ExpectedHead', $Head, '-IsolatedTestMode', '-TestProjectName', $project, '-TestPort', [string]$port, '-TestComposeOverride', $overridePath)
-    & $coordinatorScript @coordinatorArguments
+    & $coordinatorScript -NoGitSync -ExpectedHead $Head -IsolatedTestMode -TestProjectName $project -TestPort $port -TestComposeOverride $overridePath
 }
 
 function Assert-ProjectHttp {
