@@ -10,9 +10,9 @@ def run_cooking(page, base, fixture=None):
         if fixture:
             return fixture(*args)
         result = subprocess.run(['php', 'tests/browser/cooking-fixture.php', *map(str, args)], text=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False, timeout=60)
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=60)
         if result.returncode != 0:
-            raise AssertionError(f'Cooking fixture exited {result.returncode}: {result.stdout}')
+            raise AssertionError(f'Cooking fixture exited {result.returncode}: {result.stdout}\n{result.stderr}')
         return (result.stdout.strip().splitlines()[-1] if result.stdout.strip() else '')
 
     version = invoke()
@@ -96,6 +96,7 @@ def run_cooking(page, base, fixture=None):
         raise AssertionError(f'Synthetic OTP fixture unavailable; queue health: {health}') from error
     client.get_by_label('Код із листа', exact=True).fill(code)
     client.get_by_role('button', name='Підтвердити', exact=True).click()
+    client.wait_for_url(base + '/app')
     client.goto(base + '/app/meal-plan')
     client.get_by_role('link', name='Помічник приготування', exact=True).click()
     expect(client.get_by_role('heading', name='Помічник приготування')).to_be_visible()
@@ -113,6 +114,31 @@ def run_cooking(page, base, fixture=None):
             client.set_viewport_size({'width': width, 'height': 1000})
             client.emulate_media(color_scheme=theme)
             assert client.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            player_nav = client.get_by_role('navigation', name='Навігація етапами')
+            main_nav = client.get_by_role('navigation', name='Основна навігація')
+            player_box = player_nav.bounding_box()
+            main_box = main_nav.bounding_box()
+            assert player_box['y'] + player_box['height'] <= main_box['y'], 'Основна навігація перекриває player'
+            assert player_box['y'] >= 0
+            contrast = client.locator('.cook-discard').evaluate("""button => {
+                const rgb = color => color.match(/[0-9.]+/g).slice(0, 3).map(Number);
+                const luminance = color => rgb(color).map(x => x / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4).reduce((sum, x, i) => sum + x * [.2126, .7152, .0722][i], 0);
+                let parent = button;
+                while (getComputedStyle(parent).backgroundColor === 'rgba(0, 0, 0, 0)') parent = parent.parentElement;
+                const foreground = luminance(getComputedStyle(button).color);
+                const background = luminance(getComputedStyle(parent).backgroundColor);
+                return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+            }""")
+            assert contrast >= 4.5, f'Недостатній контраст кнопки: {width}/{theme}: {contrast}'
+            client.locator('.cook-image-button').click()
+            gallery = client.get_by_role('dialog', name='Фото етапу')
+            expect(gallery).to_be_visible()
+            assert client.evaluate("""() => {
+                const rect = document.querySelector('.client-navigation').getBoundingClientRect();
+                return !!document.elementFromPoint(innerWidth / 2, rect.y + rect.height / 2).closest('.cook-gallery');
+            }"""), 'Навігація перекриває фото-галерею'
+            gallery.get_by_role('button', name='Закрити фото').click()
+            expect(gallery).not_to_be_visible()
             client.screenshot(path=str(output / f'client-{width}-{theme}.png'), full_page=True)
     assert not client_errors, client_errors
     client.close()

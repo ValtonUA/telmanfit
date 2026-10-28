@@ -31,8 +31,11 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   const [gallery, setGallery] = useState<string[]>()
   const [galleryIndex, setGalleryIndex] = useState(0)
   const supported = typeof (navigator as WakeLockNavigator).wakeLock?.request === 'function'
+  const hasDetail = Boolean(detail)
   const activeTimers = useMemo(() => Object.entries(timers).filter(([, timer]) => timer.running), [timers])
   const openSession = useCallback(async (version: string, session: string, mode: number) => {
+    // Повторне відкриття того самого ключа спершу відновлює progress, потім зберігає його.
+    setHydratedScope(undefined)
     setBusy(true); setError('')
     window.history.replaceState(null, '', `/app/meal-plan/cooking?week=${week}&version=${encodeURIComponent(version)}&session=${encodeURIComponent(session)}&mode=${mode}`)
     try { setDetail(await getCookingSession(version, session, week, mode)) }
@@ -42,12 +45,19 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
 
   useEffect(() => {
     let active = true
-    if (!weekValid) return
-    getCookingChoices(week).then(value => { if (active) setChoices(value) }).catch(failure => {
-      if (active) { if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Помічник приготування зараз недоступний. Оновіть сторінку або зверніться до тренера.') }
-    }).finally(() => { if (active) setBusy(false) })
-    return () => { active = false }
-  }, [week, weekValid, onExit])
+    if (!weekValid || hasDetail) return
+    const load = () => {
+      getCookingChoices(week).then(value => { if (active) setChoices(value) }).catch(failure => {
+        if (active) { if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Помічник приготування зараз недоступний. Оновіть сторінку або зверніться до тренера.') }
+      }).finally(() => { if (active) setBusy(false) })
+    }
+    const revalidate = () => { if (document.visibilityState === 'visible') load() }
+    load()
+    window.addEventListener('focus', revalidate)
+    document.addEventListener('visibilitychange', revalidate)
+    const interval = window.setInterval(revalidate, 60000)
+    return () => { active = false; window.clearInterval(interval); window.removeEventListener('focus', revalidate); document.removeEventListener('visibilitychange', revalidate) }
+  }, [week, weekValid, hasDetail, onExit])
   useEffect(() => {
     if (!choices || detail || autoOpened.current) return
     const params = new URLSearchParams(window.location.search)

@@ -89,7 +89,16 @@ class ClientCookingTest extends TestCase
 
     public function test_missing_client_session_is_denied_without_caching(): void
     {
-        $this->withoutCookie('telmanfit_client_session')->getJson('/api/meal-plan/cooking?week=1')
+        unset($this->defaultCookies['telmanfit_client_session']);
+        Auth::forgetGuards();
+        $before = $this->snapshot();
+
+        $this->getJson('/api/meal-plan/cooking?week=1')
             ->assertUnauthorized()->assertHeader('Cache-Control', 'no-store, private');
+        Auth::forgetGuards();
+        $this->head('/api/meal-plan/cooking?week=1')
+            ->assertUnauthorized()->assertHeader('Cache-Control', 'no-store, private');
+
+        $this->assertSame($before, $this->snapshot(), 'Запити без cookie не повинні змінювати БД або метадані сесій.');
     }
 }

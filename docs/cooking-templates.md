@@ -282,11 +282,19 @@ published immutability правила. Фото проходить актуал�
   покроковий player: страви/фізичні порції/час, вступ, фото обладнання з fallback,
   frozen грами, outline, точні tokens, timers і safe-area навігація. Не робляться
   автоматичні safety/storage твердження.
+- Навігація етапами розташована над основною навігацією кабінету; фото-галерея
+  перекриває обидві. Другорядні кнопки підтримують контраст у light/dark.
 - Локальний state містить лише stage/timer timestamps/expiry; ключ scoped до
   client/assignment/week/date/exact version/session. Logout очищує його. Таймери
-  переживають навігацію й reload, Wake Lock є best-effort із visible status;
+  переживають навігацію, повторне відкриття сесії й reload. Збереження того самого
+  ключа починається після відновлення progress. Список сесій та відкритий player
+  повторно перевіряють доступ на focus/visibility і щохвилини; 401 повертає до входу.
+  Wake Lock є best-effort із visible status;
   фонових повідомлень немає.
 
 Автоматизовані перевірки: `CookingTemplatesTest` (PG18 + Filament/Livewire),
+`ClientCookingTest` (AUTH-4 GET/HEAD, no-store та незмінність БД),
 чинний independent `cooking-concurrency.php` та `tests/browser/cooking.py`,
 який викликається з recipe browser runner після штатного login/MFA.
+Локальні результати й приклади responsive екранів — у
+[звіті перевірок](evidence/cooking-editor/report.md).

@@ -80,7 +80,7 @@ if ($mode !== 'setup') {
             $firstRow = DB::table('recipe_ingredients')->where('recipe_version_id', $slot->recipe_version_id)->value('id');
             foreach ($pattern['items'] as $item) {
                 $output = $editor->output($actor, $version, (int) DB::table('cooking_template_versions')->where('id', $version)->value('revision'), $session,
-                    $slot->recipe_version_id.':'.$format->id.':1.00');
+                    $item['recipe_version_id'].':'.($item['format_id'] ?? 0).':'.$item['divisor']);
                 $editor->allocate($actor, $version, (int) DB::table('cooking_template_versions')->where('id', $version)->value('revision'),
                     (int) $item['day'], (int) $item['meal_position'], (int) $item['item_position'], $output);
                 if ($firstOutput === null) {
