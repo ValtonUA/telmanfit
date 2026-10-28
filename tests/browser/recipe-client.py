@@ -43,6 +43,16 @@ with sync_playwright() as p:
         php('tests/browser/auth5-fixture.php', 'window', 't52-browser@example.invalid')
         page.route('https://images.example.com/**', lambda route: route.fulfill(content_type='image/png', body=Path('client/src/assets/hero.png').read_bytes()))
         page.goto(BASE + '/app/login')
+        # Ізольована UI-регресія same-URL restart, перед справжнім OTP login нижче.
+        page.route('**/api/auth/email-otp/request', lambda route: route.fulfill(
+            status=202, content_type='application/json',
+            body='{"challenge_id":"00000000-0000-4000-8000-000000000001","resend_after":60,"expires_in":300}'), times=1)
+        page.get_by_label('Електронна пошта', exact=True).fill('restart@example.invalid')
+        page.get_by_role('button', name='Отримати код', exact=True).click()
+        expect(page.get_by_label('Код із листа', exact=True)).to_be_visible()
+        page.get_by_role('link', name='Почати знову').click()
+        expect(page.get_by_label('Електронна пошта', exact=True)).to_have_value('')
+        expect(page.get_by_label('Код із листа', exact=True)).to_have_count(0)
         page.get_by_label('Електронна пошта', exact=True).fill('t52-browser@example.invalid')
         page.get_by_role('button', name='Отримати код', exact=True).click()
         expect(page.get_by_label('Код із листа', exact=True)).to_be_visible()

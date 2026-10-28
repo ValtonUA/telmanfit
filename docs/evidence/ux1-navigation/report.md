@@ -18,8 +18,9 @@
 2. Автоматична нормалізація query могла переграти наступний перехід — URL змінюється явним вибором користувача.
 3. Inline рання тема конфліктувала з CSP — зовнішній blocking CSS до React; Vite коректно додає production base.
 4. Відповідь відкриття cooking session після unmount/discard — generation guard; lifecycle Wake Lock і таймерів підтверджений браузером.
-5. Темний колір тексту на світлій auth-картці — узгоджені dark токени; browser regression.
+5. Same-URL «Почати знову» не демонтував auth-форму — key за router location; завершення auth після unmount ігнорується. Error recovery очищує boundary без document reload.
+6. Темний колір тексту на світлій auth-картці — узгоджені dark токени; browser regression.
 
-Початкові помилки локальної підготовки (PHP 8.4.26 замість 8.4.27, відсутній bcmath і root Vite manifest) усунено без зміни вимог репозиторію. Старий AUTH4 browser-прохід зупинився на invitations до підготовки root assets; цільовий React acceptance і повний AUTH5 browser пройшли після підготовки.
+Початкові помилки локальної підготовки (PHP 8.4.26 замість 8.4.27, відсутній bcmath і root Vite manifest) усунено без зміни вимог репозиторію. Повторний повний AUTH4 browser harness (зокрема admin invitations) після підготовки root assets — PASS; цільовий React acceptance і повний AUTH5 browser також PASS.
 
 Фізичні mobile-пристрої та production не перевірялися; production flags не змінювалися. Окремого SSR, Framework Mode чи нових API немає.

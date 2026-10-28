@@ -7,6 +7,8 @@ import type { FlowResult, Me } from '../api'
 import { useCooldown } from '../useCooldown'
 
 export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (me: Me) => void }) {
+  const active = useRef(true)
+  useEffect(() => { active.current = true; return () => { active.current = false } }, [])
   const registration = window.location.pathname === '/app/register'
   const [step, setStep] = useState<'email' | 'otp' | 'name' | 'mfa'>('email')
   const [email, setEmail] = useState('')
@@ -34,9 +36,11 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
   }, [expiry])
 
   async function authenticated() {
+    if (!active.current) return
     setCode(''); setEmail(''); setName(''); setLastName(''); setChallenge(undefined); setFlow(undefined)
     await csrf()
-    onLogin(await api<Me>('me'))
+    const user = await api<Me>('me')
+    if (active.current) onLogin(user)
   }
   async function send() {
     const result = await api('auth/email-otp/request', { purpose: registration ? 'register' : 'login', email, ...(registration ? { flow_id: flow } : {}) })

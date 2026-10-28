@@ -128,7 +128,7 @@ export default function App() {
     <main id="main-content" className={client ? 'client-main' : undefined}>
       {notice && <p role="status" className="notice">{notice}</p>}
       {me?.security.recovery_used && page !== '/app/security' && <p role="status" className="notice">Ви використали резервний код. 2FA залишається увімкненою. Невикористаних кодів: {me.security.recovery_codes_remaining}. За потреби оновіть їх у налаштуваннях безпеки.</p>}
-      {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><Link to="/app/login">Повернутися до входу</Link></section>
+      {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><button onClick={() => { setError(''); exit('') }}>Повернутися до входу</button></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
         : me ? <Routes>
           <Route path="/app" element={<Today onExit={exit} />} />
@@ -145,7 +145,7 @@ export default function App() {
           <Route path="/app/onboarding" element={<OnboardingFirstStep />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        : <AuthForm key={page} invite={invite} onLogin={login} />}
+        : <AuthForm key={location.key} invite={invite} onLogin={login} />}
     </main>
     {client && <ClientNavigation path={page} />}
     {!client && <footer>TelmanFit · Крок за кроком, у вашому темпі</footer>}
