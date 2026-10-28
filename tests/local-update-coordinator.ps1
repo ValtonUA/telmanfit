@@ -92,6 +92,9 @@ Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $first
 $badPreconditionSnapshot = New-Snapshot -Pending $names
 $badPreconditionSnapshot.schema.tables = @('users')
 Assert-Throws { Assert-MigrationPreconditions -Snapshot $badPreconditionSnapshot -Migration $first } 'missing prerequisite table is refused'
+$second = $allowlist.migrations[1]
+Assert-Throws { Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $second } 'later migration cannot assume an unapplied prerequisite'
+Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $second -PlannedTables $first.postconditions.required_tables
 
 $post = [pscustomobject]@{ schema = [pscustomobject]@{ tables = @('cooking_templates'); functions = @(); triggers = @(); views = @('cooking_output_balances') } }
 $viewRequirement = [pscustomobject]@{ name = 'test'; postconditions = [pscustomobject]@{ required_tables = @('cooking_templates'); required_functions = @(); required_triggers = @(); required_views = @('cooking_output_balances') } }

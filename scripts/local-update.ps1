@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 13899)
-Total output lines: 886
+Warning: truncated output (original token count: 13958)
+Total output lines: 890
 
 [CmdletBinding()]
 param(
@@ -246,11 +246,11 @@ function Get-PendingPlan {
 }
 
 function Assert-MigrationPreconditions {
-    param([Parameter(Mandatory)] $Snapshot, [Parameter(Mandatory)] $Migration)
+    param([Parameter(Mandatory)] $Snapshot, [Parameter(Mandatory)] $Migration, [string[]] $PlannedTables = @())
 
     $tables = @($Snapshot.schema.tables)
     foreach ($name in @($Migration.preconditions.required_tables)) {
-        if ($name -notin $tables) { throw "Передумова міграції $($Migration.name) відсутня: таблиця $name." }
+        if ($name -notin $tables -and $name -notin $PlannedTables) { throw "Передумова міграції $($Migration.name) відсутня: таблиця $name." }
     }
     foreach ($name in @($Migration.preconditions.absent_tables)) {
         if ($name -in $tables) { throw "Передумова міграції $($Migration.name) не виконана: таблиця $name вже існує." }
@@ -305,7 +305,116 @@ function Assert-ComposeConfig {
     $expectedVolumes = @('database', 'database-secrets', 'epoch', 'local-state', 'storage')
     $volumeNames = @($Config.volumes.PSObject.Properties.Name | Sort-Object)
     if (($volumeNames -join ',') -cne (($expectedVolumes | Sort-Object) -join ',')) {
-        throw 'Compose volume inventory …6899 tokens truncated…uments @('-C', $root, 'remote', 'get-url', 'origin'))
+        throw 'Compose volume inventory не збігається з локальним TelmanFit.'
+    }
+    $databaseService = $Config.services.PSObject.Properties['database'].Value
+    $databasePorts = $databaseService.PSObject.Properties['ports']
+    if ($databasePorts -and @($databasePorts.Value).Count -ne 0) { throw 'PostgreSQL не повинен мати опублікованого порту.' }
+    $webService = $Config.services.PSObject.Properties['web'].Value
+    $webPortsProperty = $webService.PSObject.Properties['ports']
+    if (-not $webPortsProperty) { throw 'Web service має містити один опублікований loopback port.' }
+    $webPorts = @($webPortsProperty.Value)
+    if ($webPorts.Count -ne 1 -or [string]$webPorts[0].published -ne $script:PublishedPort -or $webPorts[0].host_ip -ne '127.0.0.1') {
+        throw 'Web port не відповідає loopback-only конфігурації.'
+    }
+    if ($script:TestMode) {
+        if ($Config.networks.local.internal -ne $true) { throw 'Ізольована Compose network має бути internal.' }
+        foreach ($service in @('setup', 'app', 'worker', 'scheduler', 'web', 'database')) {
+            $expectedImageService = if ($service -in @('setup', 'app', 'worker', 'scheduler')) { 'app' } else { $service }
+            if ($Config.services.$service.image -cne (Get-ImageName -Service $expectedImageService)) { throw "Ізольований образ сервісу $service має неунікальне ім’я." }
+        }
+    }
+    foreach ($service in @('app', 'worker', 'scheduler')) {
+        $sources = @($Config.services.$service.volumes | ForEach-Object { $_.source } | Sort-Object)
+        if (($sources -join ',') -cne 'epoch,local-state,storage') { throw "Volumes сервісу $service не збігаються з очікуваними." }
+    }
+    $databaseSources = @($Config.services.database.volumes | ForEach-Object { $_.source } | Sort-Object)
+    if (($databaseSources -join ',') -cne 'database,database-secrets') { throw 'Database volumes не збігаються з очікуваними.' }
+}
+
+function Get-DatabaseSnapshot {
+    $result = Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'docker/local/upgrade-check.php')
+    $json = Get-OutputText $result
+    $jsonLine = @($json -split '\r?\n' | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -Last 1)
+    if (-not $jsonLine.Count) { throw 'Read-only upgrade probe не повернув JSON результату.' }
+    try { return ($jsonLine[0] | ConvertFrom-Json) } catch { throw 'Read-only upgrade probe повернув некоректний результат.' }
+}
+
+function Test-VolumeDetached {
+    param([Parameter(Mandatory)][string] $Volume)
+    $running = Invoke-Docker -Arguments @('ps', '-q', '--filter', "volume=$Volume")
+    if ((Get-OutputText $running)) { throw "Volume '$Volume' усе ще приєднаний до running container." }
+}
+
+function Invoke-TarArchive {
+    param(
+        [Parameter(Mandatory)][string] $DatabaseImage,
+        [Parameter(Mandatory)][string] $Volume,
+        [Parameter(Mandatory)][string] $BackupDirectory,
+        [Parameter(Mandatory)][string] $Archive,
+        [switch] $Compare
+    )
+
+    Test-VolumeDetached -Volume $Volume
+    $archivePath = Join-Path $BackupDirectory $Archive
+    if ($Compare) {
+        $arguments = @('run', '--rm', '--network', 'none', '--read-only', '--user', '0', '--entrypoint', 'tar', '--mount', "type=volume,source=$Volume,target=/source,readonly", '--mount', "type=bind,source=$BackupDirectory,target=/backup,readonly", $DatabaseImage, '--numeric-owner', '-dpf', "/backup/$Archive", '-C', '/source')
+    } else {
+        if (Test-Path -LiteralPath $archivePath) { throw "Відмова перезаписати існуючий архів $arc…4958 tokens truncated… $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
+                if ($details.Config.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal container.' }
+                $null = Invoke-Docker -Arguments @('stop', '--time', '30', $container) -AllowFailure
+                $null = Invoke-Docker -Arguments @('rm', $container)
+            }
+        }
+        foreach ($name in $createdVolumes) {
+            $inspectResult = Invoke-Docker -Arguments @('volume', 'inspect', $name) -AllowFailure
+            if ($inspectResult.ExitCode -eq 0) {
+                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
+                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal volume.' }
+                $attached = Invoke-Docker -Arguments @('ps', '-aq', '--filter', "volume=$name")
+                if ((Get-OutputText $attached)) { throw "Rehearsal volume $name усе ще використовується." }
+                $null = Invoke-Docker -Arguments @('volume', 'rm', $name)
+            }
+        }
+        if ($networkCreated) {
+            $inspectResult = Invoke-Docker -Arguments @('network', 'inspect', $network) -AllowFailure
+            if ($inspectResult.ExitCode -eq 0) {
+                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
+                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
+                $null = Invoke-Docker -Arguments @('network', 'rm', $network)
+            }
+        }
+    }
+}
+
+function Invoke-LocalUpdate {
+    Initialize-IsolationMode
+    $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
+    $actualRoot = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'rev-parse', '--show-toplevel'))
+    if ([IO.Path]::GetFullPath($actualRoot).TrimEnd('\') -ine $root) { throw 'Скрипт має запускатися з кореня репозиторію.' }
+
+    if (-not $env:LOCALAPPDATA) { throw 'LOCALAPPDATA не визначено; coordinator потребує локального приватного сховища backup/log.' }
+    $stateRoot = if ($script:TestMode) { Join-Path (Join-Path $env:TEMP 'TelmanFit-E2E') $script:ProjectName } else { Join-Path $env:LOCALAPPDATA 'TelmanFit' }
+    if ($script:TestMode -and (Test-Path -LiteralPath $stateRoot)) { throw 'Ізольований backup/log каталог уже існує; відмова використовувати чи перезаписувати його.' }
+    Set-PrivateDirectoryAcl -Path $stateRoot
+    $lockStream = Enter-UpdateLock -LockPath (Join-Path $stateRoot 'local-update.lock')
+    $script:RunId = '{0}-{1}' -f (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'), ([guid]::NewGuid().ToString('N').Substring(0, 8))
+    $script:LogPath = Join-Path (Join-Path $stateRoot 'updates') "$script:RunId.log"
+    $script:JournalPath = Join-Path (Join-Path $stateRoot 'updates') "$script:RunId.json"
+    Set-PrivateDirectoryAcl -Path (Split-Path -Parent $script:LogPath)
+    $script:Phase = 'preflight'
+    $script:BackupDirectory = $null
+    $script:RepositoryHead = $null
+
+    try {
+        try {
+            Assert-NoUnresolvedJournals -Directory (Split-Path -Parent $script:JournalPath) -AcknowledgedRunId $AcknowledgeJournal
+        } catch {
+            $script:Phase = 'journal_gate_blocked'
+            throw
+        }
+        Write-UpdateLog "local update started; target=$script:ProjectName; isolated_test=$($script:TestMode.ToString().ToLowerInvariant()); no production credentials are read"
+        $remote = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'remote', 'get-url', 'origin'))
         if (-not (Test-ExpectedRemote -Remote $remote)) { throw 'Git origin не відповідає ValtonUA/telmanfit.' }
         Assert-SafeGitTree -Root $root
 
@@ -367,7 +476,11 @@ function Assert-ComposeConfig {
             $null = Invoke-Compose -Arguments @('up', '-d', '--no-deps', 'app', 'worker', 'scheduler', 'web')
             Set-Phase -Name 'start_services' -State 'complete'
         } else {
-            foreach ($migration in $plan) { Assert-MigrationPreconditions -Snapshot $before -Migration $migration }
+            $plannedTables = @()
+            foreach ($migration in $plan) {
+                Assert-MigrationPreconditions -Snapshot $before -Migration $migration -PlannedTables $plannedTables
+                $plannedTables += @($migration.postconditions.required_tables)
+            }
             $backupRoot = Join-Path $stateRoot 'backups'
             Set-PrivateDirectoryAcl -Path $backupRoot
             $script:BackupDirectory = Join-Path $backupRoot "$script:RunId-$($script:RepositoryHead.Substring(0, 8))"
