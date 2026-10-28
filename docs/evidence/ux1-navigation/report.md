@@ -19,8 +19,13 @@
 3. Inline рання тема конфліктувала з CSP — зовнішній blocking CSS до React; Vite коректно додає production base.
 4. Відповідь відкриття cooking session після unmount/discard — generation guard; lifecycle Wake Lock і таймерів підтверджений браузером.
 5. Same-URL «Почати знову» не демонтував auth-форму — key за router location; завершення auth після unmount ігнорується. Error recovery очищує boundary без document reload.
-6. Темний колір тексту на світлій auth-картці — узгоджені dark токени; browser regression.
+6. SPA browser після повернення з покупок міг зачепити старий однойменний selector — очікування exact URL та plan heading перед наступною дією. Під час зміни тижня старі дні не інтерактивні, доки не прийде актуальна відповідь.
+7. Темний колір тексту на світлій auth-картці — узгоджені dark токени; browser regression.
 
 Початкові помилки локальної підготовки (PHP 8.4.26 замість 8.4.27, відсутній bcmath і root Vite manifest) усунено без зміни вимог репозиторію. Повторний повний AUTH4 browser harness (зокрема admin invitations) після підготовки root assets — PASS; цільовий React acceptance і повний AUTH5 browser також PASS.
 
 Фізичні mobile-пристрої та production не перевірялися; production flags не змінювалися. Окремого SSR, Framework Mode чи нових API немає.
+
+## Security patch required CI
+
+Під час виконання з’явилася CVE-2026-45070 для чинного `symfony/mime`. Мінімальний patch lockfile: v8.1.7 → v8.1.10, без нових пакетів чи зміни constraints. Окремий локальний `composer audit` недоступний через мережеву політику `packagist.org`; обов’язковий Fast CI виконує audit на фінальному lockfile. Повний локальний baseline зі справжніми auth3/auth4/auth5/auth6 browser/HTTP та SQL завершився PASS (554 s) до цього patch; після patch повторюються Unit/Feature й цільовий client/auth acceptance, CI — усі вибрані групи.

@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api'
 import { getMealPlanDays } from '../mealPlanApi'
 import type { MealItem, MealPlanResponse } from '../mealPlanApi'
@@ -34,6 +34,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
     ?? (data?.days.find(d => d.date === data.today) ?? data?.days[0])?.day_number
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadedWeek, setLoadedWeek] = useState<number>()
   const [changed, setChanged] = useState(false)
   const generation = useRef(0)
   const current = useRef<MealPlanResponse | undefined>(undefined)
@@ -41,7 +42,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
   useEffect(() => { exit.current = onExit }, [onExit])
   function invalidateRequests() { generation.current++ }
 
-  async function load(week?: number) {
+  const load = useCallback(async (week?: number) => {
     const request = ++generation.current
     setLoading(true); setError('')
     try {
@@ -55,7 +56,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
         if (week) result = await getMealPlanDays()
       }
       if (request !== generation.current) return
-      current.current = result; setData(result)
+      current.current = result; setData(result); setLoadedWeek(requestedWeek)
 
     } catch (failure) {
       if (request !== generation.current) return
@@ -63,7 +64,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
       if (failure instanceof ApiError && failure.status === 401) exit.current('Сесія завершилася. Увійдіть знову.')
       else setError('Не вдалося завантажити раціон. Перевірте з’єднання та спробуйте ще раз.')
     } finally { if (request === generation.current) setLoading(false) }
-  }
+  }, [requestedWeek])
 
   useEffect(() => {
     const initial = window.setTimeout(() => { void load(requestedWeek) }, 0)
@@ -77,14 +78,15 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
       invalidateRequests()
       document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh)
     }
-  }, [requestedWeek])
+  }, [requestedWeek, load])
+  const pending = loading || Boolean(data && requestedWeek !== loadedWeek)
   const day = data?.days.find(d => d.day_number === selectedDay)
   return <div className="meal-plan">
     <Link className="back-link" to="/app">← Особистий кабінет</Link>
     <div className="plan-heading"><div><span className="eyebrow">Турбота щодня</span><h1>Раціон</h1></div>
-      <button className="secondary" disabled={loading} onClick={() => void load(data?.week ?? undefined)}>Оновити</button></div>
+      <button className="secondary" disabled={pending} onClick={() => void load(data?.week ?? undefined)}>Оновити</button></div>
     {changed && <p className="notice" role="status">Призначення змінилося. Показуємо актуальний раціон.</p>}
-    {loading ? <section className="card plan-state" role="status"><span className="eyebrow">Ваше меню</span><h2>Завантажуємо раціон…</h2><p>Ще мить — і все буде перед вами.</p></section>
+    {pending ? <section className="card plan-state" role="status"><span className="eyebrow">Ваше меню</span><h2>Завантажуємо раціон…</h2><p>Ще мить — і все буде перед вами.</p></section>
       : error ? <section className="card plan-state"><h2>Раціон поки недоступний</h2><p role="alert">{error}</p><button onClick={() => void load(current.current?.week ?? undefined)}>Спробувати ще раз</button></section>
       : !data?.assignment ? <section className="card plan-state"><span className="eyebrow">У вашому темпі</span><h2>Поки немає призначеного раціону</h2><p>Коли тренер призначить раціон, ваше меню з’явиться тут.</p></section>
       : <>
