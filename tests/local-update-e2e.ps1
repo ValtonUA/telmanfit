@@ -44,6 +44,13 @@ function Get-Text {
     return (@($Result.output | ForEach-Object { [string]$_ }) -join "`n").Trim()
 }
 
+function Convert-JsonOutput {
+    param([Parameter(Mandatory)][string] $Text)
+    $line = @($Text -split '\r?\n' | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -Last 1)
+    if (-not $line.Count) { throw "Command output did not include a JSON result (length=$($Text.Length))." }
+    return ($line[0] | ConvertFrom-Json)
+}
+
 function Assert-Preflight {
     if ($project -eq 'telmanfit-local' -or $project -notmatch '^telmanfit-e2e-[a-f0-9]{12}$') { throw 'Invalid test project namespace.' }
     if ($port -eq 8098 -or $port -lt 20000 -or $port -gt 59999) { throw 'Invalid isolated host port.' }
@@ -167,7 +174,8 @@ VALUES (1,'__EPOCH__'::uuid,'ready',clock_timestamp(),clock_timestamp());
     $null = Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'root', '--entrypoint', 'php', 'app', '-r', "file_put_contents('/tmp/telmanfit-auth4-compose/database-ready','1');")
     $null = Invoke-Compose -Arguments @('create', 'app', 'worker', 'scheduler', 'web')
 
-    $probe = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'docker/local/upgrade-check.php')) | ConvertFrom-Json
+    $probeOutput = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'docker/local/upgrade-check.php'))
+    $probe = Convert-JsonOutput -Text $probeOutput
     if ($probe.status -ne 'PASS' -or $probe.restore_fence -ne 'PASS' -or $probe.identity.postgres_major -ne 18 -or $probe.identity.privileged -or $probe.identity.cluster_proof -notmatch '^telmanfit-compose:[a-f0-9]{16}$' -or $probe.catalog.rows -ne 108 -or $probe.catalog.urls -ne 85) {
         throw 'Synthetic pre-upgrade identity, RestoreFence or catalog data does not match the E2E fixture.'
     }
@@ -271,7 +279,7 @@ networks:
     Invoke-Coordinator -Head $head
     Assert-ProjectHttp
     $snapshotArgs = @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'docker/local/upgrade-check.php')
-    $after = (Get-Text (Invoke-Compose -Arguments $snapshotArgs) | ConvertFrom-Json)
+    $after = Convert-JsonOutput -Text (Get-Text (Invoke-Compose -Arguments $snapshotArgs))
     if ($after.status -ne 'PASS' -or $after.restore_fence -ne 'PASS' -or $after.catalog.rows -ne 108 -or $after.catalog.urls -ne 85) { throw 'Post-upgrade synthetic data or RestoreFence check failed.' }
     foreach ($table in @('users', 'user_totp_factors', 'mfa_recovery_codes')) {
         if ($before.tables.$table.fingerprint -cne $after.tables.$table.fingerprint) { throw "Auth/MFA table changed: $table" }
@@ -282,7 +290,7 @@ networks:
     $firstFingerprint = $after.catalog.fingerprint
     Invoke-Coordinator -Head $head
     Assert-ProjectHttp
-    $rerun = (Get-Text (Invoke-Compose -Arguments $snapshotArgs) | ConvertFrom-Json)
+    $rerun = Convert-JsonOutput -Text (Get-Text (Invoke-Compose -Arguments $snapshotArgs))
     if ($rerun.catalog.fingerprint -cne $firstFingerprint -or @($rerun.migrations.pending).Count -ne 0) { throw 'No-pending rerun changed catalog data or left pending migrations.' }
     $backupCountAfter = @(Get-ChildItem -LiteralPath $backupDirectory -Directory -ErrorAction SilentlyContinue).Count
     if ($backupCountAfter -ne $backupCount) { throw 'No-pending rerun created an unnecessary backup.' }
