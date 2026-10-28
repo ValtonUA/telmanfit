@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 13830)
-Total output lines: 883
+Warning: truncated output (original token count: 13840)
+Total output lines: 884
 
 [CmdletBinding()]
 param(
@@ -270,7 +270,67 @@ function Assert-MigrationPostconditions {
             'required_views' { @($Snapshot.schema.views) }
         }
         foreach ($name in $required) {
-            if ($name -notin $actual) { throw "Postcondition мі…7830 tokens truncated…t { $_ -eq '?? compose.r2-runtime.yaml' })
+            if ($name -notin $actual) { throw "Postcondition міграції $($Migration.name) не виконана: $kind '$name' відсутня." }
+        }
+    }
+}
+
+function Assert-SnapshotUnchanged {
+    param([Parameter(Mandatory)] $Before, [Parameter(Mandatory)] $After)
+
+    if ($Before.restore_fence -ne 'PASS' -or $After.restore_fence -ne 'PASS') {
+        throw 'RestoreFence не пройшов до або після міграцій.'
+    }
+    if ($Before.catalog.rows -ne $After.catalog.rows -or $Before.catalog.urls -ne $After.catalog.urls -or $Before.catalog.fingerprint -cne $After.catalog.fingerprint) {
+        throw 'Змінився каталог або його image_url під час міграцій.'
+    }
+    foreach ($table in $Before.tables.PSObject.Properties) {
+        if ($table.Name -eq 'migrations') { continue }
+        $afterTable = $After.tables.PSObject.Properties[$table.Name]
+        if (-not $afterTable -or $table.Value.rows -ne $afterTable.Value.rows -or $table.Value.fingerprint -cne $afterTable.Value.fingerprint) {
+            throw "Змінилися рядки наявної таблиці '$($table.Name)' під час міграцій."
+        }
+    }
+}
+
+function Assert-ComposeConfig {
+    param([Parameter(Mandatory)] $Config)
+
+    if ($Config.name -cne $script:ProjectName) { throw "Compose project name має бути '$script:ProjectName'." }
+    $expectedServices = @('setup', 'database', 'app', 'worker', 'scheduler', 'web')
+    $serviceNames = @($Config.services.PSObject.Properties.Name | Sort-Object)
+    if (($serviceNames -join ',') -cne (($expectedServices | Sort-Object) -join ',')) {
+        throw 'Compose service inventory не збігається з локальним TelmanFit.'
+    }
+    $expectedVolumes = @('database', 'database-secrets', 'epoch', 'local-state', 'storage')
+    $volumeNames = @($Config.volumes.PSObject.Properties.Name | Sort-Object)
+    if (($volumeNames -join ',') -cne (($expectedVolumes | Sort-Object) -join ',')) {
+        throw 'Compose volume inventory …6840 tokens truncated…uments @('-C', $root, 'remote', 'get-url', 'origin'))
+        if (-not (Test-ExpectedRemote -Remote $remote)) { throw 'Git origin не відповідає ValtonUA/telmanfit.' }
+        Assert-SafeGitTree -Root $root
+
+        if ($NoGitSync) {
+            $head = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'rev-parse', 'HEAD'))
+            if ($ExpectedHead -and $head -cne $ExpectedHead) { throw 'HEAD змінився після синхронізації Git.' }
+        } else {
+            $branch = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'branch', '--show-current'))
+            if ($branch -ne 'master') { $null = Invoke-Git -Arguments @('-C', $root, 'switch', 'master') }
+            $scriptHashBefore = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
+            $null = Invoke-Git -Arguments @('-C', $root, 'fetch', 'origin', 'master')
+            $null = Invoke-Git -Arguments @('-C', $root, 'pull', '--ff-only', 'origin', 'master')
+            Assert-SafeGitTree -Root $root
+            $script:RepositoryHead = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'rev-parse', 'HEAD'))
+            $scriptHashAfter = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
+            if ($scriptHashBefore -cne $scriptHashAfter) {
+                throw 'Сам coordinator оновився під час Git pull. Повторіть команду, щоб виконати нову перевірену версію.'
+            }
+        }
+        if (-not $script:RepositoryHead) { $script:RepositoryHead = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'rev-parse', 'HEAD')) }
+        Write-UpdateLog "git_head=$script:RepositoryHead"
+
+        if (Test-Path -LiteralPath (Join-Path $root 'compose.r2-runtime.yaml')) {
+            $status = Invoke-Git -Arguments @('-C', $root, 'status', '--porcelain=v1', '--untracked-files=all')
+            $overlayStatus = @($status.Output | ForEach-Object { [string] $_ } | Where-Object { $_ -eq '?? compose.r2-runtime.yaml' })
             if ($overlayStatus.Count -gt 0) { Write-UpdateLog 'preserved untracked compose.r2-runtime.yaml; base compose.yaml remains selected' }
         }
 
