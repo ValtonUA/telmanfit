@@ -37,7 +37,7 @@ class CookingTemplates extends Page
     protected string $view = 'filament.cooking.editor';
 
     #[Locked]
-    public ?int $version = null;
+    public int|string|null $version = null;
 
     #[Locked]
     public int $revision = 0;
