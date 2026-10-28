@@ -525,7 +525,12 @@ function Invoke-LocalUpdate {
     $script:RepositoryHead = $null
 
     try {
-        Assert-NoUnresolvedJournals -Directory (Split-Path -Parent $script:JournalPath) -AcknowledgedRunId $AcknowledgeJournal
+        try {
+            Assert-NoUnresolvedJournals -Directory (Split-Path -Parent $script:JournalPath) -AcknowledgedRunId $AcknowledgeJournal
+        } catch {
+            $script:Phase = 'journal_gate_blocked'
+            throw
+        }
         Write-UpdateLog 'local update started; target=telmanfit-local; no production credentials are read'
         $remote = Get-OutputText (Invoke-Git -Arguments @('-C', $root, 'remote', 'get-url', 'origin'))
         if (-not (Test-ExpectedRemote -Remote $remote)) { throw 'Git origin не відповідає ValtonUA/telmanfit.' }
@@ -707,6 +712,10 @@ function Invoke-LocalUpdate {
         Write-UpdateLog "backup_directory=$script:BackupDirectory"
         Write-UpdateLog 'local update completed successfully'
     } catch {
+        if ($script:Phase -eq 'journal_gate_blocked') {
+            Write-UpdateLog "journal_gate_blocked=$($_.Exception.Message)"
+            throw
+        }
         Set-Phase -Name $(if ($script:Phase) { $script:Phase } else { 'unknown' }) -State 'FAILED'
         Write-UpdateLog "error=$($_.Exception.Message)"
         Write-UpdateLog 'Fail closed: no rollback, restore, volume removal, or service auto-resume was attempted.'
