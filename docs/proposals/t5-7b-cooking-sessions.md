@@ -1,6 +1,6 @@
 # T5.7b — кухонні сесії та мегарецепти: контракт для погодження
 
-> **Статус:** D1–D5 затверджені власником; додатково погоджено семиденну межу v1. Авторські фасування/зберігання — звичайні етапи з явним review. Чинна схема/domain реалізація й межі — [cooking-templates.md](../cooking-templates.md), [SQL17](../17_cooking_templates.sql), [SQL18](../18_cooking_selection.sql); чинна версія обирається admin явно, publish не активує її. Filament/API/React і production — наступні окремі PR.
+> **Статус:** D1–D5 затверджені власником; додатково погоджено семиденну межу v1 та одну таблицю snapshots обладнання. Авторські фасування/зберігання — звичайні етапи з явним review. SQL17/18 і Filament реалізовані у PR #98/#99; T5.7b client API/React та синтетичний walkthrough готуються в окремому Draft PR. Production activation не виконується.
 
 ## 1. Предметні межі та багаторазовий шаблон
 
@@ -120,7 +120,7 @@ Mismatch, відсутні frozen дані, неповний тиждень бе
 | Сутність | Відповідальність |
 | --- | --- |
 | **CookingTemplate** | Ідентичність **складу опублікованого меню/циклу** + режим 7/2/1, автор, draft/published, version/immutable snapshot, явна заміна попередньої версії |
-| **CookingSessionTemplate** | Відносний день/порядок сесії, тривалість, обладнання та вступ; **послідовність етапів і блоків** як валідований versioned JSONB із стабільними IDs |
+| **CookingSessionTemplate** | Відносний день/порядок сесії, тривалість, вільний текст обладнання та вступ; **послідовність етапів і блоків** як versioned JSONB. Каталогові предмети — окрема immutable snapshot relation (ID, назва та URL фото на момент вибору). |
 | **CookingOutput** | Фізичний batch конкретної опублікованої версії рецепта та правильного A/B/C або legacy формату; виготовлені порції/залишки |
 | **CookingAllocationPattern** | Відносна позиція прийому їжі у складі меню, кількість споживаних порцій, FK/selector до CookingOutput; без hard FK лише на client-specific `meal_items.id` за замовчуванням |
 | **Runtime session state** | **Не частина authoring content.** Мінімальний клієнтський progress/timers, ізольований за user+assignment/date+template version; спосіб зберігання й TTL — окремий технічний висновок |
@@ -149,7 +149,17 @@ Mismatch, відсутні frozen дані, неповний тиждень бе
 - **D5:** інкрементальний пілот 1 template + 1 session кількох рецептів.
   Наявні 6 страв/раціон використовувати лише після безпечного read-only підтвердження;
   за відсутності — еквівалентні synthetic fixtures. Filament→client walkthrough
-  виконується наступними PR.
+  проходить у поточному Draft PR; required CI ще має підтвердити цей walkthrough.
+- **Обладнання:** автор явно вибирає наявні предмети каталогу; зберігаються ID,
+  назва й URL зображення як snapshot exact cooking session. Фото безпечне лише
+  поки відповідає HTTPS allowlist; інакше показати назву без фото. Жодного
+  автоматичного виведення з рецептів. Погоджено рівно одну relation table та
+  одну forward-only міграцію; `cooking_sessions.equipment` залишається поясненням.
+
+Клієнтський етап використовує read-only ClientSession endpoints у єдиному
+repeatable-read snapshot і React-помічник з explicit template/session choice.
+Progress/timers зберігаються лише у браузері під client/assignment/week/date/
+version/session scope.
 
 SQL/domain контракт — [cooking-templates.md](../cooking-templates.md).
 Цей документ зберігає погоджений UX; завершення schema-тестів не доводить

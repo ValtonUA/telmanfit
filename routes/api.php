@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\ClientLibraryController;
 use App\Http\Controllers\Api\ClientMealItemRecipeController;
 use App\Http\Controllers\Api\ClientMealPlanController;
+use App\Http\Controllers\Api\ClientCookingController;
 use App\Http\Controllers\Api\ClientMealPlanDaysController;
 use App\Http\Controllers\Api\ClientOnboardingController;
 use App\Http\Controllers\Api\ClientSecurityController;
@@ -45,6 +46,9 @@ Route::middleware(['web', ClientCsrf::class])->group(function () {
     Route::get('/library', [ClientLibraryController::class, 'index'])->name('client.library.index');
     Route::get('/library/{item}', [ClientLibraryController::class, 'show'])->name('client.library.show');
     Route::get('/meal-plan', ClientMealPlanController::class)->name('client.meal-plan');
+    Route::get('/meal-plan/cooking', [ClientCookingController::class, 'choices'])->name('client.meal-plan.cooking');
+    Route::get('/meal-plan/cooking/{version}/sessions/{session}', [ClientCookingController::class, 'session'])
+        ->whereNumber('version')->whereNumber('session')->name('client.meal-plan.cooking.session');
     Route::get('/meal-plan/items/{item}/recipe', ClientMealItemRecipeController::class)->name('client.meal-plan.recipe');
     Route::get('/meal-plan/days', ClientMealPlanDaysController::class)->name('client.meal-plan.days');
     Route::get('/meal-plan/shopping-list', ClientShoppingListController::class)->name('client.meal-plan.shopping-list');

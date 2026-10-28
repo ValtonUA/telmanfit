@@ -49,7 +49,20 @@
                 @php($s = $entry['session'])
                 <article class="space-y-3 break-words" wire:key="cooking-session-{{ $s->id }}">
                     <h2 class="font-bold">Сесія #{{ $s->id }} · день {{ $s->day }} · {{ $s->estimated_seconds }} секунд</h2>
-                    <p class="whitespace-pre-wrap">{{ $s->introduction }}</p><p class="whitespace-pre-wrap">Обладнання: {{ $s->equipment }}</p>
+                    <p class="whitespace-pre-wrap">{{ $s->introduction }}</p>
+                    @if ($entry['equipment_items']->isNotEmpty())
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Обладнання з каталогу">
+                            @foreach ($entry['equipment_items'] as $equipment)
+                                <div class="space-y-2 rounded-xl border p-3">
+                                    <p class="font-medium">{{ $equipment['name'] }}</p>
+                                    @if ($equipment['image_url'])
+                                        <img class="aspect-square w-full rounded-lg object-cover" src="{{ $equipment['image_url'] }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                    @if (filled($s->equipment)) <p class="whitespace-pre-wrap">Додаткове пояснення: {{ $s->equipment }}</p> @endif
                     <div class="flex flex-wrap gap-3">@if ($v->status === 'draft') {{ ($this->sessionAction)(['id' => $s->id]) }} {{ ($this->removeAction)(['kind' => 'sessions', 'id' => $s->id]) }} @endif</div>
                     @foreach ($entry['content']['stages'] as $stage)
                         <details open class="space-y-3"><summary class="font-semibold cursor-pointer">{{ $stage['title'] }}</summary>

@@ -52,6 +52,7 @@ class CookingTemplatesTest extends PostgresTestCase
         $history = $this->history();
         (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->up();
         (require database_path('migrations/2026_10_28_010000_add_cooking_selection.php'))->up();
+        (require database_path('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
         $this->assertSame($history, $this->history());
     }
 
@@ -147,15 +148,21 @@ class CookingTemplatesTest extends PostgresTestCase
         $this->rejected(fn () => $service->select($this->actor, $d['v'], 0));
         $this->publishCooking($d['v']);
         $client = DB::table('clients')->insertGetId(['coach_user_id' => $this->actor->id]);
+        $weekStart = now()->startOfWeek()->toDateString();
+        $weekEnd = now()->startOfWeek()->addDays(6)->toDateString();
+        $today = now()->toDateString();
         $assignment = DB::table('client_meal_plan_assignments')->insertGetId(['client_id' => $client, 'meal_plan_version_id' => $d['source'],
-            'created_by' => $this->actor->id, 'start_date' => '2026-10-26', 'end_date' => '2026-11-01']);
-        $available = fn ($v) => DB::selectOne("SELECT cooking_available(?,?,?,1,1,'2026-10-28'::date) AS ok", [$client, $assignment, $v])->ok;
+            'created_by' => $this->actor->id, 'start_date' => $weekStart, 'end_date' => $weekEnd]);
+        $available = fn ($v) => DB::selectOne('SELECT cooking_available(?,?,?,1,1,?::date) AS ok', [$client, $assignment, $v, $today])->ok;
         $this->assertFalse($available($d['v']));
         $this->assertSame(1, $service->select($this->actor, $d['v'], 0));
         $this->rejected(fn () => DB::select('SELECT cooking_select(?,?,NULL)', [$this->actor->id, $d['v']]));
         $this->rejected(fn () => DB::select('SELECT cooking_assert_revision(?,NULL)', [$d['v']]));
         $this->rejected(fn () => DB::table('cooking_selections')->update(['mode' => 2, 'revision' => 2]));
         $this->assertTrue($available($d['v']));
+        $projection = app(\App\Services\Cooking\ClientCooking::class)->choices($client, 1, $today);
+        $this->assertSame((string) $d['v'], $projection['modes'][0]['templates'][0]['version_id']);
+        $this->assertSame(1, $projection['modes'][0]['mode']);
         $next = $this->replacement($d);
         $this->publishCooking($next['v']);
         $this->assertTrue($available($d['v']));
@@ -193,6 +200,32 @@ class CookingTemplatesTest extends PostgresTestCase
             $this->assertSame($before[$n], $resolve($n));
             $this->assertSame('г', $resolve($n, 'grams')['unit_label']);
         }
+    }
+
+    public function test_equipment_catalog_values_are_snapshotted_ordered_and_revision_guarded(): void
+    {
+        $this->assertSame(file_get_contents(database_path('sql/cooking/02_equipment.sql')), file_get_contents(base_path('docs/19_cooking_session_equipment.sql')));
+        $d = $this->draft();
+        config(['presentation.image_hosts' => ['images.example.com']]);
+        $equipment = DB::table('kitchen_equipment')->insertGetId(['name' => 'Синтетична каструля', 'image_url' => 'https://images.example.com/pot.jpg']);
+        $oldRevision = $this->revision($d['v']);
+        $data = ['day' => 1, 'position' => 1, 'estimated_seconds' => 3600, 'introduction' => 'Вступ', 'equipment' => 'Додаткове пояснення автора',
+            'equipment_items' => [['equipment_id' => (string) $equipment]], 'content' => $this->content()];
+        app(CookingEditor::class)->session($this->actor, $d['v'], $oldRevision, $data, $d['session']);
+        $this->assertGreaterThan($oldRevision, $this->revision($d['v']));
+        $snapshot = DB::table('cooking_session_equipment')->where('session_id', $d['session'])->sole();
+        $this->assertSame('Синтетична каструля', $snapshot->name_snapshot);
+        $this->assertSame('https://images.example.com/pot.jpg', $snapshot->image_url_snapshot);
+        $this->assertSame(1, (int) $snapshot->position);
+
+        DB::table('kitchen_equipment')->where('id', $equipment)->update(['name' => 'Перейменована каструля', 'image_url' => 'https://evil.example/new.jpg']);
+        $this->assertSame('Синтетична каструля', DB::table('cooking_session_equipment')->where('session_id', $d['session'])->value('name_snapshot'));
+        $this->assertSame('https://images.example.com/pot.jpg', DB::table('cooking_session_equipment')->where('session_id', $d['session'])->value('image_url_snapshot'));
+
+        $this->rejected(fn () => app(CookingEditor::class)->session($this->actor, $d['v'], $oldRevision, $data, $d['session']), DeadlockException::class);
+        $this->publishCooking($d['v']);
+        $this->rejected(fn () => DB::table('cooking_session_equipment')->where('session_id', $d['session'])->update(['name_snapshot' => 'Зміна опублікованого snapshot']));
+        $this->rejected(fn () => DB::table('cooking_session_equipment')->where('session_id', $d['session'])->delete());
     }
 
     private function review(int $v): void

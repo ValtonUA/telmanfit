@@ -8,6 +8,7 @@ import { OnboardingFirstStep } from './components/OnboardingFirstStep'
 import { MealItemRecipe } from './components/MealItemRecipe'
 import { MealPlan } from './components/MealPlan'
 import { ShoppingList } from './components/ShoppingList'
+import { CookingAssistant } from './components/CookingAssistant'
 import { SecurityPanel } from './components/SecurityPanel'
 import { Today } from './components/Today'
 import './App.css'
@@ -93,9 +94,10 @@ export default function App() {
     return () => { active = false; document.removeEventListener('visibilitychange', refresh) }
   }, [me, page])
   function login(user: Me) { setMe(user); setInvite(undefined); setNotice(''); window.history.replaceState(null, '', '/app'); setPage('/app') }
-  function exit(message: string) { setMe(undefined); setInvite(undefined); setNotice(message); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') }
+  function exit(message: string) { try { for (const key of Object.keys(localStorage)) if (key.startsWith('tf:cooking:v1:')) localStorage.removeItem(key) } catch { /* Browser storage may be disabled. */ } setMe(undefined); setInvite(undefined); setNotice(message); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') }
   const client = ready && Boolean(me)
   const recipe = /^\/app\/meal-plan\/items\/[^/]+\/recipe$/.test(page)
+  const cooking = page === '/app/meal-plan/cooking'
   return <>
     {client ? <header className="client-header"><div className="client-header-inner">
       <div className="client-header-title"><span className="eyebrow">Ваш особистий простір</span><strong>{pageTitle(page)}</strong></div>
@@ -110,6 +112,7 @@ export default function App() {
       {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
         : me && recipe ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
+        : me && cooking ? <CookingAssistant onExit={exit} />
         : me && page === '/app/meal-plan/shopping-list' ? <ShoppingList onExit={exit} />
         : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
         : me && page === '/app/resources' ? <Library onExit={exit} />

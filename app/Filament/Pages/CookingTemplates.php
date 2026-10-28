@@ -176,10 +176,11 @@ class CookingTemplates extends Page
         return Action::make('session')->label('Сесія / етапи')->visible(fn () => $this->record()?->status === 'draft')
             ->fillForm(function (array $arguments) {
                 if (! isset($arguments['id'])) {
-                    return ['day' => 1, 'position' => $this->sessions()->count() + 1, 'estimated_seconds' => 3600, 'stages' => []];
+                    return ['day' => 1, 'position' => $this->sessions()->count() + 1, 'estimated_seconds' => 3600, 'equipment_items' => [], 'stages' => []];
                 }
                 $s = DB::table('cooking_sessions')->where('version_id', $this->version)->where('id', $arguments['id'])->firstOrFail();
                 $data = (array) $s;
+                $data['equipment_items'] = $this->equipmentItems((int) $s->id)->map(fn ($item) => ['equipment_id' => (string) $item->equipment_id])->all();
                 $data['stages'] = json_decode($s->content, true)['stages'];
                 foreach ($data['stages'] as &$stage) {
                     foreach ($stage['blocks'] as &$block) {
@@ -199,6 +200,11 @@ class CookingTemplates extends Page
             });
     }
 
+    public function equipmentItems(int $session): Collection
+    {
+        return DB::table('cooking_session_equipment')->where('version_id', $this->version)->where('session_id', $session)->orderBy('position')->get();
+    }
+
     private function sessionFields(?int $session): array
     {
         $id = fn () => Hidden::make('id')->default(fn () => (string) Str::uuid());
@@ -207,6 +213,9 @@ class CookingTemplates extends Page
             TextInput::make('position')->label('Порядок сесії')->integer()->minValue(1)->required(),
             TextInput::make('estimated_seconds')->label('Авторський час, секунд')->integer()->minValue(1)->required(),
             Textarea::make('introduction')->label('Вступ'), Textarea::make('equipment')->label('Обладнання (вручну)'),
+            Repeater::make('equipment_items')->label('Обладнання з каталогу')->reorderable()->reorderableWithButtons()->maxItems(24)->schema([
+                Select::make('equipment_id')->label('Предмет обладнання')->options(fn () => DB::table('kitchen_equipment')->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
+            ]),
             Repeater::make('stages')->label('Етапи')->reorderable()->reorderableWithButtons()->cloneable()->cloneAction(fn (Action $action) => $this->cloneItem($action))->collapsible()->itemLabel(fn (array $state) => $state['title'] ?? 'Етап')->schema([
                 $id(), TextInput::make('title')->label('Назва етапу')->required(),
                 Repeater::make('blocks')->label('Блоки')->reorderable()->reorderableWithButtons()->cloneable()->cloneAction(fn (Action $action) => $this->cloneItem($action))->collapsible()->schema([
@@ -348,7 +357,11 @@ class CookingTemplates extends Page
                     }
                 }
             }
-            $sessions[] = ['session' => $s, 'content' => $content];
+            $equipment = $this->equipmentItems((int) $s->id)->map(fn ($item) => [
+                'name' => $item->name_snapshot,
+                'image_url' => PublicImageUrl::safe($item->image_url_snapshot),
+            ]);
+            $sessions[] = ['session' => $s, 'equipment_items' => $equipment, 'content' => $content];
         }
 
         return $sessions;

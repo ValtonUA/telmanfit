@@ -81,6 +81,27 @@ final class ClientSession
         return $user;
     }
 
+    /** Read-only variant for one REPEATABLE READ API snapshot; no row locks or session writes. */
+    public function readOnlyUser(Request $request): object
+    {
+        $id = Auth::guard('client')->id();
+        $user = $id ? DB::table('users')->where('id', $id)->first() : null;
+        $now = $this->auth->now();
+        $state = DB::table('auth_session_states as a')->join('sessions as s', 's.id', '=', 'a.session_id')
+            ->where('a.session_id', $request->session()->getId())->where('a.user_id', $id)->where('a.audience', 'client')
+            ->where('a.primary_method', 'email_otp')->whereNull('a.revoked_at')->whereRaw('a.absolute_expires_at > clock_timestamp()')
+            ->where('s.last_activity', '>', $now->timestamp - 43200)
+            ->where('a.browser_binding_hash', hash('sha256', (string) $request->session()->get('client_binding')))->select('a.*')->first();
+        $factor = $id ? DB::table('user_totp_factors')->where('user_id', $id)->whereNotNull('confirmed_at')->whereNull('disabled_at')->exists() : false;
+        if (! $user || RecoveryGate::blocked($user->id) || $user->role !== 'client' || ! $state || $state->auth_version !== $user->auth_version
+            || ! $user->email_verified_at
+            || ($factor && (! $state->mfa_verified_at || ! in_array($state->mfa_method, ['totp', 'recovery_code'], true)))) {
+            throw new AuthDenied('unauthenticated', 401);
+        }
+
+        return $user;
+    }
+
     public function logout(Request $request): void
     {
         $this->auth->transaction(function () use ($request) {

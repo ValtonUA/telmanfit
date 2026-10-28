@@ -23,6 +23,7 @@ RECIPE_PREFIXES = (
     "app/Filament/Pages/CookingTemplates.php",
     "resources/views/filament/cooking/",
     "tests/Postgres/CookingTemplatesTest.php",
+    "tests/Auth4/ClientCookingTest.php",
     "app/Services/Catalog/",
     "app/Console/Commands/MatchR2Images.php",
     "config/r2.php",
