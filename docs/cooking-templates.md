@@ -12,9 +12,9 @@ Explicit selection і уточнений token result додає forward-only
 [SQL18](18_cooking_selection.sql), byte-identical до
 [runtime SQL](../database/sql/cooking/01_selection.sql), через окрему
 [міграцію](../database/migrations/2026_10_28_010000_add_cooking_selection.php).
-Історичні таблиці й рядки не змінюються. Schema/domain та адміністративний
-Filament-конструктор реалізовано; API, ClientSession adapter, React і production
-activation — наступні етапи.
+Історичні таблиці й рядки не змінюються. Schema/domain і Filament-конструктор
+реалізовано. T5.7b додає read-only ClientSession API та React-помічник;
+production activation лишається окремим рішенням і не виконується цим PR.
 
 ## Межа D1 та DEC-5M
 
@@ -51,7 +51,8 @@ SHA256 від UTF-8 PostgreSQL JSONB text — індекс пошуку канд
 |---|---|
 | cooking_templates | Ідентичність серії, адміністративний title, created_by. Не клієнтський текст версії. |
 | cooking_template_versions | Послідовний номер, previous published version тієї ж серії, максимум один draft; source published version/week, mode, revision, pattern/hash, поточний author review. |
-| cooking_sessions | Належить exact cooking version; стабільний ID, день 1–7, порядок, ручні вступ/обладнання/час, versioned JSONB етапів. |
+| cooking_sessions | Належить exact cooking version; стабільний ID, день 1–7, порядок, ручні вступ/пояснення обладнання/час, versioned JSONB етапів. |
+| cooking_session_equipment | Упорядкований вибір автора: catalog equipment ID + frozen назва та URL фото. Не виводиться з рецептів; зміни каталогу не переписують інструкції. |
 | cooking_outputs | Одне фізичне приготування exact published recipe/format; portion_divisor — скільки порцій приготовлено. Повторне приготування — інший output. |
 | cooking_allocations | Одна recipe meal position → один output, exact споживані portions; composite FK не дозволяє чужу cooking version. |
 
@@ -113,7 +114,7 @@ classifier: зміст ingredient tokens перевіряє автор чере�
 `no_process_water_tokens`, а не ненадійна перевірка назви продукту. Автоматичних
 water/equipment/time/formula token types немає. Таймер не доводить готовності їжі.
 
-## Доступ і наступний API
+## Доступ і клієнтський API
 
 ### Явний вибір чинної версії (погоджений MVP)
 
@@ -121,8 +122,8 @@ water/equipment/time/formula token types немає. Таймер не дово�
 активацію. `cooking_selections` зберігає один явний вибір на
 template + exact menu pattern + mode. Ключ використовує SHA256; guard перевіряє
 повну JSONB рівність старої й нової версій, collision відхиляється без fallback.
-Різні template є окремими серіями: майбутній caller передає явно обраний template
-та exact version ID, не обирає довільний перший template серед сумісних.
+Різні template є окремими серіями: client list показує всі exact активні кандидати,
+а клієнт відкриває обрану версію явним натисканням. Перший кандидат не вибирається.
 
 Admin виконує `CookingTemplates::select(actor, version, expectedSelectionRevision)`.
 Перший вибір очікує revision=0, запис отримує 1; кожна явна заміна, включно
@@ -139,8 +140,8 @@ fallback. Інший pattern/mode не є заміною цього slot і ма
 Новий read snapshot після commit заміни відхиляє попередню версію; read request,
 що вже почав REPEATABLE READ snapshot до commit, завершується з попереднім
 цілісним станом. Немає обіцянки скасувати вже видану відповідь або offline content.
-Наступний API повинен повторювати перевірку при новому запиті та скидати local
-progress при зміні exact version, без неявного перенесення.
+Detail endpoint повторює перевірку та локальний progress має інший ключ для іншої
+exact version/assignment/date; переміщення між ключами не виконується.
 
 ### Одиниці та labels token result
 
@@ -152,12 +153,13 @@ progress при зміні exact version, без неявного перенес
 Це канонічний підпис фізичної метрики, не історична назва довідника.
 
 Legacy не має frozen UOM label: quantity повертає `unit_label=null`,
-`label_source=unavailable`. Числова quantity лишається exact, але майбутній API
-мусить fail-closed відхилити інструкцію з таким quantity token; автор може явно
+`label_source=unavailable`. Числова quantity лишається exact, але client API
+fail-closed відхиляє цілу інструкцію з таким quantity token; автор може явно
 використати підтриманий grams token або вручну написати перевірений текст.
 Live label lookup/backfill/перезапис published recipe тут не вводиться.
 Теперішній T5.4 reader має live-label fallback для legacy/A; його не можна
-копіювати в cooking API або називати цілком frozen. Повний cooking API відсутній.
+копіювати в cooking API або називати цілком frozen. Cooking client API має власний
+strict resolver, який відхиляє таку legacy quantity.
 
 ### Конкурентні команди
 
@@ -171,18 +173,19 @@ Raw child-first DML може створити deadlock із root-first writer: P
 
 `cooking_available(client,assignment,version,week,mode,server_date)` — read-only доменна
 перевірка exact чинного assignment, published menu/template, ownership плану й
-personal recipes, повного доступного тижня та рівності pattern. Невідповідність
+чужих personal recipes, повного доступного тижня та рівності pattern. Невідповідність
 повертає false. Функція не автентифікує довільно переданий client ID і не є RLS.
 `CookingTemplates::review/publish` дозволені лише admin із перевіркою ролі у БД.
 Прямий SQL — довірений migration/test рівень, не публічний інтерфейс.
 
-Майбутній ClientSession adapter мусить брати client/server date із довіреного
-контексту; перевірка доступу та читання content/tokens — один REPEATABLE READ
-READ ONLY snapshot. Будь-який mismatch блокує всю інструкцію. HTTP 401/404/409,
-no-store/private, GET/HEAD без DML, allowlist зображень при читанні та очищення
-нечинного локального progress належать наступному API/React PR. Тут routes немає.
-Локальний progress ізолюється user+assignment/date+version+session, не template
-fingerprint; поточна схема його не зберігає і не переносить між клієнтами.
+ClientSession adapter бере client/date із довіреного контексту. Endpoint додатково
+відхиляє всі personal recipes (включно з особистим recipe поточного клієнта), бо
+цей UI призначений для спільних reusable instructions. Перевірка доступу й читання
+content/tokens — один REPEATABLE READ READ ONLY snapshot. Будь-який mismatch блокує
+всю інструкцію. HTTP 401/404/422/503, no-store/private, GET/HEAD без DML, allowlist
+зображень та local-progress cleanup/revalidation реалізовані в клієнтському шарі.
+Progress ізольований ключем client/assignment/week/date/exact version/session,
+зберігає тільки cursor і timer timestamps, ніколи content.
 
 ## Перевірки та пілот
 
@@ -208,8 +211,9 @@ Linux-команди винесено в [cooking-runtime.sh](../tests/pg/cookin
 і перевірку всіх user FK/BIGINT із двома новими cooking references.
 
 Read-only preflight локального профілю не підтвердив шість published страв і
-раціон; тестовий пілот використовує лише синтетичні дані. Повний Filament→телефон
-walkthrough потребує наступних API/React етапів; адміністративний редактор описано нижче.
+раціон; тестовий пілот використовує лише синтетичні дані. Filament→React walkthrough
+покритий синтетичним Chromium harness; реальні плани/телефони не заявляються.
+Адміністративний редактор описано нижче.
 
 ## Адміністративний конструктор Filament
 
@@ -247,8 +251,59 @@ Publish робить версію незмінною; окрема confirmation 
 та root-first `cooking_assert_revision`. Locked Livewire version/revision захищають
 від підміни й старої вкладки; конфлікт не повторюється автоматично. Після конфлікту
 потрібне явне оновлення сторінки та перевірка нового стану. SQL/FK guards збережені.
-Клієнтського API, React-помічника й production activation у цьому редакторі немає.
+Клієнтський API/React описані нижче; production activation не виконується.
+
+## Авторський snapshot обладнання
+
+Автор додає до кожної сесії предмети з каталогу в потрібному порядку. Одна
+додаткова таблиця `cooking_session_equipment` зберігає `equipment_id`,
+`name_snapshot`, `image_url_snapshot`, позицію та `version_id/session_id`. SQL19
+і окрема forward-only міграція додаються поверх SQL17/18 без редагування базових
+файлів. Поле `cooking_sessions.equipment` залишається вільним авторським текстом.
+Composite FK і `cooking_detail_guard` дають ті самі draft/revision/review та
+published immutability правила. Фото проходить актуальний HTTPS allowlist; коли
+його немає або він більше не дозволений, клієнт показує лише збережену назву.
+
+## Read-only client API та помічник
+
+- `GET /api/meal-plan/cooking?week=N` повертає режими 1/2/7 і кандидатів тільки
+  після SQL17/18 exact перевірки повного тижня, чинного призначення, pattern і
+  активованої published cooking version. Список упорядкований для показу, але
+  інтерфейс не обирає жоден кандидат автоматично.
+- `GET /api/meal-plan/cooking/{version}/sessions/{session}?week=N&mode=M` повторює
+  перевірку exact доступу в одному PostgreSQL `REPEATABLE READ READ ONLY` snapshot
+  і повертає frozen session/tokens, outputs, allocations/balances, ingredients,
+  equipment і content. `client_id` береться тільки з ClientSession; personal
+  recipes, latest/history fallback і partial weeks не повертаються. Будь-яка
+  unresolved quantity/UOM або mismatch закриває цілу сесію.
+- Список інгредієнтів підсумовує фізичні outputs рівно один раз: A бере базові
+  frozen `recipe_ingredients`, B/C — тільки точну пару
+  `(format_id, recipe_ingredient_id)` у frozen `recipe_batch_quantities`.
+  C/3 і C/4 мають ту саму фізичну кількість C; повторне приготування є іншим output.
+  Allocations/споживані порції не множать цей список. Відсутня, дубльована або
+  суперечлива frozen проєкція закриває всю сесію; live catalog fallback немає.
+- GET/HEAD мають `Cache-Control: no-store, private`, не пишуть у БД і не зберігають
+  або GC-ять session metadata. Використовуються звичні auth/error статути клієнта.
+- Клієнт проходить із «Раціону» через явний template/session вибір на intro та
+  покроковий player: страви/фізичні порції/час, вступ, фото обладнання з fallback,
+  frozen грами, outline, точні tokens, timers і safe-area навігація. Не робляться
+  автоматичні safety/storage твердження.
+- Навігація етапами розташована над основною навігацією кабінету; фото-галерея
+  перекриває обидві. Другорядні кнопки підтримують контраст у light/dark.
+- Локальний state містить лише stage/timer timestamps/expiry; ключ scoped до
+  client/assignment/week/date/exact version/session. Logout очищує його. Таймери
+  переживають навігацію, повторне відкриття сесії й reload. Збереження того самого
+  ключа починається після відновлення progress. Список сесій та відкритий player
+  повторно перевіряють доступ на focus/visibility і щохвилини; 401 повертає до входу.
+  Wake Lock є best-effort із visible status: максимум один pending request або
+  активний lock; повторне захоплення чекає release. Hide, вимкнення й cleanup
+  скасовують попередній intent, а його пізній promise одразу звільняється.
+  Повернення у видиму сторінку відновлює лише чинний увімкнений intent;
+  фонових повідомлень немає.
 
 Автоматизовані перевірки: `CookingTemplatesTest` (PG18 + Filament/Livewire),
+`ClientCookingTest` (AUTH-4 GET/HEAD, no-store та незмінність БД),
 чинний independent `cooking-concurrency.php` та `tests/browser/cooking.py`,
 який викликається з recipe browser runner після штатного login/MFA.
+Локальні результати й приклади responsive екранів — у
+[звіті перевірок](evidence/cooking-editor/report.md).

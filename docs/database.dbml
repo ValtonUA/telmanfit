@@ -1202,6 +1202,20 @@ Table cooking_sessions {
     (id,version_id) [unique]
   }
 }
+Table cooking_session_equipment {
+  version_id integer [not null]
+  session_id integer [not null]
+  position smallint [not null, note: '1-based author ordering']
+  equipment_id smallint [not null, ref: > kitchen_equipment.id]
+  name_snapshot text [not null]
+  image_url_snapshot text [note: 'HTTPS allowlist rechecked when served; nullable']
+  indexes {
+    (session_id,position) [pk]
+    (session_id,equipment_id) [unique]
+    (version_id,session_id,position)
+  }
+  Note: 'Single additive T5.7b relation. Composite session/version FK and cooking_detail_guard enforce draft revision/review and published immutability.'
+}
 Table cooking_outputs {
   id integer [pk, increment]
   version_id integer [not null]
@@ -1228,5 +1242,6 @@ Table cooking_allocations {
   Note: 'SQL17 exact recipe slot selectors/portions; one output per slot; aggregate <= cooked. View cooking_output_balances derives allocated/left_over.'
 }
 Ref: cooking_outputs.(session_id,version_id) > cooking_sessions.(id,version_id) [delete: restrict]
+Ref: cooking_session_equipment.(session_id,version_id) > cooking_sessions.(id,version_id) [delete: restrict]
 Ref: cooking_outputs.(format_id,recipe_version_id) > recipe_batch_formats.(id,recipe_version_id) [delete: restrict]
 Ref: cooking_allocations.(output_id,version_id) > cooking_outputs.(id,version_id) [delete: restrict]

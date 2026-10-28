@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "browser": "151.0.7922.34",
+  "checks": [
+    "Бібліотека T5.6: auth, published-only, Markdown, HTTPS, reload, 1440/390/320 light/dark",
+    "T5.7a: PG exact grams, week selector, deep URL/reload, 409 clears UI, retry, responsive light/dark",
+    "Картка / ingredient без посилання / B physical quantities / tokens / фото / повернення до week2 day9",
+    "Прямий URL / reload / 1440,390,320 light,dark без overflow",
+    "Фото fallback / error clears content / retry / заміна призначення / forged ID",
+    "T5.7b synthetic Filament-compatible published selection → ClientSession API → React; exact token/equipment; 1440/390/320 light/dark; local stage/timer reload+resume/discard; wake-lock unsupported",
+    "Revoked ClientSession / приватний вміст прибрано"
+  ]
+}

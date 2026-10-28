@@ -32,7 +32,7 @@ cleanup() {
     if [[ -n "$b6_monitor" ]]; then kill -KILL "$b6_monitor" 2>/dev/null || true; wait "$b6_monitor" 2>/dev/null || true; fi
     if [[ -n "$container" ]]; then docker rm -f "$container" >/dev/null || code=1; fi
     rm -f -- "$work/socket/.s.PGSQL.5432" "$work/socket/.s.PGSQL.5432.lock"
-    rm -f -- "$work/snapshot.dump" "$work/maintenance.json" "$work/b6-resources.jsonl" "$work/restart.json"
+    rm -f -- "$work/snapshot.dump" "$work/maintenance.json" "$work/b6-resources.jsonl" "$work/restart.json" "$work/recipe-failure-probe.log"
     rmdir -- "$work/socket" "$work" || code=1
     printf 'CI_STAGE1_TIMING phase=total_with_cleanup seconds=%s exit=%s\n' "$((SECONDS - run_started))" "$code"
     exit "$code"
@@ -191,8 +191,14 @@ if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|NutritionImportTest|R2ImageMatcherTest|R2ImageMatcherIsolatedTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|ClientCookingTest|NutritionImportTest|R2ImageMatcherTest|R2ImageMatcherIsolatedTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
+    if php tests/pg/recipe-batch-concurrency.php failure-probe >"$work/recipe-failure-probe.log" 2>&1; then
+        echo 'Recipe concurrency exception was reported as success' >&2
+        exit 1
+    fi
+    grep -q 'Recipe batch failure propagation probe' "$work/recipe-failure-probe.log"
+    rm -f -- "$work/recipe-failure-probe.log"
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
     php tests/pg/batch-editor-concurrency.php

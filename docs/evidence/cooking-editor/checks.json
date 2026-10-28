@@ -3,7 +3,9 @@
     "1440/390/320 light/dark, без горизонтального overflow",
     "Filament repeaters: clone/reorder/collapse/save етапів",
     "Стара вкладка: review відхилено після конкурентного edit",
-    "Review → publish (readonly) → окрема activation"
+    "Review → publish (readonly) → окрема activation",
+    "Wake Lock: один pending/active, stale release, hide/show, вихід із сесії",
+    "Filament publish/activate → ClientSession OTP → exact session/equipment/ingredients/timer/image, 1440/390/320 light/dark"
   ],
   "page_errors": []
 }

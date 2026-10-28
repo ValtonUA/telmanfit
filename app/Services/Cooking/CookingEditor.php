@@ -52,7 +52,9 @@ final class CookingEditor
     {
         return $this->edit($actor, $version, $revision, function () use ($version, $data, $id) {
             Validator::make($data, ['day' => 'required|integer|between:1,7', 'position' => 'required|integer|min:1|max:32767',
-                'estimated_seconds' => 'required|integer|min:1|max:2147483647', 'introduction' => 'nullable|string', 'equipment' => 'nullable|string', 'content' => 'required|array'])->validate();
+                'estimated_seconds' => 'required|integer|min:1|max:2147483647', 'introduction' => 'nullable|string', 'equipment' => 'nullable|string',
+                'equipment_items' => 'sometimes|array|max:24', 'equipment_items.*.equipment_id' => 'required|integer|min:1|max:32767',
+                'content' => 'required|array'])->validate();
             foreach (['introduction', 'equipment'] as $field) {
                 if (preg_match('/[<>]|\{\{/', $data[$field] ?? '')) {
                     throw ValidationException::withMessages(['content' => 'Вступ та обладнання — звичайний текст.']);
@@ -60,6 +62,19 @@ final class CookingEditor
             }
             if ($id !== null) {
                 abort_unless(DB::table('cooking_sessions')->where('version_id', $version)->where('id', $id)->exists(), 404);
+            }
+            $equipmentIds = array_map(fn (array $item): int => (int) $item['equipment_id'], array_values($data['equipment_items'] ?? []));
+            if (count($equipmentIds) !== count(array_unique($equipmentIds))) {
+                throw ValidationException::withMessages(['equipment_items' => 'Один предмет обладнання можна додати лише один раз.']);
+            }
+            $equipment = collect();
+            if ($equipmentIds !== []) {
+                $equipment = DB::table('kitchen_equipment')->whereIn('id', $equipmentIds)->orderBy('id')
+                    ->get(['id', 'name', 'image_url'])->keyBy('id');
+                if ($equipment->count() !== count($equipmentIds)
+                    || $equipment->contains(fn ($item) => ! is_string($item->name) || mb_strlen(trim($item->name)) < 1 || mb_strlen(trim($item->name)) > 300)) {
+                    throw ValidationException::withMessages(['equipment_items' => 'Оберіть наявні предмети з каталогу обладнання.']);
+                }
             }
             $content = json_encode($data['content'], JSON_THROW_ON_ERROR);
             if (! DB::selectOne('SELECT cooking_content_valid(?::jsonb) AS valid', [$content])->valid) {
@@ -85,11 +100,25 @@ final class CookingEditor
             if ($id !== null) {
                 abort_unless(DB::table('cooking_sessions')->where('version_id', $version)->where('id', $id)->exists(), 404);
                 DB::table('cooking_sessions')->where('id', $id)->update($row);
-
-                return $id;
+                $session = $id;
+            } else {
+                $session = DB::table('cooking_sessions')->insertGetId($row + ['version_id' => $version]);
             }
 
-            return DB::table('cooking_sessions')->insertGetId($row + ['version_id' => $version]);
+            DB::table('cooking_session_equipment')->where('session_id', $session)->delete();
+            foreach ($equipmentIds as $position => $equipmentId) {
+                $item = $equipment->get($equipmentId);
+                DB::table('cooking_session_equipment')->insert([
+                    'version_id' => $version,
+                    'session_id' => $session,
+                    'position' => $position + 1,
+                    'equipment_id' => $equipmentId,
+                    'name_snapshot' => $item->name,
+                    'image_url_snapshot' => PublicImageUrl::safe($item->image_url),
+                ]);
+            }
+
+            return $session;
         });
     }
 

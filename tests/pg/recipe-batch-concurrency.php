@@ -3,7 +3,22 @@
 use Illuminate\Support\Facades\DB;
 use Tests\Recipes\BatchFixture;
 
-require __DIR__.'/auth2-bootstrap.php';
+try {
+    require __DIR__.'/auth2-bootstrap.php';
+} catch (Throwable $exception) {
+    fwrite(STDERR, $exception->getMessage().PHP_EOL);
+    exit(1);
+}
+set_exception_handler(function (Throwable $exception): void {
+    fwrite(STDERR, $exception->getMessage().PHP_EOL);
+    exit(1);
+});
+if (($argv[1] ?? '') === 'failure-probe') {
+    throw new RuntimeException('Recipe batch failure propagation probe');
+}
+if (! extension_loaded('pgsql')) {
+    throw new RuntimeException('Recipe concurrency потребує ext-pgsql до змін synthetic схеми.');
+}
 (require database_path('migrations/2026_10_24_010000_create_recipe_batches.php'))->up();
 (require database_path('migrations/2026_10_24_020000_complete_recipe_equipment.php'))->up();
 $fixture = new class

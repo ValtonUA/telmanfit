@@ -233,6 +233,15 @@ def main():
                                              'Recipe editor browser PASS', 'CI_BROWSER_READINESS')):
                             print(clean)
                     print('\n'.join(lines[-12:]))
+                    if name == 'recipe' and any('Recipe browser PHP server tail:' in line for line in lines):
+                        marker = next(i for i, line in enumerate(lines) if 'Recipe browser PHP server tail:' in line)
+                        print('--- Recipe browser HTTP diagnostics ---')
+                        print('\n'.join(lines[marker:marker + 170]))
+                        tracebacks = [i for i, line in enumerate(lines) if 'Traceback (most recent call last)' in line]
+                        if tracebacks:
+                            index = tracebacks[-1]
+                            print('--- Recipe browser Python failure ---')
+                            print('\\n'.join(lines[index:index + 28]))
     return code
 
 

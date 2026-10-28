@@ -130,7 +130,7 @@ function Invoke-SyntheticBaseline {
     if (-not $healthy) { throw 'Disposable PostgreSQL 18 did not become healthy.' }
 
     $migrationFiles = @(Get-ChildItem (Join-Path $root 'database/migrations') -Filter '*.php' -File | Sort-Object Name)
-    $pendingNames = @('2026_10_28_000000_create_cooking_templates', '2026_10_28_010000_add_cooking_selection')
+    $pendingNames = @('2026_10_28_000000_create_cooking_templates', '2026_10_28_010000_add_cooking_selection', '2026_10_28_020000_add_cooking_session_equipment')
     foreach ($file in $migrationFiles) {
         $migration = [IO.Path]::GetFileNameWithoutExtension($file.Name)
         if ($migration -in $pendingNames) { continue }

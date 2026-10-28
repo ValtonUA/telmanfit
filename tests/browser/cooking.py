@@ -3,13 +3,18 @@ import json
 from pathlib import Path
 import subprocess
 from playwright.sync_api import expect
+from wake_lock import WAKE_LOCK_PROBE, verify_wake_lock
 
 
 def run_cooking(page, base, fixture=None):
     def invoke(*args):
         if fixture:
             return fixture(*args)
-        return subprocess.check_output(['php', 'tests/browser/cooking-fixture.php', *map(str, args)], text=True).strip()
+        result = subprocess.run(['php', 'tests/browser/cooking-fixture.php', *map(str, args)], text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=60)
+        if result.returncode != 0:
+            raise AssertionError(f'Cooking fixture exited {result.returncode}: {result.stdout}\n{result.stderr}')
+        return (result.stdout.strip().splitlines()[-1] if result.stdout.strip() else '')
 
     version = invoke()
     url = base + '/admin/cooking-templates/' + str(version)
@@ -74,5 +79,73 @@ def run_cooking(page, base, fixture=None):
     page.get_by_role('alertdialog').get_by_role('button', name='Активувати', exact=True).click()
     expect(page.get_by_text('Чинна версія цього слота: #' + str(version), exact=True)).to_be_visible()
     checks.append('Review → publish (readonly) → окрема activation')
+    invoke('client', version)
+    client = page.context.new_page()
+    client.set_default_timeout(15000)
+    client.add_init_script(WAKE_LOCK_PROBE)
+    client_errors = []
+    client.on('pageerror', lambda e: client_errors.append(str(e)))
+    client.route('https://images.example.com/**', lambda route: route.fulfill(content_type='image/png', body=Path('client/src/assets/hero.png').read_bytes()))
+    client.goto(base + '/app/login')
+    client.get_by_label('Електронна пошта', exact=True).fill('cooking-client@example.invalid')
+    client.get_by_role('button', name='Отримати код', exact=True).click()
+    expect(client.get_by_label('Код із листа', exact=True)).to_be_visible()
+    subprocess.check_output(['php', 'artisan', 'queue:work', '--stop-when-empty', '--tries=1', '--sleep=0'], text=True)
+    try:
+        code = subprocess.check_output(['php', 'tests/browser/auth5-fixture.php', 'mail', 'cooking-client@example.invalid'], text=True).strip()
+    except subprocess.CalledProcessError as error:
+        health = subprocess.check_output(['php', 'tests/browser/auth5-fixture.php', 'queue-health'], text=True).strip()
+        raise AssertionError(f'Synthetic OTP fixture unavailable; queue health: {health}') from error
+    client.get_by_label('Код із листа', exact=True).fill(code)
+    client.get_by_role('button', name='Підтвердити', exact=True).click()
+    client.wait_for_url(base + '/app')
+    client.goto(base + '/app/meal-plan')
+    client.get_by_role('link', name='Помічник приготування', exact=True).click()
+    expect(client.get_by_role('heading', name='Помічник приготування')).to_be_visible()
+    expect(client.locator('.cook-template').filter(has_text='Синтетична кухня')).to_be_visible()
+    client.locator('.cook-session-choice').first.click()
+    expect(client.get_by_text('Синтетичний вступ автора.')).to_be_visible()
+    expect(client.get_by_text('Каструля · синтетичний fixture')).to_be_visible()
+    expect(client.locator('.cook-ingredients li')).to_have_count(1)
+    expect(client.get_by_role('heading', name='Що приготуємо')).to_be_visible()
+    verify_wake_lock(client)
+    checks.append('Wake Lock: один pending/active, stale release, hide/show, вихід із сесії')
+    client.get_by_role('button', name='Почати', exact=True).click()
+    expect(client.locator('.cook-actions .cook-timer')).to_be_visible()
+    expect(client.locator('.cook-image-button img')).to_be_visible()
+    for width in (1440, 390, 320):
+        for theme in ('light', 'dark'):
+            client.set_viewport_size({'width': width, 'height': 1000})
+            client.emulate_media(color_scheme=theme)
+            assert client.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            player_nav = client.get_by_role('navigation', name='Навігація етапами')
+            main_nav = client.get_by_role('navigation', name='Основна навігація')
+            player_box = player_nav.bounding_box()
+            main_box = main_nav.bounding_box()
+            assert player_box['y'] + player_box['height'] <= main_box['y'], 'Основна навігація перекриває player'
+            assert player_box['y'] >= 0
+            contrast = client.locator('.cook-discard').evaluate("""button => {
+                const rgb = color => color.match(/[0-9.]+/g).slice(0, 3).map(Number);
+                const luminance = color => rgb(color).map(x => x / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4).reduce((sum, x, i) => sum + x * [.2126, .7152, .0722][i], 0);
+                let parent = button;
+                while (getComputedStyle(parent).backgroundColor === 'rgba(0, 0, 0, 0)') parent = parent.parentElement;
+                const foreground = luminance(getComputedStyle(button).color);
+                const background = luminance(getComputedStyle(parent).backgroundColor);
+                return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+            }""")
+            assert contrast >= 4.5, f'Недостатній контраст кнопки: {width}/{theme}: {contrast}'
+            client.locator('.cook-image-button').click()
+            gallery = client.get_by_role('dialog', name='Фото етапу')
+            expect(gallery).to_be_visible()
+            assert client.evaluate("""() => {
+                const rect = document.querySelector('.client-navigation').getBoundingClientRect();
+                return !!document.elementFromPoint(innerWidth / 2, rect.y + rect.height / 2).closest('.cook-gallery');
+            }"""), 'Навігація перекриває фото-галерею'
+            gallery.get_by_role('button', name='Закрити фото').click()
+            expect(gallery).not_to_be_visible()
+            client.screenshot(path=str(output / f'client-{width}-{theme}.png'), full_page=True)
+    assert not client_errors, client_errors
+    client.close()
+    checks.append('Filament publish/activate → ClientSession OTP → exact session/equipment/ingredients/timer/image, 1440/390/320 light/dark')
     assert not errors, errors
     (output / 'checks.json').write_text(json.dumps({'checks': checks, 'page_errors': errors}, ensure_ascii=False, indent=2) + '\n')
