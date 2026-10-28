@@ -72,7 +72,7 @@ services:
       context: .
       dockerfile: docker/local/Dockerfile
       target: web
-    ports: ["127.0.0.1:8098:80"]
+    ports: ["127.0.0.1:${TELMANFIT_LOCAL_WEB_PORT:-8098}:80"]
     depends_on:
       app: {condition: service_healthy}
     healthcheck:
@@ -90,3 +90,4 @@ volumes:
   storage:
 networks:
   local:
+

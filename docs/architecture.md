@@ -202,7 +202,8 @@ PWA і Telegram Mini App використовують максимально о�
 
 ## 13. Локальний запуск і типові команди
 
-Постійне середовище Windows 11 / Docker Desktop: [Docker Compose](local-compose.md).
+Постійне середовище Windows 11 / Docker Desktop: [Docker Compose](local-compose.md),
+включно з PowerShell coordinator-ом оновлення локального коду/схеми.
 `compose.yaml` збирає PHP 8.5 / Laravel, React/Vite та nginx у контейнерах,
 створює лише нову ізольовану PostgreSQL 18 і зберігає дані, ключі, storage та
 незалежний RestoreFence epoch у named volumes. Local-only adapter не реєструється
