@@ -145,6 +145,7 @@ $bareRepository = Join-Path $nativeTestRoot 'remote.git'
 $seedRepository = Join-Path $nativeTestRoot 'seed repo'
 $nativeTestDirectory = Join-Path $nativeTestRoot 'client config'
 $argvProbePath = Join-Path $nativeTestRoot 'argv-probe.exe'
+$argvProbeSourcePath = Join-Path $nativeTestRoot 'argv-probe.cs'
 $null = New-Item -ItemType Directory -Path $nativeTestRoot -Force
 try {
     # Compile a native child that returns its actual argv as ASCII-only JSON. This
@@ -190,7 +191,15 @@ public static class NativeArgvProbe
     }
 }
 '@
-    Add-Type -TypeDefinition $argvProbeSource -OutputAssembly $argvProbePath -OutputType ConsoleApplication -ErrorAction Stop
+    $compilerPaths = @(
+        (Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe')
+        (Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe')
+    )
+    $compilerPath = $compilerPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not $compilerPath) { throw 'Windows C# compiler is unavailable for native argv probe.' }
+    [IO.File]::WriteAllText($argvProbeSourcePath, $argvProbeSource, (New-Object Text.UTF8Encoding($false)))
+    $compileProbe = Invoke-Native -Command $compilerPath -Arguments @('/nologo', '/target:exe', "/out:$argvProbePath", $argvProbeSourcePath)
+    Assert-True ($compileProbe.ExitCode -eq 0 -and (Test-Path -LiteralPath $argvProbePath -PathType Leaf)) 'native argv probe compiles as a Windows console executable'
 
     $expectedArgv = [string[]] @(
         'plain'
