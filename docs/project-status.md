@@ -249,7 +249,8 @@ backfill немає. `MealItemResolver` повертає типізовану re
 Unit і synthetic PG upgrade/negative/rollback/concurrency тести входять
 у чинний runner. [Контракт і перевірки](meal-plans.md#model-i-g4-i-selectors-та-readonly-resolver).
 Фактичний CI PASS належить SHA відповідного PR, не цьому опису.
-Shopping/cooking не реалізовано; writer T4.3 використовує цей контракт, описаний нижче.
+Shopping API та cooking schema/domain описані у відповідних поточних розділах вище;
+writer T4.3 використовує цей контракт і описаний нижче.
 Робочі БД та feature flags не змінено; production rollout не авторизовано.
 
 
