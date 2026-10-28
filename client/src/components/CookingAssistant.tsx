@@ -14,15 +14,16 @@ const removeProgress = (key: string) => { try { localStorage.removeItem(key) } c
 
 export function CookingAssistant({ onExit }: { onExit: (message: string) => void }) {
   const week = Number(new URLSearchParams(window.location.search).get('week'))
+  const weekValid = Number.isInteger(week) && week >= 1 && week <= 4681
   const [choices, setChoices] = useState<CookingChoices>()
   const [detail, setDetail] = useState<CookingDetail>()
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(true)
+  const [busy, setBusy] = useState(weekValid)
   const [stageIndex, setStageIndex] = useState(0)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [timers, setTimers] = useState<Record<string, TimerState>>({})
   const [hydratedScope, setHydratedScope] = useState<string>()
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(0)
   const [wakeEnabled, setWakeEnabled] = useState(false)
   const [wakeState, setWakeState] = useState<'unsupported' | 'off' | 'active' | 'lost'>('off')
   const wakeLock = useRef<WakeLockSentinel | undefined>(undefined)
@@ -41,24 +42,28 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
 
   useEffect(() => {
     let active = true
-    if (!Number.isInteger(week) || week < 1) { setError('У посиланні бракує номера тижня раціону.'); setBusy(false); return }
+    if (!weekValid) return
     getCookingChoices(week).then(value => { if (active) setChoices(value) }).catch(failure => {
       if (active) { if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Помічник приготування зараз недоступний. Оновіть сторінку або зверніться до тренера.') }
     }).finally(() => { if (active) setBusy(false) })
     return () => { active = false }
-  }, [week, onExit])
+  }, [week, weekValid, onExit])
   useEffect(() => {
     if (!choices || detail || autoOpened.current) return
     const params = new URLSearchParams(window.location.search)
     const version = params.get('version'); const session = params.get('session'); const mode = Number(params.get('mode'))
-    if (version && session && [1, 2, 7].includes(mode)) { autoOpened.current = true; void openSession(version, session, mode) }
+    if (version && session && [1, 2, 7].includes(mode)) {
+      autoOpened.current = true
+      const timeout = window.setTimeout(() => { void openSession(version, session, mode) }, 0)
+      return () => window.clearTimeout(timeout)
+    }
   }, [choices, detail, openSession])
 
   const releaseWakeLock = useCallback(async () => {
-    if (wakeLock.current && !wakeLock.current.released) await wakeLock.current.release().catch(() => undefined)
+    const lock = wakeLock.current
     wakeLock.current = undefined
-    setWakeState(wakeEnabled ? 'lost' : (supported ? 'off' : 'unsupported'))
-  }, [wakeEnabled, supported])
+    if (lock && !lock.released) await lock.release().catch(() => undefined)
+  }, [])
   const requestWakeLock = useCallback(async () => {
     if (!wakeEnabled) return
     const api = (navigator as WakeLockNavigator).wakeLock
@@ -69,11 +74,18 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     } catch { setWakeState('lost') }
   }, [wakeEnabled])
   useEffect(() => {
-    if (wakeEnabled) void requestWakeLock(); else { void releaseWakeLock(); setWakeState(supported ? 'off' : 'unsupported') }
+    if (wakeEnabled) {
+      const timeout = window.setTimeout(() => { void requestWakeLock() }, 0)
+      return () => { window.clearTimeout(timeout); void releaseWakeLock() }
+    }
+    void releaseWakeLock()
     return () => { if (wakeLock.current && !wakeLock.current.released) void wakeLock.current.release().catch(() => undefined) }
-  }, [wakeEnabled, requestWakeLock, releaseWakeLock, supported])
+  }, [wakeEnabled, requestWakeLock, releaseWakeLock])
   useEffect(() => {
-    const visible = () => { if (document.visibilityState === 'visible' && wakeEnabled) void requestWakeLock(); else if (document.visibilityState !== 'visible') void releaseWakeLock() }
+    const visible = () => {
+      if (document.visibilityState === 'visible' && wakeEnabled) void requestWakeLock()
+      else if (document.visibilityState !== 'visible') { void releaseWakeLock(); if (wakeEnabled) setWakeState('lost') }
+    }
     document.addEventListener('visibilitychange', visible)
     return () => document.removeEventListener('visibilitychange', visible)
   }, [wakeEnabled, requestWakeLock, releaseWakeLock])
@@ -97,25 +109,32 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   useEffect(() => {
     if (!detail) return
     const key = storageKey(detail.progress_scope)
-    setHydratedScope(undefined); setStageIndex(0); setTimers({}); setPlayerStarted(false)
-    try {
-      const raw = localStorage.getItem(key)
-      if (raw) {
-        const saved = JSON.parse(raw) as Partial<Progress>
-        if (saved.expiresAt === detail.progress_scope.expires_at && Date.parse(saved.expiresAt) > Date.now()) {
-          const stage = Number.isInteger(saved.stage) ? Math.max(0, Math.min(detail.session.stages.length - 1, saved.stage as number)) : 0
-          const validTimers = Object.fromEntries(Object.entries(saved.timers ?? {}).filter(([timerId, value]) => {
-            if (!/^\d{1,2}:\d{1,3}$/.test(timerId) || !value || typeof value !== 'object') return false
-            const timer = value as Partial<TimerState>
-            const validEnd = timer.running ? typeof timer.endsAt === 'number' && Number.isFinite(timer.endsAt) : timer.endsAt === null
-            return typeof timer.running === 'boolean' && typeof timer.remaining === 'number' && Number.isFinite(timer.remaining) && timer.remaining >= 0
-              && timer.remaining <= 604800 && validEnd && (!timer.running || (typeof timer.endsAt === 'number' && timer.endsAt <= Date.now() + 604800000))
-          })) as Record<string, TimerState>
-          setStageIndex(stage); setTimers(validTimers); setPlayerStarted(saved.started === true)
-        } else removeProgress(key)
-      }
-    } catch { removeProgress(key) }
-    setHydratedScope(key)
+    let active = true
+    queueMicrotask(() => {
+      if (!active) return
+      let stage = 0
+      let restoredTimers: Record<string, TimerState> = {}
+      let started = false
+      try {
+        const raw = localStorage.getItem(key)
+        if (raw) {
+          const saved = JSON.parse(raw) as Partial<Progress>
+          if (saved.expiresAt === detail.progress_scope.expires_at && Date.parse(saved.expiresAt) > Date.now()) {
+            stage = Number.isInteger(saved.stage) ? Math.max(0, Math.min(detail.session.stages.length - 1, saved.stage as number)) : 0
+            restoredTimers = Object.fromEntries(Object.entries(saved.timers ?? {}).filter(([timerId, value]) => {
+              if (!/^\d{1,2}:\d{1,3}$/.test(timerId) || !value || typeof value !== 'object') return false
+              const timer = value as Partial<TimerState>
+              const validEnd = timer.running ? typeof timer.endsAt === 'number' && Number.isFinite(timer.endsAt) : timer.endsAt === null
+              return typeof timer.running === 'boolean' && typeof timer.remaining === 'number' && Number.isFinite(timer.remaining) && timer.remaining >= 0
+                && timer.remaining <= 604800 && validEnd && (!timer.running || (typeof timer.endsAt === 'number' && timer.endsAt <= Date.now() + 604800000))
+            })) as Record<string, TimerState>
+            started = saved.started === true
+          } else removeProgress(key)
+        }
+      } catch { removeProgress(key) }
+      setStageIndex(stage); setTimers(restoredTimers); setPlayerStarted(started); setNow(Date.now()); setHydratedScope(key)
+    })
+    return () => { active = false }
   }, [detail])
   useEffect(() => {
     if (!detail) return
@@ -153,7 +172,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     window.addEventListener('focus', revalidate)
     const expiry = window.setInterval(() => { void revalidate() }, 60000)
     return () => { active = false; window.clearInterval(expiry); document.removeEventListener('visibilitychange', revalidate); window.removeEventListener('focus', revalidate) }
-  }, [detail?.assignment.id, detail?.template_version.id, detail?.session.id, detail?.mode, detail?.week, detail?.progress_scope.expires_at, week, onExit])
+  }, [detail, detail?.assignment.id, detail?.template_version.id, detail?.session.id, detail?.mode, detail?.week, detail?.progress_scope.expires_at, week, onExit])
 
   function discard() {
     if (detail) removeProgress(storageKey(detail.progress_scope))
@@ -168,6 +187,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   function startTimer(key: string, seconds: number) {
     setTimers(current => { const old = current[key]; const left = old && old.remaining > 0 ? old.remaining : seconds; return { ...current, [key]: { remaining: left, endsAt: Date.now() + left * 1000, running: true } } })
   }
+  function toggleWake(enabled: boolean) { setWakeEnabled(enabled); setWakeState(supported ? 'off' : 'unsupported') }
   function pauseTimer(key: string) { setTimers(current => { const timer = current[key]; if (!timer?.running) return current; return { ...current, [key]: { remaining: Math.max(0, Math.ceil(((timer.endsAt ?? Date.now()) - Date.now()) / 1000)), endsAt: null, running: false } } }) }
   function resetTimer(key: string, seconds: number) { setTimers(current => ({ ...current, [key]: { remaining: seconds, endsAt: null, running: false } })) }
   function formatSeconds(seconds: number) { return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` }
@@ -178,11 +198,12 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
         {block.type === 'action' && <p>{block.parts.map((part, partIndex) => typeof part === 'string' ? <span key={partIndex}>{part}</span>
           : <strong className="cook-token" key={partIndex}>{part.value} {part.unit_label}</strong>)}</p>}
         {block.type === 'image' && block.url && <button className="cook-image-button" onClick={() => { const images = stage.blocks.flatMap(item => item.type === 'image' && item.url ? [item.url] : []); setGallery(images); setGalleryIndex(images.indexOf(block.url!)) }} aria-label="Відкрити фото етапу"><img src={block.url} alt={block.alt ?? ''} loading="lazy" referrerPolicy="no-referrer" /></button>}
-        {block.type === 'timer' && (() => { const key = timerKey(index, blockIndex); const timer = timers[key]; const left = timer?.running ? Math.max(0, Math.ceil(((timer.endsAt ?? now) - now) / 1000)) : (timer?.remaining ?? block.seconds); return <div className="cook-timer"><strong aria-live="off">{formatSeconds(left)}</strong><span>{block.label}</span>{block.message && <p>{block.message}</p>}{!timer?.running ? <button onClick={() => startTimer(key, block.seconds)}>Почати</button> : <button onClick={() => pauseTimer(key)}>Пауза</button>}<button className="secondary" onClick={() => resetTimer(key, block.seconds)}>Скинути</button></div> })()}
+        {block.type === 'timer' && (() => { const key = timerKey(index, blockIndex); const timer = timers[key]; const left = timer?.running ? (now === 0 ? timer.remaining : Math.max(0, Math.ceil(((timer.endsAt ?? now) - now) / 1000))) : (timer?.remaining ?? block.seconds); return <div className="cook-timer"><strong aria-live="off">{formatSeconds(left)}</strong><span>{block.label}</span>{block.message && <p>{block.message}</p>}{!timer?.running ? <button onClick={() => startTimer(key, block.seconds)}>Почати</button> : <button onClick={() => pauseTimer(key)}>Пауза</button>}<button className="secondary" onClick={() => resetTimer(key, block.seconds)}>Скинути</button></div> })()}
       </li>)}</ol></div>
   }
 
   if (busy && !choices && !detail) return <section className="cook-shell card" role="status">Завантажуємо доступні кухонні сесії…</section>
+  if (!weekValid && !choices && !detail) return <section className="cook-shell"><a className="back-link" href={`/app/meal-plan?week=${week}`}>← До раціону</a><p role="alert" className="error">У посиланні бракує коректного номера тижня раціону.</p></section>
   if (error && !detail && !choices) return <section className="cook-shell"><a className="back-link" href={`/app/meal-plan?week=${week}`}>← До раціону</a><p role="alert" className="error">{error}</p></section>
   if (!detail) return <section className="cook-shell">
     <a className="back-link" href={`/app/meal-plan?week=${week}`}>← До раціону</a>
@@ -197,18 +218,18 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     <div className="cook-detail-actions"><button className="back-link cook-back-link" onClick={backToChoices}>← До вибору сесій</button><button className="secondary cook-discard" onClick={discard}>Видалити локальний прогрес</button></div>
     <header className="cook-heading"><span className="eyebrow">{detail.template_version.title} · День {session.day}</span><h1>{session.dishes.map(dish => dish.title).join(' · ')}</h1><p>Орієнтовно {Math.round(session.estimated_seconds / 60)} хв</p><h2 className="cook-summary-title">Що приготуємо</h2><ul className="cook-dishes">{session.dishes.map(dish => <li key={dish.output_id}><strong>{dish.title}</strong><span>Приготовлено: {numberText(dish.cooked_portions)} порц. · призначено: {numberText(dish.allocated_portions)} · залишок: {numberText(dish.left_over_portions)}</span></li>)}</ul></header>
     {!stage ? <div className="card"><h2>Опубліковані етапи недоступні</h2><button onClick={discard}>Повернутися</button></div> : <>
-      {activeTimers.length > 0 && <section className="cook-active-timers" aria-label="Активні таймери"><strong>Активні таймери</strong>{activeTimers.map(([key, timer]) => <span key={key}>Етап {Number(key.split(':')[0]) + 1}: {formatSeconds(Math.max(0, Math.ceil(((timer.endsAt ?? now) - now) / 1000)))}</span>)}</section>}
+      {activeTimers.length > 0 && <section className="cook-active-timers" aria-label="Активні таймери"><strong>Активні таймери</strong>{activeTimers.map(([key, timer]) => <span key={key}>Етап {Number(key.split(':')[0]) + 1}: {formatSeconds(now === 0 ? timer.remaining : Math.max(0, Math.ceil(((timer.endsAt ?? now) - now) / 1000)))}</span>)}</section>}
       {!playerStarted ? <>
       <div className="cook-intro-layout"><div>
         {session.introduction && <p className="cook-intro">{session.introduction}</p>}
         <section className="card cook-equipment"><h2>Обладнання</h2><div className="cook-equipment-grid">{session.equipment.map(item => <article key={item.id}>{item.image_url ? <img src={item.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <div className="cook-photo-placeholder" aria-hidden="true">◌</div>}<span>{item.name}</span></article>)}</div>{session.equipment_notes && <p className="muted">{session.equipment_notes}</p>}</section>
         <section className="card cook-ingredients"><h2>Інгредієнти</h2><ul>{session.ingredients.map(item => <li key={`${item.id}:${item.name}`}><span>{item.name}</span><strong>{numberText(item.quantity_grams)} г</strong></li>)}</ul></section>
       </div><aside className="card cook-outline"><h2>Етапи</h2><ol>{session.stages.map((item, index) => <li key={index}><button aria-current={index === stageIndex ? 'step' : undefined} onClick={() => setStageIndex(index)}>{index + 1}. {item.title}</button></li>)}</ol></aside></div>
-      <label className="cook-wake"><input type="checkbox" checked={wakeEnabled} onChange={event => setWakeEnabled(event.target.checked)} /><span>Не вимикати екран</span><small>{wakeState === 'active' ? 'Увімкнено' : wakeState === 'lost' ? 'З’єднання втрачено — повторимо за можливості' : wakeState === 'unsupported' ? 'Цей браузер не підтримує режим' : 'Вимкнено'}</small></label>
+      <label className="cook-wake"><input type="checkbox" checked={wakeEnabled} onChange={event => toggleWake(event.target.checked)} /><span>Не вимикати екран</span><small>{wakeState === 'active' ? 'Увімкнено' : wakeState === 'lost' ? 'З’єднання втрачено — повторимо за можливості' : wakeState === 'unsupported' ? 'Цей браузер не підтримує режим' : 'Вимкнено'}</small></label>
       <button className="cook-start" onClick={() => setPlayerStarted(true)}>{stageIndex > 0 || activeTimers.length > 0 ? 'Продовжити' : 'Почати'}</button>
       </> : <>
       <button className="back-link cook-back-link" onClick={() => setPlayerStarted(false)}>← До огляду сесії</button>
-      <label className="cook-wake"><input type="checkbox" checked={wakeEnabled} onChange={event => setWakeEnabled(event.target.checked)} /><span>Не вимикати екран</span><small>{wakeState === 'active' ? 'Увімкнено' : wakeState === 'lost' ? 'З’єднання втрачено — повторимо за можливості' : wakeState === 'unsupported' ? 'Цей браузер не підтримує режим' : 'Вимкнено'}</small></label>
+      <label className="cook-wake"><input type="checkbox" checked={wakeEnabled} onChange={event => toggleWake(event.target.checked)} /><span>Не вимикати екран</span><small>{wakeState === 'active' ? 'Увімкнено' : wakeState === 'lost' ? 'З’єднання втрачено — повторимо за можливості' : wakeState === 'unsupported' ? 'Цей браузер не підтримує режим' : 'Вимкнено'}</small></label>
       <div className="cook-player">{renderStage(stage, stageIndex)}</div>
       <nav className="cook-player-nav" aria-label="Навігація етапами"><button className="secondary" disabled={stageIndex === 0} onClick={() => setStageIndex(index => Math.max(0, index - 1))}>Назад</button><strong>{stageIndex + 1} / {session.stages.length}</strong><button disabled={stageIndex >= session.stages.length - 1} onClick={() => setStageIndex(index => Math.min(session.stages.length - 1, index + 1))}>{stageIndex === session.stages.length - 1 ? 'Завершено' : 'Далі'}</button></nav>
       </>}
