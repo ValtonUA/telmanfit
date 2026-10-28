@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import './MealPlan.css'
@@ -56,7 +57,7 @@ export function MealItemRecipe({ itemId, onExit }: { itemId: string; onExit: (me
   const day = Number(params.get('day')) || data?.day_number
   const back = `/app/meal-plan${week && day ? `?week=${week}&day=${day}` : ''}`
   return <article className="meal-plan recipe-page">
-    <a className="back-link" href={back}>← Повернутися до раціону</a>
+    <Link className="back-link" to={back}>← Повернутися до раціону</Link>
     {state === 'loading' ? <section className="card plan-state" role="status"><h1>Завантажуємо рецепт…</h1></section>
       : state === 'unavailable' ? <section className="card plan-state"><h1>Рецепт недоступний</h1><p>Призначення могло змінитися або рецепт потребує перевірки тренером. Поверніться до актуального раціону.</p></section>
       : state === 'error' ? <section className="card plan-state"><h1>Не вдалося завантажити рецепт</h1><p role="alert">Перевірте з’єднання та спробуйте ще раз.</p><button onClick={() => setAttempt(n => n + 1)}>Спробувати ще раз</button></section>
@@ -77,7 +78,7 @@ export function MealItemRecipe({ itemId, onExit }: { itemId: string; onExit: (me
           {data.directions.length === 0 ? <p className="muted">Тренер ще не додав інструкцію. Зверніться до нього перед приготуванням.</p>
             : <ol>{data.directions.map(step => <li key={step.number}><h3>Крок {step.number}</h3><p>{step.text}</p>{step.image_url && <div className="recipe-step-photo"><Photo key={step.image_url} url={step.image_url} label={`Фото кроку ${step.number}`} /></div>}</li>)}</ol>}
         </section>
-        <a className="button" href={back}>Повернутися до раціону</a>
+        <Link className="button" to={back}>Повернутися до раціону</Link>
       </>}
   </article>
 }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { flushSync } from 'react-dom'
@@ -129,6 +130,6 @@ export function SecurityPanel({ me, onExit }: { me: Me; onExit: (message: string
       <section className="card"><h2>Електронна пошта</h2><p>Зміна потребує підтвердження поточного входу й нової адреси та завершує всі сесії.</p><button className="secondary" onClick={() => selectAction('email_change')}>Змінити електронну пошту</button></section>
       <section className="card"><h2>Ваші сесії</h2><ul className="session-list">{sessions.map(session => <li key={session.handle}><div><strong>{session.current ? 'Цей пристрій' : 'Інший пристрій'}</strong><p className="muted">Остання активність: <time dateTime={session.last_active_at}>{new Date(session.last_active_at).toLocaleString('uk-UA')}</time></p></div>{!session.current && <button className="secondary" onClick={() => selectAction('revoke_session', session.handle)}>Відкликати</button>}</li>)}</ul><button className="danger" onClick={() => selectAction('logout_all')}>Вийти з усіх пристроїв</button></section>
     </>}
-    <a href="/app" className="text-link">← До кабінету</a>
+    <Link to="/app" className="text-link">← До кабінету</Link>
   </div>
 }

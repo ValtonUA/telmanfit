@@ -1,3 +1,4 @@
+import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api'
 import { getMealPlanDays } from '../mealPlanApi'
@@ -21,12 +22,16 @@ export function Dish({ item, week, day }: { item: MealItem; week: number | null;
       {item.kind === 'recipe' && <p className="recipe-later">Відкрити рецепт →</p>}
     </div>
   </>
-  return <li className="dish">{item.kind === 'recipe' ? <a className="dish-link" href={`/app/meal-plan/items/${item.id}/recipe?week=${week}&day=${day}`}>{content}</a> : content}</li>
+  return <li className="dish">{item.kind === 'recipe' ? <Link className="dish-link" to={`/app/meal-plan/items/${item.id}/recipe?week=${week}&day=${day}`}>{content}</Link> : content}</li>
 }
 
 export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
   const [data, setData] = useState<MealPlanResponse>()
-  const [selectedDay, setSelectedDay] = useState<number>(Number(new URLSearchParams(window.location.search).get('day')) || 0)
+  const [params, setParams] = useSearchParams()
+  const requestedWeek = Number(params.get('week')) || undefined
+  const requestedDay = Number(params.get('day')) || 0
+  const selectedDay = data?.days.find(d => d.day_number === requestedDay)?.day_number
+    ?? (data?.days.find(d => d.date === data.today) ?? data?.days[0])?.day_number
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [changed, setChanged] = useState(false)
@@ -51,8 +56,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
       }
       if (request !== generation.current) return
       current.current = result; setData(result)
-      setSelectedDay(day => !replaced && result.days.some(d => d.day_number === day) ? day
-        : (result.days.find(d => d.date === result.today) ?? result.days[0])?.day_number)
+
     } catch (failure) {
       if (request !== generation.current) return
       setData(undefined)
@@ -62,7 +66,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
   }
 
   useEffect(() => {
-    const initial = window.setTimeout(() => { void load(Number(new URLSearchParams(window.location.search).get('week')) || undefined) }, 0)
+    const initial = window.setTimeout(() => { void load(requestedWeek) }, 0)
     const refresh = () => { if (document.visibilityState === 'visible') void load(current.current?.week ?? undefined) }
     document.addEventListener('visibilitychange', refresh)
     window.addEventListener('focus', refresh)
@@ -73,13 +77,10 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
       invalidateRequests()
       document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh)
     }
-  }, [])
-  useEffect(() => {
-    if (data?.week && selectedDay && !loading) window.history.replaceState(null, '', `/app/meal-plan?week=${data.week}&day=${selectedDay}`)
-  }, [data, selectedDay, loading])
+  }, [requestedWeek])
   const day = data?.days.find(d => d.day_number === selectedDay)
   return <div className="meal-plan">
-    <a className="back-link" href="/app">← Особистий кабінет</a>
+    <Link className="back-link" to="/app">← Особистий кабінет</Link>
     <div className="plan-heading"><div><span className="eyebrow">Турбота щодня</span><h1>Раціон</h1></div>
       <button className="secondary" disabled={loading} onClick={() => void load(data?.week ?? undefined)}>Оновити</button></div>
     {changed && <p className="notice" role="status">Призначення змінилося. Показуємо актуальний раціон.</p>}
@@ -90,16 +91,16 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
         <section className="plan-calendar card" aria-label="Календар раціону">
           <span className="eyebrow">Ваш призначений план</span><h2 className="plan-title">{data.assignment.meal_plan_version.title}</h2>
           {data.weeks.length > 0 && <>
-            <label className="week-picker">Тиждень<select aria-label="Тиждень раціону" value={data.week ?? ''} onChange={event => void load(Number(event.target.value))}>
+            <label className="week-picker">Тиждень<select aria-label="Тиждень раціону" value={data.week ?? ''} onChange={event => setParams({ week: event.target.value })}>
               {!data.weeks.some(w => w.number === data.week) && <option value={data.week ?? ''}>Недоступний тиждень</option>}
               {data.weeks.map(week => <option key={week.number} value={week.number}>Тиждень {week.number} · {dateLabel(week.days[0].date, true)} — {dateLabel(week.days[week.days.length - 1].date, true)}</option>)}
             </select></label>
-            <nav className="plan-days" aria-label="Дні раціону">{data.days.map(d => <button key={d.day_number} aria-pressed={d.day_number === selectedDay} onClick={() => setSelectedDay(d.day_number)}>
+            <nav className="plan-days" aria-label="Дні раціону">{data.days.map(d => <button key={d.day_number} aria-pressed={d.day_number === selectedDay} onClick={() => setParams({ week: String(data.week), day: String(d.day_number) })}>
               <span>{dateLabel(d.date, true)}</span><strong>День {d.day_number}</strong>{d.date === data.today && <small>Сьогодні</small>}
             </button>)}</nav>
           </>}
-          <p className="plan-shopping-link"><a className="button secondary" href={'/app/meal-plan/shopping-list' + (data.week ? '?week=' + data.week : '')}>Список покупок на тиждень</a></p>
-          <p className="plan-shopping-link"><a className="button" href={`/app/meal-plan/cooking?week=${data.week}`}>Помічник приготування</a></p>
+          <p className="plan-shopping-link"><Link className="button secondary" to={'/app/meal-plan/shopping-list' + (data.week ? '?week=' + data.week : '')}>Список покупок на тиждень</Link></p>
+          <p className="plan-shopping-link"><Link className="button" to={`/app/meal-plan/cooking?week=${data.week}`}>Помічник приготування</Link></p>
         </section>
         <section className="day-menu" aria-live="polite" aria-label="Меню вибраного дня">
           {day ? <><div className="day-heading"><span className="eyebrow">День {day.day_number}</span><h2>{dateLabel(day.date)}</h2></div>

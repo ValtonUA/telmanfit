@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './ClientNavigation.css'
 
 const tabs = [
@@ -14,7 +15,7 @@ function selected(path: string, href: string): boolean {
 
 export function ClientNavigation({ path }: { path: string }) {
   return <nav className="client-navigation" aria-label="Основна навігація">
-    {tabs.map(tab => <a key={tab.href} href={tab.href} aria-current={selected(path, tab.href) ? 'page' : undefined}
-      className={selected(path, tab.href) ? 'active' : undefined}>{tab.title}</a>)}
+    {tabs.map(tab => <Link key={tab.href} to={tab.href} aria-current={selected(path, tab.href) ? 'page' : undefined}
+      className={selected(path, tab.href) ? 'active' : undefined}>{tab.title}</Link>)}
   </nav>
 }

@@ -49,6 +49,38 @@ with sync_playwright() as p:
         code = php('tests/browser/auth5-fixture.php', 'mail', 't52-browser@example.invalid')
         page.get_by_label('Код із листа', exact=True).fill(code)
         page.get_by_role('button', name='Підтвердити', exact=True).click()
+        # UX-1: одна HTML document та ті самі DOM-вузли оболонки у всіх переходах.
+        expect(page.locator('.client-header')).to_be_visible()
+        page.evaluate("window.uxShell = [document, document.querySelector('.client-header'), document.querySelector('.client-navigation')]")
+        document_requests = []
+        csrf_requests = []
+        page.on('request', lambda r: document_requests.append(r.url) if r.is_navigation_request() and r.frame == page.main_frame else None)
+        page.on('request', lambda r: csrf_requests.append(r.url) if r.url.endswith('/api/auth/csrf') else None)
+        for width in (1440, 390, 320):
+            for theme in ('light', 'dark'):
+                page.set_viewport_size({'width': width, 'height': 1000})
+                page.emulate_media(color_scheme=theme)
+                for name, heading in [('Раціон', 'Раціон'), ('Корисне', 'Корисне'), ('Прогрес', 'Прогрес'), ('Сьогодні', 'Сьогодні')]:
+                    page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name=name).click()
+                    expect(page.get_by_role('heading', name=heading, exact=True).first).to_be_visible()
+                    assert page.evaluate("uxShell[0] === document && uxShell[1] === document.querySelector('.client-header') && uxShell[2] === document.querySelector('.client-navigation')")
+                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                if theme == 'dark':
+                    assert page.evaluate('getComputedStyle(document.documentElement).backgroundColor') == 'rgb(21, 37, 30)'
+        page.get_by_role('link', name='Відкрити профіль').click()
+        expect(page.get_by_role('heading', name='Профіль', exact=True)).to_be_visible()
+        page.get_by_role('link', name='Моя анкета').click()
+        expect(page.get_by_role('heading', name='Початкова анкета', exact=True)).to_be_visible()
+        page.go_back()
+        expect(page.get_by_role('heading', name='Профіль', exact=True)).to_be_visible()
+        page.go_forward()
+        expect(page.get_by_role('heading', name='Початкова анкета', exact=True)).to_be_visible()
+        assert not document_requests, document_requests
+        assert not csrf_requests, csrf_requests
+        page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name='Сьогодні').click()
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.emulate_media(color_scheme='light')
+        checks.append('UX-1: 4 вкладки, профіль/анкета, Back/Forward, незмінна оболонка, 0 document/CSRF повторів, 1440/390/320 light/dark')
         # T5.6: справжня сесія, опублікована бібліотека та порожня бібліотека.
         nav = page.get_by_role('navigation', name='Основна навігація')
         nav.get_by_role('link', name='Корисне').click()
@@ -125,6 +157,10 @@ with sync_playwright() as p:
         page.get_by_role('combobox', name='Тиждень раціону').select_option('2')
         page.locator('.plan-days button').nth(1).click()
         expect(page.locator('.day-heading .eyebrow')).to_have_text('День 9')
+        page.go_back()
+        expect(page.locator('.day-heading .eyebrow')).to_have_text('День 8')
+        page.go_forward()
+        expect(page.locator('.day-heading .eyebrow')).to_have_text('День 9')
         target = page.locator('.dish-link').nth(2)
         url = BASE + target.get_attribute('href')
         target.click()
@@ -178,6 +214,10 @@ with sync_playwright() as p:
         page.goto(BASE + '/app/meal-plan/items/2147483647/recipe')
         expect(page.get_by_role('heading', name='Рецепт недоступний', exact=True)).to_be_visible()
         checks.append('Фото fallback / error clears content / retry / заміна призначення / forged ID')
+        page.goto(BASE + '/app/unknown-ux1-route')
+        expect(page.get_by_role('heading', name='Сторінку не знайдено')).to_be_visible()
+        page.get_by_role('link', name='Повернутися на головну').click()
+        expect(page.get_by_role('heading', name='Сьогодні', exact=True)).to_be_visible()
         fixture('cooking')
         page.add_init_script("Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: undefined })")
         page.goto(BASE + '/app/meal-plan')

@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useClientNavigate } from '../useClientNavigate'
 import { ApiError } from '../api'
 import { getCookingChoices, getCookingSession } from '../cookingApi'
 import type { CookingChoices, CookingDetail, CookingStage } from '../cookingApi'
@@ -13,6 +15,7 @@ const storageKey = (scope: CookingDetail['progress_scope']) => `tf:cooking:v1:${
 const removeProgress = (key: string) => { try { localStorage.removeItem(key) } catch { /* Storage can be disabled. */ } }
 
 export function CookingAssistant({ onExit }: { onExit: (message: string) => void }) {
+  const navigate = useClientNavigate()
   const week = Number(new URLSearchParams(window.location.search).get('week'))
   const weekValid = Number.isInteger(week) && week >= 1 && week <= 4681
   const [choices, setChoices] = useState<CookingChoices>()
@@ -31,6 +34,8 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   const wakeReleasing = useRef<Promise<void> | undefined>(undefined)
   const wakeGeneration = useRef(0)
   const resumeWake = useRef<() => void>(() => {})
+  const sessionGeneration = useRef(0)
+  useEffect(() => () => { sessionGeneration.current++ }, [])
   const autoOpened = useRef(false)
   const [gallery, setGallery] = useState<string[]>()
   const [galleryIndex, setGalleryIndex] = useState(0)
@@ -38,14 +43,18 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   const hasDetail = Boolean(detail)
   const activeTimers = useMemo(() => Object.entries(timers).filter(([, timer]) => timer.running), [timers])
   const openSession = useCallback(async (version: string, session: string, mode: number) => {
+    const request = ++sessionGeneration.current
     // Повторне відкриття того самого ключа спершу відновлює progress, потім зберігає його.
     setHydratedScope(undefined)
     setBusy(true); setError('')
-    window.history.replaceState(null, '', `/app/meal-plan/cooking?week=${week}&version=${encodeURIComponent(version)}&session=${encodeURIComponent(session)}&mode=${mode}`)
-    try { setDetail(await getCookingSession(version, session, week, mode)) }
-    catch (failure) { if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Ця кухонна сесія більше недоступна. Оновіть список і виберіть актуальну опубліковану версію.') }
-    finally { setBusy(false) }
-  }, [week, onExit])
+    navigate(`/app/meal-plan/cooking?week=${week}&version=${encodeURIComponent(version)}&session=${encodeURIComponent(session)}&mode=${mode}`, true)
+    try {
+      const result = await getCookingSession(version, session, week, mode)
+      if (request === sessionGeneration.current) setDetail(result)
+    }
+    catch (failure) { if (request !== sessionGeneration.current) return; if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Ця кухонна сесія більше недоступна. Оновіть список і виберіть актуальну опубліковану версію.') }
+    finally { if (request === sessionGeneration.current) setBusy(false) }
+  }, [week, onExit, navigate])
 
   useEffect(() => {
     let active = true
@@ -191,7 +200,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     const revalidate = async () => {
       if (document.visibilityState !== 'visible') return
       if (Date.parse(detail.progress_scope.expires_at) <= Date.now()) {
-        window.history.replaceState(null, '', `/app/meal-plan/cooking?week=${week}`)
+        navigate(`/app/meal-plan/cooking?week=${week}`, true)
         removeProgress(storageKey(detail.progress_scope))
         setDetail(undefined); setStageIndex(0); setTimers({}); setError('Термін доступу до цієї сесії завершився. Оберіть актуальний варіант.');
         try { if (active) setChoices(await getCookingChoices(week)) } catch { /* The current no-store response remains unavailable. */ }
@@ -203,7 +212,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
       } catch (failure) {
         if (!active) return
         if (failure instanceof ApiError && failure.status === 401) { onExit('Сесія завершилася. Увійдіть знову.'); return }
-        window.history.replaceState(null, '', `/app/meal-plan/cooking?week=${week}`)
+        navigate(`/app/meal-plan/cooking?week=${week}`, true)
         removeProgress(storageKey(detail.progress_scope))
         setDetail(undefined); setStageIndex(0); setTimers({});
         setError('Призначення або кухонний вибір змінилися. Оновлено доступні сесії.');
@@ -214,15 +223,16 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     window.addEventListener('focus', revalidate)
     const expiry = window.setInterval(() => { void revalidate() }, 60000)
     return () => { active = false; window.clearInterval(expiry); document.removeEventListener('visibilitychange', revalidate); window.removeEventListener('focus', revalidate) }
-  }, [detail, detail?.assignment.id, detail?.template_version.id, detail?.session.id, detail?.mode, detail?.week, detail?.progress_scope.expires_at, week, onExit])
+  }, [detail, detail?.assignment.id, detail?.template_version.id, detail?.session.id, detail?.mode, detail?.week, detail?.progress_scope.expires_at, week, onExit, navigate])
 
   function discard() {
+    sessionGeneration.current++
     if (detail) removeProgress(storageKey(detail.progress_scope))
-    window.history.replaceState(null, '', `/app/meal-plan/cooking?week=${week}`)
+    navigate(`/app/meal-plan/cooking?week=${week}`, true)
     setDetail(undefined); setStageIndex(0); setPlayerStarted(false); setTimers({}); setWakeEnabled(false); setError('')
   }
   function backToChoices() {
-    window.history.replaceState(null, '', `/app/meal-plan/cooking?week=${week}`)
+    navigate(`/app/meal-plan/cooking?week=${week}`, true)
     setDetail(undefined); setPlayerStarted(false); setWakeEnabled(false); setError('')
   }
   function timerKey(stage: number, block: number) { return `${stage}:${block}` }
@@ -245,10 +255,10 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   }
 
   if (busy && !choices && !detail) return <section className="cook-shell card" role="status">Завантажуємо доступні кухонні сесії…</section>
-  if (!weekValid && !choices && !detail) return <section className="cook-shell"><a className="back-link" href={`/app/meal-plan?week=${week}`}>← До раціону</a><p role="alert" className="error">У посиланні бракує коректного номера тижня раціону.</p></section>
-  if (error && !detail && !choices) return <section className="cook-shell"><a className="back-link" href={`/app/meal-plan?week=${week}`}>← До раціону</a><p role="alert" className="error">{error}</p></section>
+  if (!weekValid && !choices && !detail) return <section className="cook-shell"><Link className="back-link" to={`/app/meal-plan?week=${week}`}>← До раціону</Link><p role="alert" className="error">У посиланні бракує коректного номера тижня раціону.</p></section>
+  if (error && !detail && !choices) return <section className="cook-shell"><Link className="back-link" to={`/app/meal-plan?week=${week}`}>← До раціону</Link><p role="alert" className="error">{error}</p></section>
   if (!detail) return <section className="cook-shell">
-    <a className="back-link" href={`/app/meal-plan?week=${week}`}>← До раціону</a>
+    <Link className="back-link" to={`/app/meal-plan?week=${week}`}>← До раціону</Link>
     <header className="cook-heading"><span className="eyebrow">Раціон · тиждень {week}</span><h1>Помічник приготування</h1><p className="muted">Оберіть режим, потім конкретну опубліковану версію та сесію.</p></header>
     {error && <p role="alert" className="error">{error}</p>}
     {!choices?.assignment ? <div className="card cook-empty"><h2>Раціон недоступний</h2><p>Для цього тижня немає активного призначення.</p></div> : choices.modes.map(group => <section className="cook-choice-group" key={group.mode}><h2>{group.mode} {group.mode === 1 ? 'день' : group.mode === 2 ? 'дні' : 'днів'} приготування</h2>{group.templates.length === 0 ? <p className="muted">Опублікованих сесій для цього режиму поки немає.</p> : group.templates.map(template => <article className="card cook-template" key={template.version_id}><div><h3>{template.title}</h3><p>Версія {template.version_number} · {template.sessions.length} сесій</p></div>{template.sessions.map(session => <button className="cook-session-choice" key={session.id} onClick={() => void openSession(template.version_id, session.id, group.mode)}><span>День {session.day} · {session.dishes.map(dish => dish.title).join(', ')}</span><small>{Math.round(session.estimated_seconds / 60)} хв</small></button>)}</article>)}</section>)}
