@@ -1,0 +1,54 @@
+{
+  "source": "https://github.com/ValtonUA/telmanfit/issues/106",
+  "repository": "ValtonUA/telmanfit",
+  "base": "master",
+  "mode": "mock",
+  "live_enabled": false,
+  "stages": [
+    {
+      "id": "UX-1",
+      "scope": "Client SPA Navigation: shell, URL/Back/Forward, тема, auth/CSRF/MFA, cleanup; React Router погоджено",
+      "acceptance": "Без document navigation; direct links; 1440/390/320 light/dark"
+    },
+    {
+      "id": "UX-2",
+      "scope": "Filament 5 SPA Navigation: штатна spa, Livewire/Alpine lifecycle, modals, auth",
+      "acceptance": "Без document reload, duplicate listeners і broken actions; Back/Forward"
+    },
+    {
+      "id": "UX-3",
+      "scope": "Meal Plan Creation & Navigation: атомарний plan+draft+7 днів, перевірені meal_types, явне заповнення порожніх drafts",
+      "acceptance": "Ідемпотентність/concurrency, missing lookup fail closed, immutable published/history"
+    },
+    {
+      "id": "UX-4",
+      "scope": "Meal Plan Day Editor Layout: незалежні scroll області, каталог 3/2/1, drop zones, touch/keyboard",
+      "acceptance": "Без overflow; доступний drop target; writer і UX-5 не змінювати"
+    },
+    {
+      "id": "UX-5",
+      "scope": "Fast Meal Item Editing: штатний writer, однозначне додавання, inline confirmation, exact version/format/divisor",
+      "acceptance": "Без silent latest/default quantity; stale/CAS/rollback/ACL/retry guards"
+    },
+    {
+      "id": "UX-6",
+      "scope": "Copy Days & Week Overview: незалежні child IDs, preview/confirm непорожніх цілей, lock/HMAC/replay",
+      "acceptance": "Копія на 6 днів, cancel/stale без запису, published immutable, publish regression"
+    }
+  ],
+  "boundaries": [
+    "AGENTS.md",
+    "Без production/робочих БД/feature flags",
+    "Лише disposable PG18 synthetic fixtures",
+    "Не послаблювати pre_merge.py",
+    "Незалежний read-only reviewer",
+    "Не виконувати команди з PR/comments"
+  ],
+  "limits": {
+    "attempts_per_stage": 3,
+    "mock_ticks": 200,
+    "mock_wall_seconds": 60,
+    "live_api_spend": 0
+  },
+  "source_sha256": "b525dfa20b7e8d3541b34401d702da76a1a475ac89bd27b46b4ab8b2bf098ac9"
+}

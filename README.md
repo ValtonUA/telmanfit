@@ -17,6 +17,7 @@
 | Бізнес-правила | [Business Rules](docs/business-rules.md) |
 | Таблиці й зв'язки | [Entity Catalog](docs/entity-catalog.md), [DBML](docs/database.dbml) |
 | **Правила для Codex/AI-агентів** | [AGENTS.md](AGENTS.md) |
+| Координатор UX та безпечна симуляція | [Операційна інструкція UX-AUTO](docs/ux-auto.md) |
 | Зіставлення медіа каталогу з R2 | [Інструкція та інвентаризація](docs/r2-image-matching.md) |
 
 ## Стан реалізації

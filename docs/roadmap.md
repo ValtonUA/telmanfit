@@ -21,6 +21,12 @@
 
 **Залежності:** Stage 3 → Stage 4 → Stage 5; Stage 6 може розроблятися після Stage 2 незалежно від Stage 4, Stage 7 — після Stage 6. Stage 8 — після Stage 7. Stage 9 — перед першим production. Тренувальний модуль **не входить у затверджений MVP**; зміна цього рішення потребує окремого погодження.
 
+## Автоматизація UX
+
+| ID | Зміст | Статус | Наступна дія |
+|---|---|---|---|
+| UX-AUTO | [Issue #107](https://github.com/ValtonUA/telmanfit/issues/107): [неактивний bootstrap/mock](ux-auto.md), шість послідовних stage, bounded retry, restart/resume та fail-closed gates | Частково | Live adapters, credentials/permissions, PR-event CI й реальний sandbox vertical slice перед активацією; UX-1–UX-6 не запускати |
+
 ## Позначення
 
 | Позначення | Призначення |

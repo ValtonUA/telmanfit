@@ -167,3 +167,18 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: AUTH3–5 `baseline` запускається для auth/security/readiness змін; зміни рецептів, планів і їхніх browser helpers (`meal_plans.py`, `food_catalog.py`) запускають лише `recipe`; `b5`/`b3` додаються для відповідного auth/security коду; міграції та невідомі PG/browser тести консервативно розширюють набір. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують unit regressions через Documentation health без PG/browser runner. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
 
 Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.
+
+
+## UX-AUTO: виняток та неактивний bootstrap
+
+Для шести погоджених PR Issue #106 ручний approval власника не потрібен;
+SHA-locked merge дозволено лише після незалежного review, browser acceptance і
+незміненого `pre_merge.py eligible:true` з довіреного checkout. Виняток не охоплює
+bootstrap PR координатора. GitHub auto-merge не використовується.
+
+[UX-AUTO bootstrap](ux-auto.md) має лише ручний `workflow_dispatch` симуляції,
+`contents: read`, без API secrets, write-token і live adapter. Тести координатора
+входять у чинний Documentation health через `tests/ci/test_ux_auto.py`.
+Симуляційні CI snapshots проходять справжню функцію `pre_merge.evaluate`, але
+не є реальними PR-event runs. Fast/Docs/Targeted і правила gate не послаблено.
+Підтвердження bot-created PR-event runs без ручного approval — окремий блокер live.

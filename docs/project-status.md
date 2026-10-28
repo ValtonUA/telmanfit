@@ -8,6 +8,22 @@
 
 ## Підтверджені факти й межі
 
+### UX-AUTO: неактивний контролер
+
+`scripts/ux_auto/coordinator.py` реалізує послідовний mock UX-1–UX-6, атомарний
+JSON checkpoint, exclusive lock, pause/resume, bounded retry й перевірку SHA/base,
+незалежного structured review та browser matrix. Окремий durable mock journal
+відтворює падіння між side effect і локальним checkpoint без дубльованих PR/merge.
+Snapshot Issue #106 прив'язаний digest до довіреної специфікації; коментарі/PR payload
+не використовуються як команди. `live` явно відхиляється, API-витрати — нульові.
+[Операційні межі](ux-auto.md), [локальні докази](evidence/ux-auto/report.md).
+
+Workflow `ux-auto.yml` виконує тільки симуляцію; tests/ci перевіряє шість етапів,
+restart, stale CI/SHA/base, approval, rejected review/browser, retry/stop і recovery.
+Реального Codex reviewer, browser acceptance, GitHub publishing/merge адаптерів
+і Issue #106 status writeback цей bootstrap не виконує. Фіктивні PR, CI,
+скриншоти та merge SHA не є E2E доказом. Реальні UX-етапи не запускалися.
+
 ### Зображення R2: підготовка локального застосування
 
 Погоджені aliases охоплюють 85 реальних записів локальних каталогів: 47 ingredients,

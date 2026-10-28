@@ -55,3 +55,7 @@ id_rsa*
 /docs/evidence/meal-plans/*.png
 /docs/evidence/meal-plans/checks.json
 /docs/evidence/meal-plans/presentation-checks.json
+
+# Локальний Python bytecode для CI/UX-AUTO helpers.
+__pycache__/
+*.py[cod]

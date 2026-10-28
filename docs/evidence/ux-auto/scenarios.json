@@ -1,0 +1,306 @@
+{
+  "mode": "mock",
+  "live_enabled": false,
+  "results": [
+    {
+      "scenario": "success",
+      "exit_code": 0,
+      "duplicate_run_unchanged": true,
+      "complete": true,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "8207bf2626e6b33361948152ebdce923335884b0"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "2e1c0e1eae5dba7990bb08060399342974de3e10"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "3a9c32bf244d103c25dc886a3bf25c4050a0d6d4"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "3264e7218eada47e4579a20a12c75981ba3f69e2"
+        },
+        {
+          "id": "UX-5",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "724bc4c69ff5f43e2fec40207e7573c8537b6bc5"
+        },
+        {
+          "id": "UX-6",
+          "state": "merged",
+          "attempt": 1,
+          "reason": null,
+          "merge_sha": "1247f0b98faf0fcdcd4f3f843abb651af67d1749"
+        }
+      ]
+    },
+    {
+      "scenario": "retry",
+      "exit_code": 0,
+      "duplicate_run_unchanged": true,
+      "complete": true,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged",
+          "attempt": 2,
+          "reason": null,
+          "merge_sha": "f2776943506d1b8e2eb39bda1371be5e4618da9c"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged",
+          "attempt": 2,
+          "reason": null,
+          "merge_sha": "b3cd7f018720c2772cb171ef2e9794e4906577d8"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged",
+          "attempt": 2,
+          "reason": null,
+          "merge_sha": "09c0df425701a5c1554e25b07a56167cc9c833b7"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged",
+          "attempt": 2,
+          "reason": null,
+          "merge_sha": "aa0ec414c8fbee65ded35e614ea798a6ab80266f"
+        },
+        {
+          "id": "UX-5",
+          "state": "merged",
+          "attempt": 2,
+          "reason": null,
+          "merge_sha": "439d46138bf785373c74124e9c1160c7e14f3cf9"
+        },
+        {
+          "id": "UX-6",
+          "state": "merged",
+          "attempt": 2,
+          "reason": null,
+          "merge_sha": "5d4321c2b47ab0183ad276801616bea7efcfdf2f"
+        }
+      ]
+    },
+    {
+      "scenario": "failure",
+      "exit_code": 2,
+      "duplicate_run_unchanged": true,
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 3,
+          "reason": "Вичерпано 3 спроб: Незалежний review відсутній, застарілий або відхилений",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ]
+    },
+    {
+      "scenario": "approval",
+      "exit_code": 2,
+      "duplicate_run_unchanged": true,
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 3,
+          "reason": "Вичерпано 3 спроб: CI gate: fast.yml: latest run 1 is not completed/success",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ]
+    },
+    {
+      "scenario": "race",
+      "exit_code": 2,
+      "duplicate_run_unchanged": true,
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 1,
+          "reason": "SHA-locked merge відхилено: head/base race",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ]
+    },
+    {
+      "scenario": "unconfirmed",
+      "exit_code": 2,
+      "duplicate_run_unchanged": true,
+      "complete": false,
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "blocked",
+          "attempt": 1,
+          "reason": "Merge не підтверджено; наступний stage заборонено",
+          "merge_sha": null
+        },
+        {
+          "id": "UX-2",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-3",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-4",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-5",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        },
+        {
+          "id": "UX-6",
+          "state": "pending",
+          "attempt": 0,
+          "reason": null,
+          "merge_sha": null
+        }
+      ]
+    }
+  ]
+}
