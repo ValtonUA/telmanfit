@@ -91,29 +91,98 @@ function Write-UpdateLog {
     Write-Host $line
 }
 
+function ConvertTo-NativeArgument {
+    param([Parameter(Mandatory)][AllowEmptyString()][string] $Value)
+
+    # ProcessStartInfo.Arguments is the only argument API available on Windows PowerShell 5.1.
+    # Quote according to the Windows C runtime rules, including embedded/trailing backslashes.
+    $builder = New-Object System.Text.StringBuilder
+    [void] $builder.Append('"')
+    $backslashes = 0
+    foreach ($character in $Value.ToCharArray()) {
+        if ($character -eq [char] 92) {
+            $backslashes++
+            continue
+        }
+        if ($character -eq [char] 34) {
+            if ($backslashes -gt 0) { [void] $builder.Append(('\' * (2 * $backslashes))) }
+            [void] $builder.Append('\')
+            [void] $builder.Append('"')
+        } else {
+            if ($backslashes -gt 0) { [void] $builder.Append(('\' * $backslashes)) }
+            [void] $builder.Append($character)
+        }
+        $backslashes = 0
+    }
+    if ($backslashes -gt 0) { [void] $builder.Append(('\' * (2 * $backslashes))) }
+    [void] $builder.Append('"')
+    return $builder.ToString()
+}
+
+function ConvertFrom-NativeOutput {
+    param([Parameter(Mandatory)][AllowEmptyString()][string] $Text)
+
+    if (-not $Text.Length) { return }
+    return $Text -split "`r`n|`n|`r"
+}
+
 function Invoke-Native {
     param(
         [Parameter(Mandatory)][string] $Command,
-        [Parameter(Mandatory)][string[]] $Arguments,
+        [Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments,
         [switch] $AllowFailure
     )
 
-    $output = @(& $Command @Arguments 2>&1)
-    $exitCode = $LASTEXITCODE
-    if ($exitCode -ne 0 -and -not $AllowFailure) {
-        $safeOutput = ($output | ForEach-Object { [string] $_ }) -join [Environment]::NewLine
-        throw "$Command failed with exit code $exitCode. $safeOutput"
+    $application = Get-Command -Name $Command -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $application) { throw "Native command '$Command' is unavailable." }
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $application.Source
+    $startInfo.Arguments = (@($Arguments | ForEach-Object { ConvertTo-NativeArgument -Value ([string] $_) }) -join ' ')
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) { throw "Native command '$Command' did not start." }
+        # Drain both pipes concurrently to avoid deadlocks when either stream is large.
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        $exitCode = $process.ExitCode
+    } catch {
+        throw "Native command '$Command' could not be completed."
+    } finally {
+        $process.Dispose()
     }
-    return [pscustomobject]@{ ExitCode = $exitCode; Output = $output }
+
+    $stdoutLines = @(ConvertFrom-NativeOutput -Text $stdout)
+    $stderrLines = @(ConvertFrom-NativeOutput -Text $stderr)
+    if ($exitCode -ne 0 -and -not $AllowFailure) {
+        # Do not copy command output into the coordinator log; CLI diagnostics may contain secrets.
+        throw "Native command '$Command' failed with exit code $exitCode."
+    }
+    return [pscustomobject]@{
+        ExitCode = $exitCode
+        # Preserve existing consumers as stdout-only; diagnostics stay in StandardError.
+        Output = $stdoutLines
+        StandardOutput = $stdoutLines
+        StandardError = $stderrLines
+    }
 }
 
 function Invoke-Git {
-    param([Parameter(Mandatory)][string[]] $Arguments, [switch] $AllowFailure)
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments, [switch] $AllowFailure)
     return Invoke-Native -Command 'git' -Arguments $Arguments -AllowFailure:$AllowFailure
 }
 
 function Invoke-Docker {
-    param([Parameter(Mandatory)][string[]] $Arguments, [switch] $AllowFailure)
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments, [switch] $AllowFailure)
     return Invoke-Native -Command 'docker' -Arguments $Arguments -AllowFailure:$AllowFailure
 }
 
@@ -123,7 +192,7 @@ function Get-OutputText {
 }
 
 function Invoke-Compose {
-    param([Parameter(Mandatory)][string[]] $Arguments, [switch] $AllowFailure)
+    param([Parameter(Mandatory)][AllowEmptyString()][string[]] $Arguments, [switch] $AllowFailure)
     return Invoke-Docker -Arguments (@('compose') + $script:ComposeArguments + $Arguments) -AllowFailure:$AllowFailure
 }
 

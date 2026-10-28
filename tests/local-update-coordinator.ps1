@@ -139,6 +139,131 @@ Remove-Item -LiteralPath $journalDirectory -Recurse -Force
 
 Assert-Throws { Invoke-Native -Command 'cmd.exe' -Arguments @('/c', 'exit', '29') } 'backup command failure propagates as fatal error'
 Assert-Throws { Invoke-Native -Command 'cmd.exe' -Arguments @('/c', 'exit', '30') } 'migration command failure propagates as fatal error'
+
+$nativeTestRoot = Join-Path $root ".native-cli-test-$([guid]::NewGuid().ToString('N'))"
+$bareRepository = Join-Path $nativeTestRoot 'remote.git'
+$seedRepository = Join-Path $nativeTestRoot 'seed repo'
+$nativeTestDirectory = Join-Path $nativeTestRoot 'client config'
+$argvProbePath = Join-Path $nativeTestRoot 'argv-probe.exe'
+$argvProbeSourcePath = Join-Path $nativeTestRoot 'argv-probe.cs'
+$null = New-Item -ItemType Directory -Path $nativeTestRoot -Force
+try {
+    # Compile a native child that returns its actual argv as ASCII-only JSON. This
+    # verifies ProcessStartInfo parsing, rather than only inspecting helper output.
+    $argvProbeSource = @'
+using System;
+using System.Text;
+
+public static class NativeArgvProbe
+{
+    private static void AppendJsonString(StringBuilder output, string value)
+    {
+        output.Append('"');
+        foreach (char character in value)
+        {
+            if (character == '"') output.Append("\\\"");
+            else if (character == '\\') output.Append("\\\\");
+            else if (character < 0x20 || character > 0x7E)
+                output.Append("\\u").Append(((int)character).ToString("x4"));
+            else output.Append(character);
+        }
+        output.Append('"');
+    }
+
+    public static int Main(string[] args)
+    {
+        if (args.Length == 1 && args[0] == "--streams")
+        {
+            Console.Out.Write("stdout-marker");
+            Console.Error.Write("stderr-marker");
+            return 23;
+        }
+
+        StringBuilder output = new StringBuilder("[");
+        for (int index = 0; index < args.Length; index++)
+        {
+            if (index > 0) output.Append(',');
+            AppendJsonString(output, args[index]);
+        }
+        output.Append(']');
+        Console.Write(output.ToString());
+        return 0;
+    }
+}
+'@
+    $compilerPaths = @(
+        (Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe')
+        (Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe')
+    )
+    $compilerPath = $compilerPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not $compilerPath) { throw 'Windows C# compiler is unavailable for native argv probe.' }
+    [IO.File]::WriteAllText($argvProbeSourcePath, $argvProbeSource, (New-Object Text.UTF8Encoding($false)))
+    $compileProbe = Invoke-Native -Command $compilerPath -Arguments @('/nologo', '/target:exe', "/out:$argvProbePath", $argvProbeSourcePath)
+    Assert-True ($compileProbe.ExitCode -eq 0 -and (Test-Path -LiteralPath $argvProbePath -PathType Leaf)) 'native argv probe compiles as a Windows console executable'
+
+    $expectedArgv = [string[]] @(
+        'plain'
+        'two words'
+        'say "hello"'
+        '\'
+        '\\'
+        '\\\\\\'
+        'ends with slash\'
+        'quote after slash \"'
+        'slash before quote and trailing slash \\\"\\'
+        ''
+        'Українська їжа — Unicode 😀'
+        'C:\Program Files\TelmanFit\дані\'
+        '\\server\share\folder with spaces\'
+    )
+    $argvProbe = Invoke-Native -Command $argvProbePath -Arguments $expectedArgv
+    $actualArgv = ConvertFrom-Json -InputObject ($argvProbe.StandardOutput -join [Environment]::NewLine)
+    Assert-True ($argvProbe.ExitCode -eq 0 -and $actualArgv.Count -eq $expectedArgv.Count) 'native argv probe exits successfully and preserves argument count including empty arguments'
+    for ($index = 0; $index -lt $expectedArgv.Count; $index++) {
+        Assert-True ($actualArgv[$index] -ceq $expectedArgv[$index]) "native argv round-trip preserves parameterized argument $index"
+    }
+    $streamProbe = Invoke-Native -Command $argvProbePath -Arguments @('--streams') -AllowFailure
+    Assert-True ($streamProbe.ExitCode -eq 23 -and ($streamProbe.StandardOutput -join '') -eq 'stdout-marker' -and ($streamProbe.StandardError -join '') -eq 'stderr-marker') 'native stdout, stderr, and nonzero exit code remain distinct'
+    $strictFailureMessage = $null
+    try { $null = Invoke-Native -Command $argvProbePath -Arguments @('--streams') } catch { $strictFailureMessage = $_.Exception.Message }
+    Assert-True ($strictFailureMessage -match 'exit code 23' -and $strictFailureMessage -notmatch 'stdout-marker|stderr-marker') 'unallowed native failure reports its exit code without exposing process output'
+
+    $null = Invoke-Native -Command 'git' -Arguments @('init', '--quiet', '--bare', '--initial-branch=master', $bareRepository)
+    $null = Invoke-Native -Command 'git' -Arguments @('init', '--quiet', '--initial-branch=master', $seedRepository)
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'config', 'user.name', 'Native Test')
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'config', 'user.email', 'native-test@example.invalid')
+    Set-Content -LiteralPath (Join-Path $seedRepository 'seed.txt') -Value 'synthetic' -NoNewline
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'add', 'seed.txt')
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'commit', '--quiet', '-m', 'synthetic seed')
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'remote', 'add', 'origin', $bareRepository)
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'push', '--quiet', '-u', 'origin', 'master')
+
+    # A successful Git fetch writes its usual "From ..." progress to stderr.
+    $fetch = Invoke-Git -Arguments @('-C', $seedRepository, 'fetch', 'origin', 'master')
+    Assert-True ($fetch.ExitCode -eq 0 -and (@($fetch.StandardError | Where-Object { $_ -like 'From *' }).Count -eq 1)) 'successful Git stderr is captured without becoming NativeCommandError'
+    Assert-True (@($fetch.StandardOutput | Where-Object { $_ -like 'From *' }).Count -eq 0 -and @($fetch.Output | Where-Object { $_ -like 'From *' }).Count -eq 0) 'Git stdout and stderr remain distinct and Output stays stdout-only'
+
+    $gitFailureMessage = $null
+    try { $null = Invoke-Git -Arguments @('-C', $seedRepository, 'not-a-telmanfit-command') } catch { $gitFailureMessage = $_.Exception.Message }
+    $allowedGitFailure = Invoke-Git -Arguments @('-C', $seedRepository, 'not-a-telmanfit-command') -AllowFailure
+    Assert-True ($allowedGitFailure.ExitCode -ne 0 -and $gitFailureMessage -match "exit code $($allowedGitFailure.ExitCode)" -and $gitFailureMessage -notmatch 'fatal:') 'Git nonzero exit blocks execution without copying raw stderr into logs'
+    Assert-True ($allowedGitFailure.ExitCode -ne 0 -and @($allowedGitFailure.StandardError).Count -gt 0) 'explicitly allowed Git failure returns exit code and stderr'
+
+    $dockerApplication = Get-Command -Name 'docker' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($dockerApplication) {
+        $dockerVersion = Invoke-Docker -Arguments @('--version')
+        Assert-True ($dockerVersion.ExitCode -eq 0 -and (@($dockerVersion.StandardOutput | Where-Object { $_ -like 'Docker version *' }).Count -eq 1)) 'Docker CLI successful stdout is captured'
+        $null = New-Item -ItemType Directory -Path $nativeTestDirectory -Force
+        $dockerFailure = Invoke-Docker -Arguments @('--config', $nativeTestDirectory, '--context', 'telmanfit-test-context-that-does-not-exist', 'info') -AllowFailure
+        Assert-True ($dockerFailure.ExitCode -ne 0 -and @($dockerFailure.StandardError).Count -gt 0) 'Docker CLI error is returned only through its nonzero exit code and stderr'
+        $dockerFailureMessage = $null
+        try { $null = Invoke-Docker -Arguments @('--config', $nativeTestDirectory, '--context', 'telmanfit-test-context-that-does-not-exist', 'info') } catch { $dockerFailureMessage = $_.Exception.Message }
+        Assert-True ($dockerFailureMessage -match 'exit code ' -and $dockerFailureMessage -notmatch 'context-that-does-not-exist') 'Docker nonzero exit blocks execution without exposing CLI diagnostics'
+    }
+} finally {
+    Remove-Item -LiteralPath $nativeTestRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 $coordinatorSource = Get-Content -LiteralPath (Join-Path $root 'scripts/local-update.ps1') -Raw
 Assert-True ($coordinatorSource -notmatch 'migrate:rollback|db:wipe|docker\s+compose\s+down\s+-v|git\s+reset\b|git\s+clean\b|--force-push') 'coordinator contains no automatic destructive recovery/reset path'
 Assert-True ($coordinatorSource -match 'script:ProjectName' -and $coordinatorSource -match 'Get-VolumeName' -and $coordinatorSource -match 'Get-ContainerName app') 'all Compose/container/volume selection is derived from the locked project identity'

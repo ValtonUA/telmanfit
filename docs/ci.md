@@ -13,7 +13,10 @@ Pint, Unit/Feature на SQLite, обидві frontend збірки та client l
 `Local update PowerShell compatibility` запускає parser-only перевірку
 `scripts/local-update.ps1` на Windows PowerShell 5.1 і PowerShell 7. Перевірка
 підтверджує UTF-8 BOM і синтаксис, але coordinator не виконується та CI не
-під’єднується до Docker чи бази даних.
+під’єднується до Docker чи бази даних. У тій самій матриці запускається suite
+`tests/local-update-coordinator.ps1`: він перевіряє coordinator helpers і Git/Docker
+CLI на synthetic Git repositories та read-only Docker CLI probes, не запускаючи
+upgrade coordinator, Docker services або базу даних.
 
 `scripts/ci/pre_merge.py` перевіряє лише Fast, Docs і Targeted на точному PR head,
 поточну ancestry до master, найновіший run/attempt, усі jobs/steps, PR event і
