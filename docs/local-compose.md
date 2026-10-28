@@ -87,6 +87,22 @@ docker compose logs --tail=100
 .\scripts\local-update.ps1
 ```
 
+`scripts/local-update.ps1` зберігається як UTF-8 із BOM, щоб Windows PowerShell
+5.1 правильно читав українські повідомлення. Не видаляйте BOM і не додавайте перед
+`[CmdletBinding()]` вивід термінала. Сумісність можна перевірити без запуску
+coordinator, Docker чи доступу до БД:
+
+```powershell
+powershell.exe -NoProfile -File tests/local-update-powershell-compat.ps1
+pwsh.exe -NoProfile -File tests/local-update-powershell-compat.ps1
+```
+
+Перевірка лише контролює BOM і синтаксичний розбір coordinator у вибраній версії
+PowerShell. Якщо керований PowerShell host відхиляє навіть локальний `.ps1`, хоча
+`Get-ExecutionPolicy -List` показує дозвільну policy і файл не має
+`Zone.Identifier`, це обмеження host/runtime. Не змінюйте policy і не використовуйте
+`Bypass`; скористайтеся затвердженим host, який дозволяє локальні скрипти.
+
 Coordinator перевіряє Git origin/гілку, чистоту дерева та саме цей локальний Compose
 проєкт; оновлює `master` лише fast-forward і збирає app/web образи до зупинки
 сервісів. `compose.r2-runtime.yaml` не включається й не перезаписується. Якщо pending
