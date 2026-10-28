@@ -132,8 +132,10 @@ function Invoke-SyntheticBaseline {
 
     $databaseName = Get-Text (Invoke-Compose -Arguments @('exec', '-T', 'database', 'psql', '-X', '-U', 'postgres', '-Atc', "SELECT datname FROM pg_database WHERE datname LIKE 'telmanfit_local_%' AND datallowconn AND datname <> 'postgres' ORDER BY datname LIMIT 1"))
     if ($databaseName -notmatch '^telmanfit_local_[a-f0-9]{16}$') { throw 'Disposable DB identity is missing or malformed.' }
-    $epoch = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'cat', 'app', '/run/telmanfit-epoch/epoch'))
-    if ($epoch -notmatch '^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-8[a-f0-9]{3}-[a-f0-9]{12}$') { throw 'Disposable volume did not provide a valid independent RestoreFence epoch.' }
+    $epochOutput = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'cat', 'app', '/run/telmanfit-epoch/epoch'))
+    $epochMatch = [regex]::Match($epochOutput, '(?i)(?<![0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}(?![0-9a-f])')
+    if (-not $epochMatch.Success) { throw "Disposable volume did not provide a valid independent RestoreFence epoch (captured output length=$($epochOutput.Length))." }
+    $epoch = $epochMatch.Value.ToLowerInvariant()
     $hashOutput = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'php', 'app', '-r', "echo password_hash('synthetic-e2e-recovery', PASSWORD_ARGON2ID);"))
     $hashMatch = [regex]::Match($hashOutput, '\$argon2id\$v=19\$m=[0-9]+,t=[0-9]+,p=[0-9]+\$[A-Za-z0-9+/]{16,}\$[A-Za-z0-9+/]{32,}')
     if (-not $hashMatch.Success) { throw "Could not create synthetic Argon2id recovery fixture; output did not contain a valid hash (length=$($hashOutput.Length))." }
