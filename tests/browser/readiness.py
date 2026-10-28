@@ -4,7 +4,10 @@ from urllib.parse import urlsplit
 
 metrics = {'calls': 0, 'seconds': 0.0}
 
-TRACKER = """document.addEventListener('livewire:init', () => {
+TRACKER = """window.__ciNavigating = false;
+document.addEventListener('livewire:navigating', () => { window.__ciNavigating = true; });
+document.addEventListener('livewire:navigated', () => { window.__ciNavigating = false; });
+document.addEventListener('livewire:init', () => {
     const state = {ready: true, pending: 0, started: 0, rendered: 0, failed: false};
     window.__ciLivewire = state;
     Livewire.hook('commit', ({succeed, fail}) => {
@@ -27,7 +30,8 @@ def livewire_ready(page):
     started = time.perf_counter()
     # Відсутній hook або невдалий commit не можуть стати зеленим fallback.
     page.wait_for_function("""() => window.__ciLivewire?.ready === true
-        && window.__ciLivewire.pending === 0 && !window.__ciLivewire.failed""")
+        && window.__ciLivewire.pending === 0 && !window.__ciLivewire.failed
+        && window.__ciNavigating === false""")
     metrics['calls'] += 1
     metrics['seconds'] += time.perf_counter() - started
 

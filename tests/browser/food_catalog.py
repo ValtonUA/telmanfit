@@ -75,6 +75,7 @@ def run_catalog(page, base):
                 page.get_by_label('Назва', exact=False).fill(f'Synthetic {slug} {suffix}')
                 submit('Створити')
                 page.wait_for_url('**/edit')
+                livewire_ready(page)
                 page.get_by_label('Назва', exact=False).fill(f'Synthetic {slug} edited {suffix}')
                 submit('Зберегти')
                 page.reload()
@@ -86,6 +87,7 @@ def run_catalog(page, base):
             page.get_by_label('Тип одиниці', exact=False).select_option('count')
             submit('Створити')
             page.wait_for_url('**/edit')
+            livewire_ready(page)
             expect(page.get_by_label('Код', exact=False)).to_be_disabled()
             # Продукт, decimal validation, optional category, factor/default.
             page.goto(base + '/admin/catalog/ingredients/create')
@@ -102,6 +104,7 @@ def run_catalog(page, base):
             page.get_by_label('За замовчуванням', exact=False).check()
             submit('Створити')
             page.wait_for_url('**/edit')
+            livewire_ready(page)
             food_url = page.url
             food_name = 'Synthetic food edited ' + suffix
             page.get_by_label('Назва', exact=False).fill(food_name)
@@ -120,6 +123,7 @@ def run_catalog(page, base):
             choose('Категорія (необов’язково)', f'Synthetic kitchen-equipment-categories edited {suffix}')
             submit('Створити')
             page.wait_for_url('**/edit')
+            livewire_ready(page)
             equipment_url = page.url
             equipment_name = 'Synthetic equipment edited ' + suffix
             page.get_by_label('Назва', exact=False).fill(equipment_name)
