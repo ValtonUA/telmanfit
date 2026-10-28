@@ -81,6 +81,28 @@ docker compose ps -a
 docker compose logs --tail=100
 ```
 
+## Звичайне оновлення після merge (Windows, без Codex)
+
+Для робочого `telmanfit-local` **не потрібні** Codex, WSL або виклик `powershell.exe` з Ubuntu.
+Відкрийте **Windows PowerShell 5.1** і використайте саме Windows checkout,
+який був застосований під час створення Docker Compose-проєкту. На поточному
+комп'ютері очікується `C:\\Projects\\telmanfit`; coordinator сам перевіряє
+фактичний `com.docker.compose.project.working_dir` і зупиниться, якщо каталог
+не збігається. Не використовуйте WSL-копію для оновлення робочої БД.
+
+```powershell
+cd C:\\Projects\\telmanfit
+.\\scripts\\local-update.ps1
+```
+
+Після `complete/PASS` відкрийте `http://localhost:8098`. Якщо команда
+завершилася помилкою, **не повторюйте її автоматично**: надішліть текст
+помилки й відповідну фазу журналу `%LOCALAPPDATA%\\TelmanFit\\updates`,
+без секретів. Спеціальний preflight Codex у WSL не є передумовою запуску:
+Windows/WSL interop може бути несправним незалежно від Docker Desktop.
+Виняток `?? compose.r2-runtime.yaml` уже дозволений штатною Git-перевіркою,
+тому файл не треба прибирати або комітити.
+
 Після оновлення коду з GitHub виконайте з кореня репозиторію:
 
 ```powershell
