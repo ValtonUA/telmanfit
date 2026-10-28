@@ -132,8 +132,10 @@ function Invoke-SyntheticBaseline {
 
     $databaseName = Get-Text (Invoke-Compose -Arguments @('exec', '-T', 'database', 'psql', '-X', '-U', 'postgres', '-Atc', "SELECT datname FROM pg_database WHERE datname LIKE 'telmanfit_local_%' AND datallowconn AND datname <> 'postgres' ORDER BY datname LIMIT 1"))
     if ($databaseName -notmatch '^telmanfit_local_[a-f0-9]{16}$') { throw 'Disposable DB identity is missing or malformed.' }
-    $hash = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'php', 'app', '-r', "echo password_hash('synthetic-e2e-recovery', PASSWORD_ARGON2ID);"))
-    if ($hash -notmatch '^\$argon2id\$v=19\$') { throw 'Could not create a valid synthetic recovery-code hash.' }
+    $hashOutput = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'php', 'app', '-r', "echo password_hash('synthetic-e2e-recovery', PASSWORD_ARGON2ID);"))
+    $hashMatch = [regex]::Match($hashOutput, '\$argon2id\$v=19\$m=[0-9]+,t=[0-9]+,p=[0-9]+\$[A-Za-z0-9+/]{16,}\$[A-Za-z0-9+/]{32,}')
+    if (-not $hashMatch.Success) { throw "Could not create synthetic Argon2id recovery fixture; output did not contain a valid hash (length=$($hashOutput.Length))." }
+    $hash = $hashMatch.Value
     $selector = [guid]::NewGuid().ToString()
     $batch = [guid]::NewGuid().ToString()
     $sql = @'
