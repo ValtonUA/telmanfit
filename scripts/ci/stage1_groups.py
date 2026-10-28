@@ -233,10 +233,10 @@ def main():
                                              'Recipe editor browser PASS', 'CI_BROWSER_READINESS')):
                             print(clean)
                     print('\n'.join(lines[-12:]))
-                    if name == 'recipe' and any('Recipe browser Laravel error tail:' in line for line in lines):
-                        marker = next(i for i, line in enumerate(lines) if 'Recipe browser Laravel error tail:' in line)
-                        print('--- Recipe browser Laravel diagnostic ---')
-                        print('\n'.join(lines[marker:marker + 165]))
+                    if name == 'recipe' and any('Recipe browser PHP server tail:' in line for line in lines):
+                        marker = next(i for i, line in enumerate(lines) if 'Recipe browser PHP server tail:' in line)
+                        print('--- Recipe browser HTTP diagnostics ---')
+                        print('\n'.join(lines[marker:marker + 170]))
     return code
 
 
