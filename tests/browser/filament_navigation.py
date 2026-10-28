@@ -44,6 +44,10 @@ def login(page, base, email, recovery=None):
     primary()
     page.get_by_role('button', name='Створити ключ Authenticator').click()
     secret = page.locator('#totp-secret').inner_text()
+    # Попередній TOTP slot потрібен для наступного login без replay. Не дати
+    # межі 30 s перетворити його на slot -2 між fill і серверною перевіркою.
+    if time.time() % 30 >= 26:
+        time.sleep(30 - time.time() % 30 + .1)
     page.locator('input[name=code]').fill(otp(secret, -1))
     page.get_by_role('button', name='Підтвердити', exact=True).click()
     expect(page.get_by_role('heading', name='Збережіть резервні коди')).to_be_visible()
