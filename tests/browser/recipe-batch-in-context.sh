@@ -9,7 +9,7 @@ export AUTH4_RATE_KEY='synthetic-browser-only-rate-key-32minimum'
 export SESSION_DRIVER=database CACHE_STORE=database APP_DEBUG=false APP_URL=http://127.0.0.1:8090
 export QUEUE_CONNECTION=database MAIL_MAILER=auth4_synthetic PUBLIC_IMAGE_HOSTS=images.example.com
 export PAO_DISABLE=1
-work=$(mktemp -d /tmp/telmanfit-batch-http.XXXXXXXX)
+work=$(mktemp -d /tmp/telmanfit-auth4-XXXXXXXX)
 export AUTH4_SYNTHETIC_MAILBOX="$work/mailbox"
 BATCH_BROWSER_VERSION=$(php tests/browser/recipe-batch-fixture.php)
 export BATCH_BROWSER_VERSION
