@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 13704)
-Total output lines: 877
-
 [CmdletBinding()]
 param(
     [switch] $NoGitSync,
@@ -440,7 +437,111 @@ function Assert-TestProjectDisjoint {
         if ($details.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Volume '$volume' не має очікуваного Compose owner label." }
     }
     foreach ($volume in $workingVolumes) {
-        if ($volume -in $testVolumes) { throw "Небезпечне зіставлення із робочим …1704 tokens truncated…{{else}}{{.State.Status}}{{end}}', (Get-ContainerName database)))
+        if ($volume -in $testVolumes) { throw "Небезпечне зіставлення із робочим volume '$volume'." }
+        $details = (Get-OutputText (Invoke-Docker -Arguments @('volume', 'inspect', $volume)) | ConvertFrom-Json)[0]
+        if ($details.Labels.'com.docker.compose.project' -cne $workingProject) { throw "Робочий volume '$volume' не має очікуваного owner label." }
+    }
+
+    $ids = @(Invoke-Docker -Arguments @('ps', '-aq')).Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }
+    $expectedNames = @(Get-IsolatedTestResourceNames -ProjectName $script:ProjectName).containers
+    foreach ($id in $ids) {
+        $details = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
+        $labels = $details.Config.Labels
+        $containerName = $details.Name.TrimStart('/')
+        if ($containerName -like "$($script:ProjectName)-*" -and $labels.'com.docker.compose.project' -cne $script:ProjectName) {
+            throw "Test container name collision with a resource owned by another project: $containerName."
+        }
+        if ($labels.'com.docker.compose.project' -ceq $script:ProjectName) {
+            if ($containerName -notlike "$($script:ProjectName)-*" -or ($containerName -notin $expectedNames -and $containerName -notmatch "^$([regex]::Escape($script:ProjectName))-app-run-")) { throw 'Test container має назву поза унікальним project namespace.' }
+            foreach ($mount in @($details.Mounts | Where-Object { $_.Type -eq 'volume' })) {
+                if ($mount.Name -in $workingVolumes) { throw "Ізольований container використовує робочий volume '$($mount.Name)'." }
+            }
+        }
+    }
+    foreach ($service in @('app', 'web', 'database')) {
+        $imageName = Get-ImageName $service
+        $imageResult = Invoke-Docker -Arguments @('image', 'inspect', $imageName) -AllowFailure
+        if ($imageResult.ExitCode -eq 0) {
+            $image = (Get-OutputText $imageResult | ConvertFrom-Json)[0]
+            if ($image.Config.Labels.'telmanfit.e2e.project' -cne $script:ProjectName) { throw "Test image tag collision with a resource owned by another project: $imageName." }
+        }
+    }
+    $networkName = "$($script:ProjectName)_local"
+    $networkResult = Invoke-Docker -Arguments @('network', 'inspect', $networkName) -AllowFailure
+    if ($networkResult.ExitCode -eq 0) {
+        $network = (Get-OutputText $networkResult | ConvertFrom-Json)[0]
+        if ($network.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Test network name collision with a resource owned by another project: $networkName." }
+    }
+    $portUsers = @(Invoke-Docker -Arguments @('ps', '-q', '--filter', "publish=$script:PublishedPort")).Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }
+    foreach ($id in $portUsers) {
+        $labels = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0].Config.Labels
+        if ($labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Test host port $script:PublishedPort зайнятий стороннім контейнером." }
+    }
+}
+
+function Get-SafeComposeConfig {
+    param([Parameter(Mandatory)][string] $Root)
+
+    $result = Invoke-Compose -Arguments @('config', '--format', 'json')
+    $text = Get-OutputText $result
+    try { $config = $text | ConvertFrom-Json } catch { throw 'docker compose config повернув некоректну JSON конфігурацію.' }
+    Assert-ComposeConfig -Config $config
+    return $config
+}
+
+function Set-Phase {
+    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][string] $State)
+    $script:Phase = $Name
+    Write-UpdateLog "phase=$Name state=$State"
+    if ($script:JournalPath) {
+        $journal = [ordered]@{
+            run_id = $script:RunId
+            phase = $Name
+            state = $State
+            updated_utc = (Get-Date).ToUniversalTime().ToString('o')
+            repository_sha = $script:RepositoryHead
+            backup_directory = $script:BackupDirectory
+        }
+        $journal | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:JournalPath -Encoding utf8
+    }
+}
+
+function Assert-NoUnresolvedJournals {
+    param([Parameter(Mandatory)][string] $Directory, [string] $AcknowledgedRunId)
+
+    if (-not (Test-Path -LiteralPath $Directory -PathType Container)) { return }
+    foreach ($path in Get-ChildItem -LiteralPath $Directory -Filter '*.json' -File) {
+        if ($path.Name.EndsWith('.acknowledged.json')) { continue }
+        try { $journal = Get-Content -LiteralPath $path.FullName -Raw | ConvertFrom-Json } catch { throw "Журнал upgrade некоректний; потрібна ручна перевірка: $($path.FullName)" }
+        if ($journal.phase -eq 'complete' -and $journal.state -eq 'PASS') { continue }
+        $acknowledgementPath = "$($path.FullName).acknowledged.json"
+        if (Test-Path -LiteralPath $acknowledgementPath -PathType Leaf) {
+            try { $acknowledgement = Get-Content -LiteralPath $acknowledgementPath -Raw | ConvertFrom-Json } catch { throw "Журнал підтвердження некоректний: $acknowledgementPath" }
+            if ($acknowledgement.run_id -cne $journal.run_id) { throw "Журнал підтвердження не відповідає run_id: $acknowledgementPath" }
+            continue
+        }
+        if ($AcknowledgedRunId -and $journal.run_id -ceq $AcknowledgedRunId) {
+            [ordered]@{ run_id = $journal.run_id; acknowledged_utc = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $acknowledgementPath -Encoding utf8
+            Write-UpdateLog "prior_journal_acknowledged=$($journal.run_id) phase=$($journal.phase) state=$($journal.state)"
+            continue
+        }
+        throw "Є незавершена/невдала операція upgrade ($($journal.run_id), phase=$($journal.phase), state=$($journal.state)). Перегляньте журнал '$($path.FullName)' та після ручної перевірки повторіть з -AcknowledgeJournal '$($journal.run_id)'. Автовідновлення не виконується."
+    }
+}
+
+function Assert-BackupMetadata {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $hash = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+    $bytes = (Get-Item -LiteralPath $Path).Length
+    if ($bytes -le 0) { throw "Backup file '$Path' is empty." }
+    return [pscustomobject]@{ bytes = $bytes; sha256 = $hash }
+}
+
+function Start-LocalDatabase {
+    $null = Invoke-Compose -Arguments @('up', '-d', '--no-deps', 'database')
+    for ($i = 0; $i -lt 90; $i++) {
+        $status = Get-OutputText (Invoke-Docker -Arguments @('inspect', '--format', '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}', (Get-ContainerName database)))
         if ($status -eq 'healthy') { return }
         Start-Sleep -Seconds 2
     }
@@ -770,7 +871,8 @@ function Invoke-LocalUpdate {
     }
 }
 
-if ($MyInvocation.InvocationName -ne '.' -and -not $script:LocalUpdateLibraryOnly) {
+$libraryOnly = Get-Variable -Name LocalUpdateLibraryOnly -Scope Script -ValueOnly -ErrorAction SilentlyContinue
+if ($MyInvocation.InvocationName -ne '.' -and -not $libraryOnly) {
     Invoke-LocalUpdate
 }
 
