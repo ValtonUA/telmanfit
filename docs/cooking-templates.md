@@ -276,6 +276,12 @@ published immutability правила. Фото проходить актуал�
   equipment і content. `client_id` береться тільки з ClientSession; personal
   recipes, latest/history fallback і partial weeks не повертаються. Будь-яка
   unresolved quantity/UOM або mismatch закриває цілу сесію.
+- Список інгредієнтів підсумовує фізичні outputs рівно один раз: A бере базові
+  frozen `recipe_ingredients`, B/C — тільки точну пару
+  `(format_id, recipe_ingredient_id)` у frozen `recipe_batch_quantities`.
+  C/3 і C/4 мають ту саму фізичну кількість C; повторне приготування є іншим output.
+  Allocations/споживані порції не множать цей список. Відсутня, дубльована або
+  суперечлива frozen проєкція закриває всю сесію; live catalog fallback немає.
 - GET/HEAD мають `Cache-Control: no-store, private`, не пишуть у БД і не зберігають
   або GC-ять session metadata. Використовуються звичні auth/error статути клієнта.
 - Клієнт проходить із «Раціону» через явний template/session вибір на intro та
@@ -289,7 +295,10 @@ published immutability правила. Фото проходить актуал�
   переживають навігацію, повторне відкриття сесії й reload. Збереження того самого
   ключа починається після відновлення progress. Список сесій та відкритий player
   повторно перевіряють доступ на focus/visibility і щохвилини; 401 повертає до входу.
-  Wake Lock є best-effort із visible status;
+  Wake Lock є best-effort із visible status: максимум один pending request або
+  активний lock; повторне захоплення чекає release. Hide, вимкнення й cleanup
+  скасовують попередній intent, а його пізній promise одразу звільняється.
+  Повернення у видиму сторінку відновлює лише чинний увімкнений intent;
   фонових повідомлень немає.
 
 Автоматизовані перевірки: `CookingTemplatesTest` (PG18 + Filament/Livewire),

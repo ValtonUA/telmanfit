@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $script:LocalUpdateLibraryOnly = $true
@@ -76,15 +76,15 @@ function New-Snapshot {
         restore_fence = 'PASS'
         identity = [pscustomobject]@{ database = 'telmanfit_local_0123456789abcdef'; postgres_major = 18 }
         migrations = [pscustomobject]@{ ran = @('old_migration'); pending = $Pending }
-        schema = [pscustomobject]@{ tables = @('users', 'meal_plan_versions', 'meal_plan_days', 'meals', 'meal_items', 'recipe_versions', 'recipe_ingredients', 'recipe_batch_formats', 'recipe_batch_quantities', 'client_meal_plan_assignments', 'meal_plans', 'recipes'); functions = @(); triggers = @(); views = @() }
+        schema = [pscustomobject]@{ tables = @('users', 'meal_plan_versions', 'meal_plan_days', 'meals', 'meal_items', 'recipe_versions', 'recipe_ingredients', 'recipe_batch_formats', 'recipe_batch_quantities', 'client_meal_plan_assignments', 'meal_plans', 'recipes', 'kitchen_equipment'); functions = @(); triggers = @(); views = @() }
         tables = $tables
         catalog = [pscustomobject]@{ rows = 108; urls = 85; fingerprint = 'catalog-fingerprint' }
     }
 }
 
 $allowlist = Get-Allowlist -Root $root
-Assert-True ($allowlist.migrations.Count -eq 2) 'allowlist contains only the two explicitly approved migrations'
-Assert-True (($allowlist.migrations.name -join ',') -eq '2026_10_28_000000_create_cooking_templates,2026_10_28_010000_add_cooking_selection') 'allowlist contains the reviewed cooking migration names only'
+Assert-True ($allowlist.migrations.Count -eq 3) 'allowlist contains only the three explicitly approved migrations'
+Assert-True (($allowlist.migrations.name -join ',') -eq '2026_10_28_000000_create_cooking_templates,2026_10_28_010000_add_cooking_selection,2026_10_28_020000_add_cooking_session_equipment') 'allowlist contains the reviewed cooking migration names only'
 $empty = New-Snapshot
 $emptyPlan = Get-PendingPlan -Snapshot $empty -Allowlist $allowlist -Root $root
 Assert-True ($emptyPlan.Count -eq 0) 'no pending migrations produce an empty plan'
@@ -92,7 +92,7 @@ Assert-True ($emptyPlan.Count -eq 0) 'no pending migrations produce an empty pla
 $names = @($allowlist.migrations | Sort-Object order | ForEach-Object { $_.name })
 $pendingSnapshot = New-Snapshot -Pending $names
 $plan = Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $allowlist -Root $root
-Assert-True ($plan.Count -eq 2 -and $plan[0].order -eq 1 -and $plan[1].order -eq 2) 'approved migrations are planned in declared order'
+Assert-True ($plan.Count -eq 3 -and $plan[0].order -eq 1 -and $plan[1].order -eq 2 -and $plan[2].order -eq 3) 'approved migrations are planned in declared order'
 
 $unknownSnapshot = New-Snapshot -Pending @($names + '2026_10_29_000000_unknown_change')
 Assert-Throws { Get-PendingPlan -Snapshot $unknownSnapshot -Allowlist $allowlist -Root $root } 'unknown migration is refused'
@@ -113,6 +113,12 @@ Assert-Throws { Assert-MigrationPreconditions -Snapshot $badPreconditionSnapshot
 $second = $allowlist.migrations[1]
 Assert-Throws { Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $second } 'later migration cannot assume an unapplied prerequisite'
 Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $second -PlannedTables $first.postconditions.required_tables
+$third = $allowlist.migrations[2]
+Assert-Throws { Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $third -PlannedTables $first.postconditions.required_tables } 'Міграція обладнання потребує попередньої таблиці вибору'
+Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $third -PlannedTables @($first.postconditions.required_tables + $second.postconditions.required_tables)
+$changedEquipmentAllowlist = $allowlist | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+$changedEquipmentAllowlist.migrations[2].sources[0].sha256 = ('0' * 64)
+Assert-Throws { Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $changedEquipmentAllowlist -Root $root } 'Змінений SQL обладнання відхиляється'
 
 $post = [pscustomobject]@{ schema = [pscustomobject]@{ tables = @('cooking_templates'); functions = @(); triggers = @(); views = @('cooking_output_balances') } }
 $viewRequirement = [pscustomobject]@{ name = 'test'; postconditions = [pscustomobject]@{ required_tables = @('cooking_templates'); required_functions = @(); required_triggers = @(); required_views = @('cooking_output_balances') } }

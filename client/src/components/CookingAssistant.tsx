@@ -27,6 +27,10 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   const [wakeEnabled, setWakeEnabled] = useState(false)
   const [wakeState, setWakeState] = useState<'unsupported' | 'off' | 'active' | 'lost'>('off')
   const wakeLock = useRef<WakeLockSentinel | undefined>(undefined)
+  const wakePending = useRef(false)
+  const wakeReleasing = useRef<Promise<void> | undefined>(undefined)
+  const wakeGeneration = useRef(0)
+  const resumeWake = useRef<() => void>(() => {})
   const autoOpened = useRef(false)
   const [gallery, setGallery] = useState<string[]>()
   const [galleryIndex, setGalleryIndex] = useState(0)
@@ -69,36 +73,64 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     }
   }, [choices, detail, openSession])
 
-  const releaseWakeLock = useCallback(async () => {
-    const lock = wakeLock.current
-    wakeLock.current = undefined
-    if (lock && !lock.released) await lock.release().catch(() => undefined)
-  }, [])
-  const requestWakeLock = useCallback(async () => {
-    if (!wakeEnabled) return
-    const api = (navigator as WakeLockNavigator).wakeLock
-    if (!api) { setWakeState('unsupported'); return }
-    try {
-      const lock = await api.request('screen'); wakeLock.current = lock; setWakeState('active')
-      lock.addEventListener('release', () => { if (wakeLock.current === lock) { wakeLock.current = undefined; setWakeState('lost') } })
-    } catch { setWakeState('lost') }
-  }, [wakeEnabled])
   useEffect(() => {
-    if (wakeEnabled) {
-      const timeout = window.setTimeout(() => { void requestWakeLock() }, 0)
-      return () => { window.clearTimeout(timeout); void releaseWakeLock() }
+    let active = true
+    const release = () => {
+      wakeGeneration.current++
+      const lock = wakeLock.current
+      wakeLock.current = undefined
+      if (lock && !lock.released) {
+        const releasing = lock.release().catch(() => undefined)
+        wakeReleasing.current = releasing
+        void releasing.finally(() => {
+          if (wakeReleasing.current === releasing) wakeReleasing.current = undefined
+          resumeWake.current()
+        })
+      }
     }
-    void releaseWakeLock()
-    return () => { if (wakeLock.current && !wakeLock.current.released) void wakeLock.current.release().catch(() => undefined) }
-  }, [wakeEnabled, requestWakeLock, releaseWakeLock])
-  useEffect(() => {
+    const request = async () => {
+      if (!active || !wakeEnabled || document.visibilityState !== 'visible' || wakePending.current || wakeReleasing.current
+        || (wakeLock.current && !wakeLock.current.released)) return
+      const api = (navigator as WakeLockNavigator).wakeLock
+      if (!api) { setWakeState('unsupported'); return }
+      const generation = wakeGeneration.current
+      wakePending.current = true
+      try {
+        const lock = await api.request('screen')
+        // Promise може завершитися після hide, вимкнення або cleanup попереднього effect.
+        if (!active || generation !== wakeGeneration.current || document.visibilityState !== 'visible') {
+          await lock.release().catch(() => undefined)
+          return
+        }
+        wakeLock.current = lock; setWakeState('active')
+        lock.addEventListener('release', () => {
+          if (wakeLock.current === lock) { wakeLock.current = undefined; if (active) setWakeState('lost') }
+        })
+      } catch { if (active && generation === wakeGeneration.current) setWakeState('lost') }
+      finally {
+        wakePending.current = false
+        // Після застарілого promise перевіряємо вже поточний intent, без паралельного request.
+        if (generation !== wakeGeneration.current) resumeWake.current()
+      }
+    }
+    const resume = () => { void request() }
+    resumeWake.current = resume
     const visible = () => {
-      if (document.visibilityState === 'visible' && wakeEnabled) void requestWakeLock()
-      else if (document.visibilityState !== 'visible') { void releaseWakeLock(); if (wakeEnabled) setWakeState('lost') }
+      if (document.visibilityState === 'visible') resume()
+      else { release(); if (wakeEnabled) setWakeState('lost') }
     }
+    const timeout = wakeEnabled ? window.setTimeout(resume, 0) : undefined
     document.addEventListener('visibilitychange', visible)
-    return () => document.removeEventListener('visibilitychange', visible)
-  }, [wakeEnabled, requestWakeLock, releaseWakeLock])
+    window.addEventListener('focus', resume)
+    return () => {
+      active = false
+      window.clearTimeout(timeout)
+      document.removeEventListener('visibilitychange', visible)
+      window.removeEventListener('focus', resume)
+      if (resumeWake.current === resume) resumeWake.current = () => {}
+      release()
+    }
+  }, [wakeEnabled])
   useEffect(() => {
     const ticker = window.setInterval(() => {
       const tick = Date.now(); setNow(tick)

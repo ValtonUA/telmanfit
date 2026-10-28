@@ -89,6 +89,40 @@
         ],
         "required_triggers": ["cooking_selection_guard"]
       }
+    },
+    {
+      "name": "2026_10_28_020000_add_cooking_session_equipment",
+      "sha256": "86F927DA509CECBC6BE3B47B0F750E7BA8A64BFF48A1D3B6475D133A59B994B8",
+      "sources": [
+        {
+          "path": "database/sql/cooking/02_equipment.sql",
+          "sha256": "750B2DB985AD3881DC00F33BDD1F9C35EAD26971077A3D7792781B559AD74106"
+        }
+      ],
+      "order": 3,
+      "effect": "schema_only_create",
+      "preconditions": {
+        "required_tables": [
+          "cooking_template_versions",
+          "cooking_sessions",
+          "cooking_selections",
+          "kitchen_equipment"
+        ],
+        "absent_tables": [
+          "cooking_session_equipment"
+        ]
+      },
+      "postconditions": {
+        "required_tables": [
+          "cooking_session_equipment"
+        ],
+        "required_functions": [
+          "cooking_detail_guard"
+        ],
+        "required_triggers": [
+          "cooking_session_equipment_detail_guard"
+        ]
+      }
     }
   ]
 }

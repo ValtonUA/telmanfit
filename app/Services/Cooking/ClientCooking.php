@@ -249,7 +249,8 @@ final class ClientCooking
                     throw new DomainException('Frozen recipe format unavailable.');
                 }
             }
-            $quantityRows = collect($recipe['quantities'] ?? [])->keyBy('recipe_ingredient_id');
+            $quantityRows = collect($recipe['quantities'] ?? [])->where('format_id', $output->format_id)
+                ->groupBy('recipe_ingredient_id');
             $rows = $recipe['rows'] ?? [];
             if ($rows === []) {
                 throw new DomainException('Frozen ingredient rows unavailable.');
@@ -258,9 +259,14 @@ final class ClientCooking
                 $source = $row;
                 $nameContext = $row['ingredient_snapshot'] ?? null;
                 if (in_array($format['code'] ?? null, ['week', 'half_week'], true)) {
-                    $source = $quantityRows->get($row['id']);
-                    if (! is_array($source)) {
+                    $quantities = $quantityRows->get($row['id']);
+                    if ($quantities === null || $quantities->count() !== 1) {
                         throw new DomainException('Frozen batch quantity unavailable.');
+                    }
+                    $source = $quantities->first();
+                    if (($source['format_code'] ?? null) !== $format['code']
+                        || (int) ($source['recipe_version_id'] ?? 0) !== (int) $output->recipe_version_id) {
+                        throw new DomainException('Frozen batch quantity context mismatch.');
                     }
                     $input = $source['input_snapshot'] ?? null;
                     $input = is_string($input) ? json_decode($input, true, flags: JSON_THROW_ON_ERROR) : $input;

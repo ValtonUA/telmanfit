@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import subprocess
 from playwright.sync_api import expect
+from wake_lock import WAKE_LOCK_PROBE, verify_wake_lock
 
 
 def run_cooking(page, base, fixture=None):
@@ -81,6 +82,7 @@ def run_cooking(page, base, fixture=None):
     invoke('client', version)
     client = page.context.new_page()
     client.set_default_timeout(15000)
+    client.add_init_script(WAKE_LOCK_PROBE)
     client_errors = []
     client.on('pageerror', lambda e: client_errors.append(str(e)))
     client.route('https://images.example.com/**', lambda route: route.fulfill(content_type='image/png', body=Path('client/src/assets/hero.png').read_bytes()))
@@ -106,6 +108,8 @@ def run_cooking(page, base, fixture=None):
     expect(client.get_by_text('Каструля · синтетичний fixture')).to_be_visible()
     expect(client.locator('.cook-ingredients li')).to_have_count(1)
     expect(client.get_by_role('heading', name='Що приготуємо')).to_be_visible()
+    verify_wake_lock(client)
+    checks.append('Wake Lock: один pending/active, stale release, hide/show, вихід із сесії')
     client.get_by_role('button', name='Почати', exact=True).click()
     expect(client.locator('.cook-actions .cook-timer')).to_be_visible()
     expect(client.locator('.cook-image-button img')).to_be_visible()
