@@ -17,6 +17,9 @@ if ($mode !== 'setup') {
     $client = DB::table('clients')->where('user_id', $user)->value('id');
     if ($mode === 'cooking') {
         DB::transaction(function () use ($client): void {
+            if (Schema::hasColumn('kitchen_equipment', 'image_url') === false) {
+                (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
+            }
             if (Schema::hasTable('cooking_session_equipment') === false) {
                 (require database_path('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
             }

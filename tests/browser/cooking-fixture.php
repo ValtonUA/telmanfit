@@ -87,6 +87,9 @@ if (($argv[1] ?? '') === 'client') {
 }
 
 DB::transaction(function () {
+    if (Schema::hasColumn('kitchen_equipment', 'image_url') === false) {
+        (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
+    }
     if (Schema::hasTable('cooking_templates') === false) {
         (require database_path('migrations/2026_10_28_000000_create_cooking_templates.php'))->up();
         (require database_path('migrations/2026_10_28_010000_add_cooking_selection.php'))->up();
