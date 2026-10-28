@@ -13,7 +13,7 @@ def run_cooking(page, base, fixture=None):
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False, timeout=60)
         if result.returncode != 0:
             raise AssertionError(f'Cooking fixture exited {result.returncode}: {result.stdout}')
-        return result.stdout.strip().splitlines()[-1]
+        output = result.stdout.strip()\n        return output.splitlines()[-1] if output else ''
 
     version = invoke()
     url = base + '/admin/cooking-templates/' + str(version)
