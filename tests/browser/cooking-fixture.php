@@ -37,7 +37,7 @@ if (($argv[1] ?? '') === 'client') {
     DB::transaction(function () use ($argv): void {
         $cookingVersion = DB::table('cooking_template_versions')->where('id', (int) ($argv[2] ?? 0))->firstOrFail();
         $plan = DB::table('meal_plan_versions as v')->join('meal_plans as p', 'p.id', '=', 'v.meal_plan_id')
-            ->where('v.id', $cookingVersion->source_plan_version_id)->first(['v.id', 'p.week_start_weekday']);
+            ->where('v.id', $cookingVersion->source_plan_version_id)->first(['v.id', 'v.created_by', 'p.week_start_weekday']);
         if ($plan === null) {
             throw new RuntimeException('Synthetic cooking source plan missing.');
         }
