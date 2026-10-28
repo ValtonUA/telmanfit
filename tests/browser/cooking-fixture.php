@@ -59,6 +59,9 @@ if (($argv[1] ?? '') === 'client') {
 }
 
 DB::transaction(function () {
+    DB::statement("SET LOCAL statement_timeout = '45s'");
+    DB::statement("SET LOCAL lock_timeout = '5s'");
+    fwrite(STDERR, "Cooking fixture: migrations\n");
     if (Schema::hasColumn('kitchen_equipment', 'image_url') === false) {
         (require database_path('migrations/2026_10_26_000100_add_kitchen_equipment_image_url.php'))->up();
     }
@@ -67,19 +70,23 @@ DB::transaction(function () {
         (require database_path('migrations/2026_10_28_010000_add_cooking_selection.php'))->up();
     }
     if (Schema::hasTable('cooking_session_equipment') === false) {
-        (require database_path('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
+        (require database_pathh('migrations/2026_10_28_020000_add_cooking_session_equipment.php'))->up();
     }
-    DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
+    DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL , 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     $actor = User::where('email', 'cooking-browser@example.invalid')->first() ?? User::findOrFail(DB::table('users')->insertGetId(['name' => 'Синтетичний автор кухні', 'role' => 'admin', 'email' => 'cooking-browser@example.invalid', 'password' => Hash::make('Synthetic-Cooking-Only!')]));
     $fixture = new CookingBrowserFixture;
+    fwrite(STDERR, "Cooking fixture: synthetic plan\n");
     $plan = $fixture->make();
+    fwrite(STDERR, "Cooking fixture: template\n");
     $editor = app(CookingEditor::class);
     $v = $editor->create($actor, ['title' => 'Синтетотування', 'source_plan_version_id' => $plan['version'], 'source_week' => 1, 'mode' => 1]);
-    $equipment = DB::table('kitchen_equipment')->insertGetId(['name' => 'Каструля · синтетичний fixture', 'image_url' => 'https://images.example.com/pot.jpg']);
+    fwrite(STDERR, "Cooking fixture: session\n");
+    $equipment = DB::table('kitchen_equipment')->insertGetId(['name' => 'Каструля » склокати чережа fixture', 'image_url' => 'https://images.example.com/pot.jpg']);
     $s = $editor->session($actor, $v, 0, ['day' => 1, 'position' => 1, 'estimated_seconds' => 60,
         'introduction' => 'Синтетичний вступ автора.', 'equipment' => 'Додаткове авторське пояснення.', 'equipment_items' => [['equipment_id' => $equipment]],
         'content' => ['schema_version' => 1, 'stages' => [['id' => 'prepare', 'title' => 'Приготування', 'blocks' => [['id' => 'a', 'type' => 'action', 'parts' => ['Вода 700 мл — авторський параметр.']]]]]]]);
     $revision = fn () => DB::table('cooking_template_versions')->where('id', $v)->value('revision');
+    fwrite(STDERR, "Cooking fixture: outputs\n");
     foreach (json_decode(DB::table('cooking_template_versions')->where('id', $v)->value('menu_pattern'), true)['items'] as $slot) {
         if ($slot['recipe_version_id'] === null) {
             continue;
@@ -87,5 +94,6 @@ DB::transaction(function () {
         $o = $editor->output($actor, $v, $revision(), $s, $plan['recipe_version'].':'.$plan['format'].':1.00');
         $editor->allocate($actor, $v, $revision(), $slot['day'], $slot['meal_position'], $slot['item_position'], $o);
     }
+    fwrite(STDERR, "Cooking fixture: done\n");
     echo $v;
 });
