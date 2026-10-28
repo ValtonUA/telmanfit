@@ -78,7 +78,7 @@ def run_cooking(page, base, fixture=None):
     page.get_by_role('alertdialog').get_by_role('button', name='Активувати', exact=True).click()
     expect(page.get_by_text('Чинна версія цього слота: #' + str(version), exact=True)).to_be_visible()
     checks.append('Review → publish (readonly) → окрема activation')
-    fixture('client', version)
+    invoke('client', version)
     client = page.context.new_page()
     client.set_default_timeout(15000)
     client_errors = []
