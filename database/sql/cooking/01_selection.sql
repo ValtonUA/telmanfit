@@ -107,4 +107,3 @@ BEGIN
   'label_source',CASE WHEN metric='grams' THEN 'canonical_grams' WHEN first_row.unit_label IS NULL THEN 'unavailable'
    WHEN first_row.context ? 'uom_label' THEN 'recipe_snapshot' ELSE 'canonical_grams' END,'sources',t->'sources');
 END $$;
-
