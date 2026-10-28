@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 13840)
-Total output lines: 884
+Warning: truncated output (original token count: 13899)
+Total output lines: 886
 
 [CmdletBinding()]
 param(
@@ -305,7 +305,7 @@ function Assert-ComposeConfig {
     $expectedVolumes = @('database', 'database-secrets', 'epoch', 'local-state', 'storage')
     $volumeNames = @($Config.volumes.PSObject.Properties.Name | Sort-Object)
     if (($volumeNames -join ',') -cne (($expectedVolumes | Sort-Object) -join ',')) {
-        throw 'Compose volume inventory …6840 tokens truncated…uments @('-C', $root, 'remote', 'get-url', 'origin'))
+        throw 'Compose volume inventory …6899 tokens truncated…uments @('-C', $root, 'remote', 'get-url', 'origin'))
         if (-not (Test-ExpectedRemote -Remote $remote)) { throw 'Git origin не відповідає ValtonUA/telmanfit.' }
         Assert-SafeGitTree -Root $root
 
