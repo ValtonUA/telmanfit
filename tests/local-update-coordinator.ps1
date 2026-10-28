@@ -144,8 +144,81 @@ $nativeTestRoot = Join-Path $root ".native-cli-test-$([guid]::NewGuid().ToString
 $bareRepository = Join-Path $nativeTestRoot 'remote.git'
 $seedRepository = Join-Path $nativeTestRoot 'seed repo'
 $nativeTestDirectory = Join-Path $nativeTestRoot 'client config'
+$argvProbePath = Join-Path $nativeTestRoot 'argv-probe.exe'
 $null = New-Item -ItemType Directory -Path $nativeTestRoot -Force
 try {
+    # Compile a native child that returns its actual argv as ASCII-only JSON. This
+    # verifies ProcessStartInfo parsing, rather than only inspecting helper output.
+    $argvProbeSource = @'
+using System;
+using System.Text;
+
+public static class NativeArgvProbe
+{
+    private static void AppendJsonString(StringBuilder output, string value)
+    {
+        output.Append('"');
+        foreach (char character in value)
+        {
+            if (character == '"') output.Append("\\\"");
+            else if (character == '\\') output.Append("\\\\");
+            else if (character < 0x20 || character > 0x7E)
+                output.Append("\\u").Append(((int)character).ToString("x4"));
+            else output.Append(character);
+        }
+        output.Append('"');
+    }
+
+    public static int Main(string[] args)
+    {
+        if (args.Length == 1 && args[0] == "--streams")
+        {
+            Console.Out.Write("stdout-marker");
+            Console.Error.Write("stderr-marker");
+            return 23;
+        }
+
+        StringBuilder output = new StringBuilder("[");
+        for (int index = 0; index < args.Length; index++)
+        {
+            if (index > 0) output.Append(',');
+            AppendJsonString(output, args[index]);
+        }
+        output.Append(']');
+        Console.Write(output.ToString());
+        return 0;
+    }
+}
+'@
+    Add-Type -TypeDefinition $argvProbeSource -OutputAssembly $argvProbePath -OutputType ConsoleApplication -ErrorAction Stop
+
+    $expectedArgv = [string[]] @(
+        'plain'
+        'two words'
+        'say "hello"'
+        '\'
+        '\\'
+        '\\\\\\'
+        'ends with slash\'
+        'quote after slash \"'
+        'slash before quote and trailing slash \\\"\\'
+        ''
+        'Українська їжа — Unicode 😀'
+        'C:\Program Files\TelmanFit\дані\'
+        '\\server\share\folder with spaces\'
+    )
+    $argvProbe = Invoke-Native -Command $argvProbePath -Arguments $expectedArgv
+    $actualArgv = ConvertFrom-Json -InputObject ($argvProbe.StandardOutput -join [Environment]::NewLine)
+    Assert-True ($argvProbe.ExitCode -eq 0 -and $actualArgv.Count -eq $expectedArgv.Count) 'native argv probe exits successfully and preserves argument count including empty arguments'
+    for ($index = 0; $index -lt $expectedArgv.Count; $index++) {
+        Assert-True ($actualArgv[$index] -ceq $expectedArgv[$index]) "native argv round-trip preserves parameterized argument $index"
+    }
+    $streamProbe = Invoke-Native -Command $argvProbePath -Arguments @('--streams') -AllowFailure
+    Assert-True ($streamProbe.ExitCode -eq 23 -and ($streamProbe.StandardOutput -join '') -eq 'stdout-marker' -and ($streamProbe.StandardError -join '') -eq 'stderr-marker') 'native stdout, stderr, and nonzero exit code remain distinct'
+    $strictFailureMessage = $null
+    try { $null = Invoke-Native -Command $argvProbePath -Arguments @('--streams') } catch { $strictFailureMessage = $_.Exception.Message }
+    Assert-True ($strictFailureMessage -match 'exit code 23' -and $strictFailureMessage -notmatch 'stdout-marker|stderr-marker') 'unallowed native failure reports its exit code without exposing process output'
+
     $null = Invoke-Native -Command 'git' -Arguments @('init', '--quiet', '--bare', '--initial-branch=master', $bareRepository)
     $null = Invoke-Native -Command 'git' -Arguments @('init', '--quiet', '--initial-branch=master', $seedRepository)
     $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'config', 'user.name', 'Native Test')
