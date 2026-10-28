@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 14020)
-Total output lines: 894
+Warning: truncated output (original token count: 14133)
+Total output lines: 903
 
 [CmdletBinding()]
 param(
@@ -343,46 +343,7 @@ function Get-DatabaseSnapshot {
 }
 
 function Test-VolumeDetached {
-    param([Parameter(Mandatory)][string] $Volume)
-    $running = Invoke-Docker -Arguments @('ps', '-q', '--filter', "volume=$Volume")
-    if ((Get-OutputText $running)) { throw "Volume '$Volume' усе ще приєднаний до running container." }
-}
-
-function Invoke-TarArchive {
-    param(
-        [Parameter(Mandatory)][string] $DatabaseImage,
-        [Parameter(Mandatory)][string] $Volume,
-        [Parameter(Mandatory)][string] $BackupDirectory,
-        [Parameter(Mandatory)][string] $Archive,
-        [switch] $Compare
-    )
-
-    Test-VolumeDetached -Volume $Volume
-    $archivePath = Join-Path $BackupDirectory $Archive
-    if ($Compare) {
-        $arguments = @('run', '--rm', '--network', 'none', '--read-only', '--user', '0', '--entrypoint', 'tar', '--mount', "type=volume,source=$Volume,target=/source,readonly", '--mount', "type=bind,source=$BackupDirectory,target=/backup,readonly", $DatabaseImage, '--numeric-owner', '-dpf', "/backup/$Archive", '-C', '/source')
-    } else {
-        if (Tes…5020 tokens truncated…nvertFrom-Json)[0]
-                if ($details.Config.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal container.' }
-                $null = Invoke-Docker -Arguments @('stop', '--time', '30', $container) -AllowFailure
-                $null = Invoke-Docker -Arguments @('rm', $container)
-            }
-        }
-        foreach ($name in $createdVolumes) {
-            $inspectResult = Invoke-Docker -Arguments @('volume', 'inspect', $name) -AllowFailure
-            if ($inspectResult.ExitCode -eq 0) {
-                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
-                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal volume.' }
-                $attached = Invoke-Docker -Arguments @('ps', '-aq', '--filter', "volume=$name")
-                if ((Get-OutputText $attached)) { throw "Rehearsal volume $name усе ще використовується." }
-                $null = Invoke-Docker -Arguments @('volume', 'rm', $name)
-            }
-        }
-        if ($networkCreated) {
-            $inspectResult = Invoke-Docker -Arguments @('network', 'inspect', $network) -AllowFailure
-            if ($inspectResult.ExitCode -eq 0) {
-                $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
-                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
+    param([P…5633 tokens truncated…s.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
                 $null = Invoke-Docker -Arguments @('network', 'rm', $network)
             }
         }
@@ -397,8 +358,17 @@ function Invoke-LocalUpdate {
 
     if (-not $env:LOCALAPPDATA) { throw 'LOCALAPPDATA не визначено; coordinator потребує локального приватного сховища backup/log.' }
     $stateRoot = if ($script:TestMode) { Join-Path (Join-Path $env:TEMP 'TelmanFit-E2E') $script:ProjectName } else { Join-Path $env:LOCALAPPDATA 'TelmanFit' }
-    if ($script:TestMode -and (Test-Path -LiteralPath $stateRoot)) { throw 'Ізольований backup/log каталог уже існує; відмова використовувати чи перезаписувати його.' }
     Set-PrivateDirectoryAcl -Path $stateRoot
+    if ($script:TestMode) {
+        $ownerMarker = Join-Path $stateRoot '.isolated-project'
+        if (Test-Path -LiteralPath $ownerMarker -PathType Leaf) {
+            if ((Get-Content -LiteralPath $ownerMarker -Raw).Trim() -cne $script:ProjectName) { throw 'Ізольований backup/log каталог має інший project marker.' }
+        } elseif (@(Get-ChildItem -LiteralPath $stateRoot -Force).Count -gt 0) {
+            throw 'Ізольований backup/log каталог уже містить немарковані дані.'
+        } else {
+            Set-Content -LiteralPath $ownerMarker -Value $script:ProjectName -NoNewline -Encoding ascii
+        }
+    }
     $lockStream = Enter-UpdateLock -LockPath (Join-Path $stateRoot 'local-update.lock')
     $script:RunId = '{0}-{1}' -f (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'), ([guid]::NewGuid().ToString('N').Substring(0, 8))
     $script:LogPath = Join-Path (Join-Path $stateRoot 'updates') "$script:RunId.log"
