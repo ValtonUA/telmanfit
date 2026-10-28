@@ -23,5 +23,6 @@
   },
   "installation_id": 1,
   "repository_id": 1428216947,
-  "sandbox_repository_id": 1
+  "sandbox_repository_id": 1,
+  "oracle_image": "ghcr.io/OWNER/ux-auto-oracle@sha256:0000000000000000000000000000000000000000000000000000000000000000"
 }

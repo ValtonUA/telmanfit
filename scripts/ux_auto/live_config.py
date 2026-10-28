@@ -20,7 +20,7 @@ def load(path):
     for name in ('installation_id', 'repository_id', 'sandbox_repository_id'):
         if type(config.get(name)) is not int or config[name] <= 0:
             raise Blocked(f'Потрібен реальний {name}')
-    for field in ('worker_image', 'proxy_image', 'postgres_image'):
+    for field in ('worker_image', 'oracle_image', 'proxy_image', 'postgres_image'):
         if not re.fullmatch(r'[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}', config[field]):
             raise Blocked(f'Потрібен digest-pinned {field}')
     for name, maximum in {'requests': 20, 'input_bytes': 500000, 'output_tokens': 32000,

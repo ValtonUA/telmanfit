@@ -18,10 +18,14 @@ API reservation ledger переживає restart. `app_token.py` поновлю
 tokens без передачі private key або write-token model worker.
 
 `worker.py` запускає Codex coder/reviewer у різних Docker containers; API key
-доступний лише bounded Responses relay, browser/PG18 мають власну internal network.
+доступний лише bounded Responses relay. Незалежний browser oracle не монтує
+candidate source/output і читає фактичну PG18 через guarded nonprivileged Unix socket.
+Pinned stage assertions беруться з controller; candidate browser JSON не є acceptance.
 Path/scope/hash/size guards не допускають змін workflows, gates, migrations або secrets.
 `live.py` підтримує read-only preflight, окремий harmless sandbox probe, activation,
-run/pause/resume/status; workflow manual-only і default-disabled.
+run/pause/resume/status; initial dispatch озброює durable scheduled continuation,
+яка підхоплює checkpoint між jobs під CAS/lease і terminal/budget guards.
+Workflow default-disabled, жодних реальних stages не активовано.
 
 [Bootstrap докази](evidence/ux-auto/report.md) та [перевірки адаптерів](evidence/ux-auto-live/report.md)
 відокремлюють synthetic GitHub/Codex contracts від локальних Chromium/Docker probe.

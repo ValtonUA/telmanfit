@@ -1,5 +1,7 @@
 name: UX-AUTO controlled live adapters
 on:
+  schedule:
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       operation:
@@ -48,7 +50,7 @@ jobs:
           python3 -c 'import os,pathlib; pathlib.Path("/tmp/ux-auto-config.json").write_text(os.environ["CONFIG"])'
       - name: Owner-controlled operation
         env:
-          OPERATION: ${{ inputs.operation }}
+          OPERATION: ${{ github.event_name == 'schedule' && 'continue' || inputs.operation }}
           UX_AUTO_APP_ID: ${{ secrets.UX_AUTO_APP_ID }}
           UX_AUTO_APP_PRIVATE_KEY: ${{ secrets.UX_AUTO_APP_PRIVATE_KEY }}
           UX_AUTO_GH_TOKEN: ${{ steps.app.outputs.token }}

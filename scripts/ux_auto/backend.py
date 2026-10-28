@@ -190,13 +190,16 @@ class Backend:
         review = self.session.value['operations'][review_key]['review']
         if review.get('findings'):
             return {'ci': snapshot, 'review': review}
-        browser_key = f'browser:{stage}:{pr["head"]}'
+        from scripts.ux_auto.oracle_runner import fingerprint, verify
+        browser_key = f'browser:{stage}:{pr["head"]}:{fingerprint()}'
         if not self.session.value['operations'].get(browser_key, {}).get('browser'):
             self.effect()
             self.fetch(pr['head'])
             browser = self.workers.browser(stage, pr['head'], pr['head'])
             self.remember(browser_key, browser=browser)
         browser = deepcopy(self.session.value['operations'][browser_key]['browser'])
+        if not self.sandbox:
+            verify(browser, pr['head'])
         png_data = browser.pop('png_data', {})
         urls = []
         for name, content in png_data.items():

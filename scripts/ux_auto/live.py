@@ -10,6 +10,7 @@ import subprocess
 import time
 
 from scripts.ux_auto.app_token import AppToken
+from scripts.ux_auto.continuation import arm, claim, disarm, eligible
 from scripts.ux_auto.backend import Backend
 from scripts.ux_auto.coordinator import Blocked, Waiting, check_evidence, tick, validate, summary
 from scripts.ux_auto.github import GitHub, clean_env
@@ -82,33 +83,40 @@ def activate(config, session, sandbox_api):
     session.update(enable)
 
 
-def advance(config, session, workers, api):
+def advance(config, session, workers, api, backend=None, monotonic=time.monotonic, sleeper=time.sleep):
     authorize(config, session.value)
-    backend = Backend(api, session, workers, config)
-    start = time.monotonic()
+    backend = backend or Backend(api, session, workers, config)
+    start = monotonic()
     for _ in range(1000):
-        if time.monotonic() - start >= config['limits']['run_seconds']:
-            raise Blocked('Controller wall-clock budget; checkpoint збережено')
+        # Запас до hard job timeout: не починати нову invocation на межі slice.
+        if monotonic() - start >= max(1, min(config['limits']['run_seconds'], 270 * 60) - config['limits']['invocation_seconds'] - 120):
+            return {'status': 'yielded', 'continuation': True}
         checkpoint = session.value['checkpoint']
         validate(checkpoint, config['spec_sha'])
         result = tick(checkpoint, backend, config['spec_sha'])
         session.update(lambda state: state.__setitem__('checkpoint', result))
         blocked = next((s for s in result['stages'] if s['state'] == 'blocked'), None)
         if blocked:
+            disarm(session, blocked['reason'])
             backend.write_status(blocked['id'], 'blocked', blocked.get('pr'), reason=blocked['reason'])
             return summary(result)
         if summary(result)['complete']:
+            disarm(session, 'complete')
             backend.write_status('UX-6', 'complete', result['stages'][-1]['pr'], result['stages'][-1]['merge_sha'])
             return summary(result)
+        if checkpoint['stages'] != result['stages'] and any(
+                before['state'] in {'running', 'fixing', 'verifying'} and before != after
+                for before, after in zip(checkpoint['stages'], result['stages'])):
+            return {'status': 'yielded', 'continuation': True}
         if result == checkpoint:
             # Bounded poll з lease/pause перевіркою; no busy loop і no coder retry для waiting CI.
-            time.sleep(15)
-    raise Blocked('Controller tick budget')
+            sleeper(15)
+    return {'status': 'yielded', 'continuation': True}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('preflight', 'seed', 'sandbox', 'activate', 'run', 'pause', 'resume', 'status'))
+    parser.add_argument('command', choices=('preflight', 'seed', 'sandbox', 'activate', 'run', 'continue', 'pause', 'resume', 'status'))
     parser.add_argument('--config', required=True)
     args = parser.parse_args()
     def interrupt(*_):
@@ -125,9 +133,9 @@ def main():
             sandbox_token = AppToken(app_id, config['installation_id'], config['sandbox_repository_id'], os.environ['UX_AUTO_APP_PRIVATE_KEY'])
         else:
             token, sandbox_token = os.environ.get('UX_AUTO_GH_TOKEN'), os.environ.get('UX_AUTO_SANDBOX_GH_TOKEN')
-            if args.command in {'sandbox', 'activate', 'run', 'resume'}:
+            if args.command in {'sandbox', 'activate', 'run', 'continue', 'resume'}:
                 raise Blocked('Для тривалого live потрібен App token provider із автоматичним refresh')
-        if args.command in {'sandbox', 'run'} and not os.environ.get('UX_AUTO_OPENAI_API_KEY'):
+        if args.command in {'sandbox', 'run', 'continue'} and not os.environ.get('UX_AUTO_OPENAI_API_KEY'):
             raise Blocked('Відсутній UX_AUTO_OPENAI_API_KEY; invocation заборонено')
         api = GitHub(config['repository'], token)
         if args.command == 'preflight':
@@ -141,13 +149,19 @@ def main():
             session = Session(api, config, maintenance=True)
             session.revision, value = session.read()
             value['paused'] = True
+            value.setdefault('continuation', {})['armed'] = False
             session.save(value)  # CAS без захоплення lease: власник може зупинити активний controller.
             report = {'paused': True}
         elif args.command == 'status':
             _, state = Session(api, config, maintenance=True).read()
-            report = {'paused': state['paused'], 'spend': state['spend'], 'checkpoint': summary(state['checkpoint'])}
+            report = {'paused': state['paused'], 'spend': state['spend'], 'checkpoint': summary(state['checkpoint']), 'continuation': state.get('continuation')}
         else:
-            session = Session(api, config, maintenance=args.command != 'run')
+            session = Session(api, config, maintenance=args.command not in {'run', 'continue'})
+            if args.command == 'continue':
+                _, saved = session.read()
+                if not eligible(config, saved) or saved.get('lease', {}).get('expires', 0) > time.time():
+                    print(json.dumps({'status': 'idle'}))
+                    return 0
             session.acquire()
             try:
                 if args.command == 'pause':
@@ -158,6 +172,7 @@ def main():
                     authorize(config, session.value)
                     checkpoint = resume(session.value['checkpoint'], config['spec_sha'])
                     session.update(lambda state: state.update(paused=False, checkpoint=checkpoint))
+                    arm(session)
                     report = {'paused': False, 'started': False}
                 elif args.command == 'sandbox':
                     if preflight(config, api)['status'] != 'READY_FOR_SANDBOX':
@@ -168,6 +183,9 @@ def main():
                     activate(config, session, GitHub(config['sandbox_repository'], sandbox_token))
                     report = {'activated': True, 'started': False}
                 else:
+                    if args.command == 'run':
+                        arm(session)
+                    claim(session)
                     report = advance(config, session, Workers(config, ROOT, os.environ.get('UX_AUTO_OPENAI_API_KEY', '')), api)
             finally:
                 try:

@@ -1,0 +1,384 @@
+{
+  "scope": "synthetic durable continuation across separate owner sessions/jobs; no actual API calls",
+  "owner_starts": 1,
+  "jobs": [
+    {
+      "slice": 1,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "pr_open"
+        },
+        {
+          "id": "UX-2",
+          "state": "pending"
+        },
+        {
+          "id": "UX-3",
+          "state": "pending"
+        },
+        {
+          "id": "UX-4",
+          "state": "pending"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 1
+    },
+    {
+      "slice": 2,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "pending"
+        },
+        {
+          "id": "UX-3",
+          "state": "pending"
+        },
+        {
+          "id": "UX-4",
+          "state": "pending"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 2
+    },
+    {
+      "slice": 3,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "pr_open"
+        },
+        {
+          "id": "UX-3",
+          "state": "pending"
+        },
+        {
+          "id": "UX-4",
+          "state": "pending"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 3
+    },
+    {
+      "slice": 4,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "pending"
+        },
+        {
+          "id": "UX-4",
+          "state": "pending"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 4
+    },
+    {
+      "slice": 5,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "pr_open"
+        },
+        {
+          "id": "UX-4",
+          "state": "pending"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 5
+    },
+    {
+      "slice": 6,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "pending"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 6
+    },
+    {
+      "slice": 7,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "pr_open"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 7
+    },
+    {
+      "slice": 8,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged"
+        },
+        {
+          "id": "UX-5",
+          "state": "pending"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 8
+    },
+    {
+      "slice": 9,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged"
+        },
+        {
+          "id": "UX-5",
+          "state": "pr_open"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 9
+    },
+    {
+      "slice": 10,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged"
+        },
+        {
+          "id": "UX-5",
+          "state": "merged"
+        },
+        {
+          "id": "UX-6",
+          "state": "pending"
+        }
+      ],
+      "model_invocations": 10
+    },
+    {
+      "slice": 11,
+      "result": "yielded",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged"
+        },
+        {
+          "id": "UX-5",
+          "state": "merged"
+        },
+        {
+          "id": "UX-6",
+          "state": "pr_open"
+        }
+      ],
+      "model_invocations": 11
+    },
+    {
+      "slice": 12,
+      "result": "complete",
+      "stages": [
+        {
+          "id": "UX-1",
+          "state": "merged"
+        },
+        {
+          "id": "UX-2",
+          "state": "merged"
+        },
+        {
+          "id": "UX-3",
+          "state": "merged"
+        },
+        {
+          "id": "UX-4",
+          "state": "merged"
+        },
+        {
+          "id": "UX-5",
+          "state": "merged"
+        },
+        {
+          "id": "UX-6",
+          "state": "merged"
+        }
+      ],
+      "model_invocations": 12
+    }
+  ],
+  "complete": true,
+  "created_prs": 6,
+  "model_invocations": 12,
+  "merge_requests": 6,
+  "armed_after_completion": false,
+  "oracle_sha": "27a945db1272c69ae68634623ee4cb9d8933f3942da833151eaf144d86076074"
+}

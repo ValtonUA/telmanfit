@@ -176,7 +176,9 @@ class FixtureWorkers:
     def browser(self, stage, head, ref):
         return {'head': head, 'status': 'failure' if self.browser_failed else 'success',
                 'checks': c.acceptance(stage), 'matrix': [f'{w}/{t}' for w in (1440, 390, 320) for t in ('light', 'dark')],
-                'screenshots': [f'fixture-{i}.png' for i in range(6)]}
+                'screenshots': [f'fixture-{i}.png' for i in range(6)],
+                'oracle_mode': 'external', 'oracle_sha': __import__('scripts.ux_auto.oracle_runner', fromlist=['fingerprint']).fingerprint(),
+                'observations': ['synthetic external contract fixture']}
 
 
 class LiveTests(unittest.TestCase):
@@ -534,7 +536,8 @@ class LiveTests(unittest.TestCase):
         self.assertIn('ref: ${{ vars.UX_AUTO_TRUSTED_REF }}', text)
         self.assertIn('workflow_dispatch:', text)
         self.assertNotIn('pull_request:', text)
-        self.assertNotIn('schedule:', text)
+        self.assertIn('schedule:', text)
+        self.assertIn("github.event_name == 'schedule' && 'continue'", text)
         self.assertIn('persist-credentials: false', text)
         self.assertIn('contents: read', text)
         self.assertNotIn('contents: write', text)

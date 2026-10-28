@@ -189,8 +189,15 @@ bootstrap PR координатора. GitHub auto-merge не використо
 `ux-auto-adapters-tests.yml` запускає без секретів CI/controller та docs regressions
 для PR до master і stacked bootstrap branch. Він не замінює required Fast/Docs/Targeted;
 після merge dependency і retarget до master ці три required checks мусять пройти заново.
-`ux-auto-live.yml` — лише owner dispatch із pinned controller ref та default-disabled
+`ux-auto-live.yml` — owner initial dispatch і scheduled continuation лише для
+озброєного активного checkpoint, із pinned controller ref та default-disabled
 variable; не використовує PR events, `pull_request_target`, untrusted inline commands
 або GitHub auto-merge. App private key/API key доступні тільки trusted controller
 step/relay; worker containers отримують clean environment без write-token.
 [Операційні умови й блокери](ux-auto-live.md). `pre_merge.py` не змінено.
+
+Oracle regression step у UX-AUTO adapter contracts встановлює pinned Playwright
+і перевіряє trusted assertions на synthetic HTTP UI, включно з навмисними
+reload/layout/quantity/copy/overflow порушеннями. Це не Laravel acceptance і не
+реальний sandbox E2E; для activation потрібен зовнішній gate. Candidate не може
+змінювати controller oracle, CI guards або pre_merge.py через UX patch allowlist.

@@ -25,7 +25,7 @@
 
 | ID | Зміст | Статус | Наступна дія |
 |---|---|---|---|
-| UX-AUTO | [Issue #107](https://github.com/ValtonUA/telmanfit/issues/107): [координатор і неактивні live-адаптери](ux-auto.md), шість stage, bounded retry, restart/resume та fail-closed gates | Частково | Налаштувати audited images, App/API credentials і числовий бюджет; пройти реальний sandbox vertical slice перед активацією; UX-1–UX-6 не запускати |
+| UX-AUTO | [Issue #107](https://github.com/ValtonUA/telmanfit/issues/107): [координатор і неактивні live-адаптери](ux-auto.md), шість stage, автоматичне продовження між jobs, pinned external oracle, bounded retry та fail-closed gates | Частково | Налаштувати audited images, App/API credentials і числовий бюджет; пройти реальний sandbox vertical slice перед активацією; UX-1–UX-6 не запускати |
 
 ## Позначення
 

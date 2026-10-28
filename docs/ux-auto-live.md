@@ -33,31 +33,47 @@ read-only container зі structured schema; plain PASS не приймаєтьс
 не використовується. Після timeout читається фактичний PR receipt; наступний stage
 доступний лише після підтвердження merge SHA у master ancestry.
 
-## Безпечний browser/PG контракт
+## Незалежний browser/PG oracle
 
-Candidate додає `tests/browser/ux_auto_acceptance.py` у межах відповідного UX PR.
-Цей код виконується **лише** в окремому worker без токенів, зовнішньої мережі чи
-Docker socket. Launcher створює internal network і новий disposable PG18 на tmpfs,
-без зовнішніх портів; перевіряє server_version_num, прибирає тільки власні UUID
-контейнери/мережу. Немає підключення production/Telmanfit_dev.
+Обов’язковий acceptance виконує pinned `scripts/ux_auto/oracle/assertions.py`,
+а не створений candidate `tests/browser/ux_auto_acceptance.py`. Candidate tests
+лишаються додатковими CI регресіями. Publisher дозволяє нові тематичні Unit/Feature/
+MealPlans fixtures лише за stage-specific patterns `TEST_PATTERNS`; `tests/ci/`,
+phpunit configs, gates, workflow, shell/SQL runners, secrets і schema залишаються
+забороненими. Повний `tests/` не дозволено.
 
-Harness отримує `--stage`, `--head`, `--output /out`, testing env і синтетичний PG
-`pg:5432`, database/user `postgres`. Audited worker image має залежності/fixtures
-для Laravel/Filament/React та Chromium (`/opt/ux-auto/deps/vendor`, `node_modules`,
-`client-node_modules`; trusted launcher додає лише runtime symlinks, які не публікуються); harness сам готує тільки цю disposable БД,
-піднімає loopback PHP server й запускає реальні assertions. Немає мережі для npm/
-Composer install під час candidate test. Відсутній harness або залежності — blocker.
+Trusted launcher створює **різні контейнери** app та oracle, без спільного PID або
+output. App бачить candidate source і pinned fixtures, але не `/out` oracle. Oracle
+бачить тільки pinned assertions, власний `/out` та disposable PG socket — без candidate
+source/imports. Мережа app/oracle internal, без зовнішніх портів, токенів чи API keys.
+PG18 працює з network none, tmpfs, Unix socket; app/oracle мають лише роль
+`telmanfit_test_runner` без superuser/createdb/createrole/replication/bypassrls. Після
+provisioning HBA відхиляє інші local roles. Чинний `tests/pg/auth2-guard.php` не змінено.
+Fixtures беруться лише з tracked files pinned controller, і bootstrap спрямовується
+на candidate Laravel kernel. Звичайні MFA/OTP/CSRF та ClientSession не вимикаються.
 
-`browser.json` містить exact head, status success, усі stage checks із
-`coordinator.acceptance(stage)`, `assertions: {check: "passed"}`, matrix
-1440/light,1440/dark,390/light,390/dark,320/light,320/dark та шість різних PNG filename.
-PNG мусять мати відповідні width, коректну сигнатуру й bounded size; hashes і actual
-images зберігаються у state branch. Independent reviewer перевіряє якість assertions
-і те, що harness не підміняє перевірки self-attested статусом. JSON/PNG самі по собі
-не доводять правильність UI; required Targeted також мусить пройти на тому самому SHA.
-UX-1/2: no-document-navigation/auth/theme/Back/Forward/direct link;
-UX-3…6: synthetic plan/drag/keyboard/touch/stale/ACL/rollback;
-UX-6 додатково seven-independent-days і publish.
+Oracle виконує реальні HTTP login/OTP/MFA, DOM transitions, Back/Forward/document
+identity, keyboard/touch, theme/overflow; читає фактичні rows через окремий psql,
+а не через candidate JSON. Stage-specific assertions перевіряють 7-day creation/GET
+no-write, desktop layout/scroll/grid, drag cancel, inline quantity/exact references,
+copy independent IDs/preview/cancel/stale та publication; history і failed/revoked
+requests не можуть записувати дані. 1440/390/320 light/dark мають реальні PNG;
+UX-5/6 business mutation проходить один раз, решта matrix перевіряє render (UX-5
+також keyboard/touch layout), щоб не підміняти одноразовий copy/publication сценарій.
+
+Стабільні non-visible test hooks для майбутніх UX PR: `meal-plan-catalog`,
+`meal-plan-meals`, `catalog-card`, `meal-drop-zone`, `meal-item`, `inline-quantity`,
+`inline-confirm`, `week-day-N`, `copy-day-target-N`, `copy-day-confirm`,
+`copy-day-preview`, `copy-day-preview-counts`. Це лише selectors; oracle додатково
+перевіряє DOM geometry/HTTP і database effects. Відсутній selector, app, fixture або
+image dependency — failure, без fallback до candidate report або synthetic probe.
+
+Окремий digest зв’язує report із pinned assertions/lifecycle; backend відхиляє
+старий/self-attested receipt навіть із правильними JSON/PNG. `oracle_image` має бути
+окремо digest-pinned з Python, Playwright/Chromium і psql; app `worker_image` — із
+PHP/Composer/Node та readonly dependencies `/opt/ux-auto/deps/`. Runner/fixtures не
+можна виправляти з UX candidate branch. Зміна oracle потребує предметного review,
+нового trusted ref/config identity та повторного sandbox gate.
 
 ## Мінімальне одноразове налаштування власника
 
@@ -76,7 +92,7 @@ UX-6 додатково seven-independent-days і publish.
    використовується для bot PR publishing. Локальний CLI використовує ті самі назви
    зі змінних процесу; `UX_AUTO_GH_TOKEN`/`UX_AUTO_SANDBOX_GH_TOKEN` допускаються тільки
    для read-only preflight/seed/status/pause, без fallback для live invocation.
-4. Надати audited **digest-pinned** OCI worker image із Git/Python/PHP/Composer,
+4. Надати audited **digest-pinned** OCI worker та oracle images. Worker image із Git/Python/PHP/Composer,
    зібраними synthetic dependencies, Chromium/Playwright та перевіреним Codex CLI,
    який підтримує flags із `worker.py`. Образ не має credentials, VOLUME/entrypoint
    hooks або host mounts. Окремий pinned Python proxy image і PG18 pin із шаблону.
@@ -89,7 +105,7 @@ UX-6 додатково seven-independent-days і publish.
    й явно встановити числові total/day caps. Приклад $40 **не є погодженим бюджетом**.
 6. Зберегти public config у `UX_AUTO_CONFIG`, коротке ім'я sandbox repository у
    `UX_AUTO_SANDBOX_REPOSITORY`, залишити `enabled:false`. Variable
-   `UX_AUTO_LIVE_ENABLED=true` відкриває лише owner dispatch; без sandbox receipt і
+   `UX_AUTO_LIVE_ENABLED=true` дозволяє owner dispatch і checkpoint-gated schedule; без sandbox receipt і
    окремого `activate` команда run залишається заблокованою. Не встановлювати цю
    variable до перевірки конфігурації й зовнішнього go/no-go.
 
@@ -126,10 +142,17 @@ python3 -m scripts.ux_auto.live activate --config /tmp/ux-auto-config.json
 python3 -m scripts.ux_auto.live run --config /tmp/ux-auto-config.json
 ```
 
-Activate сам не запускає UX stage. Run самостійно проходить шість stages, доки
-всі gates успішні. Для штатного PR merge ручний approval не потрібен за винятком
+Activate сам не запускає UX stage і не озброює continuation. Run один раз озброює durable continuation. Schedule кожні 5 хвилин
+підхоплює checkpoint після завершення job, waiting CI, timeout або crash, доки всі
+шість stages не завершено або не виник blocker. Новий owner dispatch не потрібен. Для штатного PR merge ручний approval не потрібен за винятком
 AGENTS; permissions/недоступний browser/невичерпні помилки — bounded blocker.
-При timeout controller повторний run продовжує durable checkpoint. Повторна API
+Кожен job після expensive tick або до wall-clock boundary зберігає checkpoint
+і повертає yielded; наступний schedule автоматично продовжує його. До acquire
+перевіряються activation receipt, paused/blocked/complete, armed, config identity
+і lease; live lease не перехоплюється. Витрачено максимум 128 slices за 7 діб,
+API ledger та stage retry budget не обнуляються між jobs. Нерозв’язний ambiguous
+API invocation блокується замість blind replay; завершений publish/merge
+reconcile-иться за тим самим ключем. Повторна API
 генерація за ключем із ambiguous invocation заборонена: нова спроба після розбору
 причини витрачає нову reservation. Самостійного reset бюджету немає.
 
@@ -155,7 +178,12 @@ Pause робить CAS без захоплення активного lease; con
 stop спершу cancel active run, потім pause; SIGTERM/timeout прибирає власні worker
 resources. SIGKILL може лишити UUID resources до runner teardown; не прибирати чужі.
 Expired lease може перехопити новий controller; старий owner більше не має права
-side effect. `resume` знімає pause/відновлює bounded stage, сам не запускає run.
+side effect. `resume` знімає pause/відновлює bounded stage та озброює continuation без скидання
+її бюджету; наступний schedule продовжить роботу. Scheduler не активує, не озброює
+і не відновлює blocked checkpoint самостійно. Після завершення schedule робить
+тільки idle read; `UX_AUTO_LIVE_ENABLED=false` вимикає також ці GHA jobs для економії
+runner minutes. Schedule визначається лише default branch; до merge workflow й
+owner configuration він не запускається. Збої API credentials залишаються blocker.
 
 Статуси/blocked reason/PR URL/tested SHA/merge SHA/CI-review-browser evidence й
 completion summary пишуться ідемпотентними comments до #106. Body/checklist issue

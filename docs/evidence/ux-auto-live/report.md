@@ -5,18 +5,45 @@
 master read-only звірено: `d0a3a6d4278feff360b6f11b2aff9ccd2c19a5f7`. Окремий Draft
 PR є stacked над #108, без merge bootstrap і без активації реальних UX-етапів.
 
+## Виправлено незалежний review
+
+[Review](https://github.com/ValtonUA/telmanfit/pull/109#pullrequestreview-5687246538)
+на попередньому head мав три P1. Усі три виправлені в цьому PR:
+
+1. `continuation.py` + scheduled `continue`: один owner start, кілька job slices,
+   CAS/lease, bounded age/slice budget, terminal/pause/activation guards. Немає
+   ручного повторного run для нормального продовження. [Machine proof](review-continuation.json):
+   12 окремих jobs, 6 PR, 12 coder/reviewer invocations, 6 merge; наприкінці disarmed.
+   Waiting CI і crash після publish не дублюють code; blocker не перезапускається.
+2. `TEST_PATTERNS` додає точково тематичні Feature/Unit/MealPlans/Recipes/Auth tests
+   за UX stage. Позитивні/негативні тести не дозволяють blanket tests/, controller
+   tests, policy/runtime tests поза scope, phpunit configs, migrations або CI runners.
+3. Mandatory browser acceptance — pinned external oracle у **іншому контейнері**,
+   з окремим output і без candidate imports/mounts. Candidate harness не виконується
+   як gate; його JSON/PNG та старі oracle receipts відхиляються. Trusted DOM/HTTP/
+   psql assertions перевіряють реальні effects; copied exact ingredient/legacy/Model I
+   references, quantities/order і child IDs порівнюються по днях. PG18 fixtures
+   nonprivileged/Unix socket, поточний auth2 guard не змінено.
+
+`python3 -m unittest discover -s tests/ux_auto_oracle -v`: **6 PASS** у справжньому
+Chromium на synthetic HTTP UI. Navigation positive/negative; fake seven-day DOM
+з неправильними SQL rows; wrong layout; wrong quantity; shared copy IDs; overflow.
+SQL responses у цих regression tests stubbed — це перевірка oracle assertions,
+**не** Laravel/PG acceptance майбутніх UX PR. Новий full app/oracle stack потребує
+налаштованих audited images і справжнього sandbox E2E; його не видаємо за пройдений.
+
 ## Реалізація
 
 Наявний state machine збережено; додано лише live mode, `Waiting` та окремий
 sandbox evidence contract. Реалізовано REST publishing і expected-head merge,
 App JWT/token refresh, GitHub Contents CAS/lease/artifact storage, conservative
 budget ledger, Docker Codex coder/reviewer, bounded Responses relay, isolated
-PG18/browser launcher, owner CLI/workflow та status writeback comments до #106.
+PG18/browser launcher, owner CLI/workflow з автоматичним продовженням між jobs та status writeback comments до #106.
 `pre_merge.py` не змінено. Workflow default-disabled, pinned controller ref.
 
 ## Локальні тести
 
-- `python3 -m unittest discover -s tests/ci -v`: **90 PASS**; 20 попередніх coordinator
+- `python3 -m unittest discover -s tests/ci -v`: **100 PASS**; 20 попередніх coordinator
   тестів і 30 нових live adapter тестів, включно з negative subtests.
 - `python3 -m unittest discover -s tests/docs -v`: **11 PASS**.
 - Шість transport-сценаріїв: [contracts.json](contracts.json). GitHub та Codex там
@@ -92,11 +119,13 @@ model/image approvals і API budget власник мусить конкретн
 - `.github/workflows/ux-auto-live.yml`, `.github/workflows/ux-auto-adapters-tests.yml`.
 - `scripts/ux_auto/coordinator.py`, `api_proxy.py`, `app_token.py`, `backend.py`,
   `github.py`, `live.py`, `live_config.py`, `live.example.json`, `probe_browser.py`,
-  `review-schema.json`, `store.py`, `worker.py`.
-- `tests/ci/test_ux_auto_live.py`, `tests/ci/test_gate.py`.
+  `review-schema.json`, `store.py`, `worker.py`, `continuation.py`, `oracle_runner.py`,
+  `oracle/app.py`, `oracle/assertions.py`, `oracle/fixture.php`.
+- `tests/ci/test_ux_auto_live.py`, `tests/ci/test_gate.py`, `tests/ci/test_ux_auto_review.py`,
+  `tests/ux_auto_oracle/test_browser.py`.
 - `docs/ux-auto.md`, `docs/ux-auto-live.md`, `docs/ci.md`, `docs/project-status.md`,
   `docs/roadmap.md`.
-- Цей report, `contracts.json`, `browser.json`, `docker.json` та шість PNG.
+- Цей report, `contracts.json`, `browser.json`, `docker.json`, `review-continuation.json` та шість PNG.
 
 Docs-Impact: canonical facts/status/CI оновлено разом з реалізацією; одноразове
 налаштування, команди, safety/budget та межі proof наведено в профільному runbook.

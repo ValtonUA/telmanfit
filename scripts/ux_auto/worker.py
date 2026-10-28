@@ -1,5 +1,6 @@
 """Окремі Docker workers без write-token/host home/socket та bounded API relay."""
 import hashlib
+import fnmatch
 import json
 import os
 from pathlib import Path
@@ -119,6 +120,25 @@ def files_from_workspace(workspace, source, ref):
     return sorted(changes, key=lambda entry: entry['path'])
 
 
+TEST_PATTERNS = {
+    'UX-1': ('tests/Feature/Spa*Test.php', 'tests/Feature/Client*NavigationTest.php',
+             'tests/Unit/Client*Test.php', 'tests/Auth4/Client*Test.php'),
+    'UX-2': ('tests/Feature/Admin*Test.php', 'tests/Feature/Filament*Test.php',
+             'tests/Unit/UserPanelAccessTest.php', 'tests/Auth3/*NavigationTest.php'),
+    'UX-3': ('tests/Feature/MealPlan*Test.php', 'tests/Unit/MealPlan*Test.php', 'tests/MealPlans/*.php'),
+    'UX-4': ('tests/Feature/MealPlan*Test.php', 'tests/Unit/MealPlanDisplayTest.php', 'tests/MealPlans/*.php'),
+    'UX-5': ('tests/Feature/MealItem*Test.php', 'tests/Unit/MealItem*Test.php',
+             'tests/MealPlans/*.php', 'tests/Recipes/BatchFixture.php'),
+    'UX-6': ('tests/Feature/MealPlan*Test.php', 'tests/Unit/MealPlan*Test.php',
+             'tests/MealPlans/*.php', 'tests/Recipes/BatchFixture.php'),
+}
+
+
+def allowed_test(stage, path):
+    return any(fnmatch.fnmatchcase(path, pattern) and '/' not in path[len(pattern.split('*')[0]):]
+               for pattern in TEST_PATTERNS.get(stage, ()))
+
+
 def validate_changes(stage, changes):
     prefixes = {
         'UX-1': ('client/src/', 'tests/browser/'),
@@ -142,7 +162,7 @@ def validate_changes(stage, changes):
         if (not isinstance(path, str) or not re.fullmatch(r'[A-Za-z0-9_./-]+', path)
                 or path.startswith('/') or '..' in path.split('/') or path in seen
                 or any(part.startswith('.') for part in path.split('/'))
-                or not (path in exact or path.startswith(prefixes[stage]))
+                or not (path in exact or path.startswith(prefixes[stage]) or allowed_test(stage, path))
                 or path.endswith(('.sh', '.sql')) or path.startswith('tests/pg/run-')
                 or not isinstance(content, str) or len(content.encode()) > 500000
                 or hashlib.sha256(content.encode()).hexdigest() != change['sha256']):
@@ -273,7 +293,7 @@ class Workers:
                            'checks (усі перевірені категорії), evidence (масив path:line:конкретне технічне обґрунтування, мінімум 10 символів). Категорії: '
                            + json.dumps(sorted(REVIEW_CHECKS)))
             elif stage != 'SANDBOX':
-                prompt += '\nРеалізуй лише цей stage. Додай tests/browser/ux_auto_acceptance.py зі stage assertions та реальними PNG. Не змінюй gates/workflows/scripts/схему.'
+                prompt += '\nРеалізуй лише цей stage. Candidate tests додаткові; acceptance задає pinned external oracle. Не змінюй gates/workflows/scripts/схему.'
             command = ['codex', 'exec', '--ephemeral', '--ignore-user-config', '--json',
                        '--sandbox', 'read-only' if reviewer else 'workspace-write',
                        '--model', self.config['model'],
@@ -312,14 +332,8 @@ class Workers:
                 report = read_report(output / 'browser.json')
                 validate_browser_files(output, report, stage, head)
                 return self._browser_artifacts(output, report)
-            entrypoint = workspace / 'tests/browser/ux_auto_acceptance.py'
-            if not entrypoint.is_file() or entrypoint.is_symlink():
-                raise Blocked('Відсутній UX browser acceptance harness; merge заборонено')
-            self.isolated(workspace, output,
-                ['python3', '-B', 'tests/browser/ux_auto_acceptance.py', '--stage', stage,
-                 '--head', head, '--output', '/out'], readonly=False, database=True)
-            report = read_report(output / 'browser.json')
-            validate_browser_files(output, report, stage, head)
+            from scripts.ux_auto.oracle_runner import browser
+            report = browser(self, workspace, output, stage, head)
             return self._browser_artifacts(output, report)
 
     def _browser_artifacts(self, output, report):
