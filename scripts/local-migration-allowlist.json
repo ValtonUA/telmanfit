@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "postgres_major": 18,
+  "migrations": [
+    {
+      "name": "2026_10_28_000000_create_cooking_templates",
+      "sha256": "33F96460ECB19EA9381FA4E0D20B3AC0D6E5273782687DE4E1D3F411812EC6A6",
+      "sources": [
+        { "path": "database/sql/cooking/00_templates.sql", "sha256": "3BC0DC3FE4FC9E42EB545F9BC9CA6B39254E51706AD6D47D16B376987182C089" }
+      ],
+      "order": 1,
+      "effect": "schema_only_create",
+      "preconditions": {
+        "required_tables": [
+          "users",
+          "meal_plan_versions",
+          "meal_plan_days",
+          "meals",
+          "meal_items",
+          "recipe_versions",
+          "recipe_ingredients",
+          "recipe_batch_formats",
+          "recipe_batch_quantities",
+          "client_meal_plan_assignments",
+          "meal_plans",
+          "recipes"
+        ],
+        "absent_tables": [
+          "cooking_templates",
+          "cooking_template_versions",
+          "cooking_sessions",
+          "cooking_outputs",
+          "cooking_allocations",
+          "cooking_selections"
+        ]
+      },
+      "postconditions": {
+        "required_tables": [
+          "cooking_templates",
+          "cooking_template_versions",
+          "cooking_sessions",
+          "cooking_outputs",
+          "cooking_allocations"
+        ],
+        "required_functions": [
+          "cooking_recipe_snapshot",
+          "cooking_menu_pattern",
+          "cooking_content_valid",
+          "cooking_token",
+          "cooking_assert_version",
+          "cooking_version_guard",
+          "cooking_detail_guard",
+          "cooking_available"
+        ],
+        "required_triggers": [
+          "cooking_version_guard",
+          "cooking_detail_guard"
+        ],
+        "required_views": ["cooking_output_balances"]
+      }
+    },
+    {
+      "name": "2026_10_28_010000_add_cooking_selection",
+      "sha256": "675FE26B27E852207E8E68AF459CF30A33952DBF0B7DD1E1C2BD960F185AF739",
+      "sources": [
+        { "path": "database/sql/cooking/01_selection.sql", "sha256": "14817AF572E22FEF32B1F0F652657A60432809C58EC5520BD3D19D2FF97461BF" }
+      ],
+      "order": 2,
+      "effect": "schema_only_create_and_replace_functions",
+      "preconditions": {
+        "required_tables": [
+          "cooking_templates",
+          "cooking_template_versions",
+          "cooking_sessions",
+          "cooking_outputs",
+          "cooking_allocations"
+        ],
+        "absent_tables": ["cooking_selections"]
+      },
+      "postconditions": {
+        "required_tables": ["cooking_selections"],
+        "required_functions": [
+          "cooking_selection_guard",
+          "cooking_select",
+          "cooking_assert_revision",
+          "cooking_compatible",
+          "cooking_available",
+          "cooking_token"
+        ],
+        "required_triggers": ["cooking_selection_guard"]
+      }
+    }
+  ]
+}

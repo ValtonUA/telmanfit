@@ -81,16 +81,52 @@ docker compose ps -a
 docker compose logs --tail=100
 ```
 
-Після змін коду (залежності та assets теж збираються всередині Docker):
+Після оновлення коду з GitHub виконайте з кореня репозиторію:
 
 ```powershell
-docker compose up -d --build
+.\scripts\local-update.ps1
 ```
 
-Це збірка зі snapshot вихідного коду, без host bind mounts для PHP/Node залежностей
-і без HMR. Зміни PHP/React потребують `--build`. Нові міграції на вже заповненій БД
-автоматично **не запускаються**: потрібен окремий погоджений upgrade. Не видаляйте
-volumes для «виправлення» помилки міграцій.
+Coordinator перевіряє Git origin/гілку, чистоту дерева та саме цей локальний Compose
+проєкт; оновлює `master` лише fast-forward і збирає app/web образи до зупинки
+сервісів. `compose.r2-runtime.yaml` не включається й не перезаписується. Якщо pending
+міграцій немає, резервна копія не створюється: оновлені сервіси запускаються, після
+чого coordinator чекає healthy для app/web та running для worker/scheduler.
+
+Для міграцій coordinator вимагає явний allowlist із SHA256 міграції та її SQL
+залежностей. Невідома, змінена або непередбачена міграція блокує процес. Перед
+дозволеним upgrade він зупиняє app/worker/scheduler/web, перевіряє відсутність
+application DB sessions, створює custom-format PostgreSQL dump і архіви всіх п’яти
+пов’язаних volumes, перевіряє SHA256/структуру та виконує ізольовану репетицію
+відновлення. Лише після успішної перевірки запускаються allowlisted міграції й
+postconditions; RestoreFence та fingerprint наявних даних перевіряються до/після.
+
+Backup та журнали зберігаються поза Docker volumes у
+`%LOCALAPPDATA%\TelmanFit\backups` і `%LOCALAPPDATA%\TelmanFit\updates`. Backup
+містить приватні БД-дані, локальні ключі та файли; не копіюйте його у спільні чи
+публічні каталоги. Каталог обмежений ACL поточного користувача й SYSTEM. Не
+перезаписуйте попередні набори.
+
+Якщо coordinator блокується або завершується помилкою, відкрийте виведений журнал і
+JSON-журнал фази в `updates`. Coordinator не робить автоматичний rollback/restore та
+не видаляє volumes. Після помилки міграції сервіси можуть лишитися зупиненими;
+збережіть backup і журнали та визначте стан БД до будь-якого повторного запуску.
+Якщо операція завершилась помилкою або процес аварійно перервався до запису `FAILED`,
+наступний запуск зупиниться на незавершеному журналі. Після огляду фази й ручного
+визначення стану дозволено явно підтвердити конкретний run командою
+`.\scripts\local-update.ps1 -AcknowledgeJournal <run_id>`. Підтвердження записується
+окремо й не виконує відновлення чи повтор міграцій.
+Невідома/змінена міграція потребує окремого перегляду й явного оновлення allowlist.
+Не запускайте `db:wipe`, seeders, bootstrap для обходу блокування або `docker compose
+down -v`.
+
+Ручне відновлення виконуйте лише після зупинки всіх локальних writer-сервісів і
+перевірки manifest та SHA256. У чистому ізольованому середовищі спершу відновіть
+volume-архіви з одного набору (`database`, `database-secrets`, `local-state`, `epoch`,
+`storage`) і перевірте PostgreSQL identity/RestoreFence; custom dump використовуйте
+для логічного відновлення в окрему порожню БД, а не поверх наявних даних. Узгодженість
+ключів і epoch є обов’язковою. Якщо потрібно відновити робоче середовище, спочатку
+перевірте весь набір у disposable Compose проєкті та погодьте окрему процедуру.
 
 ## Зберігання й межі
 
@@ -107,6 +143,29 @@ Desktop використовує ті самі volumes. Не запускайт�
 але не є резервними копіями; для перенесення потрібен узгоджений комплект усіх
 volumes при зупинених сервісах. Втрата/невідповідність epoch закриває доступ;
 автоматичної підміни epoch або скидання MFA немає.
+
+Для розробки coordinator-а є окремий E2E runner. Read-only preflight ефективної
+конфігурації та наявних Docker ресурсів:
+
+```powershell
+pwsh -NoProfile -File tests/local-update-e2e.ps1
+```
+
+Повний disposable E2E після read-only preflight:
+
+```powershell
+pwsh -NoProfile -File tests/local-update-e2e.ps1 -Run
+```
+
+`-Run` створює disposable Compose project із випадковим
+суфіксом, окремими volumes і image tags, loopback портом та синтетичними даними.
+Coordinator у тесті запускається лише з `-IsolatedTestMode`, `-NoGitSync`, точним
+`-ExpectedHead` та Compose override у `%TEMP%\TelmanFit-E2E`. Звичайний виклик
+`scripts/local-update.ps1` лишається зафіксованим на `telmanfit-local`. Runner до
+створення перевіряє проєкт, п’ять робочих volumes, image tags, контейнери, мережу
+й порт; будь-який збіг завершує тест до Docker-запису. Cleanup перевіряє owner
+labels і volume attachments кожного ресурсу та видаляє їх по одному;
+`docker compose down -v` не використовується.
 
 PostgreSQL не має host-порту. Вебпорт доступний лише на loopback; використовуйте
 саме `127.0.0.1`, щоб cookie-контексти лишалися узгодженими. Наявні `.env`, БД і
@@ -130,3 +189,4 @@ Stage 3 і бізнес-схема не змінюються. Анкета мі�
 `TELMANFIT_FILAMENT_THEME_BROWSER=1 python3 tests/browser/local_compose.py`.
 Вона охоплює запрошення, клієнтів, анкету, dropdown і сповіщення у двох темах на
 1440/390/320 px; [причина виправлення та докази](filament-theme.md).
+
