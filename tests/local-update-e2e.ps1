@@ -132,6 +132,8 @@ function Invoke-SyntheticBaseline {
 
     $databaseName = Get-Text (Invoke-Compose -Arguments @('exec', '-T', 'database', 'psql', '-X', '-U', 'postgres', '-Atc', "SELECT datname FROM pg_database WHERE datname LIKE 'telmanfit_local_%' AND datallowconn AND datname <> 'postgres' ORDER BY datname LIMIT 1"))
     if ($databaseName -notmatch '^telmanfit_local_[a-f0-9]{16}$') { throw 'Disposable DB identity is missing or malformed.' }
+    $epoch = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'cat', 'app', '/run/telmanfit-epoch/epoch'))
+    if ($epoch -notmatch '^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-8[a-f0-9]{3}-[a-f0-9]{12}$') { throw 'Disposable volume did not provide a valid independent RestoreFence epoch.' }
     $hashOutput = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--entrypoint', 'php', 'app', '-r', "echo password_hash('synthetic-e2e-recovery', PASSWORD_ARGON2ID);"))
     $hashMatch = [regex]::Match($hashOutput, '\$argon2id\$v=19\$m=[0-9]+,t=[0-9]+,p=[0-9]+\$[A-Za-z0-9+/]{16,}\$[A-Za-z0-9+/]{32,}')
     if (-not $hashMatch.Success) { throw "Could not create synthetic Argon2id recovery fixture; output did not contain a valid hash (length=$($hashOutput.Length))." }
@@ -154,9 +156,13 @@ INSERT INTO user_totp_factors (user_id,secret_ciphertext,key_version,confirmed_a
 SELECT id,repeat('synthetic-ciphertext-',6),'e2e-v1',now(),now(),now() FROM users WHERE email='synthetic-e2e@example.invalid';
 INSERT INTO mfa_recovery_codes (user_id,selector,code_hash,batch_id,created_at)
 SELECT user_id,'__SELECTOR__'::uuid,'__HASH__','__BATCH__'::uuid,now() FROM user_totp_factors;
+INSERT INTO auth_security_runtime (id,restore_epoch,state,last_reconciled_at,issuance_not_before)
+VALUES (1,'__EPOCH__'::uuid,'ready',clock_timestamp(),clock_timestamp());
 '@
-    $sql = $sql.Replace('__SELECTOR__', $selector).Replace('__HASH__', $hash).Replace('__BATCH__', $batch)
+    $sql = $sql.Replace('__SELECTOR__', $selector).Replace('__HASH__', $hash).Replace('__BATCH__', $batch).Replace('__EPOCH__', $epoch)
     $null = Invoke-Compose -Arguments @('exec', '-T', 'database', 'psql', '-X', '-U', 'postgres', '-d', $databaseName, '-v', 'ON_ERROR_STOP=1', '-c', $sql)
+    # Synthetic setup marker only: keeps first-run bootstrap from attempting migrations while cooking migrations remain pending.
+    $null = Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'root', '--entrypoint', 'php', 'app', '-r', "file_put_contents('/tmp/telmanfit-auth4-compose/database-ready','1');")
     $null = Invoke-Compose -Arguments @('create', 'app', 'worker', 'scheduler', 'web')
 
     $probe = Get-Text (Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'docker/local/upgrade-check.php')) | ConvertFrom-Json
