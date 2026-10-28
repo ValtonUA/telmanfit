@@ -166,7 +166,11 @@ def run_navigation(parent, base):
     with page.expect_response(lambda r: r.request.is_navigation_request() and r.url == day_url and r.status == 200):
         page.go_back()
     expect(page.locator('.plan-day-layout')).to_be_visible()
-    page.go_forward()
+    # History guard запускає окремий native reload після popstate. Сам URL
+    # змінюється раніше: дочекатися серверної відповіді, як і для Back.
+    with page.expect_response(lambda r: r.request.is_navigation_request()
+                              and r.url == base + '/admin/clients' and r.status == 200):
+        page.go_forward()
     expect(page).to_have_url(base + '/admin/clients')
     expect(page.get_by_role('heading', name='Картки клієнтів', exact=True)).to_be_visible()
     page.reload()
