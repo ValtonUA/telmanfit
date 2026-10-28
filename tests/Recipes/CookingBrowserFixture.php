@@ -27,6 +27,9 @@ final class CookingBrowserFixture
                 DB::table('meal_items')->insert(['meal_id' => $meal, 'food_id' => DB::table('recipe_versions')->where('id', $batch['version'])->value('food_id'),
                     'quantity' => '1.00', 'uom_id' => $serving, 'recipe_version_id' => $batch['version'],
                     'recipe_batch_format_id' => $batch['formats']['single'], 'recipe_portion_divisor' => 1]);
+            } else {
+                DB::table('meal_items')->insert(['meal_id' => $meal, 'food_id' => DB::table('ingredients')->where('id', $batch['ingredient'])->value('food_id'),
+                    'quantity' => '1.00', 'uom_id' => $batch['g'], 'resolved_quantity_grams' => '1.00']);
             }
         }
         DB::table('meal_plan_versions')->where('id', $version)->update(['status' => 'published', 'version_number' => 1, 'published_at' => now()]);
