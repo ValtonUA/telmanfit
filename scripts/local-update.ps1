@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 13980)
-Total output lines: 891
+Warning: truncated output (original token count: 13991)
+Total output lines: 892
 
 [CmdletBinding()]
 param(
@@ -328,7 +328,7 @@ function Assert-ComposeConfig {
         $sources = @($Config.services.$service.volumes | ForEach-Object { $_.source } | Sort-Object)
         if (($sources -join ',') -cne 'epoch,local-state,storage') { throw "Volumes сервісу $service не збігаються з очікуваними." }
     }
-    $databaseSources = @($Config.services.database.volumes | ForEach-Object { $_.source } | Sort…5980 tokens truncated…th]::GetFullPath($actualRoot).TrimEnd('\') -ine $root) { throw 'Скрипт має запускатися з кореня репозиторію.' }
+    $databaseSources = @($Config.services.database.volumes | ForEach-Object { $_.source } | Sort…5991 tokens truncated… $root) { throw 'Скрипт має запускатися з кореня репозиторію.' }
 
     if (-not $env:LOCALAPPDATA) { throw 'LOCALAPPDATA не визначено; coordinator потребує локального приватного сховища backup/log.' }
     $stateRoot = if ($script:TestMode) { Join-Path (Join-Path $env:TEMP 'TelmanFit-E2E') $script:ProjectName } else { Join-Path $env:LOCALAPPDATA 'TelmanFit' }
@@ -493,7 +493,8 @@ function Assert-ComposeConfig {
             foreach ($migration in $plan) {
                 Assert-MigrationPreconditions -Snapshot $current -Migration $migration
                 Set-Phase -Name "migration_$($migration.name)" -State 'started'
-                $null = Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'artisan', 'migrate', '--path=database/migrations/'+$migration.name+'.php', '--force', '--no-interaction')
+                $migrationPath = "--path=database/migrations/$($migration.name).php"
+                $null = Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--user', 'www-data', '--entrypoint', 'php', 'app', '-d', 'auto_prepend_file=/var/www/html/docker/local/load-env.php', 'artisan', 'migrate', $migrationPath, '--force', '--no-interaction')
                 Set-Phase -Name "migration_$($migration.name)" -State 'command_complete'
                 $current = Get-DatabaseSnapshot
                 if ($migration.name -notin @($current.migrations.ran)) { throw "Міграція $($migration.name) не записана у migrations." }
