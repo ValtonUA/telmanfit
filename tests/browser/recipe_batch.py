@@ -80,6 +80,9 @@ with sync_playwright() as p:
     from meal_plans import run_meal_plans, verify_meal_plan_revocation
     meal_plan_browser_state = run_meal_plans(page, base)
 
+    from cooking import run_cooking
+    run_cooking(page, base)
+
     from food_catalog import run_catalog
     run_catalog(page, base)
     checks.append('PR D: catalog create/edit/conversions/security, 1440/390/320 light/dark')

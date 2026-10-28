@@ -16,6 +16,10 @@ class TargetedGroupTests(unittest.TestCase):
     def test_r2_changes_run_catalog_postgresql_regressions(self):
         for path in ("app/Services/Catalog/R2ObjectLister.php",
                      "app/Services/Cooking/CookingTemplates.php",
+                     "app/Filament/Pages/CookingTemplates.php",
+                     "resources/views/filament/cooking/editor.blade.php",
+                     "tests/browser/cooking.py",
+                     "tests/browser/cooking-fixture.php",
                      "tests/Postgres/CookingTemplatesTest.php",
                      "tests/pg/cooking-concurrency.php",
                      "app/Console/Commands/MatchR2Images.php",

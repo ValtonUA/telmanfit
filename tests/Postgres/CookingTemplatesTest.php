@@ -3,11 +3,14 @@
 namespace Tests\Postgres;
 
 use App\Models\User;
+use App\Services\Cooking\CookingEditor;
 use App\Services\Cooking\CookingTemplates;
+use Filament\Facades\Filament;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\MealPlans\PlanFixture;
 use Tests\Recipes\BatchFixture;
@@ -433,5 +436,102 @@ class CookingTemplatesTest extends PostgresTestCase
             $this->publishCooking($v);
             $this->assertSame('published', DB::table('cooking_template_versions')->where('id', $v)->value('status'));
         }
+    }
+
+    public function test_editor_commands_and_filament_lifecycle(): void
+    {
+        $editor = app(CookingEditor::class);
+        $source = $this->menu();
+        $v = $editor->create($this->actor, ['title' => 'Тест редактора', 'source_plan_version_id' => $source, 'source_week' => 1, 'mode' => 1]);
+        $session = $editor->session($this->actor, $v, 0, ['day' => 1, 'position' => 1, 'estimated_seconds' => 3600, 'content' => $this->content()]);
+        foreach ($editor->selectors($v) as $selector => $slot) {
+            $o = $editor->output($this->actor, $v, $this->revision($v), $session, $selector);
+            $editor->allocate($this->actor, $v, $this->revision($v), $slot['day'], $slot['meal_position'], $slot['item_position'], $o);
+        }
+        $this->actingAs($this->actor);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $page = Livewire::test(\App\Filament\Pages\CookingTemplates::class, ['version' => $v])->assertSuccessful()->assertSee('Попередній перегляд');
+        $page->callAction('review', data: ['suitability' => true, 'safety' => true, 'manual_parameters' => true, 'no_process_water_tokens' => true])->assertHasNoActionErrors();
+        $page->callAction('publish')->assertHasNoActionErrors();
+        $this->assertSame('published', DB::table('cooking_template_versions')->where('id', $v)->value('status'));
+        $this->assertSame(0, DB::table('cooking_selections')->count());
+        $page->callAction('activate')->assertHasNoActionErrors();
+        $this->assertSame($v, DB::table('cooking_selections')->value('version_id'));
+        $this->rejected(fn () => $editor->session($this->actor, $v, $this->revision($v), ['day' => 1, 'position' => 1, 'estimated_seconds' => 1, 'content' => $this->content()], $session), DeadlockException::class);
+    }
+
+    public function test_editor_rejects_stale_cross_version_overallocation_and_non_admin(): void
+    {
+        $editor = app(CookingEditor::class);
+        $d = $this->draft();
+        $other = $this->draft();
+        $revision = $this->revision($d['v']);
+        $this->rejected(fn () => $editor->output($this->actor, $d['v'], $revision - 1, $d['session'], array_key_first($editor->selectors($d['v']))), DeadlockException::class);
+        $this->rejected(fn () => $editor->output($this->actor, $d['v'], $revision, $other['session'], array_key_first($editor->selectors($d['v']))), HttpException::class);
+        $this->rejected(fn () => $editor->allocate($this->actor, $d['v'], $revision, 1, 1, 2, $other['outputs'][0]), HttpException::class);
+        $this->assertSame($revision, $this->revision($d['v']));
+        $this->actingAs($this->actor);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $stale = Livewire::test(\App\Filament\Pages\CookingTemplates::class, ['version' => $d['v']]);
+        $editor->allocate($this->actor, $d['v'], $revision, 1, 1, 2, null);
+        $stale->callAction('review', data: ['suitability' => true, 'safety' => true, 'manual_parameters' => true, 'no_process_water_tokens' => true]);
+        $this->assertNull(DB::table('cooking_template_versions')->where('id', $d['v'])->value('reviewed_revision'));
+        foreach (['coach', 'client'] as $role) {
+            DB::table('users')->where('id', $this->actor->id)->update(['role' => $role]);
+            $this->actingAs($this->actor->fresh());
+            Livewire::test(\App\Filament\Pages\CookingTemplates::class)->assertForbidden();
+            $this->rejected(fn () => $editor->remove($this->actor, $d['v'], $this->revision($d['v']), 'outputs', $d['outputs'][0]), HttpException::class);
+        }
+    }
+
+    public function test_visual_stage_clone_reorder_save_tokens_and_draft_next(): void
+    {
+        $d = $this->draft();
+        $this->actingAs($this->actor);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $page = Livewire::test(\App\Filament\Pages\CookingTemplates::class, ['version' => $d['v']]);
+        $stage = ['id' => 'stable-stage', 'title' => 'Фасування', 'blocks' => [
+            ['id' => 'stable-action', 'type' => 'action', 'parts' => [['kind' => 'text', 'text' => 'Візьміть '],
+                ['kind' => 'token', 'metric' => 'grams', 'sources' => [$d['outputs'][0].':'.$this->recipes[0]['row']]]]],
+            ['id' => 'stable-timer', 'type' => 'timer', 'label' => 'Авторський час', 'seconds' => 10, 'message' => 'Перевірте готовність'],
+        ]];
+        $page->callAction('session', arguments: ['id' => $d['session']], data: ['day' => 1, 'position' => 1, 'estimated_seconds' => 60,
+            'introduction' => 'Вступ', 'equipment' => 'Каструля', 'stages' => [$stage, $stage]])->assertHasNoActionErrors();
+        $saved = json_decode(DB::table('cooking_sessions')->where('id', $d['session'])->value('content'), true);
+        $this->assertSame('stable-stage', $saved['stages'][0]['id']);
+        $this->assertNotSame($saved['stages'][0]['id'], $saved['stages'][1]['id']);
+        $this->assertNotSame($saved['stages'][0]['blocks'][0]['id'], $saved['stages'][1]['blocks'][0]['id']);
+        $this->assertSame('Візьміть ', $saved['stages'][0]['blocks'][0]['parts'][0]);
+        $this->assertStringContainsString('100.00', $page->html());
+        $editor = app(CookingEditor::class);
+        $editor->allocate($this->actor, $d['v'], $this->revision($d['v']), 1, 1, 2, null);
+        $this->rejected(fn () => $editor->remove($this->actor, $d['v'], $this->revision($d['v']), 'outputs', $d['outputs'][0]), HttpException::class);
+        $editor->allocate($this->actor, $d['v'], $this->revision($d['v']), 1, 1, 2, $d['outputs'][0]);
+        $revision = $this->revision($d['v']);
+        $editor->session($this->actor, $d['v'], $revision, ['day' => 1, 'position' => 1, 'estimated_seconds' => 60,
+            'content' => ['schema_version' => 1, 'stages' => array_reverse($saved['stages'])]], $d['session']);
+        $this->publishCooking($d['v']);
+        $next = $editor->create($this->actor, ['title' => 'Редакція', 'source_plan_version_id' => $d['source'], 'source_week' => 1, 'mode' => 1], $d['v']);
+        $this->assertSame($d['v'], DB::table('cooking_template_versions')->where('id', $next)->value('previous_version_id'));
+        $this->assertNull(DB::table('cooking_template_versions')->where('id', $next)->value('reviewed_revision'));
+    }
+
+    public function test_editor_rejects_overallocation_and_unavailable_source_and_preserves_rollback(): void
+    {
+        $editor = app(CookingEditor::class);
+        $this->rejected(fn () => $editor->create($this->actor, ['title' => 'Відсутній тиждень', 'source_plan_version_id' => $this->menu(), 'source_week' => 2, 'mode' => 1]));
+        $v = $editor->create($this->actor, ['title' => 'Порції', 'source_plan_version_id' => $this->menu(recipesEveryDay: true), 'source_week' => 1, 'mode' => 1]);
+        $s = $editor->session($this->actor, $v, 0, ['day' => 1, 'position' => 1, 'estimated_seconds' => 60, 'content' => $this->content()]);
+        $o = $editor->output($this->actor, $v, $this->revision($v), $s, array_key_first($editor->selectors($v)));
+        $editor->allocate($this->actor, $v, $this->revision($v), 1, 1, 2, $o);
+        $editor->allocate($this->actor, $v, $this->revision($v), 2, 1, 2, $o);
+        $revision = $this->revision($v);
+        $this->rejected(fn () => $editor->allocate($this->actor, $v, $revision, 3, 1, 2, $o), HttpException::class);
+        $this->assertSame($revision, $this->revision($v));
+        $this->assertSame('0.00', DB::table('cooking_output_balances')->where('id', $o)->value('left_over'));
+        $this->rejected(fn () => $editor->remove($this->actor, $v, $revision, 'outputs', $o));
+        $token = ['metric' => 'quantity', 'sources' => [['output' => $o, 'row' => $this->recipes[0]['row']]]];
+        $this->rejected(fn () => $editor->token($s, $token), ValidationException::class);
+        $this->assertSame('100.00', $editor->token($s, array_replace($token, ['metric' => 'grams']))['value']);
     }
 }
