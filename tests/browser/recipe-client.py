@@ -3,9 +3,22 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
+import traceback
 import time
 from playwright.sync_api import sync_playwright, expect
 from wake_lock import WAKE_LOCK_PROBE
+
+def report_failure(kind, error, trace):
+    traceback.print_exception(kind, error, trace)
+    frames = [frame for frame in traceback.extract_tb(trace) if Path(frame.filename).resolve() == Path(__file__).resolve()]
+    if frames:
+        frame = frames[-1]
+        # Короткий підсумок після Aria snapshot лишається в CI tail; без runtime secrets.
+        print(f'Client browser failure: {kind.__name__} at recipe-client.py:{frame.lineno}: {frame.line}', flush=True)
+
+
+sys.excepthook = report_failure
 
 BASE = 'http://127.0.0.1:18054'
 OUT = Path('docs/evidence/client-recipe')
