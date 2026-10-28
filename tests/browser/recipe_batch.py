@@ -9,6 +9,7 @@ import shutil
 import struct
 import subprocess
 import time
+from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright, expect
 from readiness import TRACKER, metrics as readiness_metrics
 
@@ -33,7 +34,12 @@ with sync_playwright() as p:
     page = context.new_page()
     page.set_default_timeout(15000)
     errors = []
-    page.on('pageerror', lambda e: errors.append(str(e)))
+    def page_error(error):
+        message = str(error)
+        if message not in errors:
+            print('Recipe browser JavaScript error at ' + urlsplit(page.url).path + ': ' + message, flush=True)
+        errors.append(message)
+    page.on('pageerror', page_error)
     for _ in range(50):
         try:
             page.goto(base + '/admin/login')
