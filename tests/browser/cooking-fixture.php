@@ -91,8 +91,11 @@ DB::transaction(function () {
         if ($slot['recipe_version_id'] === null) {
             continue;
         }
+        fwrite(STDERR, "Cooking fixture: output begin\n");
         $o = $editor->output($actor, $v, $revision(), $s, $plan['recipe_version'].':'.$plan['format'].':1.00');
+        fwrite(STDERR, "Cooking fixture: output saved\n");
         $editor->allocate($actor, $v, $revision(), $slot['day'], $slot['meal_position'], $slot['item_position'], $o);
+        fwrite(STDERR, "Cooking fixture: allocation saved\n");
     }
     fwrite(STDERR, "Cooking fixture: done\n");
     echo $v;
