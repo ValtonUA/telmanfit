@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 from playwright.sync_api import expect
-from readiness import livewire_ready
+from readiness import livewire_click, livewire_ready
 
 
 def run_catalog(page, base):
@@ -11,10 +11,8 @@ def run_catalog(page, base):
     checks = []
 
     def submit(label):
-        with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
-            page.get_by_role('button', name=label, exact=True).click()
-        assert response.value.status == 200
-        livewire_ready(page)
+        livewire_click(page, page.get_by_role('button', name=label, exact=True),
+                       'create' if label == 'Створити' else 'save')
 
     def choose(label, text):
         combo = page.get_by_role('button', name=label, exact=False)

@@ -3,6 +3,7 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import re
 from pathlib import Path
 import shutil
@@ -184,6 +185,9 @@ def run_navigation(parent, base):
     expect(page.get_by_role('heading', name='Картки клієнтів', exact=True)).to_be_visible()
     assert page.evaluate('document.documentElement.classList.contains("dark")')
     checks.append('authorized Back/Forward and refresh retain route/theme; cached Back rechecks server')
+    if os.environ.get('ADMIN_NAV_ONLY') == '1':
+        from food_catalog import run_catalog
+        run_catalog(page, base)
     page.goto(day_url)
     page.wait_for_function('window.__ux2Navigations > 0')
     # Повернення кешованої приватної сторінки перевіряє серверну idle expiry.
