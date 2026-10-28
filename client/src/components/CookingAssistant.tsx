@@ -166,7 +166,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   }
   function timerKey(stage: number, block: number) { return `${stage}:${block}` }
   function startTimer(key: string, seconds: number) {
-    setTimers(current => { const old = current[key]; const left = old?.remaining ?? seconds; return { ...current, [key]: { remaining: left, endsAt: Date.now() + left * 1000, running: true } } })
+    setTimers(current => { const old = current[key]; const left = old && old.remaining > 0 ? old.remaining : seconds; return { ...current, [key]: { remaining: left, endsAt: Date.now() + left * 1000, running: true } } })
   }
   function pauseTimer(key: string) { setTimers(current => { const timer = current[key]; if (!timer?.running) return current; return { ...current, [key]: { remaining: Math.max(0, Math.ceil(((timer.endsAt ?? Date.now()) - Date.now()) / 1000)), endsAt: null, running: false } } }) }
   function resetTimer(key: string, seconds: number) { setTimers(current => ({ ...current, [key]: { remaining: seconds, endsAt: null, running: false } })) }
