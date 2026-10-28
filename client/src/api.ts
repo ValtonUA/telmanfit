@@ -54,7 +54,7 @@ export async function api<T = FlowResult>(path: string, data?: Record<string, un
 function takeFragment(): string | undefined {
   if (!window.location.hash) return undefined
   const token = new URLSearchParams(window.location.hash.slice(1)).get('invite') ?? undefined
-  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
   return token
 }
 let invitation = takeFragment()
@@ -66,6 +66,10 @@ window.addEventListener('hashchange', () => {
     window.dispatchEvent(new Event('telmanfit-invitation'))
   }
 })
+export function resetSession(): void {
+  initialization = undefined
+  invitation = undefined
+}
 export function initialize(): Promise<{ me?: Me; invite?: FlowResult }> {
   if (!initialization) initialization = (async () => {
     const token = invitation

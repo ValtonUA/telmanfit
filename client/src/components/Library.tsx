@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import './Library.css'
@@ -64,11 +65,11 @@ export function Library({ onExit }: { onExit: (message: string) => void }) {
     {loading ? <div className="card" role="status">Завантажуємо матеріали…</div>
       : error ? <div className="card"><h2>Не вдалося завантажити матеріали</h2><p role="alert">Перевірте з’єднання й спробуйте ще раз.</p><button onClick={retry}>Спробувати ще раз</button></div>
       : !data?.items.length ? <div className="card"><h2>Матеріали поки недоступні</h2><p>Тренер ще не опублікував матеріали.</p></div>
-      : <div className="library-grid">{data.items.map(item => <a key={item.id} className="library-tile" href={'/app/resources/' + item.id}>
+      : <div className="library-grid">{data.items.map(item => <Link key={item.id} className="library-tile" to={'/app/resources/' + item.id}>
           <Cover url={item.cover_image_url} title={item.title} />
           <div className="library-tile-copy"><span className="library-type">{labels[item.type] ?? 'Матеріал'}</span>
             <h2>{item.title}</h2>{item.summary && <p>{item.summary}</p>}</div>
-        </a>)}</div>}
+        </Link>)}</div>}
   </section>
 }
 
@@ -76,7 +77,7 @@ export function LibraryArticle({ id, onExit }: { id: string; onExit: (message: s
   const { data, loading, error, retry } = usePrivateResource<{ item: LibraryDetail }>('library/' + encodeURIComponent(id), onExit)
   const item = data?.item
   return <article className="library library-article">
-    <p><a href="/app/resources">До бібліотеки</a></p>
+    <p><Link to="/app/resources">До бібліотеки</Link></p>
     {loading ? <div className="card" role="status">Завантажуємо матеріал…</div>
       : error || !item ? <div className="card"><h1>Матеріал недоступний</h1><p role="alert">Його могли зняти з публікації або виникла помилка.</p><button onClick={retry}>Спробувати ще раз</button></div>
       : <>

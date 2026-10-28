@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { flushSync } from 'react-dom'
@@ -6,6 +7,8 @@ import type { FlowResult, Me } from '../api'
 import { useCooldown } from '../useCooldown'
 
 export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (me: Me) => void }) {
+  const active = useRef(true)
+  useEffect(() => { active.current = true; return () => { active.current = false } }, [])
   const registration = window.location.pathname === '/app/register'
   const [step, setStep] = useState<'email' | 'otp' | 'name' | 'mfa'>('email')
   const [email, setEmail] = useState('')
@@ -33,9 +36,11 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
   }, [expiry])
 
   async function authenticated() {
+    if (!active.current) return
     setCode(''); setEmail(''); setName(''); setLastName(''); setChallenge(undefined); setFlow(undefined)
     await csrf()
-    onLogin(await api<Me>('me'))
+    const user = await api<Me>('me')
+    if (active.current) onLogin(user)
   }
   async function send() {
     const result = await api('auth/email-otp/request', { purpose: registration ? 'register' : 'login', email, ...(registration ? { flow_id: flow } : {}) })
@@ -57,7 +62,7 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Не вдалося виконати запит.') }
     finally { setBusy(false) }
   }
-  if (registration && !invite) return <section className="card auth-card"><h1>Потрібне запрошення</h1><p>Щоб зареєструватися, відкрийте персональне посилання від тренера.</p><a href="/app/login">Уже маєте акаунт? Увійти</a></section>
+  if (registration && !invite) return <section className="card auth-card"><h1>Потрібне запрошення</h1><p>Щоб зареєструватися, відкрийте персональне посилання від тренера.</p><Link to="/app/login">Уже маєте акаунт? Увійти</Link></section>
   return <section className="card auth-card">
     <span className="eyebrow">{registration ? 'Ваш перший крок' : 'З поверненням'}</span>
     <h1 ref={heading} tabIndex={-1}>{step === 'name' ? 'Як до вас звертатися?' : step === 'mfa' ? 'Другий фактор захисту' : step === 'otp' ? 'Перевірте пошту' : registration ? 'Приєднайтеся до TelmanFit' : 'Увійдіть у свій кабінет'}</h1>
@@ -72,8 +77,8 @@ export function AuthForm({ invite, onLogin }: { invite?: FlowResult; onLogin: (m
       <button disabled={busy || (step === 'otp' && expired)}>{busy ? 'Зачекайте…' : step === 'email' ? 'Отримати код' : step === 'name' ? 'Завершити реєстрацію' : 'Підтвердити'}</button>
     </form>
     {step === 'otp' && <button type="button" className="secondary" disabled={busy || cooldown.remaining > 0} onClick={async () => { setBusy(true); setError(''); setCode(''); try { await send() } catch (failure) { setError((failure as Error).message) } finally { setBusy(false) } }}>{cooldown.remaining ? `Надіслати ще раз через ${cooldown.remaining} с` : 'Надіслати код ще раз'}</button>}
-    {step !== 'email' && <a className="text-link" href={registration ? '/app/register' : '/app/login'}>Почати знову</a>}
-    {registration && <a className="text-link" href="/app/login">Уже маєте акаунт? Увійти</a>}
+    {step !== 'email' && <Link className="text-link" to={registration ? '/app/register' : '/app/login'}>Почати знову</Link>}
+    {registration && <Link className="text-link" to="/app/login">Уже маєте акаунт? Увійти</Link>}
     <p className="fine-print">{registration ? 'Реєстрація не активує платний супровід.' : 'Доступ до акаунта — за одноразовим кодом із пошти.'}</p>
   </section>
 }

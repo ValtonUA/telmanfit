@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api'
@@ -87,6 +88,6 @@ export function OnboardingFirstStep() {
       <p className="fine-print">Це перша частина анкети. Повна анкета буде розширена; поточне збереження не активує супровід.</p>
     </form>}
     {!loading && error && <p role="alert" className="error">{error}</p>}
-    <a className="text-link" href="/app">← Повернутися до кабінету</a>
+    <Link className="text-link" to="/app">← Повернутися до кабінету</Link>
   </section>
 }

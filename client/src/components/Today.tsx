@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api'
 import { getMealPlanDays } from '../mealPlanApi'
@@ -49,7 +50,7 @@ export function Today({ onExit }: { onExit: (message: string) => void }) {
       {menu?.today && <p className="muted">{dateTitle(menu.today)}</p>}
     </div>
     <div className="today-actions">
-      <a className="button" href="/app/meal-plan">Переглянути раціон</a>
+      <Link className="button" to="/app/meal-plan">Переглянути раціон</Link>
     </div>
     {state === 'loading' ? <section className="card plan-state" role="status"><h2>Завантажуємо меню…</h2></section>
       : state === 'error' ? <section className="card plan-state"><h2>Меню недоступне</h2><p role="alert">Не вдалося завантажити меню. Перевірте з’єднання.</p><button onClick={() => setAttempt(n => n + 1)}>Спробувати ще раз</button></section>

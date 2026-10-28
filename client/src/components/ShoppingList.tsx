@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
+import { useClientNavigate } from '../useClientNavigate'
 import { ApiError } from '../api'
 import { getShoppingList } from '../shoppingListApi'
 import type { ShoppingItem, ShoppingListResponse } from '../shoppingListApi'
@@ -43,6 +45,7 @@ function ShoppingProduct({ item }: { item: ShoppingItem }) {
 }
 
 export function ShoppingList({ onExit }: { onExit: (message: string) => void }) {
+  const navigate = useClientNavigate()
   const [week, setWeek] = useState<number | undefined>(requestedWeek)
   const [result, setResult] = useState<ShoppingListResponse>()
   const [loading, setLoading] = useState(true)
@@ -53,7 +56,7 @@ export function ShoppingList({ onExit }: { onExit: (message: string) => void }) 
 
   function chooseWeek(next: number | undefined) {
     const query = next === undefined ? '' : '?week=' + next
-    window.history.replaceState(null, '', shoppingPath + query)
+    navigate(shoppingPath + query, true)
     setWeek(next)
     setRetry(n => n + 1)
   }
@@ -96,7 +99,7 @@ export function ShoppingList({ onExit }: { onExit: (message: string) => void }) 
 
   const back = '/app/meal-plan' + (result?.week ? '?week=' + result.week : week ? '?week=' + week : '')
   return <section className="shopping-list">
-    <a className="shopping-back" href={back}>← Повернутися до раціону</a>
+    <Link className="shopping-back" to={back}>← Повернутися до раціону</Link>
     <div className="shopping-heading">
       <div><span className="eyebrow">Раціон · покупки</span><h1>Список покупок</h1></div>
       <button className="secondary" disabled={loading} onClick={() => setRetry(n => n + 1)}>Оновити</button>
