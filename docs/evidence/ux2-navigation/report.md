@@ -20,6 +20,7 @@
 4. Test actions до Alpine initialization та offscreen mobile sidebar — очікування реального `livewire:navigated` і відкриття sidebar через видиму кнопку; deprecated button selector logout замінено на semantic menuitem.
 5. Новий локальний test selector очищується на вході чинного CI worker, щоб inherited environment не звузило required coverage. Чинний workflow доповнено лише шляхами browser evidence, без нових jobs/координаторів.
 6. Required Targeted виявив застаріле очікування повного navigation у тесті публікації з редактора дня: URL ще не встигав перейти до огляду. Тест очікує кінцеву адресу та статус «Опублікована» після Livewire response, а потім перевіряє reload/readonly. Перевірки публікації не послаблено.
+7. Для history тест очікує серверний GET і завершення `livewire:navigated`: після native Back Forward може виконати свіжий SPA GET замість native reload. Для catalog create/edit спільний readiness додатково очікує завершення SPA DOM/Alpine init. Повторний цільовий AUTH3 + UX-2 browser прогін пройшов; усі шість варіантів чинного редактора раціонів також пройшли.
 
 ## Межі
 

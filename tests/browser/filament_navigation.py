@@ -68,6 +68,18 @@ def navigate(page, action, url):
     livewire_ready(page)
 
 
+def history(page, action, url):
+    before = page.evaluate('[performance.timeOrigin, window.__ux2Navigations]')
+    # Після native Back Livewire може вже не мати Forward snapshot і виконати
+    # свіжий SPA GET. Обидва шляхи мають перевірити сервер та завершити init.
+    with page.expect_response(lambda r: r.request.method == 'GET' and r.url == url and r.status == 200):
+        action()
+    expect(page).to_have_url(url)
+    page.wait_for_function('''([origin, count]) => window.__ux2Navigations > 0
+        && (performance.timeOrigin !== origin || window.__ux2Navigations > count)''', arg=before)
+    livewire_ready(page)
+
+
 def sidebar(page, base, path):
     link = page.locator(f'.fi-sidebar a[href="{base}{path}"]').first
     opener = page.locator('.fi-topbar-open-sidebar-btn:visible, .fi-topbar-open-collapse-sidebar-btn:visible')
@@ -163,14 +175,9 @@ def run_navigation(parent, base):
             checks.append(f'{width}/{theme}: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation')
     day_url = page.url
     sidebar(page, base, '/admin/clients')
-    with page.expect_response(lambda r: r.request.is_navigation_request() and r.url == day_url and r.status == 200):
-        page.go_back()
+    history(page, page.go_back, day_url)
     expect(page.locator('.plan-day-layout')).to_be_visible()
-    # History guard запускає окремий native reload після popstate. Сам URL
-    # змінюється раніше: дочекатися серверної відповіді, як і для Back.
-    with page.expect_response(lambda r: r.request.is_navigation_request()
-                              and r.url == base + '/admin/clients' and r.status == 200):
-        page.go_forward()
+    history(page, page.go_forward, base + '/admin/clients')
     expect(page).to_have_url(base + '/admin/clients')
     expect(page.get_by_role('heading', name='Картки клієнтів', exact=True)).to_be_visible()
     page.reload()
