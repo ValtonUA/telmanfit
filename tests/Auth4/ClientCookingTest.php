@@ -82,7 +82,7 @@ class ClientCookingTest extends TestCase
     public function test_head_does_not_change_session_or_database_rows(): void
     {
         $before = $this->snapshot();
-        $response = $this->call('HEAD', '/api/meal-plan/cooking?week=1');
+        $response = $this->head('/api/meal-plan/cooking?week=1');
         $response->assertOk()->assertHeader('Cache-Control', 'no-store, private');
         $this->assertSame($before, $this->snapshot(), 'HEAD must not mutate sessions or any table/xmin.');
     }
