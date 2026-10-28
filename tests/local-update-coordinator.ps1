@@ -139,6 +139,49 @@ Remove-Item -LiteralPath $journalDirectory -Recurse -Force
 
 Assert-Throws { Invoke-Native -Command 'cmd.exe' -Arguments @('/c', 'exit', '29') } 'backup command failure propagates as fatal error'
 Assert-Throws { Invoke-Native -Command 'cmd.exe' -Arguments @('/c', 'exit', '30') } 'migration command failure propagates as fatal error'
+
+$nativeTestRoot = Join-Path $root ".native-cli-test-$([guid]::NewGuid().ToString('N'))"
+$bareRepository = Join-Path $nativeTestRoot 'remote.git'
+$seedRepository = Join-Path $nativeTestRoot 'seed repo'
+$nativeTestDirectory = Join-Path $nativeTestRoot 'client config'
+$null = New-Item -ItemType Directory -Path $nativeTestRoot -Force
+try {
+    $null = Invoke-Native -Command 'git' -Arguments @('init', '--quiet', '--bare', '--initial-branch=master', $bareRepository)
+    $null = Invoke-Native -Command 'git' -Arguments @('init', '--quiet', '--initial-branch=master', $seedRepository)
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'config', 'user.name', 'Native Test')
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'config', 'user.email', 'native-test@example.invalid')
+    Set-Content -LiteralPath (Join-Path $seedRepository 'seed.txt') -Value 'synthetic' -NoNewline
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'add', 'seed.txt')
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'commit', '--quiet', '-m', 'synthetic seed')
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'remote', 'add', 'origin', $bareRepository)
+    $null = Invoke-Native -Command 'git' -Arguments @('-C', $seedRepository, 'push', '--quiet', '-u', 'origin', 'master')
+
+    # A successful Git fetch writes its usual "From ..." progress to stderr.
+    $fetch = Invoke-Git -Arguments @('-C', $seedRepository, 'fetch', 'origin', 'master')
+    Assert-True ($fetch.ExitCode -eq 0 -and (@($fetch.StandardError | Where-Object { $_ -like 'From *' }).Count -eq 1)) 'successful Git stderr is captured without becoming NativeCommandError'
+    Assert-True (@($fetch.StandardOutput | Where-Object { $_ -like 'From *' }).Count -eq 0 -and @($fetch.Output | Where-Object { $_ -like 'From *' }).Count -eq 0) 'Git stdout and stderr remain distinct and Output stays stdout-only'
+
+    $gitFailureMessage = $null
+    try { $null = Invoke-Git -Arguments @('-C', $seedRepository, 'not-a-telmanfit-command') } catch { $gitFailureMessage = $_.Exception.Message }
+    $allowedGitFailure = Invoke-Git -Arguments @('-C', $seedRepository, 'not-a-telmanfit-command') -AllowFailure
+    Assert-True ($allowedGitFailure.ExitCode -ne 0 -and $gitFailureMessage -match "exit code $($allowedGitFailure.ExitCode)" -and $gitFailureMessage -notmatch 'fatal:') 'Git nonzero exit blocks execution without copying raw stderr into logs'
+    Assert-True ($allowedGitFailure.ExitCode -ne 0 -and @($allowedGitFailure.StandardError).Count -gt 0) 'explicitly allowed Git failure returns exit code and stderr'
+
+    $dockerApplication = Get-Command -Name 'docker' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($dockerApplication) {
+        $dockerVersion = Invoke-Docker -Arguments @('--version')
+        Assert-True ($dockerVersion.ExitCode -eq 0 -and (@($dockerVersion.StandardOutput | Where-Object { $_ -like 'Docker version *' }).Count -eq 1)) 'Docker CLI successful stdout is captured'
+        $null = New-Item -ItemType Directory -Path $nativeTestDirectory -Force
+        $dockerFailure = Invoke-Docker -Arguments @('--config', $nativeTestDirectory, '--context', 'telmanfit-test-context-that-does-not-exist', 'info') -AllowFailure
+        Assert-True ($dockerFailure.ExitCode -ne 0 -and @($dockerFailure.StandardError).Count -gt 0) 'Docker CLI error is returned only through its nonzero exit code and stderr'
+        $dockerFailureMessage = $null
+        try { $null = Invoke-Docker -Arguments @('--config', $nativeTestDirectory, '--context', 'telmanfit-test-context-that-does-not-exist', 'info') } catch { $dockerFailureMessage = $_.Exception.Message }
+        Assert-True ($dockerFailureMessage -match 'exit code ' -and $dockerFailureMessage -notmatch 'context-that-does-not-exist') 'Docker nonzero exit blocks execution without exposing CLI diagnostics'
+    }
+} finally {
+    Remove-Item -LiteralPath $nativeTestRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 $coordinatorSource = Get-Content -LiteralPath (Join-Path $root 'scripts/local-update.ps1') -Raw
 Assert-True ($coordinatorSource -notmatch 'migrate:rollback|db:wipe|docker\s+compose\s+down\s+-v|git\s+reset\b|git\s+clean\b|--force-push') 'coordinator contains no automatic destructive recovery/reset path'
 Assert-True ($coordinatorSource -match 'script:ProjectName' -and $coordinatorSource -match 'Get-VolumeName' -and $coordinatorSource -match 'Get-ContainerName app') 'all Compose/container/volume selection is derived from the locked project identity'

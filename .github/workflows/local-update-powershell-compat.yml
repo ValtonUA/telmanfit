@@ -26,3 +26,6 @@ jobs:
       - name: Verify coordinator encoding and syntax without running it
         shell: cmd
         run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/local-update-powershell-compat.ps1
+      - name: Test coordinator and native CLI handling
+        shell: cmd
+        run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/local-update-coordinator.ps1
