@@ -194,8 +194,14 @@ function Invoke-Coordinator {
 
 function Assert-ProjectHttp {
     foreach ($path in @('/up', '/app', '/admin/login')) {
-        $status = Get-Text (Invoke-Checked -Command 'curl.exe' -Arguments @('-k', '-sS', '-o', 'NUL', '-w', '%{http_code}', "http://127.0.0.1:$port$path"))
-        if ($status -notin @('200', '302')) { throw "HTTP endpoint $path returned $status." }
+        $status = ''
+        for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            $probe = Invoke-Checked -Command 'curl.exe' -Arguments @('-k', '-sS', '--connect-timeout', '2', '-o', 'NUL', '-w', '%{http_code}', "http://127.0.0.1:$port$path") -AllowFailure
+            $status = Get-Text $probe
+            if ($probe.code -eq 0 -and $status -in @('200', '302')) { break }
+            Start-Sleep -Seconds 2
+        }
+        if ($status -notin @('200', '302')) { throw "HTTP endpoint $path returned $status after bounded retry." }
     }
 }
 
