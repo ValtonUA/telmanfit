@@ -6,8 +6,8 @@ use App\Services\Cooking\CookingEditor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Tests\Recipes\BatchFixture;
 use RuntimeException;
+use Tests\Recipes\BatchFixture;
 use Throwable;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
@@ -93,7 +93,7 @@ DB::transaction(function () {
     }
     DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL, 'last_reconciled_at' => DB::raw('clock_timestamp()'), 'issuance_not_before' => DB::raw('clock_timestamp()'), 'state' => 'ready']);
     $actor = User::where('email', 'cooking-browser@example.invalid')->first() ?? User::findOrFail(DB::table('users')->insertGetId(['name' => 'Синтетичний автор кухні', 'role' => 'admin', 'email' => 'cooking-browser@example.invalid', 'password' => Hash::make('Synthetic-Cooking-Only!')]));
-    $fixture = new CookingBrowserFixture();
+    $fixture = new CookingBrowserFixture;
     $plan = $fixture->make();
     $editor = app(CookingEditor::class);
     $v = $editor->create($actor, ['title' => 'Синтетична кухня', 'source_plan_version_id' => $plan['version'], 'source_week' => 1, 'mode' => 1]);
@@ -111,4 +111,3 @@ DB::transaction(function () {
     }
     echo $v;
 });
-
