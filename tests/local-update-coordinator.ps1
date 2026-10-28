@@ -101,6 +101,8 @@ $viewRequirement = [pscustomobject]@{ name = 'test'; postconditions = [pscustomo
 Assert-MigrationPostconditions -Snapshot $post -Migration $viewRequirement
 $post.schema.views = @()
 Assert-Throws { Assert-MigrationPostconditions -Snapshot $post -Migration $viewRequirement } 'missing view is refused'
+$optionalPostcondition = [pscustomobject]@{ name = 'test'; postconditions = [pscustomobject]@{ required_tables = @('cooking_templates') } }
+Assert-MigrationPostconditions -Snapshot $post -Migration $optionalPostcondition
 
 $before = New-Snapshot
 $same = New-Snapshot
