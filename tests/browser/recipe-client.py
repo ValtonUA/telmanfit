@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import time
 from playwright.sync_api import sync_playwright, expect
+from wake_lock import WAKE_LOCK_PROBE
 
 BASE = 'http://127.0.0.1:18054'
 OUT = Path('docs/evidence/client-recipe')
@@ -257,6 +258,20 @@ with sync_playwright() as p:
         page.reload()
         expect(page.get_by_role('heading', name='Завершіть приготування')).to_be_visible()
         expect(page.get_by_role('region', name='Активні таймери')).to_be_visible()
+        # UX-1: SPA unmount звільняє Wake Lock; history повертає persisted таймер.
+        page.evaluate(WAKE_LOCK_PROBE)
+        page.get_by_role('checkbox', name='Не вимикати екран').check()
+        page.wait_for_function('window.__wakeProbe.calls === 1')
+        page.evaluate('window.__wakeProbe.resolve()')
+        page.wait_for_function('window.__wakeProbe.active === 1')
+        page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name='Прогрес').click()
+        expect(page.get_by_role('heading', name='Прогрес', exact=True)).to_be_visible()
+        page.wait_for_function('window.__wakeProbe.active === 0')
+        page.go_back()
+        expect(page.get_by_role('heading', name='Завершіть приготування')).to_be_visible()
+        expect(page.get_by_role('region', name='Активні таймери')).to_be_visible()
+        assert page.evaluate('window.__wakeProbe.active === 0')
+        checks.append('UX-1: SPA navigation releases Wake Lock, Back restores cooking stage/timer without document reload')
         page.get_by_role('button', name='← До вибору сесій').click()
         expect(page.get_by_role('heading', name='Помічник приготування', exact=True)).to_be_visible()
         expect(page.locator('.cook-template')).to_have_count(1)
@@ -271,6 +286,12 @@ with sync_playwright() as p:
         expect(page).to_have_url(BASE + '/app/login')
         expect(page.get_by_role('status')).to_contain_text('Сесія завершилася')
         expect(page.locator('.recipe-ingredients')).to_have_count(0)
+        for width in (1440, 390, 320):
+            page.set_viewport_size({'width': width, 'height': 900})
+            page.emulate_media(color_scheme='dark')
+            expect(page.get_by_role('heading', name='Увійдіть у свій кабінет')).to_be_visible()
+            assert page.locator('.auth-card').evaluate('(e) => getComputedStyle(e).backgroundColor') == 'rgb(32, 52, 42)'
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         assert not errors, errors
         checks.append('Revoked ClientSession / приватний вміст прибрано')
         result = {'result': 'PASS', 'browser': browser.version, 'checks': checks}

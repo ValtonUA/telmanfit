@@ -75,3 +75,13 @@ footer { text-align: center; font-size: 12px; color: #607166; padding: 24px 18px
   .client-main a.button { color: #fff; }
   .client-main .notice { background: #2c4436; border-color: #7b9d86; }
 }
+
+@media (prefers-color-scheme: dark) {
+  .card { background: #20342a; border-color: #496353; color: #e2ece1; }
+  .site-header { border-color: #496353; }
+  .brand, .brand > span:last-child, .header-caption, .text-link, .secondary, .text-button { color: #b9d7bb; }
+  .secondary:hover, .text-button:hover { background: #2c4436; }
+  .muted, .eyebrow, .fine-print { color: #b4c8b8; }
+  .notice { background: #2c4436; border-color: #7b9d86; }
+  a { color: #b9d7bb; }
+}
