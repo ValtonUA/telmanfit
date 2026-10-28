@@ -13,7 +13,7 @@ use Tests\Recipes\CookingBrowserFixture;
 use Throwable;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
-set_exception_handler(function (\Throwable $e) {
+set_exception_handler(function (Throwable $e) {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
 });
