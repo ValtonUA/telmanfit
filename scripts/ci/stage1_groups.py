@@ -236,7 +236,7 @@ def main():
                     if name == 'recipe' and any('Recipe browser Laravel error tail:' in line for line in lines):
                         marker = next(i for i, line in enumerate(lines) if 'Recipe browser Laravel error tail:' in line)
                         print('--- Recipe browser Laravel diagnostic ---')
-                        print('\n'.join(lines[marker:marker + 48]))
+                        print('\n'.join(lines[marker:marker + 165]))
     return code
 
 

@@ -23,7 +23,7 @@ cleanup() {
         tail -n 30 "$log" >&2 || true
         if [[ -f storage/logs/laravel.log ]]; then
             echo 'Recipe browser Laravel error tail:' >&2
-            tail -n 40 storage/logs/laravel.log >&2 || true
+            tail -n 160 storage/logs/laravel.log >&2 || true
         fi
     fi
     kill "$server" 2>/dev/null || true
