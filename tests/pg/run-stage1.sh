@@ -191,7 +191,7 @@ if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'NutritionImportTest|R2ImageMatcherTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|NutritionImportTest|R2ImageMatcherTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
     php tests/pg/recipe-batch-concurrency.php
     php tests/pg/recipe-batch-uom-reload.php
@@ -210,6 +210,7 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/meal-plan-assignment-concurrency.php
     php tests/pg/meal-plan-copy-concurrency.php
     php tests/pg/recipe-cover-concurrency.php
+    php tests/pg/cooking-concurrency.php
     stage1_mark recipe_concurrency
     if [[ ${RECIPE_BATCH_BROWSER:-0} == 1 ]]; then
         bash tests/browser/recipe-batch-in-context.sh

@@ -18,6 +18,9 @@ SECURITY_PREFIXES = (
     "experiments/auth",
 )
 RECIPE_PREFIXES = (
+    "tests/pg/cooking",
+    "app/Services/Cooking/",
+    "tests/Postgres/CookingTemplatesTest.php",
     "app/Services/Catalog/",
     "app/Console/Commands/MatchR2Images.php",
     "config/r2.php",
@@ -48,7 +51,7 @@ def select_groups(paths: list[str]) -> tuple[str, ...]:
             selected.add("recipe")
         if normalized.startswith("database/"):
             selected.update(ALL)
-        if normalized.startswith(("tests/pg/meal-plan", "tests/pg/recipe")):
+        if normalized.startswith(("tests/pg/meal-plan", "tests/pg/recipe", "tests/pg/cooking")):
             selected.add("recipe")
         elif normalized.startswith("tests/pg/auth"):
             selected.update(("baseline", "b5", "b3"))

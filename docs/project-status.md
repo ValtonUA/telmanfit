@@ -8,6 +8,55 @@
 
 ## Підтверджені факти й межі
 
+### T5.7b — schema/domain v1
+
+FEASIBILITY PASS на master `66cb162ec343f8e03e5bd9f55f4826c30170127f`:
+PG18.6, PHP8.5.12, Docker та GitHub доступні. Власник затвердив D1–D5 і
+один повний наявний семиденний фрагмент без автоматичного DEC-5M.
+Read-only preflight локального профілю: 2 recipes, 0 published recipe versions,
+0 published meal plan versions; шість страв/раціон не підтверджено.
+Робочі дані не експортувалися й не використовувалися в тестах.
+
+[Контракт SQL17/18](cooking-templates.md) і forward-only міграції додають шість
+нормалізованих таблиць, balances view, повний frozen menu pattern, immutable
+published lineage, coverage/portion/selector guards, versioned JSONB blocks
+та exact frozen quantity/explicit-sum resolver. Доменний admin review/publish
+перевіряє revision, suitability/safety/manual parameters і чинний image allowlist.
+Доменний read guard перевіряє explicit selection/assignment/owner/full week/requested mode/pattern;
+authentication adapter та HTTP boundary ще не реалізовано.
+
+Синтетичний пілот: 1 template + 1 session + 6 recipes (legacy/A/B/C),
+outputs/allocations, review/publish й обчислені залишки. Міграція застосована
+до заповненої synthetic схеми; історичні recipe/menu таблиці порівнюються до/після.
+PG18 тести також покривають reuse двом клієнтам і між наявними тижнями,
+partial/revoked/foreign access, підготовлені режими 2/7, stale review,
+immutable descendants, JSON і token відмови. Актуальні результати локальних
+перевірок: PG18 **12 tests / 211 assertions PASS**; стандартний backend
+**119 passed / 490 assertions**, 3 SPA tests skipped через відсутність React build
+у disposable копії. Використано справжні наявні admin build assets локального
+image, не нову frontend збірку. Повний migration path на disposable PG18 та
+FK/BIGINT regression — **1 test / 30 assertions PASS** (17 FK, включно з двома
+новими cooking user references). CI selector (5 tests),
+docs guard із PR base та SQL projection equality — PASS. CI на exact head
+фіксується в описі окремого Draft PR.
+
+Незалежний process-concurrency runner: **37 scenarios PASS** у disposable PG18,
+три PHP/PDO workers із різними backend PID та доведеними lock waits. Перевірено
+service/SQL edit-review-publish, racing sessions/outputs/allocations, double publish,
+create-next, READ COMMITTED/REPEATABLE READ/SERIALIZABLE revision conflicts,
+selection CAS/replacement/ABA та MVCC read snapshot. Справжній 40P01 victim і
+невдала публікація відкочують усі detail/review/revision writes; автоматичного
+retry старого intent немає. Негативні probes підтверджують exit=1 для небезпечного
+DB environment та standalone exception. Тести включені в чинну recipe CI group.
+B/C token labels лишаються frozen після зміни UOM довідника; A/grams мають
+канонічні `г`, legacy quantity label явно unavailable для наступного API.
+
+Filament/React/API, local progress, timers/wake lock, Filament→телефон walkthrough,
+production activation та реальні міграції не виконувалися. SQL-функція доступу
+не є RLS або автентифікацією. Придатність інструкцій і відсутність технологічної
+води в ingredient tokens підтверджує автор: machine-readable water classifier
+у чинному каталозі немає. Семантична перевірка безпеки не автоматизується.
+
 ### INFECTION-1
 
 27.10.2026, **FEASIBILITY: PASS** на master
@@ -126,7 +175,7 @@ Compose, робочі контейнери/volumes, PostgreSQL, MFA/auth і CI �
 | Клієнтський shell T5.5 | Чотири нижні вкладки «Сьогодні», «Раціон», «Корисне», «Прогрес» та профіль через аватар. «Сьогодні» використовує server `today` та реальні страви з T5.2, без КБЖВ; є retry/empty/revoked, exact рецепт. Чинні маршрути та `api.ts` збережені, винесено типізоване читання `mealPlanApi.ts`. AUTH5 і браузерні T5.2 сценарії адаптовано | На етапі T5.5 вкладки «Корисне» й «Прогрес» були порожніми; «Корисне» реалізовано окремо в T5.6, «Прогрес» ще очікує Stage 6; без нової схеми, router/dependencies, Telegram/тренувань/звітів. Production activation окремо; squash merge PR #89, required Fast/Docs/Targeted PASS на `40a0714c` | [UX-контракт](client-app.md), [PR #89](https://github.com/ValtonUA/telmanfit/pull/89), `client/src/components/Today.tsx`, `tests/browser/auth5.py`, `tests/browser/client_meal_plan.cjs` |
 | Бібліотека «Корисне» T5.6 | Єдина таблиця `library_items` (article/video/playlist/instruction), `draft/published` із SQL CHECK; admin-only Filament CRUD без видалення; ClientSession `GET /api/library` та `GET /api/library/{id}`, приховування чернеток/знятих публікацій, `no-store, private`; безпечний Markdown/HTTPS/зображення; React каталог і деталі з retry/direct URL | Без персональних рекомендацій, upload файлів, змін auth/meal plan; client/API та Filament тести в ізольованій PG18 і Chromium. Required Fast/Docs/Targeted PASS на фінальному head `adb9c943` перед squash merge [PR #92](https://github.com/ValtonUA/telmanfit/pull/92); production і робочу БД не мігрували | [Контракт](library.md), `app/Models/LibraryItem.php`, `app/Http/Controllers/Api/ClientLibraryController.php`, `tests/Auth4/ClientLibraryTest.php`, `tests/Postgres/LibraryFilamentTest.php`, `client/src/components/Library.tsx` |
 | T5.7a — екран покупок | UI над чинним [T5.3 API](shopping-lists.md): тижневий вибір, точні харчові потреби без округлення, source UOM, error/retry/empty; frontend `ShoppingList.tsx` і браузерні synthetic перевірки | Змерджено [PR #94](https://github.com/ValtonUA/telmanfit/pull/94), squash `33ad5c218da712a3c5869fa4bb0ee8e8d1f97716`, Fast/Docs/Targeted PASS на head `9f10713d`. Без нових таблиць/API, категорій, SKU/округлень, чекбоксів чи cooking sessions; production OFF | [UX-контракт](shopping-list-ui.md), `client/src/components/ShoppingList.tsx`, `tests/browser/recipe-client.py` |
-| T5.7b — гібридні токени | Погоджено продуктове рішення: автоматичні frozen кількості інгредієнтів і лише явно задані автором суми; технологічні параметри вручну, точна сумісність перед reuse | Лише документаційна пропозиція; багаторецептний resolver, guards, схема та UI не реалізовані; D1–D5 відкриті, production OFF | [Канонічна пропозиція](proposals/t5-7b-cooking-sessions.md#31-погоджене-продуктове-рішення-гібридні-токени) |
+| T5.7b — гібридні токени | Погоджено продуктове рішення: автоматичні frozen кількості інгредієнтів і лише явно задані автором суми; технологічні параметри вручну, точна сумісність перед reuse | Schema/domain реалізовано в Draft: SQL17/18, exact resolver, guards і explicit selection; D1–D5 та selection погоджені; UI/API відсутні, production OFF | [Канонічна пропозиція](proposals/t5-7b-cooking-sessions.md#31-погоджене-продуктове-рішення-гібридні-токени) |
 | Прогрес/комунікація | Відповідні таблиці запроєктовано та частково включено в бізнес-міграції | Немає реалізованих UI/API прогресу, бізнес-повідомлень і Telegram adapter | [roadmap.md](roadmap.md), [entity-catalog.md](entity-catalog.md) |
 | Інфраструктура | Hyperhost VPS Старт, SendPulse і зовнішні копії **обрані**; документаційний D8.1 preflight виконано | VPS/SMTP/backup restore не налаштовано й не доведено. Погоджений RPO до 24 год — ціль, не виміряний результат | [D8](auth6-d8-infrastructure.md), [D8.1](auth6-d8-preflight.md) |
 
@@ -200,7 +249,8 @@ backfill немає. `MealItemResolver` повертає типізовану re
 Unit і synthetic PG upgrade/negative/rollback/concurrency тести входять
 у чинний runner. [Контракт і перевірки](meal-plans.md#model-i-g4-i-selectors-та-readonly-resolver).
 Фактичний CI PASS належить SHA відповідного PR, не цьому опису.
-Shopping/cooking не реалізовано; writer T4.3 використовує цей контракт, описаний нижче.
+Shopping API та cooking schema/domain описані у відповідних поточних розділах вище;
+writer T4.3 використовує цей контракт і описаний нижче.
 Робочі БД та feature flags не змінено; production rollout не авторизовано.
 
 
