@@ -92,7 +92,8 @@ DB::transaction(function () {
             continue;
         }
         fwrite(STDERR, "Cooking fixture: output begin\n");
-        $o = $editor->output($actor, $v, $revision(), $s, $plan['recipe_version'].':'.$plan['format'].':1.00');
+        $selector = array_key_first($editor->selectors($v));
+        $o = $editor->output($actor, $v, $revision(), $s, $selector);
         fwrite(STDERR, "Cooking fixture: output saved\n");
         $editor->allocate($actor, $v, $revision(), $slot['day'], $slot['meal_position'], $slot['item_position'], $o);
         fwrite(STDERR, "Cooking fixture: allocation saved\n");
