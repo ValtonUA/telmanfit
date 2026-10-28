@@ -45,6 +45,24 @@ $script:ProjectPrefix = 'telmanfit-local'
 $script:PublishedPort = '8098'
 $script:TestMode = $false
 
+$validComposeLabels = '{"com.docker.compose.project":"telmanfit-local","com.docker.compose.project.working_dir":"C:\\Projects\\telmanfit"}' | ConvertFrom-Json
+Assert-True (Assert-ComposeProjectIdentity -Labels $validComposeLabels -ExpectedProject 'telmanfit-local' -ExpectedWorkingDirectory 'C:\Projects\telmanfit' -Resource 'synthetic container') 'valid dotted Docker labels confirm Compose project identity'
+$labelsWithoutWorkingDirectory = '{"com.docker.compose.project":"telmanfit-local"}' | ConvertFrom-Json
+$missingWorkingDirectoryError = $null
+try { $null = Assert-ComposeProjectIdentity -Labels $labelsWithoutWorkingDirectory -ExpectedProject 'telmanfit-local' -ExpectedWorkingDirectory 'C:\Projects\telmanfit' -Resource 'synthetic container' } catch { $missingWorkingDirectoryError = $_.Exception.Message }
+Assert-True ($missingWorkingDirectoryError -like "*com.docker.compose.project.working_dir*") 'missing working_dir label fails closed with a clear ownership error'
+$labelsWithWrongProject = '{"com.docker.compose.project":"another-project","com.docker.compose.project.working_dir":"C:\\Projects\\telmanfit"}' | ConvertFrom-Json
+Assert-Throws { Assert-ComposeProjectIdentity -Labels $labelsWithWrongProject -ExpectedProject 'telmanfit-local' -ExpectedWorkingDirectory 'C:\Projects\telmanfit' -Resource 'synthetic container' } 'wrong Compose project label is rejected'
+$labelsWithWrongWorkingDirectory = '{"com.docker.compose.project":"telmanfit-local","com.docker.compose.project.working_dir":"C:\\Projects\\other"}' | ConvertFrom-Json
+Assert-Throws { Assert-ComposeProjectIdentity -Labels $labelsWithWrongWorkingDirectory -ExpectedProject 'telmanfit-local' -ExpectedWorkingDirectory 'C:\Projects\telmanfit' -Resource 'synthetic container' } 'wrong Compose working_dir label is rejected'
+$dictionaryLabels = @{
+    'com.docker.compose.project' = 'telmanfit-local'
+    'com.docker.compose.project.working_dir' = 'C:\Projects\telmanfit'
+}
+Assert-True (Assert-ComposeProjectIdentity -Labels $dictionaryLabels -ExpectedProject 'telmanfit-local' -ExpectedWorkingDirectory 'C:\Projects\telmanfit' -Resource 'synthetic hashtable container') 'dictionary-backed labels are read and validated safely'
+$missingLabels = Get-DockerLabels -Inspect ([pscustomobject]@{ Config = [pscustomobject]@{} }) -Resource 'synthetic container' -ConfigLabels
+Assert-Throws { Assert-ComposeProjectIdentity -Labels $missingLabels -ExpectedProject 'telmanfit-local' -ExpectedWorkingDirectory 'C:\Projects\telmanfit' -Resource 'synthetic container without Labels' } 'inspect object without Labels fails closed without PropertyNotFoundException'
+
 function New-Snapshot {
     param([string[]] $Pending = @())
     $tables = [pscustomobject]@{

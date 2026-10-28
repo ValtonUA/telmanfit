@@ -449,6 +449,97 @@ function Get-ProjectContainers {
     return @($result.Output | ForEach-Object { ([string] $_).Trim() } | Where-Object { $_ })
 }
 
+function Get-DockerObjectProperty {
+    param(
+        [Parameter()][AllowNull()][object] $Object,
+        [Parameter(Mandatory)][string] $Name,
+        [Parameter(Mandatory)][string] $Resource,
+        [switch] $AllowMissing
+    )
+
+    if ($null -eq $Object) {
+        if ($AllowMissing) { return $null }
+        throw "Docker inspect для $Resource не містить об’єкта, потрібного для читання '$Name'."
+    }
+
+    $found = $false
+    $value = $null
+    if ($Object -is [System.Collections.IDictionary]) {
+        if ($Object.Contains($Name)) {
+            $found = $true
+            $value = $Object[$Name]
+        }
+    } else {
+        $property = $Object.PSObject.Properties[$Name]
+        if ($property) {
+            $found = $true
+            $value = $property.Value
+        }
+    }
+
+    if (-not $found) {
+        if ($AllowMissing) { return $null }
+        throw "Docker inspect для $Resource не містить '$Name'."
+    }
+    return $value
+}
+
+function Get-DockerLabels {
+    param(
+        [Parameter()][AllowNull()][object] $Inspect,
+        [Parameter(Mandatory)][string] $Resource,
+        [switch] $ConfigLabels
+    )
+
+    $labelOwner = $Inspect
+    if ($ConfigLabels) {
+        $labelOwner = Get-DockerObjectProperty -Object $Inspect -Name 'Config' -Resource $Resource
+    }
+    return Get-DockerObjectProperty -Object $labelOwner -Name 'Labels' -Resource $Resource -AllowMissing
+}
+
+function Get-DockerLabelValue {
+    param(
+        [Parameter()][AllowNull()][object] $Labels,
+        [Parameter(Mandatory)][string] $Name,
+        [Parameter(Mandatory)][string] $Resource,
+        [switch] $AllowMissing
+    )
+
+    $value = Get-DockerObjectProperty -Object $Labels -Name $Name -Resource "$Resource labels" -AllowMissing
+    if ($null -eq $value -or [string]::IsNullOrWhiteSpace([string] $value)) {
+        if ($AllowMissing) { return $null }
+        throw "Docker inspect для $Resource не містить обов’язковий label '$Name'; ownership неможливо підтвердити."
+    }
+    return [string] $value
+}
+
+function Assert-ComposeProjectIdentity {
+    param(
+        [Parameter()][AllowNull()][object] $Labels,
+        [Parameter(Mandatory)][string] $ExpectedProject,
+        [Parameter(Mandatory)][string] $ExpectedWorkingDirectory,
+        [Parameter(Mandatory)][string] $Resource
+    )
+
+    $project = Get-DockerLabelValue -Labels $Labels -Name 'com.docker.compose.project' -Resource $Resource
+    if ($project -cne $ExpectedProject) {
+        throw "Docker Compose project label для $Resource має значення '$project'; очікується '$ExpectedProject'."
+    }
+
+    $workingDirectory = Get-DockerLabelValue -Labels $Labels -Name 'com.docker.compose.project.working_dir' -Resource $Resource
+    try {
+        $actualPath = [IO.Path]::GetFullPath($workingDirectory).TrimEnd('\')
+        $expectedPath = [IO.Path]::GetFullPath($ExpectedWorkingDirectory).TrimEnd('\')
+    } catch {
+        throw "Docker Compose working_dir label для $Resource не містить коректного шляху."
+    }
+    if ($actualPath -ine $expectedPath) {
+        throw "Compose container $Resource належить іншому робочому каталогу."
+    }
+    return $true
+}
+
 function Assert-LocalProject {
     param([Parameter(Mandatory)][string] $Root)
 
@@ -470,12 +561,10 @@ function Assert-LocalProject {
     }
     foreach ($id in $containers) {
         $inspect = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
-        $labels = $inspect.Config.Labels
-        if ($labels.'com.docker.compose.project' -cne $script:ProjectName) { throw 'Знайдено контейнер з неочікуваним Compose project label.' }
-        if ([IO.Path]::GetFullPath($labels.'com.docker.compose.project.working_dir').TrimEnd('\') -ine $Root.TrimEnd('\')) {
-            throw 'Compose container належить іншому робочому каталогу.'
-        }
-        $service = $labels.'com.docker.compose.service'
+        $resource = "container '$id'"
+        $labels = Get-DockerLabels -Inspect $inspect -Resource $resource -ConfigLabels
+        $null = Assert-ComposeProjectIdentity -Labels $labels -ExpectedProject $script:ProjectName -ExpectedWorkingDirectory $Root -Resource $resource
+        $service = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.service' -Resource $resource
         if (-not $expectedMounts.ContainsKey($service)) { throw "Невідомий Compose service container: '$service'." }
         $mounts = @($inspect.Mounts | Where-Object { $_.Type -eq 'volume' } | ForEach-Object { $_.Name } | Sort-Object)
         $serviceMounts = @($expectedMounts[$service] | Sort-Object)
@@ -489,7 +578,9 @@ function Assert-LocalProject {
     if (($mountVolumes -join ',') -cne "$(Get-VolumeName database),$(Get-VolumeName database-secrets)") {
         throw 'Database container не використовує очікувані TelmanFit volumes.'
     }
-    $configFiles = @($database.Config.Labels.'com.docker.compose.project.config_files' -split ',')
+    $databaseLabels = Get-DockerLabels -Inspect $database -Resource "database container '$script:ProjectName'" -ConfigLabels
+    $configFilesLabel = Get-DockerLabelValue -Labels $databaseLabels -Name 'com.docker.compose.project.config_files' -Resource "database container '$script:ProjectName'"
+    $configFiles = @($configFilesLabel -split ',')
     $expectedConfigCount = if ($script:TestMode) { 2 } else { 1 }
     if ($configFiles.Count -ne $expectedConfigCount -or [IO.Path]::GetFileName($configFiles[0]) -cne 'compose.yaml' -or ($script:TestMode -and [IO.Path]::GetFullPath($configFiles[1]) -ine [IO.Path]::GetFullPath($TestComposeOverride))) {
         throw 'Активний Compose використовує інші config files. Зупинено, щоб не змінити overlay або інший проєкт.'
@@ -512,24 +603,30 @@ function Assert-TestProjectDisjoint {
     foreach ($volume in $testVolumes) {
         if ($volume -notin $volumeNames) { throw "Ізольований volume '$volume' не створено runner-ом." }
         $details = (Get-OutputText (Invoke-Docker -Arguments @('volume', 'inspect', $volume)) | ConvertFrom-Json)[0]
-        if ($details.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Volume '$volume' не має очікуваного Compose owner label." }
+        $labels = Get-DockerLabels -Inspect $details -Resource "volume '$volume'"
+        $owner = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.project' -Resource "volume '$volume'"
+        if ($owner -cne $script:ProjectName) { throw "Volume '$volume' не має очікуваного Compose owner label." }
     }
     foreach ($volume in $workingVolumes) {
         if ($volume -in $testVolumes) { throw "Небезпечне зіставлення із робочим volume '$volume'." }
         $details = (Get-OutputText (Invoke-Docker -Arguments @('volume', 'inspect', $volume)) | ConvertFrom-Json)[0]
-        if ($details.Labels.'com.docker.compose.project' -cne $workingProject) { throw "Робочий volume '$volume' не має очікуваного owner label." }
+        $labels = Get-DockerLabels -Inspect $details -Resource "volume '$volume'"
+        $owner = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.project' -Resource "volume '$volume'"
+        if ($owner -cne $workingProject) { throw "Робочий volume '$volume' не має очікуваного owner label." }
     }
 
     $ids = @(Invoke-Docker -Arguments @('ps', '-aq')).Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }
     $expectedNames = @(Get-IsolatedTestResourceNames -ProjectName $script:ProjectName).containers
     foreach ($id in $ids) {
         $details = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
-        $labels = $details.Config.Labels
+        $resource = "container '$id'"
+        $labels = Get-DockerLabels -Inspect $details -Resource $resource -ConfigLabels
+        $projectLabel = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.project' -Resource $resource -AllowMissing
         $containerName = $details.Name.TrimStart('/')
-        if ($containerName -like "$($script:ProjectName)-*" -and $labels.'com.docker.compose.project' -cne $script:ProjectName) {
+        if ($containerName -like "$($script:ProjectName)-*" -and $projectLabel -cne $script:ProjectName) {
             throw "Test container name collision with a resource owned by another project: $containerName."
         }
-        if ($labels.'com.docker.compose.project' -ceq $script:ProjectName) {
+        if ($projectLabel -ceq $script:ProjectName) {
             if ($containerName -notlike "$($script:ProjectName)-*" -or ($containerName -notin $expectedNames -and $containerName -notmatch "^$([regex]::Escape($script:ProjectName))-app-run-")) { throw 'Test container має назву поза унікальним project namespace.' }
             foreach ($mount in @($details.Mounts | Where-Object { $_.Type -eq 'volume' })) {
                 if ($mount.Name -in $workingVolumes) { throw "Ізольований container використовує робочий volume '$($mount.Name)'." }
@@ -541,20 +638,26 @@ function Assert-TestProjectDisjoint {
         $imageResult = Invoke-Docker -Arguments @('image', 'inspect', $imageName) -AllowFailure
         if ($imageResult.ExitCode -eq 0) {
             $image = (Get-OutputText $imageResult | ConvertFrom-Json)[0]
-            if ($image.Config.Labels.'telmanfit.e2e.project' -cne $script:ProjectName) { throw "Test image tag collision with a resource owned by another project: $imageName." }
+            $labels = Get-DockerLabels -Inspect $image -Resource "image '$imageName'" -ConfigLabels
+            $owner = Get-DockerLabelValue -Labels $labels -Name 'telmanfit.e2e.project' -Resource "image '$imageName'"
+            if ($owner -cne $script:ProjectName) { throw "Test image tag collision with a resource owned by another project: $imageName." }
         }
     }
     $networkName = "$($script:ProjectName)_local"
     $networkResult = Invoke-Docker -Arguments @('network', 'inspect', $networkName) -AllowFailure
     if ($networkResult.ExitCode -eq 0) {
         $network = (Get-OutputText $networkResult | ConvertFrom-Json)[0]
-        if ($network.Labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Test network name collision with a resource owned by another project: $networkName." }
+        $labels = Get-DockerLabels -Inspect $network -Resource "network '$networkName'"
+        $owner = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.project' -Resource "network '$networkName'"
+        if ($owner -cne $script:ProjectName) { throw "Test network name collision with a resource owned by another project: $networkName." }
     }
     $portUsersResult = Invoke-Docker -Arguments @('ps', '-q', '--filter', "publish=$script:PublishedPort")
     $portUsers = @($portUsersResult.Output | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
     foreach ($id in $portUsers) {
-        $labels = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0].Config.Labels
-        if ($labels.'com.docker.compose.project' -cne $script:ProjectName) { throw "Test host port $script:PublishedPort зайнятий стороннім контейнером." }
+        $inspect = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
+        $labels = Get-DockerLabels -Inspect $inspect -Resource "container '$id'" -ConfigLabels
+        $owner = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.project' -Resource "container '$id'"
+        if ($owner -cne $script:ProjectName) { throw "Test host port $script:PublishedPort зайнятий стороннім контейнером." }
     }
 }
 
@@ -632,7 +735,8 @@ function Assert-WritersStopped {
     foreach ($id in $running) {
         $inspect = (Get-OutputText (Invoke-Docker -Arguments @('inspect', $id)) | ConvertFrom-Json)[0]
         if (-not $inspect.State.Running) { continue }
-        $service = $inspect.Config.Labels.'com.docker.compose.service'
+        $labels = Get-DockerLabels -Inspect $inspect -Resource "container '$id'" -ConfigLabels
+        $service = Get-DockerLabelValue -Labels $labels -Name 'com.docker.compose.service' -Resource "container '$id'"
         if ($service -in @('app', 'worker', 'scheduler', 'web', 'setup')) {
             throw "Writer-сервіс '$service' усе ще працює після docker compose stop."
         }
@@ -702,7 +806,9 @@ function Invoke-BackupRestoreRehearsal {
             $inspectResult = Invoke-Docker -Arguments @('inspect', $container) -AllowFailure
             if ($inspectResult.ExitCode -eq 0) {
                 $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
-                if ($details.Config.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal container.' }
+                $labels = Get-DockerLabels -Inspect $details -Resource "rehearsal container '$container'" -ConfigLabels
+                $runLabel = Get-DockerLabelValue -Labels $labels -Name 'telmanfit.local-update' -Resource "rehearsal container '$container'"
+                if ($runLabel -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal container.' }
                 $null = Invoke-Docker -Arguments @('stop', '--time', '30', $container) -AllowFailure
                 $null = Invoke-Docker -Arguments @('rm', $container)
             }
@@ -711,7 +817,9 @@ function Invoke-BackupRestoreRehearsal {
             $inspectResult = Invoke-Docker -Arguments @('volume', 'inspect', $name) -AllowFailure
             if ($inspectResult.ExitCode -eq 0) {
                 $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
-                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal volume.' }
+                $labels = Get-DockerLabels -Inspect $details -Resource "rehearsal volume '$name'"
+                $runLabel = Get-DockerLabelValue -Labels $labels -Name 'telmanfit.local-update' -Resource "rehearsal volume '$name'"
+                if ($runLabel -ne $script:RunId) { throw 'Відмова видалити не-позначений rehearsal volume.' }
                 $attached = Invoke-Docker -Arguments @('ps', '-aq', '--filter', "volume=$name")
                 if ((Get-OutputText $attached)) { throw "Rehearsal volume $name усе ще використовується." }
                 $null = Invoke-Docker -Arguments @('volume', 'rm', $name)
@@ -721,7 +829,9 @@ function Invoke-BackupRestoreRehearsal {
             $inspectResult = Invoke-Docker -Arguments @('network', 'inspect', $network) -AllowFailure
             if ($inspectResult.ExitCode -eq 0) {
                 $details = (Get-OutputText $inspectResult | ConvertFrom-Json)[0]
-                if ($details.Labels.'telmanfit.local-update' -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
+                $labels = Get-DockerLabels -Inspect $details -Resource "rehearsal network '$network'"
+                $runLabel = Get-DockerLabelValue -Labels $labels -Name 'telmanfit.local-update' -Resource "rehearsal network '$network'"
+                if ($runLabel -ne $script:RunId) { throw 'Відмова видалити не-позначену rehearsal network.' }
                 $null = Invoke-Docker -Arguments @('network', 'rm', $network)
             }
         }
