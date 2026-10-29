@@ -22,4 +22,4 @@ if ($LASTEXITCODE -ne 0 -or $actual -cne $Head) { throw 'Bootstrap SHA не зб
 Write-Output "Окремі інструменти: $checkout"
 Write-Output 'Запускається reviewed SHA; live admission повторно перевірить поточний PR head/base/CI/review.'
 & (Join-Path $checkout 'scripts\feature.ps1') -Feature $Feature -ExpectedHead $Head
-exit $LASTEXITCODE
+if ($LASTEXITCODE -ne 0) { throw 'Feature admission/build/start не пройдено; дивіться помилку вище.' }
