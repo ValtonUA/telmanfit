@@ -1,5 +1,6 @@
 """T4.1/T4.2: штатний Filament, точна версія, readonly history, responsive та CSRF/revocation."""
 import json
+import re
 from contextlib import nullcontext
 import subprocess
 from pathlib import Path
@@ -51,7 +52,7 @@ def run_meal_plans(page, base):
                 # Повні mutation-сценарії проходять у light для кожної ширини.
                 # Dark перевіряє опублікований read-only вигляд і форму створення.
                 page.goto(published)
-                expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
+                expect(page.get_by_text('Опубліковано · лише перегляд', exact=True)).to_be_visible()
                 expect(page.get_by_text('100.1', exact=True).first).to_be_visible()
                 expect(page.get_by_text('0.5', exact=True).first).to_be_visible()
                 expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
@@ -67,11 +68,30 @@ def run_meal_plans(page, base):
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
                 assert page.evaluate('document.documentElement.classList.contains("dark")')
                 page.screenshot(path=str(output / f'create-form-{suffix}.png'), full_page=True)
+                page.get_by_label('Назва', exact=False).fill('Synthetic dark plan ' + suffix)
+                checkbox = page.locator('input[type=checkbox][value="' + str(f['type']) + '"]')
+                checkbox.focus()
+                checkbox.press('Space')
+                page.get_by_role('button', name='Створити', exact=True).click()
+                page.wait_for_url('**/admin/meal-plan-versions/*')
+                expect(page.locator('.plan-day-cta')).to_have_count(7)
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                created_dark = page.url
+                page.locator('.plan-day-cta').first.click()
+                expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
+                page.go_back()
+                expect(page).to_have_url(created_dark)
+                page.goto(base + '/admin/meal-plans')
+                page.get_by_role('link', name='Synthetic dark plan ' + suffix, exact=True).click()
+                expect(page).to_have_url(re.compile(r'/admin/meal-plans/\d+$'))
+                page.get_by_role('link', name='Редагувати раціон', exact=True).click()
+                expect(page).to_have_url(created_dark)
+                expect(page.locator('.plan-day-cta')).to_have_count(7)
                 checks.append(suffix + ': dark published read-only render and create form responsive')
                 print('Meal plans Chromium: ' + suffix + ' responsive PASS', flush=True)
                 continue
             page.goto(published)
-            expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
+            expect(page.get_by_text('Опубліковано · лише перегляд', exact=True)).to_be_visible()
             expect(page.get_by_text('100.1', exact=True).first).to_be_visible()
             expect(page.get_by_text('0.5', exact=True).first).to_be_visible()
             expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
@@ -84,20 +104,63 @@ def run_meal_plans(page, base):
             page.goto(base + '/admin/meal-plans/create')
             expect(page.get_by_label('Початок тижня', exact=False)).to_have_value('1')
             page.get_by_label('Назва', exact=False).fill('Synthetic plan ' + suffix)
+            page.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
             if width == 1440:
                 page.get_by_role('button', name='Власник (необов’язково)', exact=False).click()
                 page.get_by_role('option', name='#' + str(f['client']) + ' — Без акаунта', exact=True).click()
             page.get_by_role('button', name='Створити', exact=True).click()
             page.wait_for_url('**/admin/meal-plan-versions/*')
             expect(page.get_by_text('Чернетка', exact=True)).to_be_visible()
+            expect(page.locator('.plan-day-cta')).to_have_count(7)
+            created_url = page.url
+            page.locator('.plan-day-cta').first.click()
+            expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
+            page.go_back()
+            expect(page).to_have_url(created_url)
+            page.goto(base + '/admin/meal-plans')
+            page.get_by_role('link', name='Synthetic plan ' + suffix, exact=True).click()
+            expect(page).to_have_url(re.compile(r'/admin/meal-plans/\d+$'))
+            expect(page.get_by_role('link', name='Редагувати раціон', exact=True)).to_be_visible()
+            page.get_by_role('link', name='Редагувати раціон', exact=True).click()
+            expect(page).to_have_url(created_url)
+            expect(page.locator('.plan-day-cta')).to_have_count(7)
+            if width == 1440:
+                page.goto(base + '/admin/meal-plans/create')
+                page.get_by_label('Назва', exact=False).fill('Synthetic lost response')
+                page.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
+                create_url = page.url
+                before = int(fixture('count'))
+                intercepted = []
+                def lose_response(route):
+                    response = route.fetch()
+                    assert response.status == 200
+                    intercepted.append(True)
+                    route.abort()
+                page.route('**/livewire/update', lose_response, times=1)
+                page.get_by_role('button', name='Створити', exact=True).click()
+                for _ in range(200):
+                    if intercepted:
+                        break
+                    page.wait_for_timeout(50)
+                assert intercepted, 'серверна відповідь створення має бути навмисно втрачена'
+                assert int(fixture('count')) == before + 1
+                page.goto(create_url)
+                page.get_by_label('Назва', exact=False).fill('Synthetic lost response')
+                page.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
+                page.get_by_role('button', name='Створити', exact=True).click()
+                page.wait_for_url('**/admin/meal-plan-versions/*')
+                expect(page.locator('.plan-day-cta')).to_have_count(7)
+                assert int(fixture('count')) == before + 1
+                checks.append('lost response and retry reuse the same creation receipt')
+            page.goto(base + '/admin/meal-plan-versions/' + fixture('legacy-empty').strip())
             expect(page.get_by_text('Чернетка ще не готова до публікації.', exact=False)).to_be_visible()
             expect(page.get_by_text('Порожня чернетка: днів ще немає.', exact=True)).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             page.evaluate('scrollTo(0,0)')
             page.screenshot(path=str(output / f'empty-{suffix}.png'), full_page=True)
             draft_url = page.url
-            management(page, 'Додати 7 днів')
-            dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
+            page.get_by_role('button', name='Створити 7 днів', exact=True).click()
+            dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Створити перший семиденний тиждень', exact=True))
             dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             submit(dialog, 'Додати тиждень')
@@ -223,6 +286,25 @@ def run_meal_plans(page, base):
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             checks.append(suffix + ': create/list/search/plan/exact version/generate/edit/append 21/filled week cancel+confirm/middle renumber stable IDs/empty week no modal/reload/published hierarchy, no overflow')
             print('Meal plans Chromium: ' + suffix + ' PASS', flush=True)
+    # Окремий touch-контекст із тією самою реальною MFA-сесією.
+    touch_context = page.context.browser.new_context(
+        storage_state=page.context.storage_state(), viewport={'width': 390, 'height': 844}, has_touch=True,
+    )
+    touch_page = touch_context.new_page()
+    touch_errors = []
+    touch_page.on('pageerror', lambda error: touch_errors.append(str(error)))
+    try:
+        touch_page.goto(base + '/admin/meal-plans/create')
+        touch_page.get_by_label('Назва', exact=False).fill('Synthetic touch plan')
+        touch_page.locator('input[type=checkbox][value="' + str(f['type']) + '"]').tap()
+        touch_page.get_by_role('button', name='Створити', exact=True).tap()
+        touch_page.wait_for_url('**/admin/meal-plan-versions/*')
+        expect(touch_page.locator('.plan-day-cta')).to_have_count(7)
+        assert touch_page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        assert not touch_errors, touch_errors
+        checks.append('UX-3: real touch creation at 390px with seven editable days')
+    finally:
+        touch_context.close()
     # Окрема валідна draft confirmation лишається draft для CSRF/revocation probes.
     publication_guard = json.loads(fixture('repeat-single-seed', f['type'], f['extra_type'], f['food']))
     fixture('publication-fill', publication_guard['version'])
@@ -271,7 +353,7 @@ def run_meal_plans(page, base):
     assert page.context.request.post(base + '/admin/livewire/update', data=payload, headers=headers).status == 419
     checks.append('Missing CSRF rejects signed publication/item/week-delete/create 419; guest/MFA boundary shared with recipe browser')
     (output / 'checks.json').write_text(json.dumps({'checks': checks, 'presentation': json.loads((output / 'presentation-checks.json').read_text())}, ensure_ascii=False, indent=2) + '\n')
-    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload, 'publication_payload': publication_payload, 'publication_version': publication_guard['version'], 'publication_before': publication_before}
+    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload, 'publication_payload': publication_payload, 'publication_version': publication_guard['version'], 'publication_day': publication_guard['day'], 'publication_before': publication_before}
 
 
 def verify_meal_plan_revocation(page, base, state):

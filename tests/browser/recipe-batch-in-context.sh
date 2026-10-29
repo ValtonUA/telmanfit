@@ -33,4 +33,10 @@ cleanup() {
     exit "$code"
 }
 trap cleanup EXIT
-python3 tests/browser/recipe_batch.py
+if [[ ${UX3_BROWSER_ONLY:-0} == 1 ]]; then
+    python3 tests/browser/ux3-only.py
+elif [[ ${ADMIN_NAV_ONLY:-0} == 1 ]]; then
+    python3 tests/browser/filament_navigation.py
+else
+    python3 tests/browser/recipe_batch.py
+fi

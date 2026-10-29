@@ -124,6 +124,8 @@
 | DEC-5S | Закупівельне округлення, підтверджені фасування/SKU та їстівна маса банок/пачок; T5.3 повертає пропорційну потребу без ceil. Погодити окремо перед реалізацією purchase rules. | Очікує рішення |
 | T5.4 | [Перегляд рецепта за meal item](client-recipes.md): exact published/owner/календар, physical A/B/C, frozen quantities/equipment, plain-text tokens, фото, React та повернення до week/day; synthetic PG/Chromium. | Виконано |
 | T5.5 | Чотири вкладки, екран «Сьогодні» з реальним меню, профіль через аватар і типізований API-шар за [UX-контрактом](client-app.md). Без нових router/dependencies: чинні URL та `api.ts`; синтетичні browser/CI регресії. | Виконано |
+| UX-1 | Клієнтська декларативна React Router навігація, постійна оболонка, URL week/day, рання системна тема та auth/browser регресії. | Виконано |
+| UX-2 | [Filament SPA](admin-navigation.md): штатні й власні переходи, Alpine lifecycle, точкові auth/history exceptions і browser regressions. | Виконано |
 | T5.6 | [«Корисне»: бібліотека публікацій](library.md) у Filament, PostgreSQL `library_items`, ClientSession API і React; один загальний каталог, внутрішній Markdown або зовнішній HTTPS. Реалізовано та змерджено [PR #92](https://github.com/ValtonUA/telmanfit/pull/92); production OFF. | Виконано |
 | T5.7a | [Клієнтський екран списку покупок](shopping-list-ui.md) поверх існуючого T5.3 API: тижні, точні г/джерельні UOM, no-assignment/week/error/retry/revoked, мобільний UX; **без** нової схеми, backend, округлення до упаковок і вигаданих категорій. Змерджено [PR #94](https://github.com/ValtonUA/telmanfit/pull/94); production OFF. | Виконано |
 | T5.7b | [Кухонні шаблони v1](cooking-templates.md): SQL17/18 exact selection + immutable schema/domain та Filament authoring. Client slice додає одну forward-only equipment relation/migration, authored snapshot links, read-only ClientSession API у PG repeatable-read snapshot і React 19/TS intro/player з local-only progress/timers. Synthetic full-flow tests і required CI перевіряються на Draft PR head; production OFF. | Частково |
@@ -164,8 +166,9 @@
 
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
-| CI-COST-1 | [Два рівні CI](ci.md): Fast на кожному commit, явний Full на фінальному SHA, fail-closed pre-merge та вимірювання GitHub jobs; інтегровано через PR #42; активний strict ruleset `CI-COST-1` із трьома required checks підтверджено read-only preflight. | Виконано |
-| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1, по дві ізольовані PG/Chromium групи всередині одного job, bytecode reuse і navigation/render readiness без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Фінальний Full і фактичний відсоток — в описі Draft PR, без merge. | Частково |
+| CI-COST-1 | [CI та merge gate](ci.md): обов’язкові Fast, Docs і Targeted та fail-closed pre-merge; Full workflow вилучено. | Виконано |
+| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1, по дві ізольовані PG/Chromium групи всередині одного job, bytecode reuse і navigation/render readiness без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Історичні вимірювання не замінюють перевірки на актуальному head. | Частково |
+| CI-SLICE-1 | [Issue #114](https://github.com/ValtonUA/telmanfit/issues/114): feature-scoped Targeted, isolated PG/browser suites, dependency closure та [локальні вимірювання](evidence/ci-slice-1/report.md). UX-4–UX-6 призупинені до окремого рішення власника. | Частково |
 
 ### Stage 9 — Підготовка до запуску
 

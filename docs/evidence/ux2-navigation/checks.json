@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "checks": [
+    "recipe edit persisted and create redirect stays SPA; exactly one new version",
+    "1440/light: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation",
+    "1440/dark: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation",
+    "390/light: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation",
+    "390/dark: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation",
+    "320/light: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation",
+    "320/dark: sidebar, recipe selector/preview, exact week/day, modal cancel, drag lifecycle, no document navigation",
+    "authorized Back/Forward and refresh retain route/theme; cached Back rechecks server",
+    "cached Back after admin idle expiry: server 403, private editor absent",
+    "revoked auth_version on SPA GET denied; native logout returns login"
+  ],
+  "page_errors": []
+}

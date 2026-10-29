@@ -1,0 +1,36 @@
+{
+  "result": "PASS",
+  "chromium": "154.0.8037.57",
+  "scenarios": [
+    "independent admin password+MFA session",
+    "registration fragment removed once",
+    "wrong and expired OTP",
+    "real resend cooldown 60s",
+    "pending is not active payment",
+    "real CSRF 419",
+    "forged action proof 403",
+    "passwordless repeated login",
+    "419 explicit retry and CSRF refresh",
+    "Authenticator QR/manual enrollment and masked one-time recovery",
+    "restricted OTP to full MFA session",
+    "recovery login",
+    "recovery regeneration",
+    "factor replacement",
+    "optional disable after fresh MFA",
+    "new enrollment after disable",
+    "opaque own session list",
+    "revoke real parallel session",
+    "logout-all invalidates both real browsers",
+    "email change requires fresh current MFA and new email OTP",
+    "503 central rate store fail closed",
+    "422 and 429",
+    "idle expiry"
+  ],
+  "widths": [
+    320,
+    390,
+    1440
+  ],
+  "production_enabled": false,
+  "synthetic_time_acceleration": "Known test delivery windows cleared between independent operations; registration resend waited actual 60s."
+}

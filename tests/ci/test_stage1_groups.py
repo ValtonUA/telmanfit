@@ -28,6 +28,13 @@ class GroupTests(unittest.TestCase):
                 self.assertEqual(env['VIEW_COMPILED_PATH'], f'/tmp/private/{name}/views')
                 self.assertEqual(env['STAGE1_PHPUNIT_CACHE'], f'/tmp/private/{name}/phpunit')
 
+    def test_every_runner_mode_is_cleaned_from_worker_environment(self):
+        import re
+        runner = (ROOT / 'tests/pg/run-stage1.sh').read_text()
+        modes = set(re.findall(r'\$\{([A-Z0-9_]+):-', runner))
+        modes -= {'DOCKER_HOST', 'DOCKER_CONTEXT', 'STAGE1_CI_GROUP', 'STAGE1_PHPUNIT_CACHE'}
+        self.assertFalse(modes - groups.SELECTORS, modes - groups.SELECTORS)
+
     def test_cancellation_during_spawn_still_registers_and_reaps_pid(self):
         with tempfile.TemporaryDirectory() as directory:
             real_popen = subprocess.Popen
@@ -85,16 +92,16 @@ class GroupTests(unittest.TestCase):
     def test_selected_group_runs_only_its_bounded_phase(self):
         selected, phases = groups.select_groups('recipe,b5')
         self.assertEqual(tuple(selected), ('recipe', 'b5'))
-        self.assertEqual(phases, (('recipe',), ('b5',)))
+        self.assertEqual(phases, (('b5',), ('recipe',)))
         self.assertEqual(set(groups.select_groups('all')[0]), set(groups.GROUPS))
         with self.assertRaises(ValueError):
             groups.select_groups('recipe,unknown')
         with self.assertRaises(ValueError):
             groups.select_groups('recipe,recipe')
 
-    def test_all_required_groups_two_bounded_phases(self):
-        self.assertEqual(groups.PHASES, (('recipe', 'baseline'), ('b5', 'b3')))
-        self.assertEqual(set(groups.GROUPS), {'recipe', 'baseline', 'b5', 'b3'})
+    def test_all_required_groups_in_bounded_phases(self):
+        self.assertEqual(groups.PHASES, (('day', 'b5'), ('recipe', 'baseline'), ('assignment', 'b3')))
+        self.assertEqual(set(groups.GROUPS), {'day', 'assignment', 'recipe', 'baseline', 'b5', 'b3'})
         self.assertEqual(groups.GROUPS['baseline'], {
             'AUTH3_BROWSER': '1', 'AUTH4_BROWSER': '1', 'AUTH5_BROWSER': '1',
             'MEAL_PLAN_ASSIGNMENT_BROWSER': '1', 'ASSIGNMENT_BROWSER_PORT': '8098',

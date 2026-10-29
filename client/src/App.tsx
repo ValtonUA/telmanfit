@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { api, csrf, initialize } from './api'
+import { Link, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, ApiError, csrf, initialize, resetSession } from './api'
 import type { FlowResult, Me } from './api'
 import { AuthForm } from './components/AuthForm'
+import { activatePrivateSession, beginPrivateSession, clearPrivateSession } from './privateData'
 import { ClientNavigation } from './components/ClientNavigation'
 import { Library, LibraryArticle } from './components/Library'
 import { OnboardingFirstStep } from './components/OnboardingFirstStep'
@@ -39,8 +41,8 @@ function Profile({ me }: { me: Me }) {
       <p className="muted">{statuses[me.client.status]?.description}</p>
     </div>
     <div className="card"><h2>Налаштування</h2>
-      <p><a href="/app/security">Безпека та двофакторна автентифікація</a></p>
-      <p><a href="/app/onboarding">Моя анкета</a></p>
+      <p><Link to="/app/security">Безпека та двофакторна автентифікація</Link></p>
+      <p><Link to="/app/onboarding">Моя анкета</Link></p>
     </div>
   </section>
 }
@@ -57,14 +59,36 @@ function EmptySection({ section }: { section: 'Корисне' | 'Прогрес
   </section>
 }
 
+function RecipeRoute({ onExit }: { onExit: (message: string) => void }) {
+  const { itemId = '' } = useParams()
+  return <MealItemRecipe key={itemId} itemId={itemId} onExit={onExit} />
+}
+
+function ArticleRoute({ onExit }: { onExit: (message: string) => void }) {
+  const { id = '' } = useParams()
+  return /^[1-9][0-9]*$/.test(id) ? <LibraryArticle key={id} id={id} onExit={onExit} /> : <NotFound />
+}
+
+function NotFound() {
+  return <section className="card"><h1>Сторінку не знайдено</h1><p><Link to="/app">Повернутися на головну</Link></p></section>
+}
+
 export default function App() {
   const [ready, setReady] = useState(false)
   const [me, setMe] = useState<Me>()
   const [invite, setInvite] = useState<FlowResult>()
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [page, setPage] = useState(window.location.pathname)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  useEffect(() => { navigateRef.current = navigate }, [navigate])
+  const page = location.pathname
   const [busy, setBusy] = useState(false)
+  const [sessionGeneration, setSessionGeneration] = useState(0)
+  const exitRef = useRef<(message: string) => void>(() => {})
+  const exit = useCallback((message: string) => { clearPrivateSession(); setSessionGeneration(g => g + 1); resetSession(); try { for (const key of Object.keys(localStorage)) if (key.startsWith('tf:cooking:v1:')) localStorage.removeItem(key) } catch { /* Browser storage may be disabled. */ } setMe(undefined); setInvite(undefined); setNotice(message); void navigateRef.current('/app/login', { replace: true }) }, [])
+  useEffect(() => { exitRef.current = exit }, [exit])
   useEffect(() => {
     let active = true
     let generation = 0
@@ -72,58 +96,63 @@ export default function App() {
       const current = ++generation
       initialize().then(result => {
         if (active && current === generation) {
+          if (result.me) setSessionGeneration(activatePrivateSession(result.me.user.id))
           setMe(result.me); setInvite(result.invite)
           if (!result.me && window.location.pathname !== '/app/login' && window.location.pathname !== '/app/register') {
-            window.history.replaceState(null, '', '/app/login'); setPage('/app/login')
+            void navigateRef.current('/app/login', { replace: true })
           }
         }
       }).catch(failure => { if (active && current === generation) setError((failure as Error).message) }).finally(() => { if (active && current === generation) setReady(true) })
     }
-    const newInvitation = () => { setReady(false); setError(''); setMe(undefined); setInvite(undefined); setPage(window.location.pathname); load() }
+    const newInvitation = () => { clearPrivateSession(); setSessionGeneration(g => g + 1); setReady(false); setError(''); setMe(undefined); setInvite(undefined); void navigateRef.current(window.location.pathname + window.location.search, { replace: true }); load() }
     load()
     window.addEventListener('telmanfit-invitation', newInvitation)
-    return () => { active = false; window.removeEventListener('telmanfit-invitation', newInvitation) }
+    const expired = () => { if (active) exitRef.current('Сесія завершилася. Увійдіть знову.') }
+    window.addEventListener('telmanfit-session-expired', expired)
+    return () => { active = false; window.removeEventListener('telmanfit-invitation', newInvitation); window.removeEventListener('telmanfit-session-expired', expired) }
   }, [])
   useEffect(() => {
-    if (!me || page.startsWith('/app/meal-plan')) return
+    if (!me) return
     let active = true
     const refresh = () => {
-      if (document.visibilityState === 'visible') api<Me>('me').then(user => { if (active) setMe(user) }).catch(() => { if (active) { setMe(undefined); setNotice('Сесія завершилася. Увійдіть знову.'); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') } })
+      if (document.visibilityState === 'visible') api<Me>('me').then(user => { if (active) { if (user.user.id !== me.user.id) setSessionGeneration(activatePrivateSession(user.user.id)); setMe(user) } }).catch(failure => { if (active && failure instanceof ApiError && failure.status === 401) { exit('Сесія завершилася. Увійдіть знову.') } })
     }
     document.addEventListener('visibilitychange', refresh)
-    return () => { active = false; document.removeEventListener('visibilitychange', refresh) }
-  }, [me, page])
-  function login(user: Me) { setMe(user); setInvite(undefined); setNotice(''); window.history.replaceState(null, '', '/app'); setPage('/app') }
-  function exit(message: string) { try { for (const key of Object.keys(localStorage)) if (key.startsWith('tf:cooking:v1:')) localStorage.removeItem(key) } catch { /* Browser storage may be disabled. */ } setMe(undefined); setInvite(undefined); setNotice(message); window.history.replaceState(null, '', '/app/login'); setPage('/app/login') }
+    window.addEventListener('focus', refresh)
+    return () => { active = false; document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh) }
+  }, [me, page, exit])
+  function login(user: Me) { resetSession(); setSessionGeneration(beginPrivateSession(user.user.id)); setMe(user); setInvite(undefined); setNotice(''); void navigate('/app', { replace: true }) }
+
   const client = ready && Boolean(me)
-  const recipe = /^\/app\/meal-plan\/items\/[^/]+\/recipe$/.test(page)
-  const cooking = page === '/app/meal-plan/cooking'
   return <>
     {client ? <header className="client-header"><div className="client-header-inner">
       <div className="client-header-title"><span className="eyebrow">Ваш особистий простір</span><strong>{pageTitle(page)}</strong></div>
-      <div className="client-header-actions"><a className="client-avatar" href="/app/profile" aria-label="Відкрити профіль">
-        {(me?.user.first_name ?? me?.user.full_name ?? 'К').trim().charAt(0).toUpperCase()}</a>
-        <button className="text-button" disabled={busy} onClick={async () => { setBusy(true); try { await api('auth/logout', {}); await csrf(); exit('Ви вийшли з акаунта.') } catch (failure) { setError((failure as Error).message) } finally { setBusy(false) } }}>Вийти</button>
+      <div className="client-header-actions"><Link className="client-avatar" to="/app/profile" aria-label="Відкрити профіль">
+        {(me?.user.first_name ?? me?.user.full_name ?? 'К').trim().charAt(0).toUpperCase()}</Link>
+        <button className="text-button" disabled={busy} onClick={async () => { setBusy(true); try { await api('auth/logout', {}); exit('Ви вийшли з акаунта.'); void csrf().catch(() => undefined) } catch (failure) { setError((failure as Error).message) } finally { setBusy(false) } }}>Вийти</button>
       </div></div></header>
-      : <header className="site-header"><a className="brand" href="/app" aria-label="TelmanFit — кабінет"><span className="brand-mark" aria-hidden="true">T</span>Telman<span>Fit</span></a><span className="header-caption">Особистий простір</span></header>}
+      : <header className="site-header"><Link className="brand" to="/app" aria-label="TelmanFit — кабінет"><span className="brand-mark" aria-hidden="true">T</span>Telman<span>Fit</span></Link><span className="header-caption">Особистий простір</span></header>}
     <main id="main-content" className={client ? 'client-main' : undefined}>
       {notice && <p role="status" className="notice">{notice}</p>}
       {me?.security.recovery_used && page !== '/app/security' && <p role="status" className="notice">Ви використали резервний код. 2FA залишається увімкненою. Невикористаних кодів: {me.security.recovery_codes_remaining}. За потреби оновіть їх у налаштуваннях безпеки.</p>}
-      {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><a href="/app/login">Повернутися до входу</a></section>
+      {error ? <section className="card auth-card"><h1>Не вдалося продовжити</h1><p role="alert" className="error">{error}</p><button onClick={() => { setError(''); exit('') }}>Повернутися до входу</button></section>
         : !ready ? <p role="status" className="loading">Завантажуємо ваш простір…</p>
-        : me && recipe ? <MealItemRecipe itemId={page.split('/')[4]} onExit={exit} />
-        : me && cooking ? <CookingAssistant onExit={exit} />
-        : me && page === '/app/meal-plan/shopping-list' ? <ShoppingList onExit={exit} />
-        : me && page === '/app/meal-plan' ? <MealPlan onExit={exit} />
-        : me && page === '/app/resources' ? <Library onExit={exit} />
-        : me && /^\/app\/resources\/[1-9][0-9]*$/.test(page) ? <LibraryArticle id={page.split('/')[3]} onExit={exit} />
-        : me && page === '/app/progress' ? <EmptySection section="Прогрес" />
-        : me && page === '/app/profile' ? <Profile me={me} />
-        : me && page === '/app/security' ? <SecurityPanel me={me} onExit={exit} />
-        : me && page === '/app/onboarding' ? <OnboardingFirstStep />
-        : me && ['/app', '/app/', '/app/index.html'].includes(page) ? <Today onExit={exit} />
-        : me ? <section className="card"><h1>Сторінку не знайдено</h1><p><a href="/app">Повернутися на головну</a></p></section>
-        : <AuthForm key={page} invite={invite} onLogin={login} />}
+        : me ? <Routes key={sessionGeneration}>
+          <Route path="/app" element={<Today onExit={exit} />} />
+          <Route path="/app/index.html" element={<Today onExit={exit} />} />
+          <Route path="/app/meal-plan" element={<MealPlan onExit={exit} />} />
+          <Route path="/app/meal-plan/items/:itemId/recipe" element={<RecipeRoute onExit={exit} />} />
+          <Route path="/app/meal-plan/cooking" element={<CookingAssistant key={new URLSearchParams(location.search).get('week')} onExit={exit} />} />
+          <Route path="/app/meal-plan/shopping-list" element={<ShoppingList key={location.search} onExit={exit} />} />
+          <Route path="/app/resources" element={<Library onExit={exit} />} />
+          <Route path="/app/resources/:id" element={<ArticleRoute onExit={exit} />} />
+          <Route path="/app/progress" element={<EmptySection section="Прогрес" />} />
+          <Route path="/app/profile" element={<Profile me={me} />} />
+          <Route path="/app/security" element={<SecurityPanel me={me} onExit={exit} />} />
+          <Route path="/app/onboarding" element={<OnboardingFirstStep />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        : <AuthForm key={location.key} invite={invite} onLogin={login} />}
     </main>
     {client && <ClientNavigation path={page} />}
     {!client && <footer>TelmanFit · Крок за кроком, у вашому темпі</footer>}

@@ -2,7 +2,6 @@
 
 use App\Models\MealPlanVersion;
 use App\Models\User;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +9,7 @@ use Illuminate\Validation\ValidationException;
 use Tests\MealPlans\PlanFixture;
 
 require __DIR__.'/auth2-bootstrap.php';
+require __DIR__.'/legacy-meal-plan-fixture.php';
 set_exception_handler(function (Throwable $e) {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
@@ -51,7 +51,7 @@ chmod($file, 0600);
 $worker = null;
 try {
     foreach (['double', 'filled-replay', 'append-first', 'delete-first', 'add-first', 'delete-before-add', 'edit-first'] as $case) {
-        $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Видалення '.$case])->versions()->sole();
+        $version = syntheticLegacyEmptyMealPlan('Видалення '.$case)->versions()->sole();
         foreach ([1, 8, 15] as $start) {
             $writer->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => [$type]]);
         }

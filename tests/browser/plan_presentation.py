@@ -88,6 +88,10 @@ def run_plan_presentation(page, base, f, suffix):
         assert rect['y'] >= metrics[-1]['bottom'], rect
     page.evaluate('scrollTo(0,0)')
     page.get_by_role('link', name='До огляду тижня', exact=True).click()
+    # SPA click повертає керування раніше за history push / заміну day DOM.
+    # Back має відбутися після завершеного переходу, інакше це гонка двох URL.
+    expect(page.locator('.plan-day')).to_have_count(7)
+    expect(page.locator('.plan-item')).to_have_count(0)
     page.go_back(wait_until='load')
     expect(page.locator('.plan-item')).to_have_count(40)
     header('back')
@@ -114,6 +118,7 @@ def run_plan_presentation(page, base, f, suffix):
     expect(page.get_by_label('Початок тижня', exact=False)).to_have_value('1')
     page.get_by_label('Початок тижня', exact=False).select_option('2')
     page.get_by_label('Назва', exact=False).fill('Synthetic Tuesday UI ' + suffix)
+    page.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
     page.screenshot(path=str(output / f'polish-create-{suffix}.png'))
     page.get_by_role('button', name='Створити', exact=True).click()
     page.wait_for_url('**/admin/meal-plan-versions/*')

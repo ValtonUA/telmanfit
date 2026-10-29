@@ -1,6 +1,9 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
+import { useClientNavigate } from '../useClientNavigate'
 import { ApiError } from '../api'
 import { getShoppingList } from '../shoppingListApi'
+import { forgetPrivateData, privateData, rememberPrivateData } from '../privateData'
 import type { ShoppingItem, ShoppingListResponse } from '../shoppingListApi'
 import './ShoppingList.css'
 
@@ -43,9 +46,11 @@ function ShoppingProduct({ item }: { item: ShoppingItem }) {
 }
 
 export function ShoppingList({ onExit }: { onExit: (message: string) => void }) {
+  const navigate = useClientNavigate()
   const [week, setWeek] = useState<number | undefined>(requestedWeek)
-  const [result, setResult] = useState<ShoppingListResponse>()
-  const [loading, setLoading] = useState(true)
+  const key = `meal:shopping:${week ?? 'current'}`
+  const [result, setResult] = useState<ShoppingListResponse | undefined>(() => privateData(key))
+  const [loading, setLoading] = useState(() => !privateData(key))
   const [issue, setIssue] = useState<'invalid' | 'unavailable' | 'network'>()
   const [retry, setRetry] = useState(0)
   const exit = useRef(onExit)
@@ -53,7 +58,7 @@ export function ShoppingList({ onExit }: { onExit: (message: string) => void }) 
 
   function chooseWeek(next: number | undefined) {
     const query = next === undefined ? '' : '?week=' + next
-    window.history.replaceState(null, '', shoppingPath + query)
+    navigate(shoppingPath + query, true)
     setWeek(next)
     setRetry(n => n + 1)
   }
@@ -63,21 +68,27 @@ export function ShoppingList({ onExit }: { onExit: (message: string) => void }) 
     let generation = 0
     const load = async () => {
       const request = ++generation
-      setResult(undefined); setIssue(undefined); setLoading(true)
+      if (!privateData(key)) setLoading(true)
+      setIssue(undefined)
       if (week !== undefined && (!Number.isInteger(week) || week < 1 || week > 2147483647)) {
         if (active && request === generation) { setIssue('invalid'); setLoading(false) }
         return
       }
       try {
         const data = await getShoppingList(week)
-        if (active && request === generation) { setResult(data); setLoading(false) }
+        if (active && request === generation) {
+          if (!data.assignment || data.state === 'no_assignment') forgetPrivateData('meal:')
+          rememberPrivateData(key, data); setResult(data); setLoading(false)
+        }
       } catch (failure) {
         if (!active || request !== generation) return
         setLoading(false)
         if (failure instanceof ApiError && failure.status === 401) {
           exit.current('Сесія завершилася. Увійдіть знову.')
         } else {
-          setIssue(failure instanceof ApiError && failure.status === 409 ? 'unavailable' : 'network')
+          if (failure instanceof ApiError && failure.status === 409) { forgetPrivateData('meal:shopping:'); setResult(undefined); setIssue('unavailable') }
+          else if (failure instanceof ApiError && [403, 404].includes(failure.status)) { forgetPrivateData('meal:'); setResult(undefined); setIssue('network') }
+          else setIssue('network')
         }
       }
     }
@@ -92,18 +103,18 @@ export function ShoppingList({ onExit }: { onExit: (message: string) => void }) 
       window.removeEventListener('focus', refresh)
       window.clearInterval(timer)
     }
-  }, [week, retry])
+  }, [week, retry, key])
 
   const back = '/app/meal-plan' + (result?.week ? '?week=' + result.week : week ? '?week=' + week : '')
   return <section className="shopping-list">
-    <a className="shopping-back" href={back}>← Повернутися до раціону</a>
+    <Link className="shopping-back" to={back}>← Повернутися до раціону</Link>
     <div className="shopping-heading">
       <div><span className="eyebrow">Раціон · покупки</span><h1>Список покупок</h1></div>
       <button className="secondary" disabled={loading} onClick={() => setRetry(n => n + 1)}>Оновити</button>
     </div>
     <p className="shopping-note">Кількості розраховані за призначеним раціоном. Це потреба в продуктах, а не кількість магазинних упаковок.</p>
     {loading ? <div className="card shopping-state" role="status"><h2>Розраховуємо список…</h2></div>
-      : issue ? <div className="card shopping-state">
+      : issue && !result ? <div className="card shopping-state">
         <h2>{issue === 'invalid' ? 'Некоректний номер тижня'
           : issue === 'unavailable' ? 'Повний список покупок недоступний' : 'Не вдалося завантажити список'}</h2>
         <p role="alert">{issue === 'unavailable'

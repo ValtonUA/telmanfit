@@ -9,7 +9,6 @@ use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemResolver;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
@@ -47,7 +46,7 @@ class MealPlanDayEditorTest extends PostgresTestCase
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         $this->f = $this->populatedPlan($this->actor->id);
-        $this->version = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Редактор дня'])->versions()->sole();
+        $this->version = $this->legacyEmptyPlan('Редактор дня')->versions()->sole();
         $type = DB::table('meal_types')->insertGetId(['code' => 'editor-target', 'title' => 'Інший прийом']);
         app(MealPlanStructure::class)->generate($this->actor, $this->version, ['start_day' => 1, 'meal_type_ids' => [$this->f['type'], $type]]);
         $this->day = $this->version->days()->where('day_number', 1)->sole()->id;

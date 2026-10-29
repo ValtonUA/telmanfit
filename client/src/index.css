@@ -14,3 +14,5 @@ h1 { font-size: clamp(1.9rem, 5vw, 2.8rem); font-weight: 600; line-height: 1.14;
 h2 { font-size: 1.25rem; line-height: 1.35; font-weight: 600; margin: 0 0 12px; }
 p { line-height: 1.65; }
 code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; word-break: break-all; }
+
+@media (prefers-color-scheme: dark) { :root { background: #15251e; color: #e2ece1; } }

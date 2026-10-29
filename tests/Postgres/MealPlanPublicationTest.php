@@ -10,7 +10,6 @@ use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemResolver;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanPublisher;
 use App\Services\MealPlans\MealPlanStructure;
 use Filament\Actions\ActionGroup;
@@ -44,7 +43,7 @@ class MealPlanPublicationTest extends PostgresTestCase
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         DB::table('uoms')->insert(['code' => 'g', 'label' => 'gram', 'kind' => 'mass']);
         $this->history = $this->populatedPlan($this->actor->id);
-        $this->version = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Публікація'])->versions()->sole();
+        $this->version = $this->legacyEmptyPlan('Публікація')->versions()->sole();
         $this->generate(1);
         foreach ($this->version->days()->with('meals')->get() as $day) {
             $this->add($day->meals->sole()->id);
@@ -169,7 +168,7 @@ class MealPlanPublicationTest extends PostgresTestCase
         foreach (['forged', 'cross-version', 'role', 'fence'] as $case) {
             $candidate = $this->version;
             if ($case === 'cross-version') {
-                $candidate = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Інша версія'])->versions()->sole();
+                $candidate = $this->legacyEmptyPlan('Інша версія')->versions()->sole();
             }
             if ($case === 'role') {
                 DB::table('users')->where('id', $this->actor->id)->update(['role' => 'coach']);
@@ -190,7 +189,7 @@ class MealPlanPublicationTest extends PostgresTestCase
 
     public function test_empty_day_hole_and_empty_plan_fail_service_and_sql(): void
     {
-        $empty = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Порожній'])->versions()->sole();
+        $empty = $this->legacyEmptyPlan('Порожній')->versions()->sole();
         try {
             $this->publisher()->preview($this->actor, $empty);
             $this->fail('Очікується відмова');

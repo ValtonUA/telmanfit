@@ -56,6 +56,6 @@ jobs:
               assert result == 'skipped', result
               print('No PostgreSQL/browser group applies to this diff.')
           else:
-              assert all(group in {'recipe', 'baseline', 'b5', 'b3'} for group in groups.split(',')), groups
+              assert all(group in {'day', 'assignment', 'recipe', 'baseline', 'b5', 'b3'} for group in groups.split(',')), groups
               assert result == 'success', result
           PY

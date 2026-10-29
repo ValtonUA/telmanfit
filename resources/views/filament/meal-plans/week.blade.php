@@ -8,7 +8,7 @@
         $cards = app(\App\Support\Presentation\FoodCards::class)->lookup($weekItems->pluck('food_id')->all());
         $formats = \Illuminate\Support\Facades\DB::table('recipe_batch_formats')->whereIn('id', $weekItems->pluck('recipe_batch_format_id')->filter())->pluck('code', 'id');
     @endphp
-    <div class="plan-editor" x-data="{ selectedDay: {{ $days->first()?->id ?? 0 }} }" x-init="$store.sidebar?.close()">
+    <div class="plan-editor" x-data="{}" x-init="Alpine.store('telmanfitMealPlanWeek', { selectedDay: {{ $days->first()?->id ?? 0 }} }); $store.sidebar?.close()">
         <div class="plan-toolbar">
             <div><strong>{{ $this->getRecord()->plan->title }}</strong><p class="plan-muted"><span>{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::statusLabel($this->getRecord()->status) }}</span> · точна версія #{{ $this->getRecord()->id }}</p></div>
             @if ($count)
@@ -20,18 +20,18 @@
             @endif
         </div>
         @if ($days->isEmpty())
-            <div class="plan-empty"><h2>Порожня чернетка: днів ще немає.</h2><p>Чернетка ще не готова до публікації. Додайте семиденний тиждень через меню вгорі. Відкриття сторінки не створює даних.</p></div>
+            <div class="plan-empty"><h2>Порожня чернетка: днів ще немає.</h2><p>Чернетка ще не готова до публікації. Відкриття сторінки не створює даних.</p>@if ($editable)<x-filament::button wire:click="mountAction('createFirstWeek')">Створити 7 днів</x-filament::button>@endif</div>
         @else
             <p class="plan-muted">Дні — порядкові номери у шаблоні. {{ $editable ? 'Виберіть день, щоб налаштувати меню. Дія «Опублікувати» перевірить готовність усього раціону.' : 'Опублікована версія — лише читання.' }}</p>
             <label class="plan-mobile-picker">Показати день
-                <select x-model.number="selectedDay" class="plan-select" wire:key="day-picker-{{ $weekNumber }}">
+                <select x-model.number="$store.telmanfitMealPlanWeek.selectedDay" class="plan-select" wire:key="day-picker-{{ $weekNumber }}">
                     @foreach ($days as $day)<option value="{{ $day->id }}">{{ $this->dayLabel($day->day_number) }}</option>@endforeach
                 </select>
             </label>
-            <div class="plan-week" wire:key="week-{{ $weekNumber }}" x-init="selectedDay = {{ $days->first()->id }}">
+            <div class="plan-week" wire:key="week-{{ $weekNumber }}" x-init="$store.telmanfitMealPlanWeek.selectedDay = {{ $days->first()->id }}">
                 @foreach ($days as $day)
                     @php $items = $day->meals->sum(fn ($m) => $m->items->count()); @endphp
-                    <article class="plan-day" data-day="{{ $day->id }}" :class="{ 'plan-selected-day': selectedDay === {{ $day->id }} }" wire:key="day-{{ $day->id }}">
+                    <article class="plan-day" data-day="{{ $day->id }}" :class="{ 'plan-selected-day': $store.telmanfitMealPlanWeek.selectedDay === {{ $day->id }} }" wire:key="day-{{ $day->id }}">
                         <h2>{{ $this->dayLabel($day->day_number) }}</h2>
                         <div class="plan-day-body">
                             @forelse ($day->meals->filter(fn ($m) => $m->items->isNotEmpty()) as $meal)
@@ -55,7 +55,7 @@
                         @if ($editable)
                             <x-filament::button tag="a" :href="\App\Filament\Resources\MealPlans\MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $day->id])" class="plan-day-cta">{{ $items ? 'Редагувати день' : 'Заповнити день' }}</x-filament::button>
                         @else
-                            <a class="plan-read-link" href="{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $day->id]) }}">Переглянути день</a>
+                            <a wire:navigate class="plan-read-link" href="{{ \App\Filament\Resources\MealPlans\MealPlanVersionResource::getUrl('day', ['record' => $this->getRecord(), 'day' => $day->id]) }}">Переглянути день</a>
                         @endif
                     </article>
                 @endforeach

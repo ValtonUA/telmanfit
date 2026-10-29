@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api'
+import { forgetPrivateData, privateData, rememberPrivateData } from '../privateData'
 
 type Workplace = 'home' | 'hybrid' | 'office' | ''
 type StoredDraft = {
@@ -13,20 +15,23 @@ type StoredDraft = {
 }
 
 export function OnboardingFirstStep() {
-  const [loading, setLoading] = useState(true)
+  const cached = privateData<StoredDraft>('onboarding')
+  const [loading, setLoading] = useState(!cached)
   const [saving, setSaving] = useState(false)
-  const [workplace, setWorkplace] = useState<Workplace>('')
-  const [mealsPerDay, setMealsPerDay] = useState<number | ''>('')
-  const [topReasons, setTopReasons] = useState('')
+  const [workplace, setWorkplace] = useState<Workplace>(() => cached?.answers?.workplace ?? '')
+  const [mealsPerDay, setMealsPerDay] = useState<number | ''>(() => cached?.answers?.meals_per_day ?? '')
+  const [topReasons, setTopReasons] = useState(() => cached?.answers?.top_reasons ?? '')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [completed, setCompleted] = useState(false)
+  const [completed, setCompleted] = useState(() => cached?.completed ?? false)
 
   useEffect(() => {
     let active = true
     api<StoredDraft>('onboarding')
       .then(({ answers, completed: archived }) => {
         if (!active) return
+        const draft = { completed: archived, answers }
+        rememberPrivateData('onboarding', draft)
         setCompleted(archived)
         const location = answers?.workplace
         setWorkplace(location === 'home' || location === 'hybrid' || location === 'office' ? location : '')
@@ -34,7 +39,13 @@ export function OnboardingFirstStep() {
         setMealsPerDay(typeof count === 'number' && count >= 1 && count <= 5 ? count : '')
         setTopReasons(answers?.top_reasons ?? '')
       })
-      .catch((failure: unknown) => { if (active) setError(failure instanceof Error ? failure.message : 'Не вдалося завантажити анкету.') })
+      .catch((failure: unknown) => {
+        if (!active) return
+        if (failure instanceof Error && 'status' in failure && [403, 404].includes(Number(failure.status))) {
+          forgetPrivateData('onboarding'); setWorkplace(''); setMealsPerDay(''); setTopReasons(''); setCompleted(false)
+        }
+        setError(failure instanceof Error ? failure.message : 'Не вдалося завантажити анкету.')
+      })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [])
@@ -50,6 +61,7 @@ export function OnboardingFirstStep() {
         meals_per_day: mealsPerDay,
         top_reasons: topReasons.trim(),
       })
+      rememberPrivateData('onboarding', { completed: false, answers: { workplace, meals_per_day: mealsPerDay, top_reasons: topReasons.trim() } })
       setSaved(true)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Не вдалося зберегти відповіді.')
@@ -87,6 +99,6 @@ export function OnboardingFirstStep() {
       <p className="fine-print">Це перша частина анкети. Повна анкета буде розширена; поточне збереження не активує супровід.</p>
     </form>}
     {!loading && error && <p role="alert" className="error">{error}</p>}
-    <a className="text-link" href="/app">← Повернутися до кабінету</a>
+    <Link className="text-link" to="/app">← Повернутися до кабінету</Link>
   </section>
 }

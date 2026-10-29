@@ -7,10 +7,16 @@ use App\Services\MealPlans\MealItemWriter;
 use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\MealPlans\PlanFixture;
 use Tests\Recipes\BatchFixture;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
+if (($argv[1] ?? '') === 'legacy-empty') {
+    $plan = DB::table('meal_plans')->insertGetId(['title' => 'Синтетична стара порожня чернетка']);
+    echo DB::table('meal_plan_versions')->insertGetId(['meal_plan_id' => $plan]);
+    exit;
+}
 if (($argv[1] ?? '') === 'seed') {
     $fixture = new class
     {
@@ -45,8 +51,8 @@ if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed', 'repe
     $actor = User::where('email', 'recipe-browser@example.invalid')->sole();
     $writer = app(MealItemWriter::class);
     $structure = app(MealPlanStructure::class);
-    $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Синтетичний UX-4E · повний тиждень', 'week_start_weekday' => $polish ? 2 : 1])->versions()->sole();
     $types = DB::table('meal_types')->whereIn('id', [(int) $argv[2], (int) $argv[3]])->pluck('id')->all();
+    $version = app(MealPlanFoundation::class)->create($actor, ['request_key' => (string) Str::uuid(), 'meal_type_ids' => $types, 'title' => 'Синтетичний UX-4E · повний тиждень', 'week_start_weekday' => $polish ? 2 : 1])->versions()->sole();
     foreach ($argv[1] === 'repeat-single-seed' ? [1] : [1, 8] as $start) {
         $structure->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => $types]);
     }

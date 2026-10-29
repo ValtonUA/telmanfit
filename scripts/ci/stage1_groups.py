@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Дві незалежні PG/Chromium групи на одному runner, без нових billed jobs."""
+"""До двох незалежних PG/Chromium груп на одному runner, без нових billed jobs."""
 import argparse
 import datetime as dt
 import json
@@ -15,16 +15,20 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 GROUPS = {
+    'day': {'DAY_ONLY': '1'},
+    'assignment': {'MEAL_PLAN_ASSIGNMENT_ONLY': '1', 'MEAL_PLAN_ASSIGNMENT_BROWSER': '1',
+                   'ASSIGNMENT_BROWSER_PORT': '8090'},
     'recipe': {'RECIPE_BATCH_ONLY': '1', 'RECIPE_BATCH_BROWSER': '1'},
     'baseline': {'AUTH3_BROWSER': '1', 'AUTH4_BROWSER': '1', 'AUTH5_BROWSER': '1',
                  'MEAL_PLAN_ASSIGNMENT_BROWSER': '1', 'ASSIGNMENT_BROWSER_PORT': '8098'},
     'b5': {'AUTH6B5_ONLY': '1'},
     'b3': {'AUTH6B_ONLY': '1'},
 }
-PHASES = (('recipe', 'baseline'), ('b5', 'b3'))
+PHASES = (('day', 'b5'), ('recipe', 'baseline'), ('assignment', 'b3'))
 SELECTORS = set().union(*GROUPS.values()) | {
     'AUTH6B6_ONLY', 'AUTH6B4_ONLY', 'AUTH6B_CASES_ONLY', 'AUTH6_ONLY',
-    'AUTH5_ONLY', 'AUTH4_ONLY', 'CLIENT_PROFILES_ONLY',
+    'AUTH5_ONLY', 'AUTH4_ONLY', 'CLIENT_PROFILES_ONLY', 'ADMIN_NAV_ONLY', 'UX3_ONLY', 'UX3_BROWSER', 'UX3_BROWSER_ONLY',
+    'CLIENT_RECIPE_BROWSER', 'MEAL_PLAN_COPY_ONLY', 'MEAL_PLAN_COPY_BROWSER',
 }
 CANCELLED = 0
 
@@ -177,7 +181,7 @@ def main():
     signal.signal(signal.SIGINT, interrupted)
     out = ROOT / 'tests/pg/out'
     out.mkdir(parents=True, exist_ok=True)
-    names = {'recipe': 'recipe', 'baseline': 'stage1', 'b5': 'auth6b5', 'b3': 'auth6b'}
+    names = {'day': 'day', 'assignment': 'assignment', 'recipe': 'recipe', 'baseline': 'stage1', 'b5': 'auth6b5', 'b3': 'auth6b'}
     logs = {name: out / f'{filename}.out' for name, filename in names.items()}
     for path in logs.values():
         path.write_text('')

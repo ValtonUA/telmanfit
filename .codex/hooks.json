@@ -1,0 +1,19 @@
+{
+  "description": "TelmanFit: narrow best-effort safeguard for destructive Bash commands; trust via /hooks.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/pre_tool_policy.py\"",
+            "commandWindows": "powershell -NoProfile -Command \"py -3 (Join-Path (git rev-parse --show-toplevel) '.codex/hooks/pre_tool_policy.py')\"",
+            "timeout": 10,
+            "statusMessage": "Checking destructive shell commands"
+          }
+        ]
+      }
+    ]
+  }
+}

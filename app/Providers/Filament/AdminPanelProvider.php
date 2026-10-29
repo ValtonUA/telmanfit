@@ -17,6 +17,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -34,6 +35,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandName('TelmanFit')
+            ->spa()
+            ->spaUrlExceptions(fn (): array => [
+                url('/admin/login'),
+                url('/admin/auth/*'),
+                url('/app*'),
+                url('/api/*'),
+            ])
+            ->renderHook(PanelsRenderHook::SCRIPTS_AFTER, fn () => view('filament.admin-navigation'))
             ->sidebarFullyCollapsibleOnDesktop(fn () => request()->routeIs('filament.admin.resources.meal-plan-versions.*'))
             ->login(config('mfa.enabled') ? null : Login::class)
             ->authGuard(config('mfa.enabled') ? 'admin' : 'web')

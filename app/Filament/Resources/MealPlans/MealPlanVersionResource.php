@@ -26,7 +26,7 @@ class MealPlanVersionResource extends Resource
 
     public static function statusLabel(string $state): string
     {
-        return ['draft' => 'Чернетка', 'published' => 'Опублікована'][$state] ?? $state;
+        return ['draft' => 'Чернетка', 'published' => 'Опубліковано · лише перегляд'][$state] ?? $state;
     }
 
     public static function portionLabel(MealItemKind $kind): string

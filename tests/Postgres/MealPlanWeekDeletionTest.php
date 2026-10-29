@@ -5,7 +5,6 @@ namespace Tests\Postgres;
 use App\Filament\Resources\MealPlans\Pages\ViewMealPlanVersion;
 use App\Models\MealPlanVersion;
 use App\Models\User;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
@@ -42,7 +41,7 @@ class MealPlanWeekDeletionTest extends PostgresTestCase
 
     private function draft(): MealPlanVersion
     {
-        return app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Видалення тижнів'])->versions()->sole();
+        return $this->legacyEmptyPlan('Видалення тижнів')->versions()->sole();
     }
 
     private function generate(int $weeks): void

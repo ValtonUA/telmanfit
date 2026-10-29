@@ -1,3 +1,5 @@
+import { clearPrivateSession, privateSessionGeneration } from './privateData'
+
 export type Me = {
   user: { id: string; first_name: string | null; last_name: string | null; full_name: string }
   client: { id: string; status: 'pending' | 'active' | 'paused' | 'finished' }
@@ -30,12 +32,17 @@ export class ApiError extends Error {
   }
 }
 
+export class StaleSessionError extends Error {
+  constructor() { super('Response belongs to an earlier private session.') }
+}
+
 export async function csrf(): Promise<void> {
   const response = await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
   if (!response.ok) throw new ApiError(response.status)
 }
 
 export async function api<T = FlowResult>(path: string, data?: Record<string, unknown>): Promise<T> {
+  const session = privateSessionGeneration()
   const cookie = document.cookie.split('; ').find(item => item.startsWith('TELMANFIT-CLIENT-XSRF='))?.split('=').slice(1).join('=')
   const response = await fetch(`/api/${path}`, {
     method: data === undefined ? 'GET' : 'POST', credentials: 'same-origin', cache: 'no-store',
@@ -43,7 +50,12 @@ export async function api<T = FlowResult>(path: string, data?: Record<string, un
     body: data === undefined ? undefined : JSON.stringify(data),
   })
   const body = response.status === 204 ? {} : await response.json().catch(() => ({}))
+  if (session !== 0 && session !== privateSessionGeneration()) throw new StaleSessionError()
   if (!response.ok) {
+    if (response.status === 401 && session === privateSessionGeneration()) {
+      clearPrivateSession()
+      window.dispatchEvent(new Event('telmanfit-session-expired'))
+    }
     if (response.status === 419) await csrf()
     throw new ApiError(response.status, body.code)
   }
@@ -54,7 +66,7 @@ export async function api<T = FlowResult>(path: string, data?: Record<string, un
 function takeFragment(): string | undefined {
   if (!window.location.hash) return undefined
   const token = new URLSearchParams(window.location.hash.slice(1)).get('invite') ?? undefined
-  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
   return token
 }
 let invitation = takeFragment()
@@ -66,6 +78,10 @@ window.addEventListener('hashchange', () => {
     window.dispatchEvent(new Event('telmanfit-invitation'))
   }
 })
+export function resetSession(): void {
+  initialization = undefined
+  invitation = undefined
+}
 export function initialize(): Promise<{ me?: Me; invite?: FlowResult }> {
   if (!initialization) initialization = (async () => {
     const token = invitation

@@ -1,0 +1,391 @@
+{
+  "checks": [
+    "lost response and retry reuse the same creation receipt",
+    "1440-light: T4.3 ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload",
+    "1440-light: T4.3R deep copy, independent edit, replace confirm/cancel, stale guard",
+    "1440-light: T4.4 overview + day menu/confirmation/cancel/stale/publish/readonly redirect",
+    "1440-light: create/list/search/plan/exact version/generate/edit/append 21/filled week cancel+confirm/middle renumber stable IDs/empty week no modal/reload/published hierarchy, no overflow",
+    "1440-dark: dark published read-only render and create form responsive",
+    "390-light: T4.3 ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload",
+    "390-light: T4.3R deep copy, independent edit, replace confirm/cancel, stale guard",
+    "390-light: T4.4 overview + day menu/confirmation/cancel/stale/publish/readonly redirect",
+    "390-light: create/list/search/plan/exact version/generate/edit/append 21/filled week cancel+confirm/middle renumber stable IDs/empty week no modal/reload/published hierarchy, no overflow",
+    "390-dark: dark published read-only render and create form responsive",
+    "320-light: T4.3 ingredient + A/1 B/7 C/3 C/4, search/empty/add/edit/move/delete cancel+confirm/readonly nutrition/reload",
+    "320-light: T4.3R deep copy, independent edit, replace confirm/cancel, stale guard",
+    "320-light: T4.4 overview + day menu/confirmation/cancel/stale/publish/readonly redirect",
+    "320-light: create/list/search/plan/exact version/generate/edit/append 21/filled week cancel+confirm/middle renumber stable IDs/empty week no modal/reload/published hierarchy, no overflow",
+    "320-dark: dark published read-only render and create form responsive",
+    "UX-3: real touch creation at 390px with seven editable days",
+    "Missing CSRF rejects signed publication/item/week-delete/create 419; guest/MFA boundary shared with recipe browser",
+    "Revoked signed publication/item/confirmed week-delete/create/HTTP 403, unchanged structure/plans/history/foods/assignments"
+  ],
+  "presentation": {
+    "1440-light": {
+      "items": 40,
+      "mocked_image_requests": 15,
+      "topbar": [
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "initial"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 900,
+          "stage": "scroll-down"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 120,
+          "stage": "scroll-up"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 120,
+          "stage": "reorder-morph"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "back"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "forward-return"
+        }
+      ],
+      "overflow": false,
+      "real_R2_requests": 0
+    },
+    "390-light": {
+      "items": 40,
+      "mocked_image_requests": 15,
+      "topbar": [
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "initial"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 900,
+          "stage": "scroll-down"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 120,
+          "stage": "scroll-up"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 120,
+          "stage": "reorder-morph"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "back"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "forward-return"
+        }
+      ],
+      "overflow": false,
+      "real_R2_requests": 0
+    },
+    "320-light": {
+      "items": 40,
+      "mocked_image_requests": 15,
+      "topbar": [
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "initial"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 900,
+          "stage": "scroll-down"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 120,
+          "stage": "scroll-up"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 120,
+          "stage": "reorder-morph"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "back"
+        },
+        {
+          "top": 0,
+          "bottom": 64,
+          "position": "static",
+          "ancestors": [
+            {
+              "position": "sticky",
+              "transform": "none",
+              "overflow": "clip visible"
+            },
+            {
+              "position": "static",
+              "transform": "none",
+              "overflow": "visible"
+            }
+          ],
+          "scrollY": 0,
+          "stage": "forward-return"
+        }
+      ],
+      "overflow": false,
+      "real_R2_requests": 0
+    }
+  }
+}

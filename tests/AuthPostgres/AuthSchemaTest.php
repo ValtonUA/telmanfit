@@ -77,10 +77,11 @@ class AuthSchemaTest extends TestCase
             $this->assertStringContainsString(file_get_contents($part), $snapshot);
         }
         $keys = DB::select("SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, format_type(a.atttypid,a.atttypmod) AS type FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid IN ('users'::regclass, 'user_totp_factors'::regclass) AND c.conrelid::regclass::text NOT LIKE 'auth_recovery_%' AND c.conrelid::regclass::text NOT IN ('auth_security_notice_outbox','auth_retention_holds')");
-        $this->assertCount(17, $keys);
+        $this->assertCount(18, $keys);
         $names = array_map(fn ($key) => $key->tbl.'.'.$key->col, $keys);
         $this->assertContains('cooking_templates.created_by', $names);
         $this->assertContains('cooking_template_versions.reviewed_by', $names);
+        $this->assertContains('meal_plan_creation_requests.admin_id', $names);
         foreach ($keys as $key) {
             $this->assertSame('bigint', $key->type);
         }

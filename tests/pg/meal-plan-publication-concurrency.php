@@ -4,7 +4,6 @@ use App\Models\MealItem;
 use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanPublisher;
 use App\Services\MealPlans\MealPlanStructure;
 use App\Services\MealPlans\MealPlanWeekRepeater;
@@ -14,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 require __DIR__.'/auth2-bootstrap.php';
+require __DIR__.'/legacy-meal-plan-fixture.php';
 set_exception_handler(function (Throwable $e): void {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
@@ -60,7 +60,7 @@ chmod($file, 0600);
 $worker = null;
 try {
     foreach (['double-publish', 'publish-before-raw-edit', 'edit-before-publish', 'aba-before-publish', 'repeat-before-publish', 'delete-before-publish', 'publish-before-writer', 'publish-before-repeat', 'publish-before-week-delete', 'append-before-publish', 'conversion-before-publish', 'role', 'fence'] as $case) {
-        $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Synthetic publication '.$case])->versions()->sole();
+        $version = syntheticLegacyEmptyMealPlan('Synthetic publication '.$case)->versions()->sole();
         app(MealPlanStructure::class)->generate($actor, $version, ['start_day' => 1, 'meal_type_ids' => [$type]]);
         DB::transaction(function () use ($version, $food, $unit): void {
             foreach ($version->days()->with('meals')->get() as $day) {

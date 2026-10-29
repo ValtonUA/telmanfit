@@ -7,7 +7,7 @@ php scripts/check-php-runtime.php
 umask 077
 phpunit_args=()
 if [[ -n ${STAGE1_PHPUNIT_CACHE:-} ]]; then
-    [[ $STAGE1_PHPUNIT_CACHE =~ ^/tmp/telmanfit-stage1-ci\.[a-zA-Z0-9_]+/(recipe|baseline|b5|b3)/phpunit$ && -d $STAGE1_PHPUNIT_CACHE ]]
+    [[ $STAGE1_PHPUNIT_CACHE =~ ^/tmp/telmanfit-stage1-ci\.[a-zA-Z0-9_]+/(day|assignment|recipe|baseline|b5|b3)/phpunit$ && -d $STAGE1_PHPUNIT_CACHE ]]
     phpunit_args+=(--cache-directory "$STAGE1_PHPUNIT_CACHE")
 fi
 ci_labels=()
@@ -151,6 +151,14 @@ if [[ ${AUTH6_ONLY:-0} == 1 ]]; then
     bash tests/http/auth6-in-context.sh
     exit
 fi
+# UX-2: найменший browser прохід на новій ізольованій БД.
+if [[ ${ADMIN_NAV_ONLY:-0} == 1 ]]; then
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth3.xml --display-all-issues
+    bash tests/browser/recipe-batch-in-context.sh
+    exit
+fi
 # AUTH-5 завжди на новій ізольованій БД із тим самим fail-closed guard.
 if [[ ${AUTH5_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
@@ -176,6 +184,31 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 stage1_mark baseline_migrations
+if [[ ${DAY_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'MealPlanDayEditorTest|MealItemWriterTest|MealItemSelectorsTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest' --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    php tests/pg/day-bootstrap.php
+    php tests/pg/meal-plan-day-concurrency.php
+    php tests/pg/meal-item-writer-concurrency.php
+    php tests/pg/meal-item-selector-concurrency.php
+    php tests/pg/meal-plan-structure-concurrency.php
+    php tests/pg/meal-plan-week-deletion-concurrency.php
+    php tests/pg/meal-plan-week-repetition-concurrency.php
+    php tests/pg/meal-plan-publication-concurrency.php
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    UX3_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    exit
+fi
+if [[ ${UX3_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanCreationRequestTest --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    php tests/pg/meal-plan-creation-concurrency.php
+    if [[ ${UX3_BROWSER:-0} == 1 ]]; then UX3_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh; fi
+    exit
+fi
 if [[ ${MEAL_PLAN_COPY_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit -c phpunit.pgsql.xml --filter MealPlanCopyTest --display-all-issues
     php artisan migrate --force --no-interaction
@@ -185,13 +218,16 @@ if [[ ${MEAL_PLAN_COPY_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanAssignmentTest --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'MealPlanAssignmentTest|MealPlanCopyTest' --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth4.xml --filter ClientMealPlanTest --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
     php tests/pg/meal-plan-assignment-concurrency.php
     if [[ ${MEAL_PLAN_ASSIGNMENT_BROWSER:-0} == 1 ]]; then bash tests/browser/meal-plan-assignment-in-context.sh; fi
     exit
 fi
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|ClientCookingTest|NutritionImportTest|R2ImageMatcherTest|R2ImageMatcherIsolatedTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|ClientCookingTest|NutritionImportTest|R2ImageMatcherTest|R2ImageMatcherIsolatedTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanCreationRequestTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
     if php tests/pg/recipe-batch-concurrency.php failure-probe >"$work/recipe-failure-probe.log" 2>&1; then
         echo 'Recipe concurrency exception was reported as success' >&2
@@ -206,6 +242,7 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/legacy-conversion-concurrency.php
     php tests/pg/food-catalog-concurrency.php
     php tests/pg/meal-plan-concurrency.php
+    php tests/pg/meal-plan-creation-concurrency.php
     php tests/pg/meal-plan-structure-concurrency.php
     php tests/pg/meal-plan-week-deletion-concurrency.php
     php tests/pg/meal-item-selector-concurrency.php

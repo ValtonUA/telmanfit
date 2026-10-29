@@ -1,7 +1,9 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api'
 import { getMealPlanDays } from '../mealPlanApi'
 import type { MealPlanResponse } from '../mealPlanApi'
+import { forgetPrivateData, privateData, rememberPrivateData } from '../privateData'
 import { Dish } from './MealPlan'
 import './MealPlan.css'
 import './Today.css'
@@ -13,8 +15,8 @@ function dateTitle(value: string): string {
 }
 
 export function Today({ onExit }: { onExit: (message: string) => void }) {
-  const [menu, setMenu] = useState<MealPlanResponse>()
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [menu, setMenu] = useState<MealPlanResponse | undefined>(() => privateData('meal:days:current'))
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>(() => privateData('meal:days:current') ? 'ready' : 'loading')
   const [attempt, setAttempt] = useState(0)
   const exit = useRef(onExit)
   useEffect(() => { exit.current = onExit }, [onExit])
@@ -23,14 +25,22 @@ export function Today({ onExit }: { onExit: (message: string) => void }) {
     let generation = 0
     const load = async () => {
       const request = ++generation
-      setMenu(undefined); setState('loading')
+      if (!privateData('meal:days:current')) setState('loading')
       try {
         const result = await getMealPlanDays()
-        if (active && request === generation) { setMenu(result); setState('ready') }
+        if (active && request === generation) {
+          const previous = privateData<MealPlanResponse>('meal:days:current')
+          const replaced = previous && (previous.assignment?.id !== result.assignment?.id
+            || previous.assignment?.meal_plan_version.id !== result.assignment?.meal_plan_version.id)
+          if (replaced || !result.assignment) forgetPrivateData('meal:')
+          rememberPrivateData('meal:days:current', result)
+          setMenu(result); setState('ready')
+        }
       } catch (error) {
         if (!active || request !== generation) return
         if (error instanceof ApiError && error.status === 401) exit.current('Сесія завершилася. Увійдіть знову.')
-        else setState('error')
+        else if (error instanceof ApiError && [403, 404].includes(error.status)) { forgetPrivateData('meal:'); setMenu(undefined); setState('error') }
+        else if (!privateData('meal:days:current')) setState('error')
       }
     }
     void load()
@@ -49,7 +59,7 @@ export function Today({ onExit }: { onExit: (message: string) => void }) {
       {menu?.today && <p className="muted">{dateTitle(menu.today)}</p>}
     </div>
     <div className="today-actions">
-      <a className="button" href="/app/meal-plan">Переглянути раціон</a>
+      <Link className="button" to="/app/meal-plan">Переглянути раціон</Link>
     </div>
     {state === 'loading' ? <section className="card plan-state" role="status"><h2>Завантажуємо меню…</h2></section>
       : state === 'error' ? <section className="card plan-state"><h2>Меню недоступне</h2><p role="alert">Не вдалося завантажити меню. Перевірте з’єднання.</p><button onClick={() => setAttempt(n => n + 1)}>Спробувати ще раз</button></section>
