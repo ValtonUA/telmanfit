@@ -4,8 +4,11 @@ namespace App\Filament\Resources\MealPlans;
 
 use App\Models\Client;
 use App\Models\MealPlan;
+use App\Models\MealType;
 use App\Support\Presentation\MealPlanDisplay;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -42,6 +45,10 @@ class MealPlanResource extends Resource
                     $client->id => '#'.$client->id.' — '.($client->user?->full_name ?: 'Без акаунта'),
                 ])->all())->searchable()->native(false)->wrapOptionLabels()
                 ->placeholder('Універсальний раціон')->helperText('Лише наявна картка клієнта. Це не призначення й не активація супроводу.'),
+            CheckboxList::make('meal_type_ids')->label('Прийоми їжі на кожен день')
+                ->options(fn () => MealType::orderBy('sort_order')->orderBy('id')->pluck('title', 'id')->all())
+                ->required()->minItems(1)
+                ->helperText(fn () => MealType::exists() ? 'Оберіть наявні типи прийомів для семи днів.' : 'Довідник типів прийомів порожній. Створення недоступне.'),
         ])->columns(1);
     }
 
@@ -49,7 +56,7 @@ class MealPlanResource extends Resource
     {
         return $table->columns([
             TextColumn::make('id')->label('ID')->sortable(),
-            TextColumn::make('title')->label('Назва')->searchable()->wrap(),
+            TextColumn::make('title')->label('Назва')->searchable()->wrap()->url(fn (MealPlan $record) => self::getUrl('view', ['record' => $record])),
             TextColumn::make('owner_client_id')->label('Власник')->formatStateUsing(fn ($state) => 'Клієнт #'.$state)->placeholder('Універсальний')->wrap(),
             TextColumn::make('parent_meal_plan_id')->label('Джерело')->prefix('Раціон #')->placeholder('—'),
             TextColumn::make('versions.status')->label('Статуси версій')->badge()->formatStateUsing(fn ($state) => MealPlanVersionResource::statusLabel($state)),
@@ -57,8 +64,13 @@ class MealPlanResource extends Resource
         ])->filters([
             Filter::make('personal')->label('Персональні')->query(fn (Builder $query) => $query->whereNotNull('owner_client_id')),
             Filter::make('global')->label('Універсальні')->query(fn (Builder $query) => $query->whereNull('owner_client_id')),
-        ])->recordActions([ViewAction::make()])->stackedOnMobile()->defaultSort('id', 'desc')
-            ->emptyStateHeading('Раціонів немає')->emptyStateDescription('Створіть раціон з порожньою чернеткою або змініть пошук.');
+        ])->recordActions([
+            Action::make('editPlan')->label('Редагувати раціон')
+                ->visible(fn (MealPlan $record) => $record->versions->contains('status', 'draft'))
+                ->url(fn (MealPlan $record) => MealPlanVersionResource::getUrl('view', ['record' => $record->versions->firstWhere('status', 'draft')])),
+            ViewAction::make(),
+        ])->stackedOnMobile()->defaultSort('id', 'desc')
+            ->emptyStateHeading('Раціонів немає')->emptyStateDescription('Створіть раціон або змініть пошук.');
     }
 
     public static function infolist(Schema $schema): Schema
@@ -69,7 +81,8 @@ class MealPlanResource extends Resource
             TextEntry::make('owner_client_id')->label('Власник')->formatStateUsing(fn ($state) => 'Клієнт #'.$state)->placeholder('Універсальний'),
             TextEntry::make('parent_meal_plan_id')->label('Логічний раціон-джерело')->placeholder('—'),
             RepeatableEntry::make('versions')->label('Точні версії')->schema([
-                TextEntry::make('id')->label('ID версії')->url(fn ($record) => MealPlanVersionResource::getUrl('view', ['record' => $record])),
+                TextEntry::make('id')->label('Відкрити')->formatStateUsing(fn ($record) => $record->status === 'draft' ? 'Відкрити чернетку' : 'Переглянути опубліковану версію')
+                    ->url(fn ($record) => MealPlanVersionResource::getUrl('view', ['record' => $record])),
                 TextEntry::make('version_number')->label('Номер публікації')->placeholder('Ще не опублікована'),
                 TextEntry::make('status')->label('Статус')->badge()->formatStateUsing(fn ($state) => MealPlanVersionResource::statusLabel($state)),
             ])->contained()->columnSpanFull(),

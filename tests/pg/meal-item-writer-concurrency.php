@@ -3,13 +3,13 @@
 use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 require __DIR__.'/auth2-bootstrap.php';
+require __DIR__.'/legacy-meal-plan-fixture.php';
 set_exception_handler(function (Throwable $e) {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
@@ -50,7 +50,7 @@ chmod($file, 0600);
 $worker = null;
 try {
     foreach (['edit', 'double-add', 'item-before-week', 'week-before-item', 'publish', 'conversion', 'uom', 'aba-add', 'aba-edit', 'aba-week'] as $case) {
-        $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Synthetic item race '.$case])->versions()->sole();
+        $version = syntheticLegacyEmptyMealPlan('Synthetic item race '.$case)->versions()->sole();
         $structure->generate($actor, $version, ['start_day' => 1, 'meal_type_ids' => [$type]]);
         $meal = $version->days()->orderBy('id')->first()->meals()->sole()->id;
         $input = ['meal_id' => $meal, 'food_id' => $food, 'quantity' => '0.50', 'uom_id' => $unit, 'sort_order' => 0,

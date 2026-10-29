@@ -2,11 +2,21 @@
 
 namespace Tests\MealPlans;
 
+use App\Models\MealPlan;
 use Illuminate\Support\Facades\DB;
 
 /** Синтетичний populated legacy plan; лише ізольовані тести. */
 trait PlanFixture
 {
+    /** Старі порожні чернетки створюються лише як synthetic fixture для перевірки UX-3/legacy. */
+    private function legacyEmptyPlan(string $title): MealPlan
+    {
+        $id = DB::table('meal_plans')->insertGetId(['title' => $title]);
+        DB::table('meal_plan_versions')->insert(['meal_plan_id' => $id]);
+
+        return MealPlan::findOrFail($id);
+    }
+
     private function installMealItemSchema(): void
     {
         foreach (glob(database_path('migrations/2026_10_24_0[123]*.php')) as $file) {

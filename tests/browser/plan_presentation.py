@@ -118,6 +118,7 @@ def run_plan_presentation(page, base, f, suffix):
     expect(page.get_by_label('Початок тижня', exact=False)).to_have_value('1')
     page.get_by_label('Початок тижня', exact=False).select_option('2')
     page.get_by_label('Назва', exact=False).fill('Synthetic Tuesday UI ' + suffix)
+    page.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
     page.screenshot(path=str(output / f'polish-create-{suffix}.png'))
     page.get_by_role('button', name='Створити', exact=True).click()
     page.wait_for_url('**/admin/meal-plan-versions/*')

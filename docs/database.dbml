@@ -207,6 +207,18 @@ Table meal_plans [headercolor: #2563EB] {
   Note: 'Logical meal plan card. Personal copies can point to parent_meal_plan_id.'
 }
 
+Table meal_plan_creation_requests {
+  request_key uuid [not null, unique]
+  admin_id bigint [not null, ref: > users.id]
+  parameters_sha256 char(64) [not null, note: 'SHA-256 нормалізованих параметрів']
+  meal_plan_id integer [not null, unique, ref: > meal_plans.id]
+  created_at timestamptz [not null]
+  indexes {
+    (admin_id, request_key) [pk]
+  }
+  Note: 'Незмінна квитанція ідемпотентного створення; без автоматичного TTL.'
+}
+
 Table meal_plan_versions [headercolor: #2563EB] {
   id integer [pk]
   meal_plan_id integer [not null]

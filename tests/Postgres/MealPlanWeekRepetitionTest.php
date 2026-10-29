@@ -8,7 +8,6 @@ use App\Models\MealItem;
 use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use App\Services\MealPlans\MealPlanWeekRepeater;
 use Filament\Facades\Filament;
@@ -42,7 +41,7 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         DB::table('uoms')->insert(['code' => 'g', 'label' => 'gram', 'kind' => 'mass']);
         $this->history = $this->populatedPlan($this->actor->id);
-        $this->version = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Повторення'])->versions()->sole();
+        $this->version = $this->legacyEmptyPlan('Повторення')->versions()->sole();
         $this->repeater = app(MealPlanWeekRepeater::class);
         $this->generate(1);
         foreach ($this->version->days()->with('meals')->get() as $day) {
@@ -229,7 +228,7 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
         $target = $this->version->days()->where('day_number', 15)->sole()->meals()->sole();
         $this->add($target->id);
         $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $input));
-        $other = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Інша чернетка'])->versions()->sole();
+        $other = $this->legacyEmptyPlan('Інша чернетка')->versions()->sole();
         $this->invalid(fn () => $this->repeater->repeat($this->actor, $other, $this->input()));
         $published = MealPlanVersion::findOrFail($this->history['version']);
         $before = $this->state();

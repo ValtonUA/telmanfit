@@ -99,6 +99,20 @@ class ViewMealPlanVersion extends ViewRecord
         return [ActionGroup::make($this->managementActions())->label('Керування')->button()->color('gray')];
     }
 
+    public function createFirstWeekAction(): Action
+    {
+        return Action::make('createFirstWeek')->label('Створити 7 днів')->modalSubmitActionLabel('Додати тиждень')
+            ->authorize(fn () => $this->editable())
+            ->modalHeading('Створити перший семиденний тиждень')
+            ->modalDescription('Створюються лише дні й обрані прийоми. Повторна дія не змінює вже створений тиждень.')
+            ->schema([
+                CheckboxList::make('meal_type_ids')->label('Типи прийомів нового тижня')->options(fn () => $this->types())->required()->minItems(1)
+                    ->helperText(fn () => $this->types() === [] ? 'Довідник типів порожній. Створення недоступне.' : 'Оберіть типи з чинного довідника.'),
+            ])->action(function (array $data, Action $action): void {
+                $this->command($action, fn () => app(MealPlanStructure::class)->generate(auth()->user(), $this->getRecord(), ['start_day' => 1, 'meal_type_ids' => $data['meal_type_ids']]));
+            });
+    }
+
     protected function managementActions(): array
     {
         return [
@@ -160,7 +174,7 @@ class ViewMealPlanVersion extends ViewRecord
         if ($name === 'publishPlan') {
             Gate::authorize('publish', $this->getRecord());
         }
-        if (in_array($name, ['repeatWeek', 'replaceWeeks', 'generateWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
+        if (in_array($name, ['repeatWeek', 'replaceWeeks', 'generateWeek', 'createFirstWeek', 'addMeal', 'editMeal', 'deleteMeal'], true) || str_starts_with($name, 'deleteWeek')) {
             $this->authorizeStructure();
         }
 

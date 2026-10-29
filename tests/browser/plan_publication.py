@@ -41,10 +41,10 @@ def run_plan_publication(page, base, f, suffix, submit, from_day=False):
     assert response.value.status == 200
     # SPA redirect завершується після HTTP commit; чекати кінцеву адресу та DOM.
     expect(page).to_have_url(url)
-    expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
+    expect(page.get_by_text('Опубліковано · лише перегляд', exact=True)).to_be_visible()
     page.reload()
     livewire_ready(page)
-    expect(page.get_by_text('Опублікована', exact=True)).to_be_visible()
+    expect(page.get_by_text('Опубліковано · лише перегляд', exact=True)).to_be_visible()
     expect(page.locator('.plan-day-cta')).to_have_count(0)
     expect(page.get_by_role('button', name='Опублікувати', exact=True)).to_have_count(0)
     page.goto(url + '/days/' + str(state['day']))

@@ -184,6 +184,14 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 stage1_mark baseline_migrations
+if [[ ${UX3_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanCreationRequestTest --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    php tests/pg/meal-plan-creation-concurrency.php
+    if [[ ${UX3_BROWSER:-0} == 1 ]]; then UX3_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh; fi
+    exit
+fi
 if [[ ${MEAL_PLAN_COPY_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit -c phpunit.pgsql.xml --filter MealPlanCopyTest --display-all-issues
     php artisan migrate --force --no-interaction
@@ -199,7 +207,7 @@ if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|ClientCookingTest|NutritionImportTest|R2ImageMatcherTest|R2ImageMatcherIsolatedTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'CookingTemplatesTest|ClientCookingTest|NutritionImportTest|R2ImageMatcherTest|R2ImageMatcherIsolatedTest|RecipeBatchesTest|BatchEditorTest|FoodCatalogTest|MealPlanCreationRequestTest|MealPlanFoundationTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest|MealPlanCopyTest|MealPlanAssignmentTest|MealItemSelectorsTest|MealItemWriterTest|MealPlanDayEditorTest|MealPlanPresentationTest' --display-all-issues
     stage1_mark recipe_phpunit
     if php tests/pg/recipe-batch-concurrency.php failure-probe >"$work/recipe-failure-probe.log" 2>&1; then
         echo 'Recipe concurrency exception was reported as success' >&2
@@ -214,6 +222,7 @@ if [[ ${RECIPE_BATCH_ONLY:-0} == 1 ]]; then
     php tests/pg/legacy-conversion-concurrency.php
     php tests/pg/food-catalog-concurrency.php
     php tests/pg/meal-plan-concurrency.php
+    php tests/pg/meal-plan-creation-concurrency.php
     php tests/pg/meal-plan-structure-concurrency.php
     php tests/pg/meal-plan-week-deletion-concurrency.php
     php tests/pg/meal-item-selector-concurrency.php
