@@ -5,7 +5,6 @@ use App\Models\MealItem;
 use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use App\Services\MealPlans\MealPlanWeekRepeater;
 use Illuminate\Database\QueryException;
@@ -14,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 require __DIR__.'/auth2-bootstrap.php';
+require __DIR__.'/legacy-meal-plan-fixture.php';
 set_exception_handler(function (Throwable $e): void {
     fwrite(STDERR, $e->getMessage().PHP_EOL);
     exit(1);
@@ -64,7 +64,7 @@ chmod($file, 0600);
 $worker = null;
 try {
     foreach (['empty-meal-edit-before-repeat', 'repeat-before-empty-meal-edit', 'double-repeat', 'repeat-before-edit', 'repeat-before-delete', 'repeat-before-raw-insert', 'edit-before-repeat', 'append-before-repeat', 'delete-before-repeat', 'raw-insert-before-repeat', 'publish', 'role', 'fence'] as $case) {
-        $version = app(MealPlanFoundation::class)->create($actor, ['title' => 'Synthetic repeat race '.$case])->versions()->sole();
+        $version = syntheticLegacyEmptyMealPlan('Synthetic repeat race '.$case)->versions()->sole();
         foreach ([1, 8] as $start) {
             $structure->generate($actor, $version, ['start_day' => $start, 'meal_type_ids' => [$type]]);
         }

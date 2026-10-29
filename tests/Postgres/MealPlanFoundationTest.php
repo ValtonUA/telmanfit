@@ -20,6 +20,7 @@ use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -31,11 +32,15 @@ class MealPlanFoundationTest extends PostgresTestCase
 
     private User $actor;
 
+    private int $creationType;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->installAuthSchema();
         $this->installMealItemSchema();
+        (require database_path('migrations/2026_10_29_000000_create_meal_plan_creation_requests.php'))->up();
+        $this->creationType = DB::table('meal_types')->insertGetId(['code' => 'synthetic-foundation', 'title' => 'Синтетичний тип']);
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic plan admin', 'role' => 'admin']));
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -49,7 +54,7 @@ class MealPlanFoundationTest extends PostgresTestCase
         foreach (['meal_plans', 'meal_plan_versions', 'meal_plan_days', 'meals', 'meal_items', 'client_meal_plan_assignments', 'foods', 'recipes', 'recipe_versions'] as $table) {
             $history[$table] = DB::table($table)->orderBy('id')->get();
         }
-        $p = app(MealPlanFoundation::class)->create($this->actor, ['title' => '  Новий раціон  ', 'owner_client_id' => $f['client'],
+        $p = $this->createPlan(['title' => '  Новий раціон  ', 'owner_client_id' => $f['client'],
             'id' => 123456, 'parent_meal_plan_id' => $f['plan'], 'status' => 'published', 'version_number' => 99, 'published_at' => now()]);
         $this->assertSame('Новий раціон', $p->title);
         $this->assertNull($p->parent_meal_plan_id);
@@ -57,12 +62,12 @@ class MealPlanFoundationTest extends PostgresTestCase
         $this->assertSame('draft', $v->status);
         $this->assertNull($v->version_number);
         $this->assertNull($v->published_at);
-        $this->assertSame(0, $v->days()->count());
+        $this->assertSame(7, $v->days()->count());
         $this->assertNotNull($v->created_at);
         $this->assertFalse(array_key_exists('updated_at', $v->getAttributes()));
         $this->assertSame('pending', $p->owner->status);
         $this->assertSame(1, DB::table('client_meal_plan_assignments')->count());
-        $global = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Універсальний', 'owner_client_id' => '']);
+        $global = $this->createPlan(['title' => 'Універсальний', 'owner_client_id' => '']);
         $this->assertNull($global->owner);
         $this->assertSame($p->id, $v->plan->id);
         $this->assertFalse(config('recipes.batch_editor_enabled'));
@@ -76,7 +81,7 @@ class MealPlanFoundationTest extends PostgresTestCase
     {
         foreach ([[], ['title' => '   '], ['title' => []], ['title' => 'Раціон', 'owner_client_id' => 2147483647], ['title' => 'Раціон', 'owner_client_id' => '1 OR 1=1']] as $input) {
             try {
-                app(MealPlanFoundation::class)->create($this->actor, $input);
+                $this->createPlan($input);
                 $this->fail('Невалідний ввід');
             } catch (ValidationException) {
                 $this->assertSame(0, MealPlan::count());
@@ -90,7 +95,7 @@ class MealPlanFoundationTest extends PostgresTestCase
         DB::unprepared("CREATE FUNCTION t41_late_fault() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic late failure'; END $$;
             CREATE CONSTRAINT TRIGGER t41_late_fault AFTER INSERT ON meal_plan_versions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION t41_late_fault();");
         try {
-            app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Не зберегти']);
+            $this->createPlan(['title' => 'Не зберегти']);
             $this->fail('Відкладена відмова');
         } catch (QueryException $e) {
             $this->assertStringContainsString('synthetic late failure', $e->getMessage());
@@ -133,15 +138,23 @@ class MealPlanFoundationTest extends PostgresTestCase
         $this->assertSame($next, $a->fresh()->replacement->id);
         $this->assertNull(ClientMealPlanAssignment::find($next)->end_date);
         $this->assertNull(ClientMealPlanAssignment::find($next)->creator);
-        $copy = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Синтетичний lineage']);
+        $copy = $this->createPlan(['title' => 'Синтетичний lineage']);
         DB::table('meal_plans')->where('id', $copy->id)->update(['parent_meal_plan_id' => $p->id]);
         $this->assertSame($p->id, $copy->fresh()->parent->id);
         $this->assertSame($copy->id, $p->copies()->sole()->id);
         $before = $this->historyHash();
         Livewire::test(ListMealPlans::class)->searchTable($p->title)->assertCanSeeTableRecords([$p]);
         Livewire::test(ViewMealPlan::class, ['record' => $p->id])->assertSuccessful();
-        Livewire::test(ViewMealPlanVersion::class, ['record' => $v->id])->assertSuccessful()->assertSee('100.1')->assertSee('Опублікована');
+        Livewire::test(ViewMealPlanVersion::class, ['record' => $v->id])->assertSuccessful()->assertSee('100.1')->assertSee('Опубліковано · лише перегляд');
         $this->assertSame($before, $this->historyHash());
+    }
+
+    private function createPlan(array $input): MealPlan
+    {
+        return app(MealPlanFoundation::class)->create($this->actor, array_merge([
+            'request_key' => (string) Str::uuid(),
+            'meal_type_ids' => [$this->creationType],
+        ], $input));
     }
 
     private function historyHash(): string
@@ -156,12 +169,12 @@ class MealPlanFoundationTest extends PostgresTestCase
 
     public function test_direct_livewire_create_owner_validation_and_no_second_draft_on_view(): void
     {
-        Livewire::test(CreateMealPlan::class)->fillForm(['title' => 'Спроба', 'owner_client_id' => 2147483647])->call('create')->assertHasFormErrors(['owner_client_id']);
-        Livewire::test(CreateMealPlan::class)->fillForm(['title' => 'Чернетка'])->call('create')->assertHasNoFormErrors();
+        Livewire::withQueryParams(['creation' => (string) Str::uuid()])->test(CreateMealPlan::class)->fillForm(['title' => 'Спроба', 'owner_client_id' => 2147483647, 'meal_type_ids' => [$this->creationType]])->call('create')->assertHasFormErrors(['owner_client_id']);
+        Livewire::withQueryParams(['creation' => (string) Str::uuid()])->test(CreateMealPlan::class)->fillForm(['title' => 'Чернетка', 'meal_type_ids' => [$this->creationType]])->call('create')->assertHasNoFormErrors();
         $p = MealPlan::sole();
         $v = $p->versions()->sole();
         for ($n = 0; $n < 2; $n++) {
-            Livewire::test(ViewMealPlanVersion::class, ['record' => $v->id])->assertSee('Чернетка ще не готова');
+            Livewire::test(ViewMealPlanVersion::class, ['record' => $v->id])->assertSee('Меню ще не заповнене');
         }
         $this->assertSame(1, $p->versions()->count());
         $this->get(MealPlanResource::getUrl('view', ['record' => $p]).'/edit')->assertNotFound();
@@ -169,8 +182,9 @@ class MealPlanFoundationTest extends PostgresTestCase
 
     public function test_fresh_roles_policies_and_direct_livewire_are_denied(): void
     {
-        $p = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Захищений']);
-        $component = Livewire::test(CreateMealPlan::class)->fillForm(['title' => 'Після відкликання']);
+        $p = $this->createPlan(['title' => 'Захищений']);
+        $component = Livewire::withQueryParams(['creation' => (string) Str::uuid()])->test(CreateMealPlan::class)
+            ->fillForm(['title' => 'Після відкликання', 'meal_type_ids' => [$this->creationType]]);
         foreach ([new MealPlan, new MealPlanVersion, new MealPlanDay, new Meal, new MealType, new MealItem, new ClientMealPlanAssignment] as $model) {
             foreach (['update', 'delete', 'replicate'] as $ability) {
                 $this->assertFalse(Gate::forUser($this->actor)->allows($ability, $model));
@@ -183,7 +197,7 @@ class MealPlanFoundationTest extends PostgresTestCase
             DB::table('users')->where('id', $this->actor->id)->update(['role' => $role]);
             $this->assertFalse(Gate::forUser($this->actor)->allows('view', $p));
             try {
-                app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Заборонено']);
+                $this->createPlan(['title' => 'Заборонено']);
                 $this->fail('Відкликана роль');
             } catch (HttpException $e) {
                 $this->assertSame(403, $e->getStatusCode());
@@ -201,7 +215,7 @@ class MealPlanFoundationTest extends PostgresTestCase
         $this->assertFalse(MealPlanFoundation::allowed($this->actor));
         Livewire::test(CreateMealPlan::class)->assertForbidden();
         try {
-            app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Заборонено під час restore']);
+            $this->createPlan(['title' => 'Заборонено під час restore']);
             $this->fail('Restore fence');
         } catch (HttpException $e) {
             $this->assertSame(403, $e->getStatusCode());
@@ -212,7 +226,7 @@ class MealPlanFoundationTest extends PostgresTestCase
     public function test_existing_sql_guards_still_reject_unsafe_writes(): void
     {
         $f = $this->populatedPlan($this->actor->id);
-        $draft = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Одна чернетка']);
+        $draft = $this->createPlan(['title' => 'Одна чернетка']);
         $attempts = [
             fn () => DB::table('meal_plan_versions')->insert(['meal_plan_id' => $draft->id]),
             fn () => DB::table('meal_plan_versions')->where('id', $f['version'])->update(['status' => 'draft']),

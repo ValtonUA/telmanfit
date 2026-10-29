@@ -6,7 +6,6 @@ use App\Filament\Resources\MealPlans\Pages\ViewMealPlanVersion;
 use App\Models\Meal;
 use App\Models\MealPlanVersion;
 use App\Models\User;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
@@ -37,7 +36,7 @@ class MealPlanStructureTest extends PostgresTestCase
         $this->actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic structure admin', 'role' => 'admin']));
         $this->actingAs($this->actor);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
-        $this->version = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Структура'])->versions()->sole();
+        $this->version = $this->legacyEmptyPlan('Структура')->versions()->sole();
         $this->writer = app(MealPlanStructure::class);
         $this->types = [];
         foreach ([20, -10, 0] as $order) {
@@ -141,7 +140,7 @@ class MealPlanStructureTest extends PostgresTestCase
         foreach ([['day_id' => 2147483647], ['meal_type_id' => 32767], ['sort_order' => 32768], ['meal_type_id' => $this->types[1]], ['title' => []]] as $patch) {
             $this->invalid(fn () => $this->writer->saveMeal($this->actor, $this->version, array_replace($data, $patch)));
         }
-        $other = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Інша'])->versions()->sole();
+        $other = $this->legacyEmptyPlan('Інша')->versions()->sole();
         $this->invalid(fn () => $this->writer->saveMeal($this->actor, $other, $data, $meal->id));
         $this->invalid(fn () => $this->writer->deleteMeal($this->actor, $other, $day, $meal->id, MealPlanStructure::token($meal)));
         $otherDay = $this->version->days()->where('day_number', 2)->sole()->id;

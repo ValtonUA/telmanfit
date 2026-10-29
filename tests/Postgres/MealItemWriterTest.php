@@ -8,7 +8,6 @@ use App\Models\MealPlanVersion;
 use App\Models\User;
 use App\Services\MealPlans\MealItemResolver;
 use App\Services\MealPlans\MealItemWriter;
-use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -47,7 +46,7 @@ class MealItemWriterTest extends PostgresTestCase
         $this->f = $this->populatedPlan($this->actor->id);
         $this->b = $this->batch();
         $this->publish($this->b['version']);
-        $this->version = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Writer'])->versions()->sole();
+        $this->version = $this->legacyEmptyPlan('Writer')->versions()->sole();
         app(MealPlanStructure::class)->generate($this->actor, $this->version, ['start_day' => 1, 'meal_type_ids' => [$this->f['type']]]);
         $this->meal = $this->version->days()->orderBy('id')->first()->meals()->sole()->id;
         $this->writer = app(MealItemWriter::class);

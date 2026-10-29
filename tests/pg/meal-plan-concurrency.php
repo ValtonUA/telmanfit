@@ -6,6 +6,7 @@ use App\Services\MealPlans\MealPlanFoundation;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\MealPlans\PlanFixture;
 
 require __DIR__.'/auth2-bootstrap.php';
@@ -23,7 +24,7 @@ if (($argv[1] ?? '') === 'worker') {
                 'draft' => DB::table('meal_plan_versions')->insert(['meal_plan_id' => $data['plan']]),
                 'immutable' => DB::table('meal_items')->where('id', $data['item'])->update(['quantity' => '1.00']),
                 'overlap' => DB::table('client_meal_plan_assignments')->insert(['client_id' => $data['client'], 'meal_plan_version_id' => $data['version'], 'start_date' => '2026-03-01']),
-                'create' => app(MealPlanFoundation::class)->create(User::findOrFail($data['actor']), ['title' => 'Паралельний раціон']),
+                'create' => app(MealPlanFoundation::class)->create(User::findOrFail($data['actor']), ['request_key' => (string) Str::uuid(), 'meal_type_ids' => [$data['type']], 'title' => 'Паралельний раціон']),
             };
         });
         exit($data['case'] === 'create' ? 0 : 2);
@@ -42,6 +43,7 @@ if (! Schema::hasTable('auth_security_runtime')) {
 DB::table('auth_security_runtime')->insertOrIgnore(['id' => 1, 'restore_epoch' => SyntheticEpoch::INITIAL,
     'last_reconciled_at' => now(), 'issuance_not_before' => now(), 'state' => 'ready']);
 (require database_path('migrations/2026_10_25_020000_add_plan_presentation.php'))->up();
+(require database_path('migrations/2026_10_29_000000_create_meal_plan_creation_requests.php'))->up();
 $actor = User::findOrFail(DB::table('users')->insertGetId(['name' => 'Synthetic plan concurrency', 'role' => 'admin']));
 $fixture = new class
 {
@@ -73,7 +75,7 @@ try {
             DB::table('client_meal_plan_assignments')->insert(['client_id' => $f['client'], 'meal_plan_version_id' => $f['version'], 'start_date' => '2026-03-01']);
         } else {
             DB::table('users')->where('id', $actor->id)->lockForUpdate()->first();
-            app(MealPlanFoundation::class)->create($actor, ['title' => 'Перший паралельний раціон']);
+            app(MealPlanFoundation::class)->create($actor, ['request_key' => (string) Str::uuid(), 'meal_type_ids' => [$f['type']], 'title' => 'Перший паралельний раціон']);
         }
         $worker = proc_open([PHP_BINARY, __FILE__, 'worker', $file], [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']], $pipes);
         if (! is_resource($worker)) {

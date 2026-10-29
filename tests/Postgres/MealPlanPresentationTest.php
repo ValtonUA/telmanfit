@@ -62,19 +62,20 @@ class MealPlanPresentationTest extends PostgresTestCase
 
     public function test_creation_default_explicit_weekday_and_database_guards(): void
     {
+        (require database_path('migrations/2026_10_29_000000_create_meal_plan_creation_requests.php'))->up();
+        $type = DB::table('meal_types')->insertGetId(['code' => 'weekday-test', 'title' => 'Тест']);
         $service = app(MealPlanFoundation::class);
-        $default = $service->create($this->actor, ['title' => 'Типовий']);
-        $tuesday = $service->create($this->actor, ['title' => 'Вівторок', 'week_start_weekday' => 2]);
+        $default = $service->create($this->actor, ['request_key' => (string) Str::uuid(), 'meal_type_ids' => [$type], 'title' => 'Типовий']);
+        $tuesday = $service->create($this->actor, ['request_key' => (string) Str::uuid(), 'meal_type_ids' => [$type], 'title' => 'Вівторок', 'week_start_weekday' => 2]);
         $this->assertSame(1, $default->week_start_weekday);
         $this->assertSame(2, $tuesday->week_start_weekday);
         foreach ([0, 8, null, 'bad'] as $value) {
-            $this->rejected(fn () => $service->create($this->actor, ['title' => 'Невалідний', 'week_start_weekday' => $value]), ValidationException::class);
+            $this->rejected(fn () => $service->create($this->actor, ['request_key' => (string) Str::uuid(), 'meal_type_ids' => [$type], 'title' => 'Невалідний', 'week_start_weekday' => $value]), ValidationException::class);
         }
         foreach ([0, 8, null] as $value) {
             $this->rejected(fn () => DB::table('meal_plans')->insert(['title' => 'Невалідний', 'week_start_weekday' => $value]), QueryException::class);
         }
         $this->rejected(fn () => DB::table('meal_plans')->where('id', $tuesday->id)->update(['week_start_weekday' => 1]), QueryException::class);
-        $type = DB::table('meal_types')->insertGetId(['code' => 'weekday-test', 'title' => 'Тест']);
         $version = $tuesday->versions()->sole();
         foreach ([1, 8] as $start) {
             app(MealPlanStructure::class)->generate($this->actor, $version, ['start_day' => $start, 'meal_type_ids' => [$type]]);
@@ -151,7 +152,7 @@ class MealPlanPresentationTest extends PostgresTestCase
     public function test_unflagged_admin_cover_action_and_row_edit_delete_preload(): void
     {
         $f = $this->populatedPlan($this->actor->id);
-        $version = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Metadata actions'])->versions()->sole();
+        $version = $this->legacyEmptyPlan('Metadata actions')->versions()->sole();
         app(MealPlanStructure::class)->generate($this->actor, $version, ['start_day' => 1, 'meal_type_ids' => [$f['type']]]);
         $day = $version->days()->orderBy('day_number')->first();
         $meal = $day->meals()->sole();
@@ -184,7 +185,7 @@ class MealPlanPresentationTest extends PostgresTestCase
     public function test_dense_day_bulk_resolver_is_exact_and_query_count_does_not_grow(): void
     {
         $f = $this->populatedPlan($this->actor->id);
-        $v = app(MealPlanFoundation::class)->create($this->actor, ['title' => 'Щільний день'])->versions()->sole();
+        $v = $this->legacyEmptyPlan('Щільний день')->versions()->sole();
         app(MealPlanStructure::class)->generate($this->actor, $v, ['start_day' => 1, 'meal_type_ids' => [$f['type']]]);
         $day = $v->days()->orderBy('day_number')->first();
         $meal = $day->meals()->sole();

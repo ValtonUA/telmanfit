@@ -5,6 +5,7 @@ use App\Services\MealPlans\MealPlanFoundation;
 use App\Services\MealPlans\MealPlanStructure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\Recipes\BatchFixture;
 
 require __DIR__.'/../pg/auth2-bootstrap.php';
@@ -46,7 +47,7 @@ echo json_encode(DB::transaction(function () use ($actor): array {
     };
     $batch = $fixture->make();
     $type = DB::table('meal_types')->insertGetId(['code' => 'synthetic-ux2-navigation', 'title' => 'Синтетичний прийом UX2']);
-    $plan = app(MealPlanFoundation::class)->create($actor, ['title' => 'UX2 синтетичний раціон']);
+    $plan = app(MealPlanFoundation::class)->create($actor, ['request_key' => (string) Str::uuid(), 'meal_type_ids' => [$type], 'title' => 'UX2 синтетичний раціон']);
     $version = $plan->versions()->sole();
     app(MealPlanStructure::class)->generate($actor, $version, ['start_day' => 1, 'meal_type_ids' => [$type]]);
 
