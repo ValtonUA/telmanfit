@@ -85,10 +85,14 @@ with sync_playwright() as p:
         page.goto(BASE + '/admin/meal-plan-versions/' + str(repeat_seed['version']))
         from meal_plans import management
         management(page, 'Позиції')
-        page.get_by_text('Додати позицію', exact=True).click()
+        page.get_by_role('menuitem', name='Додати позицію', exact=True).click()
         position_dialog = page.get_by_role('dialog').filter(has=page.get_by_role('heading', name='Додати позицію', exact=True))
         expect(position_dialog.get_by_role('heading', name='Додати позицію', exact=True)).to_be_visible()
         submit(position_dialog, 'Скасувати')
+        management(page, 'Додати прийом')
+        meal_dialog = page.get_by_role('dialog').filter(has=page.get_by_role('heading', name='Додати прийом', exact=True))
+        expect(meal_dialog.get_by_role('heading', name='Додати прийом', exact=True)).to_be_visible()
+        submit(meal_dialog, 'Скасувати')
         run_week_repetition(page, BASE, seed, '1440-light', submit)
         print('UX-4 week actions (positions + repetition) Chromium regression PASS', flush=True)
     elif os.environ.get('UX4_BROWSER_ONLY') == '1':

@@ -32,7 +32,9 @@ def management(page, label):
                 menu = page.get_by_role('button', name='Керування', exact=True)
         menu.click()
         settle_overlays(page)
-        target = page.get_by_text(label, exact=True)
+        target = page.get_by_role('menuitem', name=label, exact=True)
+        if target.count() == 0:
+            target = page.get_by_text(label, exact=True)
         visible_target = next((target.nth(index) for index in range(target.count()) if target.nth(index).is_visible()), None)
     if visible_target is None:
         raise AssertionError(f'Не знайдено видиму дію: {label}\n'+page.locator('body').aria_snapshot()[-8000:])
