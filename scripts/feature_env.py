@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import hashlib
 import io
 import json
 import os
@@ -16,6 +15,7 @@ import subprocess
 import sys
 import tarfile
 import uuid
+from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'ci'))
 import pre_merge
@@ -165,13 +165,13 @@ class Manager:
         temp.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding='utf-8')
         temp.replace(path)
 
-    def records(self, feature):
+    def records(self, feature=None):
         result = []
         for path in sorted(self.root.glob('telmanfit-feature-*/record.json')):
             record = json.loads(path.read_text(encoding='utf-8'))
             if self.path(record['project']) != path.parent:
                 raise ValueError('Registry path mismatch.')
-            if record['feature'] == feature:
+            if feature is None or record['feature'] == feature:
                 result.append(record)
         return result
 
@@ -214,8 +214,99 @@ class Manager:
                 raise ValueError('Host mounts заборонені.')
         self.verify_resources(record)
 
-    def start(self, feature):
+    def runtime(self, record):
+        self.assert_config(record)
+        raw = self.cli(record, 'ps', '--all', '--format', 'json')
+        items = []
+        decoder = json.JSONDecoder()
+        while raw.strip():
+            part, end = decoder.raw_decode(raw.lstrip())
+            items.extend(part if isinstance(part, list) else [part])
+            raw = raw.lstrip()[end:]
+        running = [item for item in items if item.get('State') in ('running', 'restarting', 'paused')]
+        state = 'active' if running else ('partial' if items else 'stopped')
+        return {'state': state, 'containers': len(items), 'url': self.url(record)}
+
+    @staticmethod
+    def url(record):
+        return f"http://{record['project']}.localhost:{record['port']}/admin/login"
+
+    def image_ids(self, record):
+        return {kind: json.loads(run([*self.docker, 'image', 'inspect', f"{record['project']}-{kind}"], env=self.env))[0]['Id']
+                for kind in ('app', 'web', 'database')}
+
+    def verify_images(self, record):
+        actual = self.image_ids(record)
+        if not record.get('images'):
+            # Одноразове оновлення metadata старого manager: лише вже належні
+            # цьому registry images; жодного rebuild або зміни БД.
+            if record['status'] not in ('ready', 'active', 'stopped'):
+                raise ValueError('Незавершену ревізію не можна resume; потрібен fresh.')
+            record['images'] = actual
+            self.save(record)
+        if actual != record['images']:
+            raise ValueError('Immutable images ревізії змінено; resume заблоковано.')
+
+    def stop(self, record):
+        self.assert_config(record)
+        record['status'] = 'stopping'
+        self.save(record)
+        # Down звільняє rootfs контейнерів; volumes, images й секрети збережені.
+        self.cli(record, 'down', '--remove-orphans')
+        record['status'] = 'stopped'
+        self.save(record)
+
+    def park_previews(self, target):
+        peers = [r for r in self.records() if r['project'] != target['project']]
+        # Перевірити всіх peers до першої зміни, включно з іншими feature.
+        states = [(r, self.runtime(r)) for r in peers]
+        active = [r for r, state in states if state['state'] == 'active']
+        for record in active:
+            self.verify_images(record)
+        for record, state in states:
+            if state['containers']:
+                self.stop(record)
+        return sorted(active, key=lambda r: r.get('created_at', ''))[-1:]
+
+    def activate(self, record):
+        self.assert_config(record)
+        self.verify_images(record)
+        self.cli(record, 'up', '--detach', '--wait', '--wait-timeout', '360', '--no-build')
+        record['status'] = 'active'
+        self.save(record)
+        return record
+
+    def recover(self, record, previous, retryable=False):
+        # Спочатку прибрати лише невдалий runtime, не його БД/образи.
+        # Якщо це неможливо, не запускати ще один stack у невідомому стані.
+        self.stop(record)
+        record['status'] = 'stopped' if retryable else 'failed'
+        self.save(record)
+        for old in previous:
+            self.activate(old)
+
+    def resume(self, record):
+        self.assert_config(record)
+        self.verify_images(record)
+        if record['status'] not in ('active', 'ready', 'stopped'):
+            raise ValueError('Невдалу або незавершену ревізію не можна resume; потрібен fresh.')
+        previous = self.park_previews(record)
+        try:
+            return self.activate(record)
+        except BaseException:
+            self.recover(record, previous, retryable=True)
+            raise
+
+    def start(self, feature, fresh=False):
         proof = prepared(feature)
+        existing = self.records(feature)
+        matching = [r for r in existing if r['head'] == proof['head_sha'] and r['status'] in ('active', 'ready', 'stopped')]
+        if not fresh and matching:
+            record = sorted(matching, key=lambda r: r.get('created_at', ''))[-1]
+            return self.resume(record)
+        if existing and not fresh:
+            raise ValueError('Новий SHA не переносить попередню БД. Використайте -Action fresh для чистої ревізії; '
+                             '-Action list та -Action resume -Project <id> відновлюють старі дані без міграцій.')
         project = 'telmanfit-feature-' + uuid.uuid4().hex[:24]
         path = self.path(project)
         path.mkdir(mode=0o700)
@@ -225,33 +316,36 @@ class Manager:
         if not 20000 <= port <= 59999:
             port = 20000 + int(uuid.uuid4().hex[:8], 16) % 40000
         record = {'project': project, 'feature': feature, 'head': proof['head_sha'], 'base': proof['base_sha'],
-                  'pr': proof['pr'], 'port': port, 'status': 'creating'}
+                  'pr': proof['pr'], 'port': port, 'status': 'creating',
+                  'created_at': datetime.now(timezone.utc).isoformat(), 'admission': proof}
         self.save(record)
+        previous = []
+        parked = False
         try:
             (path / 'compose.json').write_text(json.dumps(compose(project, port), indent=2), encoding='utf-8')
             export_source(record['head'], path / 'source')
             self.assert_config(record)
-            build = ['build', '--pull']
+            # До build звільнити старі rootfs, не видаляючи тестові дані.
+            previous = self.park_previews(record)
+            parked = True
             if os.environ.get('CODEX_PROXY_CERT'):
-                # Session CA у BuildKit secret, не у build context або шарах.
                 for service in ('app', 'web', 'database'):
                     run([*self.docker, 'build', '--secret', 'id=proxy_ca,src=' + os.environ['CODEX_PROXY_CERT'],
                          '--label', 'io.telmanfit.feature.project=' + project, '--target', service, '-f', str(path / 'source/docker/local/Dockerfile'),
                          '-t', f'{project}-{service}', str(path / 'source')], env=self.env)
             else:
-                self.cli(record, *build)
-            # Review/CI/head/base могли змінитись протягом довгої збірки.
+                self.cli(record, 'build', '--pull')
+            record['images'] = self.image_ids(record)
+            self.save(record)
             if prepared(feature) != proof:
                 raise ValueError('PR змінився протягом збірки; повторіть запуск.')
-            self.cli(record, 'up', '--detach', '--wait', '--wait-timeout', '360', '--no-build')
-            record['status'] = 'ready'
-            self.save(record)
-            return record
+            return self.activate(record)
         except BaseException:
-            record['status'] = 'failed'
-            self.save(record)
-            # Зберігаємо лише власний failed stack для діагностики/явного remove.
-            # Нічого автоматично не знищується після невідомої помилки Docker.
+            if parked:
+                self.recover(record, previous)
+            else:
+                record['status'] = 'failed'
+                self.save(record)
             raise
 
     def remove(self, record):
@@ -264,27 +358,32 @@ class Manager:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('feature', type=validate_feature)
-    parser.add_argument('--action', choices=('start', 'update', 'list', 'remove', 'access', 'mail', 'logs'), default='start')
-    parser.add_argument('--project', help='Точний project з list; обов’язковий для remove/access/mail')
+    parser.add_argument('--action', choices=('start', 'update', 'fresh', 'stop', 'resume', 'list', 'remove', 'access', 'mail', 'logs'), default='start')
+    parser.add_argument('--project', help='Точний project з list; обов’язковий для stop/resume/remove/access/mail/logs')
     args = parser.parse_args()
     root = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / '.local/share'))) / 'TelmanFit/features'
     with lock(root):
         manager = Manager(root, local_docker())
-        if args.action in ('start', 'update'):
-            record = manager.start(args.feature)
+        if args.action in ('start', 'update', 'fresh'):
+            record = manager.start(args.feature, fresh=args.action == 'fresh')
             print(json.dumps(record, ensure_ascii=False, indent=2))
             print(f"http://{record['project']}.localhost:{record['port']}/admin/login")
-            print('Попередні ревізії збережено. list показує stacks; access — приватні реквізити.')
+            print('Одне активне preview. Дані старих ревізій збережено; list/stop/resume керують станом.')
         else:
             records = manager.records(args.feature)
             if args.action == 'list':
-                print(json.dumps(records, ensure_ascii=False, indent=2))
+                print(json.dumps([{**r, 'runtime': manager.runtime(r)} for r in records], ensure_ascii=False, indent=2))
                 return
             selected = [r for r in records if r['project'] == args.project]
             if len(selected) != 1:
                 raise ValueError('Передайте точний -Project із list.')
             record = selected[0]
-            if args.action == 'remove':
+            if args.action == 'stop':
+                manager.stop(record)
+            elif args.action == 'resume':
+                manager.resume(record)
+                print(manager.url(record))
+            elif args.action == 'remove':
                 manager.remove(record)
             elif args.action == 'logs':
                 manager.assert_config(record)

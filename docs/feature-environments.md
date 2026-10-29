@@ -15,38 +15,71 @@ merge чужої feature. Передавати користувачу версі
 перемикати робочу стабільну копію на feature. Launcher підтримує PowerShell 5.1/7.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\feature.ps1 -Feature feature/my-function
+powershell -NoProfile -File .\scripts\feature.ps1 -Feature feature/my-function
 ```
 
-Це локальна execution policy лише цього процесу. Скрипт не завантажується з
-інтернету для негайного виконання. На першому запуску збірка може тривати кілька
-хвилин; launcher показує точні PR/head/base, project і адресу після healthy.
-Відкрийте показаний `http://telmanfit-feature-<id>.localhost:<порт>/admin/login`
-у Chrome/Edge/Firefox. `.localhost` браузер спрямовує на loopback без hosts-файлу;
-окремий hostname ізолює також cookies, CSRF та browser storage від стабільного
-`127.0.0.1:8098` і сусідніх feature. Приватні реквізити — через `access` нижче.
+У PowerShell 7 замість `powershell` можна використати `pwsh`. Дотримуйтеся
+чинної [execution policy](local-compose.md).
+Якщо policy блокує локальний файл, використайте затверджений host, що дозволяє
+такі скрипти; launcher не змінює policy. Native Windows 5.1/7 CI виконує сам
+launcher зі synthetic Python observer без Docker/БД та без policy override.
 
-Після виправлень і повторного CI/review та сама команда створює нову ревізію.
-Явний синонім:
+Перший запуск збирає образи та показує PR/head/base, project й адресу після
+healthy. Відкрийте `http://telmanfit-feature-<id>.localhost:<порт>/admin/login`
+у Chrome/Edge/Firefox. `.localhost` спрямовується браузером на loopback без
+hosts-файлу. Окремий hostname ізолює cookies, CSRF та browser storage від
+стабільного `127.0.0.1:8098` й інших ревізій. Реквізити — через `access`.
+
+## Повторне тестування та оновлення даних
+
+Повторний `start` або `update` **того самого підготовленого SHA** відновлює
+останню успішну ревізію: її URL, БД, введені дані, storage, паролі та MFA/epoch
+збережені. Немає нового build, нової БД чи повторного initial migrate.
 
 ```powershell
 .\scripts\feature.ps1 -Feature feature/my-function -Action update
 ```
 
-Кожен запуск створює новий синтетичний кластер; дані попереднього приймання не
-переносяться. Старі stacks залишаються доступними, у тому числі після невдалої
-нової збірки. Повторний запуск того самого SHA теж створює чисту ревізію.
+Якщо PR має **новий SHA**, `start/update` відмовляє до будь-яких Docker-змін і
+пояснює вибір. Безпечне рішення для цього процесу — явний clean preview:
+
+```powershell
+.\scripts\feature.ps1 -Feature feature/my-function -Action fresh
+```
+
+`fresh` створює окрему синтетичну БД з initial migrations перевіреного SHA.
+Старі введені дані не переносяться: міграція populated DB, включно SQL20, потребує
+окремого перевіреного upgrade-контракту, якого цей launcher не вигадує.
+Стара ревізія не видаляється й доступна через `list/resume -Project <id>`.
+`fresh` на тому самому SHA також можливий лише як явне створення чистої БД.
+Невдала/частково мігрована ревізія не підходить для resume; потрібен новий fresh.
+
+**За замовчуванням одне активне preview в усьому registry користувача**, включно
+іншими feature. До build/resume manager перевіряє ownership/config усіх peers,
+зупиняє їх через власний Compose down без volumes/images і звільняє container
+rootfs. Попередні БД/файли/образи залишаються. У разі невдалого build/start спочатку
+зупиняє невдалий runtime, потім відновлює останнє попереднє активне preview.
+Якщо безпеку cleanup підтвердити не вдалося, не запускає ще один stack у
+невідомому стані. Стабільний `telmanfit-local` не належить цьому registry й
+ніколи не стає peer. Images перевіряються за збереженими IDs перед resume.
 Оновлення стабільного TelmanFit через `local-update.ps1` — окрема процедура.
 
 ## Керування ревізіями
 
 ```powershell
 .\scripts\feature.ps1 -Feature feature/my-function -Action list
+.\scripts\feature.ps1 -Feature feature/my-function -Action stop -Project telmanfit-feature-<id>
+.\scripts\feature.ps1 -Feature feature/my-function -Action resume -Project telmanfit-feature-<id>
 .\scripts\feature.ps1 -Feature feature/my-function -Action access -Project telmanfit-feature-<id>
 .\scripts\feature.ps1 -Feature feature/my-function -Action mail -Project telmanfit-feature-<id>
 .\scripts\feature.ps1 -Feature feature/my-function -Action logs -Project telmanfit-feature-<id>
 .\scripts\feature.ps1 -Feature feature/my-function -Action remove -Project telmanfit-feature-<id>
 ```
+
+`list` показує фактичний runtime стан і URL кожної ревізії. `stop` звільняє
+контейнери/мережу без видалення даних, `resume` відновлює вибраний незмінний image
+і зупиняє інші preview. Resume історичного SHA дає доступ до його старих даних;
+це не приймання актуального PR head.
 
 `access` показує пароль та invitation лише у вашій консолі; MFA enrollment і
 клієнтський OTP — як у [локальному Compose](local-compose.md). `mail` читає лише
@@ -79,8 +112,8 @@ Draft PR можна запускати після review; merge Draft забор
 перевіряє роль без elevated privileges, DB name/proof/PG18, порожнечу public schema
 і лише тоді запускає forward migrations. Непорожня/частково мігрована БД та pending
 міграції після initial bootstrap блокуються. Автоматичного retry app/setup немає.
-Невдалий initial migrate не відновлюється через `fresh`, `wipe`, restore чи
-підроблення migration history: створіть нову ревізію після виправлення й review.
+Невдалий initial migrate не ремонтується через Artisan reset/wipe/restore чи
+підроблення migration history: створіть окрему ревізію `-Action fresh` після виправлення й review.
 
 **SQL20:** його відсутність у `scripts/local-migration-allowlist.json` продовжує
 блокувати upgrade наявної стабільної БД. Allowlist і guard не послаблюються.
@@ -148,16 +181,47 @@ gate безпосередньо перед SHA-locked merge. Окремий read
 впровадження процесу виконує з актуального довіреного checkout:
 
 ```sh
-python3 scripts/ci/feature_rules.py                 # read-only точний план
-python3 scripts/ci/feature_rules.py --apply         # запис і обов’язковий read-back
+python3 scripts/ci/feature_rules.py --review-pr 117          # read-only план + реальна reviewer capability
+python3 scripts/ci/feature_rules.py --review-pr 117 --apply  # після proven review та merged bootstrap
 # Перерахувати admission statuses на відкритих PR:
 gh workflow run feature-acceptance.yml --repo ValtonUA/telmanfit
 ```
 
-`--apply` відмовляє, доки workflow/publisher/gate не встановлені в master; не
+`--apply` відмовляє, доки реальний reviewer route не доведено, bootstrap PR не
+merged або workflow/publisher/gate не встановлені в master; не
 послаблює існуючих checks, не додає bypass і не пише при зміні ruleset між
 читаннями. Права на Rulesets write перевіряються фактичним API записом після
 bootstrap; read-доступ не доводить write. Якщо запис відхилений, серверний rollout
 залишається **не активованим**; агентський live gate чинний, але не називати його
 серверною гарантією. Прямий push/auto-merge й обхід правил заборонені.
 Перелік required checks та деталі — [ci.md](ci.md).
+
+## Передумова незалежного review: фактична доступність
+
+Live API перевірка для PR #117 виявила лише одного collaborator — `ValtonUA`,
+який є автором PR. Формальних reviews немає. [Зафіксований API-доказ](evidence/feature-workflow/reviewer-capability.json)
+і `feature_rules.py --review-pr 117` відрізняють цю ситуацію від synthetic PASS:
+`eligible_reviewers=[]`, `exact_head_approvals=[]`, `proven=false`.
+Незалежний змістовний review у коментарі власника є корисним предметним доказом,
+але та сама GitHub-ідентичність не може видати незалежний formal approval.
+Тому новий ruleset зараз **не можна активувати**, а preview/merge gate не
+послаблюється до самосхвалення чи checkbox. Наявні правила сервера залишаються.
+
+Конкретний запропонований шлях для автономного незалежного review — окрема
+GitHub machine-user ідентичність, якою користується незалежний reviewer/service.
+Її credential зберігається поза авторським агентом/сеансом; агент реалізації не
+може ним підписати власне review. Collaborator має write-role для зарахування
+review GitHub; fine-grained token сервісу обмежений contents/actions read і
+pull requests write, без administration/statuses/contents write. Сервіс читає
+exact head і base, виконує окреме предметне review та подає справжнє `APPROVED`
+або `CHANGES_REQUESTED` з commit ID через GitHub Reviews API. Продуктовий власник
+не погоджує технічні операції кожної функції: він лише приймає продукт.
+
+Цей шлях використовує чинний formal approval gate без ослаблення його гарантій.
+До його активації потрібен **реальний**, не mock, доказ: API показує другого
+collaborator з write-доступом, реальний незалежний approval exact head,
+відмову для старого SHA/відкликаного review, і `review_route.proven=true` на
+прийнятому merged bootstrap PR. Створення зовнішньої ідентичності та ізольованого
+credential не можна чесно підмінити доступним зараз єдиним акаунтом. Наразі це
+зовнішня незадоволена передумова, а не реалізована/доведена інтеграція. Права чи
+акаунти автоматично не створюються; нікому не надсилаються запрошення.

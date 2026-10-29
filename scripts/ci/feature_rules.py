@@ -33,26 +33,53 @@ def plan(current):
     return result
 
 
+def review_route(number):
+    pr = pre_merge.api(f'repos/{REPO}/pulls/{number}')[0]
+    collaborators = [actor for page in pre_merge.api(f'repos/{REPO}/collaborators?per_page=100') for actor in page]
+    reviewers = sorted(actor['login'] for actor in collaborators
+                       if actor['type'] == 'User' and actor['login'] != pr['user']['login']
+                       and actor.get('permissions', {}).get('push'))
+    reviews = [review for page in pre_merge.api(f'repos/{REPO}/pulls/{number}/reviews?per_page=100') for review in page]
+    latest = {}
+    for review in sorted(reviews, key=lambda item: item['id']):
+        if review['state'] != 'COMMENTED':
+            latest[review['user']['login']] = review
+    approvals = [login for login, review in latest.items() if login in reviewers
+                 and review['state'] == 'APPROVED' and review['commit_id'] == pr['head']['sha']]
+    return {'pr': number, 'head_sha': pr['head']['sha'], 'author': pr['user']['login'],
+            'eligible_reviewers': reviewers, 'exact_head_approvals': sorted(approvals),
+            'proven': bool(approvals) and not any(r['state'] == 'CHANGES_REQUESTED' for r in latest.values()),
+            'merged': bool(pr.get('merged')),
+            'reason': 'Потрібні окрема GitHub User-ідентичність з write-доступом та її реальне APPROVED на exact head; '
+                      'коментар власника або synthetic fixture цього не доводить.'}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ruleset', type=int, default=25788875)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--review-pr', type=int, help='Реальний прийнятий bootstrap PR для перевірки reviewer capability')
     args = parser.parse_args()
     current = pre_merge.api(f'repos/{REPO}/rulesets/{args.ruleset}')[0]
     desired = plan(current)
+    route = review_route(args.review_pr) if args.review_pr else {'proven': False, 'reason': 'Потрібен --review-pr з реальним незалежним review'}
     if args.apply:
+        if not route['proven'] or not route.get('merged'):
+            parser.error('Ruleset не активовано: незалежний review route не доведено або bootstrap PR не merged. ' + route['reason'])
         # До merge bootstrap workflow ще не існує в master: не створювати deadlock.
         for path in ('.github/workflows/feature-acceptance.yml', 'scripts/ci/publish_feature_gate.py', 'scripts/ci/pre_merge.py'):
             pre_merge.api(f'repos/{REPO}/contents/{path}?ref=master')
         live = pre_merge.api(f'repos/{REPO}/rulesets/{args.ruleset}')[0]
         if live != current:
             raise ValueError('Ruleset змінився; повторіть планування')
+        if review_route(args.review_pr) != route:
+            raise ValueError('Незалежний reviewer route змінився; запис заблоковано')
         subprocess.run(['gh', 'api', '--method', 'PUT', f'repos/{REPO}/rulesets/{args.ruleset}', '--input', '-'],
                        input=json.dumps(desired), text=True, check=True, stdout=subprocess.DEVNULL)
         actual = pre_merge.api(f'repos/{REPO}/rulesets/{args.ruleset}')[0]
         if {key: actual[key] for key in desired} != desired:
             raise ValueError('Read-back ruleset не підтвердив запис')
-    print(json.dumps(desired, ensure_ascii=False, indent=2))
+    print(json.dumps({'ruleset': desired, 'review_route': route}, ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':

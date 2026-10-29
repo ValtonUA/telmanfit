@@ -32,3 +32,6 @@ jobs:
       - name: Test feature environment isolation and failure handling
         shell: cmd
         run: py -3 -m unittest discover -s tests/ci -p test_feature_env.py -v
+      - name: Execute feature launcher with native arguments and unchanged execution policy
+        shell: cmd
+        run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/feature-powershell-launch.ps1

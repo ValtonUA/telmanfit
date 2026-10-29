@@ -12,9 +12,10 @@ Pint, Unit/Feature на SQLite, обидві frontend збірки та client l
 посилання/roadmap і docs-impact **від PR base до точного head**, включно з
 видаленнями. Targeted залишає обов’язковий статус на кожному PR, але запускає PostgreSQL/browser і security набори лише за релевантним diff; документаційні, CI-only та нецільові зміни не піднімають їхнє важке оточення. Workflow має contents: read, без `pull_request_target` і secrets.
 
-`Local update PowerShell compatibility` запускає parser-only перевірку
+`Local update PowerShell compatibility` запускає перевірку синтаксису
 `scripts/local-update.ps1` та `scripts/feature.ps1` на Windows PowerShell 5.1 і PowerShell 7. Перевірка
-підтверджує UTF-8 BOM і синтаксис, але coordinator не виконується та CI не
+підтверджує UTF-8 BOM і синтаксис; окремий native launcher test виконує
+`feature.ps1` з observer Python, без зміни execution policy. Coordinator не виконується та CI не
 під’єднується до Docker чи бази даних. У тій самій матриці запускається suite
 `tests/local-update-coordinator.ps1`: він перевіряє coordinator helpers і Git/Docker
 CLI на synthetic Git repositories та read-only Docker CLI probes, не запускаючи
@@ -217,3 +218,7 @@ feature tooling, Docker runtime, залежностей або міграцій/
 отримує легкий scope PASS без Docker. Це цільова acceptance-перевірка двох
 disposable PG18 ревізій, не повернення Full CI. Admission preflight у цьому
 harness синтетичний; справжній review/CI/acceptance перевіряє live gate окремо.
+
+Reviewer capability перед ruleset activation перевіряється реальними API collaborators/reviews
+через `feature_rules.py --review-pr 117`; відсутня окрема ідентичність блокує PUT.
+Синтетичний unit PASS не є доказом доступного незалежного review.

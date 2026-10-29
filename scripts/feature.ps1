@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory)][string] $Feature,
-    [ValidateSet('start', 'update', 'list', 'remove', 'access', 'mail', 'logs')][string] $Action = 'start',
+    [ValidateSet('start', 'update', 'fresh', 'stop', 'resume', 'list', 'remove', 'access', 'mail', 'logs')][string] $Action = 'start',
     [string] $Project
 )
 $ErrorActionPreference = 'Stop'

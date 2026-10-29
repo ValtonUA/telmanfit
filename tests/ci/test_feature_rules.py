@@ -1,5 +1,6 @@
 """Серверний план не послаблює чинні правила; admission status fail-closed."""
 import copy
+import io
 import importlib.util
 from pathlib import Path
 import sys
@@ -49,6 +50,22 @@ class RulesTests(unittest.TestCase):
             data = current()
             data[key] = value
             with self.assertRaises(ValueError): feature_rules.plan(data)
+
+    def test_real_capability_needs_distinct_identity_and_exact_head_approval(self):
+        pr = {'user': {'login': 'owner'}, 'head': {'sha': 'a' * 40}, 'merged': True}
+        owner = {'login': 'owner', 'type': 'User', 'permissions': {'push': True}}
+        reviewer = {'login': 'reviewer', 'type': 'User', 'permissions': {'push': True}}
+        approval = {'id': 1, 'user': {'login': 'reviewer'}, 'state': 'APPROVED', 'commit_id': 'a' * 40}
+        for collaborators, reviews, expected in [([owner], [], False), ([owner, reviewer], [], False),
+                                                ([owner, reviewer], [approval], True),
+                                                ([owner, reviewer], [{**approval, 'commit_id': 'b' * 40}], False)]:
+            with patch.object(feature_rules.pre_merge, 'api', side_effect=[[pr], [collaborators], [reviews]]):
+                self.assertEqual(feature_rules.review_route(117)['proven'], expected)
+
+    def test_apply_never_writes_when_real_review_route_is_unavailable(self):
+        with patch.object(sys, 'argv', ['feature_rules.py', '--apply', '--review-pr', '117']), patch.object(feature_rules.pre_merge, 'api', return_value=[current()]), patch.object(feature_rules, 'review_route', return_value={'proven': False, 'merged': False, 'reason': 'only owner'}), patch.object(feature_rules.subprocess, 'run') as write, patch('sys.stderr', new_callable=io.StringIO):
+            with self.assertRaises(SystemExit): feature_rules.main()
+            write.assert_not_called()
 
     def test_publish_sets_pending_before_collect_and_failure_on_error(self):
         pr = {'number': 1, 'head': {'sha': 'a' * 40}}

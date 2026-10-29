@@ -1,0 +1,15 @@
+{
+  "repository": "ValtonUA/telmanfit",
+  "sources": [
+    "https://api.github.com/repos/ValtonUA/telmanfit/collaborators",
+    "https://api.github.com/repos/ValtonUA/telmanfit/pulls/117/reviews"
+  ],
+  "pr": 117,
+  "head_sha": "d2ddecd667bde5a5cd5c1f9bec26a51a19d6e964",
+  "author": "ValtonUA",
+  "eligible_reviewers": [],
+  "exact_head_approvals": [],
+  "proven": false,
+  "merged": false,
+  "reason": "Потрібні окрема GitHub User-ідентичність з write-доступом та її реальне APPROVED на exact head; коментар власника або synthetic fixture цього не доводить."
+}

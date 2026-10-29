@@ -83,29 +83,102 @@ class FeatureTests(unittest.TestCase):
                 with self.assertRaises(ValueError): manager.start('feature/example')
             self.assertEqual(list(Path(root).iterdir()), [])
 
-    def test_update_preserves_old_revision_and_failed_attempt_is_recorded(self):
-        proof = {'head_sha': 'a' * 40, 'base_sha': 'b' * 40, 'pr': 42}
-        with tempfile.TemporaryDirectory() as root:
-            manager = feature.Manager(Path(root), ['docker'])
-            calls = []
-            with patch.object(feature, 'prepared', return_value=proof), patch.object(feature, 'export_source'), patch.object(manager, 'assert_config'), patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli', side_effect=lambda record, *args: calls.append((record['project'], args))):
-                old = manager.start('feature/example')
-                new = manager.start('feature/example')
-                self.assertNotEqual(old['project'], new['project'])
-                self.assertEqual(len(manager.records('feature/example')), 2)
-                self.assertFalse(any('down' in args for _, args in calls))
-                with patch.object(manager, 'cli', side_effect=subprocess.CalledProcessError(1, ['docker'])):
-                    with self.assertRaises(subprocess.CalledProcessError): manager.start('feature/example')
-            self.assertEqual(sorted(r['status'] for r in manager.records('feature/example')), ['failed', 'ready', 'ready'])
+    def harness(self, root):
+        manager = feature.Manager(Path(root), ['docker'])
+        states, calls = {}, []
+        def cli(record, *args):
+            project = record['project']
+            calls.append((project, args))
+            if args[0] == 'ps':
+                return json.dumps([{'State': 'running'}] if states.get(project) else [])
+            if args[0] == 'up': states[project] = True
+            if args[0] == 'down': states[project] = False
+            return ''
+        return manager, states, calls, cli
 
-    def test_changed_review_after_build_blocks_start(self):
+    def test_repeat_update_reuses_data_and_fresh_parks_other_features(self):
         proof = {'head_sha': 'a' * 40, 'base_sha': 'b' * 40, 'pr': 42}
         with tempfile.TemporaryDirectory() as root:
-            manager = feature.Manager(Path(root), ['docker'])
-            with patch.object(feature, 'prepared', side_effect=[proof, ValueError('review dismissed')]), patch.object(feature, 'export_source'), patch.object(manager, 'assert_config'), patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli') as cli:
+            manager, states, calls, cli = self.harness(root)
+            with patch.object(feature, 'prepared', return_value=proof), patch.object(feature, 'export_source'), patch.object(manager, 'assert_config'), patch.object(manager, 'image_ids', return_value={'app': 'sha256:owned'}), patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli', side_effect=cli):
+                old = manager.start('feature/example')
+                marker = manager.path(old['project']) / 'synthetic-data'
+                marker.write_text('keep my input')
+                same = manager.start('feature/example')
+                self.assertEqual(same['project'], old['project'])
+                self.assertEqual(sum(args[0] == 'build' for _, args in calls), 1)
+                proof['head_sha'] = 'c' * 40
+                before = list(calls)
+                with self.assertRaisesRegex(ValueError, 'fresh'): manager.start('feature/example')
+                self.assertEqual(calls, before)  # Ніяких Docker змін до явного fresh.
+                new = manager.start('feature/other', fresh=True)
+                self.assertFalse(states[old['project']])
+                self.assertTrue(states[new['project']])
+                manager.resume(manager.records('feature/example')[0])
+                self.assertTrue(states[old['project']])
+                self.assertFalse(states[new['project']])
+                self.assertEqual(marker.read_text(), 'keep my input')
+                self.assertEqual(sum(states.values()), 1)
+                self.assertFalse(any('--volumes' in args or '--rmi' in args for _, args in calls))
+                manager.stop(old)
+                self.assertEqual(manager.runtime(old)['state'], 'stopped')
+                self.assertIn(old['project'] + '.localhost', manager.runtime(old)['url'])
+
+    def test_failed_fresh_restores_previous_preview_without_removing_data(self):
+        proof = {'head_sha': 'a' * 40, 'base_sha': 'b' * 40, 'pr': 42}
+        with tempfile.TemporaryDirectory() as root:
+            manager, states, calls, cli = self.harness(root)
+            with patch.object(feature, 'prepared', return_value=proof), patch.object(feature, 'export_source'), patch.object(manager, 'assert_config'), patch.object(manager, 'image_ids', return_value={'app': 'sha256:owned'}), patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli', side_effect=cli):
+                old = manager.start('feature/example')
+                def fail_build(record, *args):
+                    if args[0] == 'build': raise subprocess.CalledProcessError(1, ['docker'])
+                    return cli(record, *args)
+                with patch.object(manager, 'cli', side_effect=fail_build):
+                    with self.assertRaises(subprocess.CalledProcessError): manager.start('feature/example', fresh=True)
+                self.assertTrue(states[old['project']])
+                self.assertEqual(sum(states.values()), 1)
+                self.assertEqual(sorted(r['status'] for r in manager.records()), ['active', 'failed'])
+
+    def test_changed_review_after_build_never_starts_candidate(self):
+        proof = {'head_sha': 'a' * 40, 'base_sha': 'b' * 40, 'pr': 42}
+        with tempfile.TemporaryDirectory() as root:
+            manager, states, calls, cli = self.harness(root)
+            with patch.object(feature, 'prepared', side_effect=[proof, ValueError('review dismissed')]), patch.object(feature, 'export_source'), patch.object(manager, 'assert_config'), patch.object(manager, 'image_ids', return_value={'app': 'sha256:owned'}), patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli', side_effect=cli):
                 with self.assertRaises(ValueError): manager.start('feature/example')
-                self.assertEqual(cli.call_count, 1)  # Тільки build, жодного up/migrate.
-            self.assertEqual(manager.records('feature/example')[0]['status'], 'failed')
+                self.assertFalse(any(args[0] == 'up' for _, args in calls))
+                self.assertEqual(manager.records()[0]['status'], 'failed')
+
+    def test_failed_resume_is_retryable_and_restores_other_active_preview(self):
+        proof = {'head_sha': 'a' * 40, 'base_sha': 'b' * 40, 'pr': 42}
+        with tempfile.TemporaryDirectory() as root:
+            manager, states, calls, cli = self.harness(root)
+            with patch.object(feature, 'prepared', return_value=proof), patch.object(feature, 'export_source'), patch.object(manager, 'assert_config'), patch.object(manager, 'image_ids', return_value={'app': 'sha256:owned'}), patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli', side_effect=cli):
+                old = manager.start('feature/old')
+                current = manager.start('feature/current')
+                old = manager.records('feature/old')[0]
+                def fail_up(record, *args):
+                    if record['project'] == old['project'] and args[0] == 'up':
+                        raise subprocess.CalledProcessError(1, ['synthetic-port-collision'])
+                    return cli(record, *args)
+                with patch.object(manager, 'cli', side_effect=fail_up):
+                    with self.assertRaises(subprocess.CalledProcessError): manager.resume(old)
+                self.assertTrue(states[current['project']])
+                self.assertEqual(manager.records('feature/old')[0]['status'], 'stopped')
+                manager.resume(manager.records('feature/old')[0])
+                self.assertTrue(states[old['project']])
+                self.assertFalse(states[current['project']])
+
+    def test_modified_image_and_unknown_peer_block_before_stopping(self):
+        with tempfile.TemporaryDirectory() as root:
+            manager = feature.Manager(Path(root), ['docker'])
+            record = {'project': PROJECT, 'status': 'stopped', 'images': {'app': 'old'}}
+            with patch.object(manager, 'assert_config'), patch.object(manager, 'image_ids', return_value={'app': 'unreviewed'}), patch.object(manager, 'cli') as cli:
+                with self.assertRaisesRegex(ValueError, 'Immutable'): manager.resume(record)
+                cli.assert_not_called()
+            target = {**record, 'project': PROJECT.replace('a' * 24, 'b' * 24)}
+            with patch.object(manager, 'records', return_value=[record]), patch.object(manager, 'runtime', side_effect=ValueError('ownership')), patch.object(manager, 'cli') as cli:
+                with self.assertRaises(ValueError): manager.park_previews(target)
+                cli.assert_not_called()
 
     def test_tampered_compose_blocks_cleanup(self):
         with tempfile.TemporaryDirectory() as root:

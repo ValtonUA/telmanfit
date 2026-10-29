@@ -345,11 +345,15 @@ selectors, кількостей/UOM/грамів і порядку. Двоета
 
 Додано `scripts/feature.ps1` / `scripts/feature_env.py`: окремий Compose project
 на кожну ревізію, власні images/volumes/network, synthetic PG18, cookie hostname
-і loopback port. Оновлення зберігає попередній stack і створює нову БД; stable
+і loopback port. Повторне update того самого SHA відновлює дані; новий SHA вимагає явного fresh.
+Stop/resume керують одним активним preview, попередні volumes/images зберігаються; stable
 upgrade allowlist/SQL20 не змінено. Live pre-merge gate вимагає feature-гілку,
 незалежний review exact head, продуктове приймання exact head/base і required CI,
 включно обох Windows compatibility jobs та цільового Docker lifecycle check. Чинний серверний ruleset прочитано через Rulesets API: PR, strict Fast/Docs/Targeted,
 без bypass. Новий admission workflow і план розширення правил підготовлено;
-активація можлива лише після прийнятого bootstrap merge. Classic protection API
+активація можлива лише після прийнятого bootstrap merge та реального незалежного approval.
+Live API підтвердив лише акаунт автора PR; reviewer route поки не доведено й
+activation guard блокує PUT. Конкретний шлях через ізольовану machine-user
+ідентичність запропоновано в runtime-контракті, але не видано за підключений сервіс. Classic protection API
 повертає 403; Rulesets write до bootstrap не перевіряється.
 Контракт і спосіб перевірки — [feature-environments.md](feature-environments.md).

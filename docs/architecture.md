@@ -271,5 +271,6 @@ cd client && npm run build       # збірка SPA у public/app
 
 Для циклу `feature/* → master` Windows launcher створює окремий Compose project
 на кожну перевірену ревізію: власні images/volumes/network, synthetic PG18 та
-loopback web. Оновлення створює нову БД; стабільний stack не підключається.
+loopback web. Повторний запуск того самого SHA зберігає БД; новий SHA потребує явного fresh.
+Одне preview активне, інші зупинені зі збереженням volumes/images; стабільний stack не підключається.
 Runtime-контракт, міграційні межі та cleanup — [feature-environments.md](feature-environments.md).

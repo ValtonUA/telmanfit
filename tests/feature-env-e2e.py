@@ -83,7 +83,7 @@ def main():
         snapshot = Path(directory) / 'fixture'
         source_fixture(proof['head_sha'], snapshot)
         try:
-            with patch.object(feature, 'prepared', return_value=proof), patch.object(feature, 'export_source', side_effect=lambda sha, destination: shutil.copytree(snapshot, destination)):
+            with patch.object(feature, 'prepared', return_value=proof) as admission, patch.object(feature, 'export_source', side_effect=lambda sha, destination: shutil.copytree(snapshot, destination)):
                 print('START: clean PG18/bootstrap/health', flush=True)
                 first = manager.start('feature/synthetic-e2e')
                 projects.add(first['project'])
@@ -100,21 +100,51 @@ def main():
                     assert b'type="email"' in response.read()
                 print('PASS: HTTP login, isolated session cookie and invitation origin', flush=True)
                 browser_state = browser_probe(first, None, [first])
-                manager.cli(first, 'down')  # Зберегти volumes/images; звільнити vfs container rootfs.
-                print('UPDATE: new revision; retain first volumes/images (sequential cloud vfs test)', flush=True)
-                second = manager.start('feature/synthetic-e2e')
+                # Синтетичний введений стан і файл лише у підтвердженому disposable stack.
+                identity = json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/upgrade-check.php'))['identity']
+                assert identity['postgres_major'] == 18 and not identity['privileged']
+                manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "require 'docker/local/bootstrap.php'; Illuminate\\Support\\Facades\\DB::table('users')->where('email', 'owner@example.invalid')->update(['first_name' => 'PreviewCanary']); file_put_contents('storage/app/private/preview-canary', 'preserved');")
+                repeated = manager.start('feature/synthetic-e2e')
+                assert repeated['project'] == first['project']
+                admission.return_value = {**proof, 'head_sha': 'c' * 40}
+                try:
+                    manager.start('feature/synthetic-e2e')
+                    raise AssertionError('New SHA silently reset test data')
+                except ValueError as error:
+                    assert 'fresh' in str(error)
+                assert manager.runtime(first)['state'] == 'active'
+                print('PASS: repeated update reuses revision; new SHA requires explicit fresh', flush=True)
+                second = manager.start('feature/synthetic-e2e', fresh=True)
                 projects.add(second['project'])
                 assert first['project'] != second['project']
-                assert len(manager.records('feature/synthetic-e2e')) == 2
+                assert manager.runtime(first)['state'] == 'stopped'
+                assert manager.runtime(second)['state'] == 'active'
                 assert access['password'] != json.loads(manager.cli(second, 'exec', '-T', 'app', 'php', '-r', "echo file_get_contents('/tmp/telmanfit-auth4-compose/access.json');"))['password']
-                print('PASS: update preserves original registry/volumes/images; secrets independent', flush=True)
+                print('PASS: public fresh parks old runtime without removing volumes/images; only one preview active', flush=True)
                 browser_state = browser_probe(second, browser_state, [first, second])
-                # У cloud vfs 32GB лише один runtime одночасно; volumes/images не видаляються.
-                manager.cli(second, 'down')
-                manager.cli(first, 'up', '--detach', '--wait', '--wait-timeout', '360', '--no-build')
-                manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/health.php')
+                manager.resume(next(r for r in manager.records() if r['project'] == first['project']))
+                assert manager.runtime(second)['state'] == 'stopped'
+                manager.stop(first)
+                assert manager.runtime(first)['state'] == 'stopped'
+                manager.resume(first)
+                assert manager.runtime(first)['state'] == 'active'
                 assert access == json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "echo file_get_contents('/tmp/telmanfit-auth4-compose/access.json');"))
-                print('PASS: original revision resumes with preserved DB/secrets', flush=True)
+                state = manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "require 'docker/local/bootstrap.php'; echo Illuminate\\Support\\Facades\\DB::table('users')->where('email', 'owner@example.invalid')->value('first_name').'|'.file_get_contents('storage/app/private/preview-canary');")
+                assert state == 'PreviewCanary|preserved'
+                print('PASS: public stop/resume preserves URL, DB input, storage, passwords and epoch', flush=True)
+                original_cli = manager.cli
+                def failed_build(record, *args):
+                    if args[0] == 'build': raise subprocess.CalledProcessError(1, ['synthetic-failed-build'])
+                    return original_cli(record, *args)
+                with patch.dict(os.environ, {'CODEX_PROXY_CERT': ''}), patch.object(manager, 'cli', side_effect=failed_build):
+                    try:
+                        manager.start('feature/synthetic-e2e', fresh=True)
+                        raise AssertionError('Failed build unexpectedly succeeded')
+                    except subprocess.CalledProcessError:
+                        pass
+                assert manager.runtime(first)['state'] == 'active'
+                assert manager.runtime(second)['state'] == 'stopped'
+                print('PASS: failed fresh restores prior active preview; failed candidate remains stopped', flush=True)
                 manager.cli(first, 'stop', 'worker', 'scheduler')
                 before = json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/upgrade-check.php'))
                 # Pending migration навмисно лише у disposable контейнері, не source/робочій БД.
@@ -129,7 +159,7 @@ def main():
                 assert before['migrations']['ran'] == after['migrations']['ran']
                 print('PASS: nonempty guard rejects initial migrations; all DB fingerprints/schema/history unchanged', flush=True)
                 manager.remove(first)
-                manager.cli(second, 'up', '--detach', '--wait', '--wait-timeout', '360', '--no-build')
+                manager.resume(next(r for r in manager.records() if r['project'] == second['project']))
                 manager.cli(second, 'exec', '-T', 'app', 'php', 'docker/local/health.php')
                 print('PASS: cleanup of first does not affect second', flush=True)
         except BaseException:
