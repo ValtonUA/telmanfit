@@ -1,4 +1,5 @@
 name: Documentation health
+run-name: TelmanFit CI ${{ github.event.pull_request.head.sha }} ${{ github.event.pull_request.base.sha }}
 
 on:
   pull_request:
@@ -23,6 +24,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Require feature branch for master PR
+        if: github.event_name == 'pull_request'
+        env:
+          FEATURE_BRANCH: ${{ github.head_ref }}
+        run: python3 -c 'import os; assert os.environ["FEATURE_BRANCH"].startswith("feature/"), "Only feature/* may target master"'
       - name: Unit-test documentation guard
         run: python3 -m unittest discover -s tests/docs -p 'test_*.py' -v
       - name: CI gate regression tests

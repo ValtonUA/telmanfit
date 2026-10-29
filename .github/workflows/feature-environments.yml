@@ -1,0 +1,41 @@
+name: Feature environment acceptance
+run-name: TelmanFit CI ${{ github.event.pull_request.head.sha }} ${{ github.event.pull_request.base.sha }}
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-env-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: Feature environment checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Regression-test feature isolation
+        run: python3 -m unittest discover -s tests/ci -p 'test_feature*.py' -v
+      - name: Accept isolated Docker lifecycle when runtime tooling changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import os, subprocess, sys
+          from scripts.feature_env import needs_e2e
+          paths = subprocess.check_output(['git', 'diff', '--name-only', '--no-renames', os.environ['BASE_SHA'], os.environ['HEAD_SHA']], text=True).splitlines()
+          if needs_e2e(paths):
+              subprocess.run([sys.executable, 'tests/feature-env-e2e.py'], check=True)
+          else:
+              print('PASS: diff does not change feature runtime; no Docker provisioning')
+          PY

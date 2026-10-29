@@ -37,11 +37,12 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 
 ## 4. Заборонено без прямого дозволу користувача
 
-**Обсяг дозволу:** явно погоджене завдання на реалізацію/PR дозволяє потрібні **звичайні** зміни коду, тестів, документації, створення гілки, `git add/commit/push` у власній гілці та Draft PR. Не вимагай окремого дозволу на кожну безпечну команду. Це **не** дозвіл на merge, схему поза scope, робочі дані чи destructive Git.
+**Обсяг дозволу:** явно погоджене завдання на реалізацію/PR дозволяє потрібні **звичайні** зміни коду, тестів, документації, створення гілки, `git add/commit/push` у власній гілці та Draft PR. Не вимагай окремого дозволу на кожну безпечну команду. Merge дозволений лише після продуктового приймання точних head/base власником і успішного фінального gate за [feature-environments.md](docs/feature-environments.md); додаткове погодження технічної операції не потрібне. Це не дозвіл на схему поза scope, робочі дані чи destructive Git.
 
 - Не вигадуй нові таблиці, поля, enum, довідникові значення, бізнес-правила, залежності або зміну архітектури. Погоджені зміни схеми документуй синхронно в SQL/DBML/Entity Catalog/BR і тестах; нові залежності — лише за погодженням.
-- **Завжди заборонено без окремого дозволу:** merge/auto-merge, force-push, rebase/reset/clean зі втратою змін, видалення чужих файлів, історичних даних чи каталогів, очищення `storage/`.
+- **Завжди заборонено без окремого дозволу:** auto-merge, force-push, rebase/reset/clean зі втратою змін, видалення чужих файлів, історичних даних чи каталогів, очищення `storage/`.
 - **Реальні середовища:** не запускати `migrate*`, `db:wipe`, `db:seed`, ручні `UPDATE/DELETE/TRUNCATE/DROP/ALTER` і масові backfill без окремо погодженого плану, preflight, backup/rollback. Не брати production/Telmanfit_dev, секрети, Telegram-токени або персональні дані для тестів.
+- **Feature-середовища:** дозволені автономні initial migrations перевіреної та незалежно reviewed feature у новому synthetic PG18 stack за [feature-environments.md](docs/feature-environments.md); видалення власних disposable ресурсів manager також дозволене. Одне preview активне; stop/resume зберігають дані, новий SHA потребує явного fresh без populated DB upgrade. Pending upgrade стабільної БД (включно SQL20) не обходити.
 - **Тестова БД:** дозволені погоджені в scope міграції, SQL й негативні перевірки **лише у новій ізольованій disposable PostgreSQL 18** із синтетичними даними, без зовнішніх портів, із cleanup. Не переносити це право на реальні БД.
 - Не вмикай feature flags або production auth/Telegram/бізнес-модулі без окремого go/no-go.
 - Не встановлюй Laravel Boost: `laravel/boost` навмисно не використовується.
@@ -105,8 +106,8 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 
 ## 12. Git та службові команди
 
-- Перед змінами — `git status/diff/log` і актуальний `master`; працюй у власній гілці. `git add/commit/push` для погодженого PR дозволені без мікропогодження.
-- Не перезаписуй чужі зміни; безпечне оновлення гілки без force-push. Merge, rebase/reset із ризиком втрат, видалення і зміни production — лише після відповідного дозволу.
+- Перед змінами — `git status/diff/log` і актуальний `master`; працюй у власній `feature/*` від актуального `master`, без постійної `dev`. Одна функція — один PR; не переносити інші неприйняті feature. `git add/commit/push` для погодженого PR дозволені без мікропогодження.
+- Не перезаписуй чужі зміни; безпечне оновлення гілки без force-push. Merge — за продуктовим прийманням та фінальним gate; rebase/reset із ризиком втрат, видалення чужого й зміни production — лише після відповідного дозволу.
 - Конфлікти або неможливість безпечної синхронізації — повідом як blocker, не обходь захист.
 - Локальні dev/build/test-команди допустимі в межах завдання; реальні БД та секрети залишаються забороненими за §4.
 
@@ -118,7 +119,7 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 ## 14. Definition of Done
 
 Реалізація в погодженому scope, інваріанти захищені кодом і БД, тести/форматування пройдено, чинна поведінка документована, незавершене явно позначено, звіт за §13 надано.
-Створення Draft PR **не** дозволяє merge; якщо CI incomplete — робота може бути готовою до review, але не до merge.
+Створення Draft PR не замінює незалежне review та продуктове приймання; якщо CI incomplete — робота може бути готовою до review, але не до merge.
 
 ## 15. Карта документації
 
@@ -141,6 +142,15 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 
 `Documentation health` та `scripts/docs_guard.py` перевіряють посилання, roadmap і PR-base docs-impact; це **не гарантія семантичної правильності тексту**. Не обходити guard косметичними змінами.
 
-**Merge-gate для агента:** лише після **окремого дозволу на merge** і предметного review виконати `python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit` із довіреного checkout. Потрібні Fast PR checks, Docs links/roadmap/PR impact і Targeted PR checks — `completed/success` на **актуальному head SHA**, master є предком head, немає auto-merge. Failed/cancelled/pending/skipped/старі SHA чи attempts блокують merge. Full CI не запускається й не є вимогою для жодного diff, label чи критичного шляху. Після зміни head або base повторити три required checks і gate. Безпосередньо перед merge повторити gate й використовувати `--match-head-commit <SHA>`. Деталі — [ci.md](docs/ci.md).
+**Merge-gate для агента:** лише після **продуктового приймання власником exact head/base** і незалежного review на exact head виконати `python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit` із довіреного checkout. Потрібні Fast PR checks, Docs links/roadmap/PR impact, Targeted PR checks, обидві Windows PowerShell compatibility jobs та Feature environment checks — `completed/success` на **актуальному head SHA**, master є предком head, немає auto-merge. Failed/cancelled/pending/skipped/старі SHA чи attempts блокують merge. Full CI не запускається й не є вимогою для жодного diff, label чи критичного шляху. Після зміни head або base повторити всі required checks, review, продуктове приймання і gate. Безпосередньо перед merge повторити gate й використовувати `--match-head-commit <SHA>`. Деталі — [ci.md](docs/ci.md).
 
-Серверний GitHub branch protection може бути недоступний: тоді це обов'язковий **агентський** захист, який технічно може обійти людина/admin. Не дозволяй auto-merge та не видавай `eligible: true` за право злити PR без рішення власника.
+Перед ruleset activation перевір реальний reviewer route через `feature_rules.py --review-pr <PR>`; synthetic PASS або довільний коментар автора не доводять незалежне схвалення; потрібен реальний structured report окремої review-сесії за протоколом або formal independent approval. Чинний серверний ruleset доповнюється `Feature acceptance` після bootstrap за [feature-environments.md](docs/feature-environments.md). Якщо серверний rollout недоступний або ще не активований, тоді це обов'язковий **агентський** захист, який технічно може обійти людина/admin. Не дозволяй auto-merge та не видавай `eligible: true` за право злити PR без продуктового приймання власником. Детальний цикл і Windows launcher — [feature-environments.md](docs/feature-environments.md).
+
+### Окрема review-сесія
+
+Для незалежного review запускай окремого read-only reviewer-агента після freeze коду,
+без авторського діалогу: передай exact head/base, критерії та diff. Reviewer не змінює
+код і сам формує findings/limitations/verdict. Автор виправляє зауваження; новий head
+потребує нової перевірки. Інтегратор публікує справжній звіт окремої сесії як
+`COMMENTED` review за протоколом у feature-environments; не вигадує session/report.
+Спільний GitHub акаунт — процесна довіра до інтегратора, не криптографічна незалежність.

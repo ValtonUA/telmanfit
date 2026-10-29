@@ -1,27 +1,30 @@
 # CI: обов’язкові PR-перевірки без Full CI
 
-Кожен PR до `master` виконує три обов’язкові статуси: **Fast PR checks**,
-**Docs links, roadmap and PR impact** і **Targeted PR checks**. Full CI workflow
+Кожен PR до `master` надходить лише з `feature/*` і виконує обов’язкові статуси: **Fast PR checks**,
+**Docs links, roadmap and PR impact** і **Targeted PR checks**, а також обидві jobs **Local update PowerShell compatibility** і **Feature environment checks**. Full CI workflow
 та його ручний тригер вилучені. Жоден PR, зміна критичних файлів, label, push,
-schedule чи ручний запуск не запускає Full.
+schedule чи ручний запуск не запускає Full. Після bootstrap нового процесу ruleset
+додатково вимагає commit status **Feature acceptance**; він не входить у preview
+CI prerequisites і не створює циклу перед продуктовим прийманням.
 
 Fast перевіряє runtime, Composer lock/platform/audit, PHP syntax, Compose config,
 Pint, Unit/Feature на SQLite, обидві frontend збірки та client lint. Docs перевіряє
 посилання/roadmap і docs-impact **від PR base до точного head**, включно з
 видаленнями. Targeted залишає обов’язковий статус на кожному PR, але запускає PostgreSQL/browser і security набори лише за релевантним diff; документаційні, CI-only та нецільові зміни не піднімають їхнє важке оточення. Workflow має contents: read, без `pull_request_target` і secrets.
 
-`Local update PowerShell compatibility` запускає parser-only перевірку
-`scripts/local-update.ps1` на Windows PowerShell 5.1 і PowerShell 7. Перевірка
-підтверджує UTF-8 BOM і синтаксис, але coordinator не виконується та CI не
+`Local update PowerShell compatibility` запускає перевірку синтаксису
+`scripts/local-update.ps1` та `scripts/feature.ps1` на Windows PowerShell 5.1 і PowerShell 7. Перевірка
+підтверджує UTF-8 BOM і синтаксис; окремий native launcher test виконує
+`feature.ps1` з observer Python, без зміни execution policy. Coordinator не виконується та CI не
 під’єднується до Docker чи бази даних. У тій самій матриці запускається suite
 `tests/local-update-coordinator.ps1`: він перевіряє coordinator helpers і Git/Docker
 CLI на synthetic Git repositories та read-only Docker CLI probes, не запускаючи
 upgrade coordinator, Docker services або базу даних.
 
-`scripts/ci/pre_merge.py` перевіряє лише Fast, Docs і Targeted на точному PR head,
+`scripts/ci/pre_merge.py` перевіряє Fast, Docs, Targeted, обидві Windows compatibility jobs та Feature environment checks на точному PR head,
 поточну ancestry до master, найновіший run/attempt, усі jobs/steps, PR event і
 відсутність auto-merge. Він не читає змінені файли чи labels для вимоги Full.
-Після зміни head/base усі три required checks мають пройти на новому стані.
+Після зміни head/base всі required checks мають пройти на новому стані. Звіт окремої read-only review-сесії на exact head/base (або незалежний GitHub `APPROVED` на exact head) та продуктове приймання власником exact head/base також обов’язкові; `--purpose preview` перевіряє все, крім продуктового приймання/Draft. Формат рішення та Windows launcher — [feature-environments.md](feature-environments.md).
 
 PostgreSQL і browser регресії запускай локальними runner-скриптами зі своїми
 ізольованими disposable базами й guards. Їхній локальний PASS — це локальний доказ,
@@ -142,7 +145,7 @@ PG-кластери залишаються окремими для day, assignme
 Деталі вимірювань і відхилені варіанти — [CI-COST-2](evidence/ci-cost-2/report.md).
 `npm ci --ignore-scripts` замінює mutable install, Composer install не виконує
 plugins/scripts, а package discovery та потрібний Stage1 `filament:upgrade` запускаються явно. Actions pinned до повних
-commit SHA перевірених upstream tags. Усі workflows мають contents: read,
+commit SHA перевірених upstream tags. Тестові workflows мають contents: read,
 checkout persist-credentials: false; secrets не успадковуються, pull_request_target
 не використовується. GH_TOKEN лише read token для pinned AUTH-1 public blobs.
 Synthetic PG/docker створюються з чинними isolation guards і власним cleanup;
@@ -180,7 +183,7 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 
 ## PR gate без Full CI
 
-Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Selector перевіряє checkout на точному head і бере об’єднання покриття для кожного зміненого або видаленого шляху; перейменування розглядаються як видалення та додавання. Невідомі критичні app/resources/config/routes/client/tests, кореневі конфігурації, залежності, shared auth та schema розширюють вибір до всіх наборів; широкий вибір включає окремий SQL schema suite. Документаційні та CI-only зміни залишаються дешевими, а CI unit regressions проходять у Documentation health.
+Кожен PR додатково до обох Windows compatibility jobs виконує три технічні статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Selector перевіряє checkout на точному head і бере об’єднання покриття для кожного зміненого або видаленого шляху; перейменування розглядаються як видалення та додавання. Невідомі критичні app/resources/config/routes/client/tests, кореневі конфігурації, залежності, shared auth та schema розширюють вибір до всіх наборів; широкий вибір включає окремий SQL schema suite. Документаційні та CI-only зміни залишаються дешевими, а CI unit regressions проходять у Documentation health.
 
 | Зміна | Вибір та реальне покриття |
 |---|---|
@@ -195,3 +198,34 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 `recipe` збережено як широкий fallback для спільних залежностей; точні day та assignment набори виконують власні сценарії на незалежних кластерах. Докази й обмеження порівняння — у [CI-SLICE-1](evidence/ci-slice-1/report.md). Кожен вибраний worker має завершитись успішно; відсутні, пропущені або невдалі набори блокують gate.
 
 Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.
+
+
+## Серверний admission status
+
+`feature-acceptance.yml` має `statuses: write` лише для publication commit status
+і read-доступ до PR/comments/contents. Він checkout-ить trusted `master`, не PR
+та не artifacts. Admission обчислюється `publish_feature_gate.py` через той самий
+live pre-merge evaluator, із pending перед перевіркою та failure при API error.
+Події CI completion/review/comments переоцінюють відкриті feature PR; окрема
+серіалізована queue не виконує код PR. Нові правила сервера встановлюються лише
+після прийнятого bootstrap merge через `feature_rules.py --apply` із read-back.
+Деталі, права й відмінність підготовленого плану від активації —
+[feature-environments.md](feature-environments.md#серверний-захист-і-встановлення-цього-процесу).
+
+`Feature environment checks` завжди залишає required status. Регресії manager
+виконуються для кожного PR; cold Docker lifecycle запускається лише при зміні
+feature tooling, Docker runtime, залежностей або міграцій/SQL. Решта diff
+отримує легкий scope PASS без Docker. Це цільова acceptance-перевірка двох
+disposable PG18 ревізій, не повернення Full CI. Admission preflight у цьому
+harness синтетичний; справжній review/CI/acceptance перевіряє live gate окремо.
+
+Reviewer evidence перед ruleset activation перевіряється реальним Reviews API
+через `feature_rules.py --review-pr 117`; відсутній exact-head/base session report
+або independent approval блокує PUT. Синтетичний unit PASS не є live доказом.
+
+Кожен required PR workflow записує початкові event head/base у `run-name`
+`TelmanFit CI <head> <base>`. Gate перевіряє API `display_title` останнього run:
+відсутній або старий head/base блокує результат без fallback на давній зелений run.
+`run.pull_requests[].base/head` не використовується як історичний proof: API
+повертає live PR refs, які можуть змінитися після запуску. Rerun зі старим event
+не оновлює пару; після зміни base потрібен новий PR event/run, а не старий attempt.

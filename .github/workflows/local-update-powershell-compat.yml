@@ -1,4 +1,5 @@
 name: Local update PowerShell compatibility
+run-name: TelmanFit CI ${{ github.event.pull_request.head.sha }} ${{ github.event.pull_request.base.sha }}
 
 on:
   pull_request:
@@ -29,3 +30,12 @@ jobs:
       - name: Test coordinator and native CLI handling
         shell: cmd
         run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/local-update-coordinator.ps1
+      - name: Test feature environment isolation and failure handling
+        shell: cmd
+        run: py -3 -m unittest discover -s tests/ci -p test_feature_env.py -v
+      - name: Execute feature launcher with native arguments and unchanged execution policy
+        shell: cmd
+        run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/feature-powershell-launch.ps1
+      - name: Bootstrap exact SHA with real native Git in isolated synthetic paths
+        shell: cmd
+        run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/feature-bootstrap.ps1
