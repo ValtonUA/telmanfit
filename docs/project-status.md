@@ -332,6 +332,8 @@ selectors, кількостей/UOM/грамів і порядку. Двоета
 
 ## UX-1 — клієнтська навігація
 
+Виправлення UX-1 зберігає перевірені клієнтські дані в пам’яті під час фонової повторної перевірки. Кеш обмежений поточною сесією та очищується при виході, завершенні сесії й зміні користувача; серверна авторизація залишається обов’язковою. Деталі — [клієнтський контракт](client-app.md).
+
 Реалізовано декларативний React Router у `/app`: внутрішні `Link`, постійна оболонка, query-навігація раціону/покупок/приготування та невідомий маршрут. Рання системна тема завантажується окремим CSS із чинною CSP; session/CSRF API та серверні ACL незмінні. Cleanup приватних запитів, таймерів і Wake Lock зберігається при виході з екрана. Докази: `tests/browser/recipe-client.py` (незмінні DOM-вузли, відсутність document navigation/повторної CSRF-ініціалізації, history/query, 1440/390/320 light/dark); AUTH4/AUTH5 — ізольована PG18. Локально PASS: client lint/build, root Vite build, 125 Unit/Feature, 167 AUTH4 та 19 AUTH5, auth concurrency, реальний Chromium 154. Security-gate виявив нову CVE-2026-45070: чинний `symfony/mime` оновлено до v8.1.10 без нових пакетів/constraints; audit має пройти Fast CI. Додатково підтверджено SPA cleanup Wake Lock і відновлення cooking таймера через Back, темний login, unknown route та session expiry. [Докази й review](evidence/ux1-navigation/report.md), [PR #110](https://github.com/ValtonUA/telmanfit/pull/110); required CI/merge перевіряються окремо на фінальному SHA.
 
 ## UX-2 — адміністративна SPA-навігація
