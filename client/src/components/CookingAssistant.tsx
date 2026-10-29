@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useClientNavigate } from '../useClientNavigate'
 import { ApiError } from '../api'
 import { getCookingChoices, getCookingSession } from '../cookingApi'
+import { forgetPrivateData, privateData, rememberPrivateData } from '../privateData'
 import type { CookingChoices, CookingDetail, CookingStage } from '../cookingApi'
 import './CookingAssistant.css'
 
@@ -18,10 +19,11 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   const navigate = useClientNavigate()
   const week = Number(new URLSearchParams(window.location.search).get('week'))
   const weekValid = Number.isInteger(week) && week >= 1 && week <= 4681
-  const [choices, setChoices] = useState<CookingChoices>()
+  const choicesKey = `cooking:choices:${week}`
+  const [choices, setChoices] = useState<CookingChoices | undefined>(() => privateData(choicesKey))
   const [detail, setDetail] = useState<CookingDetail>()
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(weekValid)
+  const [busy, setBusy] = useState(() => weekValid && !privateData(choicesKey))
   const [stageIndex, setStageIndex] = useState(0)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [timers, setTimers] = useState<Record<string, TimerState>>({})
@@ -44,15 +46,19 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
   const activeTimers = useMemo(() => Object.entries(timers).filter(([, timer]) => timer.running), [timers])
   const openSession = useCallback(async (version: string, session: string, mode: number) => {
     const request = ++sessionGeneration.current
+    const key = `cooking:detail:${version}:${session}:${week}:${mode}`
+    const cached = privateData<CookingDetail>(key)
     // Повторне відкриття того самого ключа спершу відновлює progress, потім зберігає його.
     setHydratedScope(undefined)
-    setBusy(true); setError('')
+    if (cached) setDetail(cached)
+    else setBusy(true)
+    setError('')
     navigate(`/app/meal-plan/cooking?week=${week}&version=${encodeURIComponent(version)}&session=${encodeURIComponent(session)}&mode=${mode}`, true)
     try {
       const result = await getCookingSession(version, session, week, mode)
-      if (request === sessionGeneration.current) setDetail(result)
+      if (request === sessionGeneration.current) { rememberPrivateData(key, result); setDetail(result) }
     }
-    catch (failure) { if (request !== sessionGeneration.current) return; if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Ця кухонна сесія більше недоступна. Оновіть список і виберіть актуальну опубліковану версію.') }
+    catch (failure) { if (request !== sessionGeneration.current) return; if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else { if (failure instanceof ApiError && [403, 404].includes(failure.status)) { forgetPrivateData('cooking:'); setDetail(undefined); setChoices(undefined) } if (!cached || failure instanceof ApiError && [403, 404].includes(failure.status)) setError('Ця кухонна сесія більше недоступна. Оновіть список і виберіть актуальну опубліковану версію.') } }
     finally { if (request === sessionGeneration.current) setBusy(false) }
   }, [week, onExit, navigate])
 
@@ -60,8 +66,11 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     let active = true
     if (!weekValid || hasDetail) return
     const load = () => {
-      getCookingChoices(week).then(value => { if (active) setChoices(value) }).catch(failure => {
-        if (active) { if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else setError('Помічник приготування зараз недоступний. Оновіть сторінку або зверніться до тренера.') }
+      getCookingChoices(week).then(value => { if (active) {
+        rememberPrivateData(choicesKey, value)
+        setChoices(current => current && JSON.stringify(current) === JSON.stringify(value) ? current : value)
+      } }).catch(failure => {
+        if (active) { if (failure instanceof ApiError && failure.status === 401) onExit('Сесія завершилася. Увійдіть знову.'); else { if (failure instanceof ApiError && [403, 404].includes(failure.status)) { forgetPrivateData('cooking:'); setChoices(undefined); setDetail(undefined) } if (!privateData(choicesKey)) setError('Помічник приготування зараз недоступний. Оновіть сторінку або зверніться до тренера.') } }
       }).finally(() => { if (active) setBusy(false) })
     }
     const revalidate = () => { if (document.visibilityState === 'visible') load() }
@@ -70,7 +79,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
     document.addEventListener('visibilitychange', revalidate)
     const interval = window.setInterval(revalidate, 60000)
     return () => { active = false; window.clearInterval(interval); window.removeEventListener('focus', revalidate); document.removeEventListener('visibilitychange', revalidate) }
-  }, [week, weekValid, hasDetail, onExit])
+  }, [week, weekValid, hasDetail, onExit, choicesKey])
   useEffect(() => {
     if (!choices || detail || autoOpened.current) return
     const params = new URLSearchParams(window.location.search)
@@ -212,6 +221,7 @@ export function CookingAssistant({ onExit }: { onExit: (message: string) => void
       } catch (failure) {
         if (!active) return
         if (failure instanceof ApiError && failure.status === 401) { onExit('Сесія завершилася. Увійдіть знову.'); return }
+        if (failure instanceof ApiError && [403, 404].includes(failure.status)) forgetPrivateData('cooking:')
         navigate(`/app/meal-plan/cooking?week=${week}`, true)
         removeProgress(storageKey(detail.progress_scope))
         setDetail(undefined); setStageIndex(0); setTimers({});

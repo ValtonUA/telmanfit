@@ -27,7 +27,7 @@ class ClientMealPlanDaysTest extends ClientMealPlanTest
     public function test_real_published_menu_order_model_i_and_bounded_queries(int $length, bool $personal): void
     {
         $this->travelTo(now()->setDate(2026, 10, 28)->setTime(12, 0));
-        DB::table('sessions')->where('id', $this->sessionId)->update(['last_activity' => now()->timestamp]);
+        DB::table('sessions')->where('id', $this->sessionId)->update(['last_activity' => time()]);
         $f = $this->menuVersion($length, owner: $personal ? $this->client : null);
         $this->assignment($f['version']);
         $this->read((int) DB::table('client_meal_plan_assignments')->where('client_id', $this->client)->value('id'));
@@ -70,7 +70,7 @@ class ClientMealPlanDaysTest extends ClientMealPlanTest
     public function test_wednesday_start_and_end_date_never_shift_or_repeat_menu(): void
     {
         $this->travelTo(now()->setDate(2026, 10, 28)->setTime(12, 0));
-        DB::table('sessions')->where('id', $this->sessionId)->update(['last_activity' => now()->timestamp]);
+        DB::table('sessions')->where('id', $this->sessionId)->update(['last_activity' => time()]);
         $f = $this->menuVersion(14, 3);
         $this->assignment($f['version'], end: 2);
         $this->getJson($this->endpoint)->assertOk()->assertJsonPath('days.0.day_number', 1)
@@ -91,7 +91,7 @@ class ClientMealPlanDaysTest extends ClientMealPlanTest
     public function test_no_unassigned_versions_can_be_selected_and_newer_recipe_does_not_leak(): void
     {
         $this->travelTo(now()->setDate(2026, 10, 28)->setTime(12, 0));
-        DB::table('sessions')->where('id', $this->sessionId)->update(['last_activity' => now()->timestamp]);
+        DB::table('sessions')->where('id', $this->sessionId)->update(['last_activity' => time()]);
         $f = $this->menuVersion(7);
         $id = $this->assignment($f['version']);
         $foreign = $this->assignmentVersion(status: 'draft');
