@@ -169,6 +169,7 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 | Зміна | Вибір та реальне покриття |
 |---|---|
 | Day/week Blade, `EditMealPlanDay`, `day_editor.py` і day PG/concurrency | `day`: PG day/writer/selectors/structure/week/publication, окремі concurrency, Chromium планів із MFA, CSRF, revocation та незмінністю історії |
+| Спільні `meal_plans.py` або `recipe-batch-in-context.sh` | `day` + `recipe`: обидва browser entrypoints використовують ці залежності |
 | Assigner, assignment UI та їхні тести | `assignment`: PG assignment та copy/history, AUTH4 client meal plan, assignment concurrency та Chromium із MFA/CSRF/revocation |
 | Спільний Filament theme CSS | `day`, `recipe`, `baseline`: споживачі редактора, каталогу та auth/UI |
 | Спільні writer/structure/publisher, каталог, cooking | `recipe` + `baseline`: пов’язані PG, concurrency, browser та AUTH4 client API; `ClientCookingTest` запускається через AUTH4, не через PG-фільтр |

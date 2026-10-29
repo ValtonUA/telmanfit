@@ -46,9 +46,16 @@ class TargetedGroupTests(unittest.TestCase):
         self.assertEqual(select_groups(["app/Services/Auth/LoginService.php"]), ALL)
         self.assertEqual(select_groups(["tests/pg/meal-plan-assignment.php"]),
                          ("recipe",))
-        for path in ("tests/browser/meal_plans.py", "tests/browser/food_catalog.py"):
+        self.assertEqual(select_groups(["tests/browser/food_catalog.py"]), ("recipe",))
+
+    def test_shared_browser_dependencies_select_day_and_recipe(self):
+        for path in ("tests/browser/meal_plans.py", "tests/browser/recipe-batch-in-context.sh"):
             with self.subTest(path=path):
-                self.assertEqual(select_groups([path]), ("recipe",))
+                self.assertEqual(select_groups([path]), ("day", "recipe"))
+                self.assertEqual(select_groups([path, "README.md"]), ("day", "recipe"))
+                self.assertEqual(select_groups([path, "app/Services/MealPlans/MealPlanAssigner.php"]),
+                                 ("day", "assignment", "recipe"))
+                self.assertEqual(select_groups([path, "app/Services/Auth/LoginService.php"]), ALL)
 
     def test_critical_schema_and_unclassified_harness_changes_fail_closed_to_all(self):
         self.assertEqual(select_groups(["database/migrations/2026_create.php"]), ALL)
@@ -103,6 +110,17 @@ class TargetedGroupTests(unittest.TestCase):
             output.write_text('')
             subprocess.run(command, cwd=tmp, env=env, check=True, capture_output=True)
             self.assertEqual(output.read_text(), 'groups=day\n')
+            for path in ('tests/browser/meal_plans.py', 'tests/browser/recipe-batch-in-context.sh'):
+                env['BASE_SHA'] = git('rev-parse', 'HEAD')
+                changed = Path(tmp, path)
+                changed.parent.mkdir(parents=True, exist_ok=True)
+                changed.write_text('synthetic')
+                git('add', path)
+                git('commit', '-qm', 'shared browser dependency')
+                env['HEAD_SHA'] = git('rev-parse', 'HEAD')
+                output.write_text('')
+                subprocess.run(command, cwd=tmp, env=env, check=True, capture_output=True)
+                self.assertEqual(output.read_text(), 'groups=day,recipe\n')
             env['HEAD_SHA'] = head
             self.assertNotEqual(subprocess.run(command, cwd=tmp, env=env, capture_output=True).returncode, 0)
             env['HEAD_SHA'] = git('rev-parse', 'HEAD')

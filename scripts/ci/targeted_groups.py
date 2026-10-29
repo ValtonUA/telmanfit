@@ -9,6 +9,10 @@ import subprocess
 import sys
 
 ALL = ("day", "assignment", "recipe", "baseline", "b5", "b3")
+SHARED_BROWSER_PATHS = {
+    "tests/browser/meal_plans.py",
+    "tests/browser/recipe-batch-in-context.sh",
+}
 DAY_PATHS = {
     "tests/browser/day_editor.py",
     "tests/browser/ux3-only.py",
@@ -84,6 +88,10 @@ def select_groups(paths: list[str]) -> tuple[str, ...]:
             continue
         if normalized in ASSIGNMENT_PATHS:
             prior.add("assignment")
+            selected = prior
+            continue
+        if normalized in SHARED_BROWSER_PATHS:
+            prior.update(("day", "recipe"))
             selected = prior
             continue
         if normalized in DAY_PATHS:
