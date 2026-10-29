@@ -21,10 +21,17 @@ def settle_overlays(page):
 
 def management(page, label):
     settle_overlays(page)
-    if not page.get_by_text(label, exact=True).is_visible():
-        page.get_by_role('button', name='Керування', exact=True).click()
+    target = page.get_by_role('button', name=label, exact=True)
+    if not target.is_visible():
+        menu = page.get_by_role('button', name='Інші дії', exact=True)
+        if not menu.is_visible():
+            menu = page.get_by_role('button', name='Додаткові дії', exact=True)
+            if not menu.is_visible():
+                menu = page.get_by_role('button', name='Керування', exact=True)
+        menu.click()
         settle_overlays(page)
-    page.get_by_text(label, exact=True).click()
+        target = page.get_by_text(label, exact=True)
+    target.click()
 
 
 def run_meal_plans(page, base):
@@ -49,8 +56,8 @@ def run_meal_plans(page, base):
             page.set_viewport_size({'width': width, 'height': 1000})
             page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
             if theme == 'dark':
-                # Повні mutation-сценарії проходять у light для кожної ширини.
-                # Dark перевіряє опублікований read-only вигляд і форму створення.
+                # Повні тижневі сценарії проходять у light; day acceptance також
+                # повторюється в dark, щоб перевірити пошук і додавання в обох темах.
                 page.goto(published)
                 expect(page.get_by_text('Опубліковано · лише перегляд', exact=True)).to_be_visible()
                 expect(page.get_by_text('100.1', exact=True).first).to_be_visible()
@@ -81,6 +88,9 @@ def run_meal_plans(page, base):
                 expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
                 page.go_back()
                 expect(page).to_have_url(created_dark)
+                editor = json.loads(fixture('editor-seed', f['type'], f['extra_type'], f['food']))
+                from day_editor import run_day_editor
+                run_day_editor(page, base, editor, suffix, submit)
                 page.goto(base + '/admin/meal-plans')
                 page.get_by_role('link', name='Synthetic dark plan ' + suffix, exact=True).click()
                 expect(page).to_have_url(re.compile(r'/admin/meal-plans/\d+$'))
@@ -199,7 +209,9 @@ def run_meal_plans(page, base):
             expect(page.get_by_text('Меню ' + suffix, exact=True)).to_have_count(0)
             management(page, 'Додати 7 днів')
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
-            dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
+            type_choice = dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]')
+            expect(type_choice).to_have_count(1)
+            type_choice.check()
             submit(dialog, 'Додати тиждень')
             expect(page.locator('.plan-day-cta')).to_have_count(7)
             expect(page.get_by_text('Синтетичний прийом', exact=True)).to_have_count(0)

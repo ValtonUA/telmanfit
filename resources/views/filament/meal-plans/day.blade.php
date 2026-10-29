@@ -9,7 +9,7 @@
         $portions = app(\App\Services\MealPlans\MealItemResolver::class)->resolveMany($allItems->pluck('id')->all());
     @endphp
     <div class="plan-editor" data-day-token="{{ $expected }}" x-data="{
-        drag: null, busy: false, touch: null,
+        drag: null, busy: false, touch: null, targetMeal: {{ (int) $meals->first()?->id ?? 0 }},
         async drop(meal, before = null) {
             if (!this.drag || this.busy) return;
             const payload = this.drag; this.drag = null; this.busy = true;
@@ -32,7 +32,7 @@
     }" x-init="$store.sidebar?.close()" :aria-busy="busy" @dragend="drag = null" @pointercancel="if ($event.pointerType !== 'mouse') drag = null">
         <p class="plan-muted" id="plan-drag-help">{{ $editable ? 'Перетягніть страву за ручку або скористайтеся меню «Дії позиції». Додавання потребує підтвердження порції; зміни зберігаються відразу.' : 'Опублікований день — лише читання.' }}</p>
         <div class="plan-day-layout">
-            <section aria-labelledby="day-meals-heading">
+            <section class="plan-editor-panel plan-meals-panel" aria-labelledby="day-meals-heading" aria-label="Прийоми дня">
                 <h2 id="day-meals-heading">Прийоми дня</h2>
                 @forelse ($meals as $meal)
                     <section class="plan-meal" data-drop-meal="{{ $meal->id }}" wire:key="meal-{{ $meal->id }}" @dragover.prevent @drop.prevent.stop="drop(Number($event.currentTarget.dataset.dropMeal))" :class="{ 'plan-drop-ready': drag && !busy }">
@@ -70,10 +70,15 @@
                 @endforelse
             </section>
             @if ($editable)
-                <aside class="plan-catalog" aria-labelledby="catalog-heading">
+                <aside class="plan-editor-panel plan-catalog" aria-labelledby="catalog-heading">
                     <h2 id="catalog-heading">Каталог страв і продуктів</h2>
                     <label>Пошук каталогу<input class="plan-select" type="search" wire:model.live.debounce.350ms="search" maxlength="150" placeholder="Назва продукту або рецепта"></label>
                     <label>Тип каталогу<select class="plan-select" wire:model.live="catalogType"><option value="">Усі</option><option value="ingredient">Продукти</option><option value="recipe_version">Опубліковані рецепти</option></select></label>
+                    @if ($meals->isNotEmpty())
+                        <label>Додати до прийому<select class="plan-select" x-model.number="targetMeal" aria-label="Додати до прийому">
+                            @foreach ($meals as $meal)<option value="{{ $meal->id }}">{{ $meal->title ?: $meal->type->title }}</option>@endforeach
+                        </select></label>
+                    @endif
                     <div class="plan-catalog-list" wire:loading.class="opacity-50">
                         @forelse ($catalog->take(12) as $food)
                             <article class="plan-catalog-item" data-food="{{ $food->id }}" wire:key="food-{{ $food->id }}">
@@ -83,7 +88,7 @@
                                     <small class="plan-muted">{{ $food->food_type === 'ingredient' ? 'Продукт' : 'Опублікована версія '.$food->version_number }}</small>
                                 </div>
                                 <div class="plan-catalog-actions"><button type="button" class="plan-drag-handle" draggable="true" @dragstart="drag = {kind: 'food', id: {{ $food->id }} }; $event.dataTransfer.setData('text/plain', 'food:{{ $food->id }}')" @pointerdown="touchStart($event, 'food', {{ $food->id }})" @pointerup="touchEnd($event)" aria-label="Перетягнути з каталогу {{ $food->label }}" aria-describedby="plan-drag-help">⠿</button>
-                                    <button type="button" class="plan-catalog-add" @click="$wire.mountAction('addItem', {food: {{ $food->id }}, expected: $root.dataset.dayToken})" :disabled="busy" aria-label="Додати {{ $food->label }}">+ Додати</button>
+                                    <button type="button" class="plan-catalog-add" @click="$wire.mountAction('addItem', {food: {{ $food->id }}, meal: Number(targetMeal) || null, expected: $root.dataset.dayToken})" :disabled="busy" aria-label="Додати {{ $food->label }} до обраного прийому">+ Додати</button>
                                 </div>
                             </article>
                         @empty

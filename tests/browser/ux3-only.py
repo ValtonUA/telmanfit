@@ -2,11 +2,14 @@
 import base64
 import hashlib
 import hmac
+import json
+import os
 import shutil
 import struct
 import subprocess
 from pathlib import Path
 import time
+from contextlib import nullcontext
 
 from playwright.sync_api import expect, sync_playwright
 from meal_plans import run_meal_plans, verify_meal_plan_revocation
@@ -24,7 +27,7 @@ def otp(secret, offset=0):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium'), args=['--no-sandbox'])
-    context = browser.new_context(viewport={'width': 1440, 'height': 1000})
+    context = browser.new_context(viewport={'width': 1440, 'height': 1000}, has_touch=True)
     context.add_init_script(TRACKER)
     page = context.new_page()
     page.set_default_timeout(15000)
@@ -57,21 +60,46 @@ with sync_playwright() as p:
     page.locator('[name=code]').fill(otp(secret))
     page.get_by_role('button', name='Підтвердити вхід').click()
     page.wait_for_url('**/admin')
-    state = run_meal_plans(page, BASE)
-    for width in (1440, 390, 320):
-        page.set_viewport_size({'width': width, 'height': 1000})
-        page.evaluate('localStorage.setItem("filament:theme:mode", "dark")')
-        page.goto(BASE + '/admin/meal-plan-versions/' + str(state['publication_version']) + '/days/' + str(state['publication_day']))
-        expect(page.get_by_role('heading', name='Каталог страв і продуктів', exact=True)).to_be_visible()
-        assert page.evaluate('document.documentElement.classList.contains("dark")')
-        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-        page.screenshot(path=str(Path('docs/evidence/meal-plans') / f'day-editor-{width}-dark.png'), full_page=True)
-        print(f'Day editor Chromium: {width}-dark responsive PASS', flush=True)
-    headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
-    assert context.request.post(BASE + '/admin/livewire/update', data=state['payload'], headers=headers).status == 419
-    subprocess.run(['php', 'tests/browser/food-catalog-fixture.php', 'revoke'], check=True)
-    verify_meal_plan_revocation(page, BASE, state)
+    if os.environ.get('UX4_BROWSER_ONLY') == '1':
+        from meal_plans import fixture
+        from day_editor import run_day_editor
+
+        def submit(dialog, label):
+            with (page.expect_navigation(wait_until='load') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
+                with page.expect_response(lambda response: '/livewire/update' in response.url and response.request.method == 'POST') as response:
+                    dialog.get_by_role('button', name=label, exact=True).click()
+            assert response.value.status == 200
+            dialog.wait_for(state='hidden')
+
+        seed = json.loads(fixture('seed'))
+        only_suffixes = set(filter(None, os.environ.get('UX4_BROWSER_SUFFIX', '').split(',')))
+        for width in (1440, 390, 320):
+            for theme in ('light', 'dark'):
+                suffix = f'{width}-{theme}'
+                if only_suffixes and suffix not in only_suffixes:
+                    continue
+                page.set_viewport_size({'width': width, 'height': 1000})
+                page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
+                run_day_editor(page, BASE, seed, suffix, submit, compact_only=True)
+                assert page.evaluate('document.documentElement.classList.contains("dark")') == (theme == 'dark')
+                print(f'UX-4 standalone Chromium: {suffix} PASS', flush=True)
+    else:
+        state = run_meal_plans(page, BASE)
+        for width in (1440, 390, 320):
+            page.set_viewport_size({'width': width, 'height': 1000})
+            page.evaluate('localStorage.setItem("filament:theme:mode", "dark")')
+            page.goto(BASE + '/admin/meal-plan-versions/' + str(state['publication_version']) + '/days/' + str(state['publication_day']))
+            expect(page.get_by_role('heading', name='Каталог страв і продуктів', exact=True)).to_be_visible()
+            assert page.evaluate('document.documentElement.classList.contains("dark")')
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.screenshot(path=str(Path('docs/evidence/meal-plans') / f'day-editor-{width}-dark.png'), full_page=True)
+            print(f'Day editor Chromium: {width}-dark responsive PASS', flush=True)
+    if os.environ.get('UX4_BROWSER_ONLY') != '1':
+        headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
+        assert context.request.post(BASE + '/admin/livewire/update', data=state['payload'], headers=headers).status == 419
+        subprocess.run(['php', 'tests/browser/food-catalog-fixture.php', 'revoke'], check=True)
+        verify_meal_plan_revocation(page, BASE, state)
     assert not errors, errors
-    print('UX-3 standalone Chromium acceptance PASS', flush=True)
+    print('UX-4 browser-only Chromium acceptance PASS' if os.environ.get('UX4_BROWSER_ONLY') == '1' else 'UX-3 standalone Chromium acceptance PASS', flush=True)
     context.close()
     browser.close()

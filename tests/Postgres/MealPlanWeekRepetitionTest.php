@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\MealPlans\MealItemWriter;
 use App\Services\MealPlans\MealPlanStructure;
 use App\Services\MealPlans\MealPlanWeekRepeater;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -290,11 +291,14 @@ class MealPlanWeekRepetitionTest extends PostgresTestCase
         $this->invalid(fn () => $this->repeater->repeat($this->actor, $this->version, $fresh));
     }
 
-    public function test_day_editor_redirects_to_overview_after_replacing_its_own_day(): void
+    public function test_day_editor_exposes_week_repetition_only_in_overview(): void
     {
         $this->repeater->repeat($this->actor, $this->version, $this->input());
         $day = $this->version->days()->where('day_number', 15)->sole();
-        Livewire::test(EditMealPlanDay::class, ['record' => $this->version->id, 'day' => $day->id])
+        $dayEditor = Livewire::test(EditMealPlanDay::class, ['record' => $this->version->id, 'day' => $day->id]);
+        $this->assertFalse(collect($dayEditor->instance()->getCachedHeaderActions())
+            ->contains(fn ($action) => $action instanceof Action && $action->getName() === 'repeatWeek'));
+        Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id, 'week' => 3])
             ->call('mountAction', 'repeatWeek')->call('callMountedAction')
             ->assertActionMounted('replaceWeeks')->call('callMountedAction')->assertRedirect();
         $this->assertFalse($this->version->days()->whereKey($day->id)->exists());

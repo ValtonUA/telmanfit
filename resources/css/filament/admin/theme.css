@@ -73,7 +73,11 @@
 .plan-day-cta { margin-top: .8rem; white-space: normal; width: 100%; font-size: .78rem; }
 .plan-mobile-picker { display: none; }
 .plan-empty { padding: 1.5rem; border: 1px dashed #789683; border-radius: .8rem; margin: 1rem 0; }
-.plan-day-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.25rem; margin-top: 1.25rem; align-items: start; }
+.plan-day-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1rem; margin-top: 1.25rem; align-items: start; }
+.plan-editor-panel { min-width: 0; max-height: min(65vh, 44rem); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.plan-meals-panel { padding: 0 .4rem .4rem 0; }
+.plan-meals-panel > h2, .plan-catalog > h2 { position: sticky; top: 0; z-index: 2; padding: .5rem 0; background: #f4f7f3; }
+.dark .plan-meals-panel > h2, .dark .plan-catalog > h2 { background: #111a15; }
 .plan-meal { margin-bottom: 1rem; }
 .plan-item, .plan-catalog-item { border: 1px solid #d0ddd5; border-radius: .6rem; background: #fff; padding: .75rem; margin: .75rem 0; }
 .dark :is(.plan-item, .plan-catalog-item) { background: #21332a; border-color: #465b4e; }
@@ -95,6 +99,8 @@
 }
 @media (width < 48rem) {
     .plan-day-layout { grid-template-columns: minmax(0, 1fr); }
+    .plan-editor-panel { max-height: none; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
+    .plan-meals-panel > h2, .plan-catalog > h2 { position: static; }
     .plan-controls > * { max-width: 100%; }
     .plan-toolbar nav { align-items: stretch; }
     .plan-toolbar nav .fi-btn { flex: 1 1 8rem; white-space: normal; }
@@ -132,7 +138,7 @@
 .plan-menu-panel > button { display: block; width: 100%; text-align: left; padding: .5rem; border-radius: .25rem; }
 .plan-menu-panel > button:hover { background: #78968333; }
 .plan-menu-panel > button:disabled { opacity: .4; }
-.plan-catalog-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
+.plan-catalog-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .55rem; }
 .plan-catalog-item { padding: 0; margin: 0; min-width: 0; overflow: hidden; }
 .food-cover-catalog { width: 100%; height: auto; aspect-ratio: 4/3; border-radius: .5rem .5rem 0 0; }
 .food-cover-catalog.food-cover-empty { aspect-ratio: auto; height: 64px; }
@@ -142,6 +148,12 @@
 .plan-catalog-add { padding: .5rem; border-radius: .4rem; background: #e5eee6; color: #23442d; font-weight: 600; font-size: .85rem; }
 .dark .plan-catalog-add { background: #3f5e48; color: #fff; }
 .plan-catalog-item:is(:hover,:focus-within) .plan-catalog-add { background: #356248; color: #fff; }
+@media (width < 80rem) {
+    .plan-catalog-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (width < 48rem) {
+    .plan-catalog-list { grid-template-columns: minmax(0,1fr); }
+}
 body:has(.plan-editor) .fi-no.fi-vertical-align-start { padding-top: 4.5rem; }
 @media (width < 25rem) {
     .plan-item { gap: .35rem; }
