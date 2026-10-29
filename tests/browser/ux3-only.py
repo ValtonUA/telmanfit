@@ -72,8 +72,16 @@ with sync_playwright() as p:
             dialog.wait_for(state='hidden')
 
         seed = json.loads(fixture('seed'))
-        page.set_viewport_size({'width': 1440, 'height': 1000})
         repeat_seed = json.loads(fixture('repeat-seed', seed['type'], seed['extra_type'], seed['food']))
+        page.set_viewport_size({'width': 390, 'height': 844})
+        day_url = BASE + '/admin/meal-plan-versions/' + str(repeat_seed['version']) + '/days/' + str(repeat_seed['day'])
+        page.goto(day_url)
+        expect(page.get_by_role('button', name='Опублікувати', exact=True)).to_have_count(0)
+        page.goto(BASE + '/admin/meal-plan-versions/' + str(repeat_seed['version']))
+        publish = page.get_by_role('button', name='Опублікувати', exact=True)
+        if not any(publish.nth(index).is_visible() for index in range(publish.count())):
+            raise AssertionError('Publish action is not visible on the 390px week overview:\n'+page.locator('body').aria_snapshot()[-8000:])
+        page.set_viewport_size({'width': 1440, 'height': 1000})
         page.goto(BASE + '/admin/meal-plan-versions/' + str(repeat_seed['version']))
         from meal_plans import management
         management(page, 'Позиції')

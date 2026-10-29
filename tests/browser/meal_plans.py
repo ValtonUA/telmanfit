@@ -1,5 +1,6 @@
 """T4.1/T4.2: штатний Filament, точна версія, readonly history, responsive та CSRF/revocation."""
 import json
+import os
 import re
 from contextlib import nullcontext
 import subprocess
@@ -34,7 +35,7 @@ def management(page, label):
         target = page.get_by_text(label, exact=True)
         visible_target = next((target.nth(index) for index in range(target.count()) if target.nth(index).is_visible()), None)
     if visible_target is None:
-        raise AssertionError(f'Не знайдено видиму дію: {label}')
+        raise AssertionError(f'Не знайдено видиму дію: {label}\n'+page.locator('body').aria_snapshot()[-8000:])
     visible_target.click()
 
 
@@ -45,6 +46,7 @@ def run_meal_plans(page, base):
     output.mkdir(parents=True, exist_ok=True)
     published = base + '/admin/meal-plan-versions/' + str(f['version'])
     history = fixture('hash')
+    only_suffixes = set(filter(None, os.environ.get('UX4_BROWSER_SUFFIX', '').split(',')))
 
     def submit(dialog, label):
         with (page.expect_navigation(wait_until='load') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
@@ -57,6 +59,8 @@ def run_meal_plans(page, base):
     for width in (1440, 390, 320):
         for theme in ('light', 'dark'):
             suffix = f'{width}-{theme}'
+            if only_suffixes and suffix not in only_suffixes:
+                continue
             page.set_viewport_size({'width': width, 'height': 1000})
             page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
             if theme == 'dark':
@@ -92,9 +96,8 @@ def run_meal_plans(page, base):
                 expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
                 page.go_back()
                 expect(page).to_have_url(created_dark)
-                editor = json.loads(fixture('editor-seed', f['type'], f['extra_type'], f['food']))
                 from day_editor import run_day_editor
-                run_day_editor(page, base, editor, suffix, submit)
+                run_day_editor(page, base, f, suffix, submit)
                 page.goto(base + '/admin/meal-plans')
                 page.get_by_role('link', name='Synthetic dark plan ' + suffix, exact=True).click()
                 expect(page).to_have_url(re.compile(r'/admin/meal-plans/\d+$'))
@@ -325,6 +328,8 @@ def run_meal_plans(page, base):
     publication_guard = json.loads(fixture('repeat-single-seed', f['type'], f['extra_type'], f['food']))
     fixture('publication-fill', publication_guard['version'])
     page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']) + '/days/' + str(publication_guard['day']))
+    expect(page.get_by_role('button', name='Опублікувати', exact=True)).to_have_count(0)
+    page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']))
     management(page, 'Опублікувати')
     expect(page.get_by_role('heading', name='Опублікувати версію раціону', exact=True)).to_be_visible()
     publication_raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()

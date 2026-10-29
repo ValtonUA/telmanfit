@@ -76,14 +76,14 @@ def run_day_editor(page, base, f, suffix, submit, compact_only=False):
     expect(search).to_be_focused()
     food = page.locator('[data-food="' + str(state['food']) + '"]')
     expect(food).to_be_visible()
-    def add_food(card, meal):
+    def add_food(card, meal, touch_input=True):
         page.get_by_label('Додати до прийому', exact=True).select_option(str(meal))
         button = card.locator('.plan-catalog-add')
         with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
             if suffix.startswith('320'):
                 button.focus()
                 page.keyboard.press('Enter')
-            elif suffix.startswith('390'):
+            elif suffix.startswith('390') and touch_input:
                 button.scroll_into_view_if_needed()
                 box = button.bounding_box()
                 page.touchscreen.tap(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
@@ -169,7 +169,7 @@ def run_day_editor(page, base, f, suffix, submit, compact_only=False):
     batch_food = page.locator('.plan-catalog-item').filter(has_text='Синтетичний batch writer').first
     expect(batch_food).to_be_visible()
     for fmt, divisor, label in [('A — одна порція', 'A/1 — ціла одна порція', 'A/1'), ('B — партія на 7 порцій', 'B/7 — одна сьома партії', 'B/7'), ('C — половина тижневої партії', 'C/3 — одна третина половини партії', 'C/3'), ('C — половина тижневої партії', 'C/4 — одна четверта половини партії', 'C/4')]:
-        dialog = add_food(batch_food, state['meals'][0])
+        dialog = add_food(batch_food, state['meals'][0], touch_input=False)
         dialog.get_by_role('combobox', name='Формат фізичної партії', exact=False).click()
         with page.expect_response(lambda r: '/livewire/update' in r.url):
             page.get_by_role('option', name=fmt, exact=True).click()

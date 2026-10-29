@@ -192,7 +192,7 @@ if [[ ${DAY_BROWSER_ONLY:-0} == 1 ]]; then
     if [[ ${UX4_WEEK_BROWSER_ONLY:-0} == 1 ]]; then
         UX4_WEEK_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
     elif [[ ${UX4_BROWSER_FULL:-0} == 1 ]]; then
-        bash tests/browser/recipe-batch-in-context.sh
+        UX3_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
     else
         UX4_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
     fi
