@@ -99,9 +99,14 @@ class ViewMealPlanVersion extends ViewRecord
         $actions = $this->managementActions();
         $primaryNames = ['publishPlan', 'repeatWeek', 'replaceWeeks', 'generateWeek'];
         $primary = array_values(array_filter($actions, fn ($action) => $action instanceof Action && in_array($action->getName(), $primaryNames, true)));
-        $other = array_values(array_filter($actions, fn ($action) => ! ($action instanceof Action && in_array($action->getName(), $primaryNames, true))));
+        $positions = array_values(array_filter($actions, fn ($action) => $action instanceof ActionGroup &&
+            collect($action->getActions())->contains(fn ($child) => $child instanceof Action && $child->getName() === 'addItem')
+        ));
+        $other = array_values(array_filter($actions, fn ($action) => ! in_array($action, $positions, true) &&
+            ! ($action instanceof Action && in_array($action->getName(), $primaryNames, true))
+        ));
 
-        return [...$primary, ...$this->weekDeletionActions(), ActionGroup::make($other)->label('Інші дії')->button()->color('gray')];
+        return [...$primary, ...$positions, ...$this->weekDeletionActions(), ActionGroup::make($other)->label('Інші дії')->button()->color('gray')];
     }
 
     public function createFirstWeekAction(): Action

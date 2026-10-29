@@ -109,12 +109,14 @@ class EditMealPlanDay extends ViewMealPlanVersion
     {
         $actions = $this->managementActions();
         $addMeal = array_values(array_filter($actions, fn ($action) => $action instanceof Action && $action->getName() === 'addMeal'));
-        $positions = array_values(array_filter($actions, fn ($action) => $action instanceof ActionGroup && $action->getLabel() === 'Позиції'));
+        $positions = array_values(array_filter($actions, fn ($action) => $action instanceof ActionGroup &&
+            collect($action->getActions())->contains(fn ($child) => $child instanceof Action && $child->getName() === 'addItem')
+        ));
         $positionActions = $positions[0]?->getActions() ?? [];
         $addPosition = array_values(array_filter($positionActions, fn ($action) => $action instanceof Action && $action->getName() === 'addItem'));
         $positionManagement = array_values(array_filter($positionActions, fn ($action) => ! ($action instanceof Action && $action->getName() === 'addItem')));
         $weekOnly = ['personalCopy', 'publishPlan', 'repeatWeek', 'replaceWeeks', 'generateWeek'];
-        $other = array_values(array_filter($actions, fn ($action) => ! ($action instanceof ActionGroup && $action->getLabel() === 'Позиції') &&
+        $other = array_values(array_filter($actions, fn ($action) => ! in_array($action, $positions, true) &&
             ! ($action instanceof Action && ($action->getName() === 'addMeal' || in_array($action->getName(), $weekOnly, true)))
         ));
         $other[] = RecipeCoverAction::make()->visible(fn () => $this->editable())->authorize(fn () => $this->editable() && CatalogWriter::allowed(auth()->user()));
