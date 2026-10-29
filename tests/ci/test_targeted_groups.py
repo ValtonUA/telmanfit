@@ -111,6 +111,13 @@ class TargetedGroupTests(unittest.TestCase):
             env['HEAD_SHA'] = 'bad'
             self.assertNotEqual(subprocess.run(command, cwd=tmp, env=env, capture_output=True).returncode, 0)
 
+    def test_assignment_slice_keeps_copy_history_and_client_read_dependencies(self):
+        runner = (ROOT / 'tests/pg/run-stage1.sh').read_text()
+        mode = runner.split('if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then', 1)[1].split('\nfi', 1)[0]
+        for required in ('MealPlanAssignmentTest', 'MealPlanCopyTest', 'ClientMealPlanTest',
+                         'meal-plan-assignment-concurrency.php', 'meal-plan-assignment-in-context.sh'):
+            self.assertIn(required, mode)
+
     def test_workflow_requires_selected_groups_and_schema_for_broad_scope(self):
         workflow = (ROOT / '.github/workflows/targeted.yml').read_text()
         stage = (ROOT / '.github/workflows/stage1.yml').read_text()

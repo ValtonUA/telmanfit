@@ -218,7 +218,7 @@ if [[ ${MEAL_PLAN_COPY_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanAssignmentTest --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'MealPlanAssignmentTest|MealPlanCopyTest' --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
     php artisan migrate --force --no-interaction
     php tests/pg/auth6b5-bootstrap.php
     vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth4.xml --filter ClientMealPlanTest --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues

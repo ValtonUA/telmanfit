@@ -7,7 +7,7 @@
 | Набір | PHPUnit / PG | Незалежна concurrency | Chromium / security |
 |---|---|---|---|
 | `day` | DayEditor, ItemWriter, ItemSelectors, Structure, WeekDeletion, WeekRepetition, Publication | day, writer, selectors, structure, deletion, repetition, publication | Реальний meal-plan acceptance: MFA, CSRF, revocation, published history, week/day, mouse/touch/keyboard на 1440/390/320 у light; окрема responsive перевірка day у dark |
-| `assignment` | MealPlanAssignment та AUTH4 ClientMealPlan | assignment, включно з role/fence та незалежними клієнтами | assignment: MFA, CSRF/revocation, history, 1440/390/320 light/dark |
+| `assignment` | MealPlanAssignment, MealPlanCopy та AUTH4 ClientMealPlan | assignment, включно з role/fence та незалежними клієнтами | assignment: MFA, CSRF/revocation, history, 1440/390/320 light/dark |
 | `recipe` | Наявні recipe, catalog, import, cooking і meal-plan PG-набори | Наявні recipe, catalog, cooking і meal-plan concurrency | Наявні recipe і copy browser acceptance; широкий fallback для shared коду |
 | `baseline` | AUTH3/4/5, зокрема ClientCooking та ClientMealPlan | auth concurrency | AUTH3/4/5, client recipe, assignment |
 | `b5`, `b3` | AUTH6B5 та AUTH6B/B4 | recovery/hold/restore | Контрольні auth HTTP сценарії |
@@ -41,13 +41,13 @@
 - Окремий ізольований SQL schema suite: `PASS=76 FAIL=0 GAP=0`, 6/6 файлів; негативні перевірки runner для identity, missing, duplicate, gap, fail, summary, inventory, residue та missing-file пройшли; власний контейнер прибрано.
 
 - `day`: 443 с wall з cleanup, з окремими dark assertions на 1440/390/320, 66 тестів / 1176 assertions, concurrency та Chromium PASS; worker завершився успішно, сторонніх контейнерів не знайдено. Оцінка округлення окремого job: 8 хвилин без setup.
-- `assignment`: 57 с wall з cleanup, 20 PG / 264 assertions, 27 AUTH4 / 236 assertions, дев’ять concurrency випадків та Chromium PASS; окремий worker ізолюється та прибирається. Оцінка округлення окремого job: 1 хвилина без setup.
+- `assignment`: 57 с wall з cleanup, 22 PG / 328 assertions, 27 AUTH4 / 236 assertions, дев’ять concurrency випадків та Chromium PASS; окремий worker ізолюється та прибирається. Оцінка округлення окремого job: 1 хвилина без setup.
 - `baseline`: локальний PASS за 516 с (паралельно виконувались інші локальні перевірки): PG 293/4957, AUTH2 12/137, AUTH3 25/129, AUTH4 167/1678, AUTH5 19/131, AUTH6 5/359, concurrency та Chromium. `--list-tests` підтверджує 14 `ClientCookingTest` у AUTH4.
 - `b5`: локальний PASS, 41 тест / 392 assertions та concurrency/restore; B3 перший раз завершився з помилкою через відсутній Node у очищеному PATH, повтор із виправленим PATH пройшов за 111 с, включно з AUTH2/3/4/5/6, B3/B4 та HTTP concurrency; cleanup підтверджено.
-- Docs-equivalent: 11 docs і 44 CI unit tests, T1.5 source та docs guard PASS. Chromium readiness: 7 тестів PASS.
+- Docs-equivalent: 11 docs і 45 CI unit tests, T1.5 source та docs guard PASS. Chromium readiness: 7 тестів PASS.
 - Fast-equivalent: PHP syntax, Pint, runtime 8.4.27, Composer validate/platform/audit, Compose config і 126 Unit/Feature / 522 assertions PASS. Дві npm lock установки, обидві Vite збірки та client lint PASS на локальному Node 24; GitHub використовує Node 22. Початковий root build без мережевого доступу не знайшов fonts.bunny.net, повтор із штатним proxy і CA пройшов. Composer install без scripts/plugins і package discovery PASS.
 - `recipe` before: 680 с wall із cleanup, 240 PG-тестів / 3949 assertions, concurrency (зокрема 37 cooking-сценаріїв), 20 основних browser checks та окремий copy browser PASS. PHP 58 с, concurrency 30 с, browser 559 + 26 с; округлення окремого job без setup — 12 хвилин. Вимір зроблено на тій самій базі та машині з теплим кешем; runner `recipe` збережений, у тестовому helper додано лише поле стану для нового dark smoke.
-- Для assignment це 680 → 57 с у локальних окремих workers (11,33 → 0,95 worker-хв; 12 → 1 округлених хвилин без setup). Набори мають різний scope: новий прицільно додає AUTH4 client read та assignment browser, а не повторює сторонні recipe історії.
+- Для assignment це 680 → 57 с у локальних окремих workers (11,33 → 0,95 worker-хв; 12 → 1 округлених хвилин без setup). Набори мають різний scope: новий прицільно додає copy/history, AUTH4 client read та assignment browser, а не повторює сторонні recipe історії.
 - Для Blade/editor старий selector або пропускав Blade, або для `day_editor.py` вимагав `recipe,baseline,b5,b3`; 680 с — лише вимір `recipe`, а не повний before job. Локальний `day` після зміни зайняв 443 с (7,38 worker-хв; округлено 8 хв без setup). Проти одного лише recipe worker до зміни це 680 → 443 с; повний старий job також включав auth-групи, тому це не вимір фактичної економії GitHub. Для shared writer новий вибір додає baseline, тому зменшення не заявляється.
 
 Не порівнювати ці оцінки зі списаними хвилинами GitHub та не додавати worker minutes як витрати окремих jobs: вибрані workers ділять один job. Паралельне навантаження, cache і setup не виміряні для цих окремих прогонів.
