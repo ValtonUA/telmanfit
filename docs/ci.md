@@ -32,6 +32,22 @@ GitHub Actions.
 `R2ImageMatcherTest` обирають групу `recipe`, що містить PostgreSQL-тести
 каталогів і R2 dry-run. Вони використовують лише synthetic source/HTTP mocks.
 
+## Автоматичні перевірки агентського процесу
+
+Новий локальний Codex `PreToolUse` hook із `.codex/hooks.json` перевіряє
+очевидно руйнівні Bash-команди через `.codex/hooks/pre_tool_policy.py`.
+Його stdlib-регресії в `tests/ci/test_agent_hook.py` запускає чинний
+`Documentation health` (крок `CI gate regression tests`) разом з іншими
+`tests/ci` — без нового workflow чи дорогого PostgreSQL/browser запуску.
+Процедуру, межі та інструкцію `/hooks` описано в
+[agent-workflow.md](agent-workflow.md).
+
+Hook діє лише в Codex середовищах, де project config визнано довіреним і
+конкретне правило активовано; це не GitHub branch protection, не серверний
+authorization guard і не заміна `scripts/ci/pre_merge.py` та прав доступу.
+Перевірка Windows runtime Codex необхідна окремо: Python unit-тести в Linux CI
+не доводять працездатність локального `commandWindows`.
+
 ## Набори тестів для локального запуску
 
 Ці suite-файли, раннери й reusable workflow-файли збережені для цільової локальної
