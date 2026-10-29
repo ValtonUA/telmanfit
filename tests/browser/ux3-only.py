@@ -4,10 +4,12 @@ import hashlib
 import hmac
 import shutil
 import struct
+import subprocess
+from pathlib import Path
 import time
 
 from playwright.sync_api import expect, sync_playwright
-from meal_plans import run_meal_plans
+from meal_plans import run_meal_plans, verify_meal_plan_revocation
 from readiness import TRACKER
 
 BASE = 'http://127.0.0.1:8090'
@@ -42,6 +44,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Увійти', exact=True).click()
         page.wait_for_url('**/admin/auth/challenge')
 
+    assert context.request.get(BASE + '/admin/meal-plans').status in (302, 403)
     primary()
     page.get_by_role('button', name='Створити ключ Authenticator').click()
     secret = page.locator('#totp-secret').inner_text()
@@ -54,7 +57,20 @@ with sync_playwright() as p:
     page.locator('[name=code]').fill(otp(secret))
     page.get_by_role('button', name='Підтвердити вхід').click()
     page.wait_for_url('**/admin')
-    run_meal_plans(page, BASE)
+    state = run_meal_plans(page, BASE)
+    for width in (1440, 390, 320):
+        page.set_viewport_size({'width': width, 'height': 1000})
+        page.evaluate('localStorage.setItem("filament:theme:mode", "dark")')
+        page.goto(BASE + '/admin/meal-plan-versions/' + str(state['publication_version']) + '/days/' + str(state['publication_day']))
+        expect(page.get_by_role('heading', name='Каталог страв і продуктів', exact=True)).to_be_visible()
+        assert page.evaluate('document.documentElement.classList.contains("dark")')
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        page.screenshot(path=str(Path('docs/evidence/meal-plans') / f'day-editor-{width}-dark.png'), full_page=True)
+        print(f'Day editor Chromium: {width}-dark responsive PASS', flush=True)
+    headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
+    assert context.request.post(BASE + '/admin/livewire/update', data=state['payload'], headers=headers).status == 419
+    subprocess.run(['php', 'tests/browser/food-catalog-fixture.php', 'revoke'], check=True)
+    verify_meal_plan_revocation(page, BASE, state)
     assert not errors, errors
     print('UX-3 standalone Chromium acceptance PASS', flush=True)
     context.close()

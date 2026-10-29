@@ -166,8 +166,9 @@
 
 | ID | Завдання / підтвердження | Статус |
 |---|---|---|
-| CI-COST-1 | [Два рівні CI](ci.md): Fast на кожному commit, явний Full на фінальному SHA, fail-closed pre-merge та вимірювання GitHub jobs; інтегровано через PR #42; активний strict ruleset `CI-COST-1` із трьома required checks підтверджено read-only preflight. | Виконано |
-| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1, по дві ізольовані PG/Chromium групи всередині одного job, bytecode reuse і navigation/render readiness без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Фінальний Full і фактичний відсоток — в описі Draft PR, без merge. | Частково |
+| CI-COST-1 | [CI та merge gate](ci.md): обов’язкові Fast, Docs і Targeted та fail-closed pre-merge; Full workflow вилучено. | Виконано |
+| CI-COST-2 | [Issue #68](https://github.com/ValtonUA/telmanfit/issues/68): вимірювання Stage1, по дві ізольовані PG/Chromium групи всередині одного job, bytecode reuse і navigation/render readiness без зміни сценаріїв/ізоляції; [before/after evidence](evidence/ci-cost-2/report.md). Історичні вимірювання не замінюють перевірки на актуальному head. | Частково |
+| CI-SLICE-1 | [Issue #114](https://github.com/ValtonUA/telmanfit/issues/114): feature-scoped Targeted, isolated PG/browser suites, dependency closure та [локальні вимірювання](evidence/ci-slice-1/report.md). UX-4–UX-6 призупинені до окремого рішення власника. | Частково |
 
 ### Stage 9 — Підготовка до запуску
 

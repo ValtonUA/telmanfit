@@ -108,20 +108,20 @@ T4.5 browser очікує HTTP-відповідь саме свого Livewire m
 відмову приймати інший method; timeout та бізнес-assertions не послаблюються.
 `CI_BROWSER_READINESS` рахує calls/time. Бізнес-assertions і реальні MFA/OTP timer/cooldown перевірки збережені.
 `scripts/ci/stage1_groups.py` запускає максимум два workers **всередині одного
-Stage1 job**: спочатку recipe + baseline/auth, потім B5 + B3/B4. Це не нові billed
+Stage1 job**: day + B5, recipe + baseline/auth, assignment + B3/B4. Це не нові billed
 jobs: GitHub рахує wall time одного зайнятого runner, а не суму worker durations.
 Composer/npm/Playwright і immutable Docker layers готуються один раз на job.
 Workers мають різні disposable PG/socket, VIEW_COMPILED_PATH, PHPUnit cache,
-HTTP ports (recipe8090; auth8093–8097), stdout files і process groups. PG mutable
+HTTP ports (day/recipe/assignment 8090 у різних фазах; auth8093–8098), stdout files і process groups. PG mutable
 state не ділиться; SQLite85 у synthetic context і обидва PG142/194 збережені.
-Parent і workers відмовляють для remote Docker. Усі чотири exit0/completed/success
+Parent і workers відмовляють для remote Docker. Усі вибрані exit0/completed/success
 обов'язкові; missing/failed/cancelled/pending/skipped блокує orchestrator. При
 помилці/сигналі siblings завершуються; fallback перевіряє випадковий ownership
 label і прибирає тільки власні контейнери. Знайдений leftover навіть після recovery
 робить результат failure. AUTH1 і його GH_TOKEN лишаються окремим наступним кроком.
 `tests/pg/out/groups.json` містить точний SHA, UTC/seconds/status кожного worker і
 загальний час orchestration; worker seconds не видаються за billed job-min.
-PG-кластери залишаються окремими для recipe, B5, baseline/auth, B3/B4 та G4;
+PG-кластери залишаються окремими для day, assignment, recipe, B5, baseline/auth, B3/B4 та G4;
 міграції, SQL76, усі повторні PHPUnit-набори й concurrency/upgrade/reset докази збережені.
 Деталі вимірювань і відхилені варіанти — [CI-COST-2](evidence/ci-cost-2/report.md).
 `npm ci --ignore-scripts` замінює mutable install, Composer install не виконує
@@ -131,7 +131,7 @@ checkout persist-credentials: false; secrets не успадковуються, 
 не використовується. GH_TOKEN лише read token для pinned AUTH-1 public blobs.
 Synthetic PG/docker створюються з чинними isolation guards і власним cleanup;
 `CI_STAGE1_TIMING` додає тривалості pull, cluster/setup, SQL, PHPUnit, concurrency,
-Chromium і total разом із cleanup. Чотири worker stdout і `groups.json` зберігаються
+Chromium і total разом із cleanup. Worker stdout і `groups.json` зберігаються
 в `stage1-pg-logs` поряд із чинними SQL outputs. Exit codes перевіряються напряму,
 без pipeline, що міг би приховати failure.
 
@@ -164,6 +164,18 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 
 ## PR gate без Full CI
 
-Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Targeted запускає ізольовані PostgreSQL/browser групи на точному head PR: AUTH3–5 `baseline` запускається для auth/security/readiness змін; зміни рецептів, планів і їхніх browser helpers (`meal_plans.py`, `food_catalog.py`) запускають лише `recipe`; `b5`/`b3` додаються для відповідного auth/security коду; міграції та невідомі PG/browser тести консервативно розширюють набір. Зміни залежностей запускають усі auth-групи, а CI workflow і runner отримують unit regressions через Documentation health без PG/browser runner. Зміна `tests/browser/test_readiness.py` також лишається в baseline і використовує pinned Chromium. Невизначена або помилкова область зупиняє gate.
+Кожен PR виконує три обов’язкові статуси: **Fast PR checks**, **Docs links, roadmap and PR impact** і **Targeted PR checks**. Selector перевіряє checkout на точному head і бере об’єднання покриття для кожного зміненого або видаленого шляху; перейменування розглядаються як видалення та додавання. Невідомі критичні app/resources/config/routes/client/tests, кореневі конфігурації, залежності, shared auth та schema розширюють вибір до всіх наборів; широкий вибір включає окремий SQL schema suite. Документаційні та CI-only зміни залишаються дешевими, а CI unit regressions проходять у Documentation health.
+
+| Зміна | Вибір та реальне покриття |
+|---|---|
+| Day/week Blade, `EditMealPlanDay`, `day_editor.py` і day PG/concurrency | `day`: PG day/writer/selectors/structure/week/publication, окремі concurrency, Chromium планів із MFA, CSRF, revocation та незмінністю історії |
+| Спільні `meal_plans.py` або `recipe-batch-in-context.sh` | `day` + `recipe`: обидва browser entrypoints використовують ці залежності |
+| Assigner, assignment UI та їхні тести | `assignment`: PG assignment та copy/history, AUTH4 client meal plan, assignment concurrency та Chromium із MFA/CSRF/revocation |
+| Спільний Filament theme CSS | `day`, `recipe`, `baseline`: споживачі редактора, каталогу та auth/UI |
+| Спільні writer/structure/publisher, каталог, cooking | `recipe` + `baseline`: пов’язані PG, concurrency, browser та AUTH4 client API; `ClientCookingTest` запускається через AUTH4, не через PG-фільтр |
+| Shared auth, міграції, SQL, залежності й невідомі критичні шляхи | Усі групи та SQL schema suite; жодного silent skip |
+| Auth-тести та readiness | `baseline`, `b5`, `b3` за предметним правилом; readiness окремо `baseline` |
+
+`recipe` збережено як широкий fallback для спільних залежностей; точні day та assignment набори виконують власні сценарії на незалежних кластерах. Докази й обмеження порівняння — у [CI-SLICE-1](evidence/ci-slice-1/report.md). Кожен вибраний worker має завершитись успішно; відсутні, пропущені або невдалі набори блокують gate.
 
 Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.
