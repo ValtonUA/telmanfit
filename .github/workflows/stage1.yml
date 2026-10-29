@@ -24,6 +24,10 @@ jobs:
         with:
           ref: ${{ inputs.head }}
           persist-credentials: false
+      - name: Verify checked out head
+        env:
+          EXPECTED_HEAD: ${{ inputs.head }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4.27'
@@ -63,11 +67,11 @@ jobs:
         env:
           GROUPS: ${{ inputs.groups }}
         run: |
-          if [[ "$GROUPS" == all ]]; then
+          if [[ "$GROUPS" == all || "$GROUPS" == "day,assignment,recipe,baseline,b5,b3" ]]; then
             bash tests/pg/test-runner.sh
             bash tests/pg/run-isolated-pg.sh
           else
-            echo "Full-only SQL schema suites are not selected."
+            echo "SQL schema suites are not selected for this focused diff."
           fi
       - name: AUTH-1 regression
         env:
