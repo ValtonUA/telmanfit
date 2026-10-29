@@ -20,8 +20,7 @@ def plan(current):
     result['enforcement'] = 'active'
     by_type = {rule['type']: rule for rule in result['rules']}
     reviews = by_type['pull_request']['parameters']
-    reviews.update(required_approving_review_count=max(1, reviews['required_approving_review_count']),
-                   dismiss_stale_reviews_on_push=True, require_last_push_approval=True,
+    reviews.update(dismiss_stale_reviews_on_push=True,
                    required_review_thread_resolution=True, allowed_merge_methods=['merge'])
     checks = by_type['required_status_checks']['parameters']
     checks['strict_required_status_checks_policy'] = True
@@ -35,23 +34,11 @@ def plan(current):
 
 def review_route(number):
     pr = pre_merge.api(f'repos/{REPO}/pulls/{number}')[0]
-    collaborators = [actor for page in pre_merge.api(f'repos/{REPO}/collaborators?per_page=100') for actor in page]
-    reviewers = sorted(actor['login'] for actor in collaborators
-                       if actor['type'] == 'User' and actor['login'] != pr['user']['login']
-                       and actor.get('permissions', {}).get('push'))
     reviews = [review for page in pre_merge.api(f'repos/{REPO}/pulls/{number}/reviews?per_page=100') for review in page]
-    latest = {}
-    for review in sorted(reviews, key=lambda item: item['id']):
-        if review['state'] != 'COMMENTED':
-            latest[review['user']['login']] = review
-    approvals = [login for login, review in latest.items() if login in reviewers
-                 and review['state'] == 'APPROVED' and review['commit_id'] == pr['head']['sha']]
-    return {'pr': number, 'head_sha': pr['head']['sha'], 'author': pr['user']['login'],
-            'eligible_reviewers': reviewers, 'exact_head_approvals': sorted(approvals),
-            'proven': bool(approvals) and not any(r['state'] == 'CHANGES_REQUESTED' for r in latest.values()),
-            'merged': bool(pr.get('merged')),
-            'reason': 'Потрібні окрема GitHub User-ідентичність з write-доступом та її реальне APPROVED на exact head; '
-                      'коментар власника або synthetic fixture цього не доводить.'}
+    evidence = pre_merge.review_evidence({'repository': REPO, 'pr': pr, 'reviews': reviews})
+    return {'pr': number, 'head_sha': pr['head']['sha'], 'base_sha': pr['base']['sha'],
+            'review': evidence, 'proven': evidence['proven'], 'merged': bool(pr.get('merged')),
+            'reason': 'Потрібен реальний exact-head/base report окремої read-only review-сесії або незалежний GitHub approval.'}
 
 
 def main():

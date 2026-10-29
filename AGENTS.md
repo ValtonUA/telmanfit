@@ -144,4 +144,13 @@ TelmanFit — Laravel/Filament + React вебзастосунок персона
 
 **Merge-gate для агента:** лише після **продуктового приймання власником exact head/base** і незалежного review на exact head виконати `python3 scripts/ci/pre_merge.py <PR> --repo ValtonUA/telmanfit` із довіреного checkout. Потрібні Fast PR checks, Docs links/roadmap/PR impact, Targeted PR checks, обидві Windows PowerShell compatibility jobs та Feature environment checks — `completed/success` на **актуальному head SHA**, master є предком head, немає auto-merge. Failed/cancelled/pending/skipped/старі SHA чи attempts блокують merge. Full CI не запускається й не є вимогою для жодного diff, label чи критичного шляху. Після зміни head або base повторити всі required checks, review, продуктове приймання і gate. Безпосередньо перед merge повторити gate й використовувати `--match-head-commit <SHA>`. Деталі — [ci.md](docs/ci.md).
 
-Перед ruleset activation перевір реальний reviewer route через `feature_rules.py --review-pr <PR>`; synthetic PASS або коментар автора не доводять незалежне схвалення. Чинний серверний ruleset доповнюється `Feature acceptance` після bootstrap за [feature-environments.md](docs/feature-environments.md). Якщо серверний rollout недоступний або ще не активований, тоді це обов'язковий **агентський** захист, який технічно може обійти людина/admin. Не дозволяй auto-merge та не видавай `eligible: true` за право злити PR без продуктового приймання власником. Детальний цикл і Windows launcher — [feature-environments.md](docs/feature-environments.md).
+Перед ruleset activation перевір реальний reviewer route через `feature_rules.py --review-pr <PR>`; synthetic PASS або довільний коментар автора не доводять незалежне схвалення; потрібен реальний structured report окремої review-сесії за протоколом або formal independent approval. Чинний серверний ruleset доповнюється `Feature acceptance` після bootstrap за [feature-environments.md](docs/feature-environments.md). Якщо серверний rollout недоступний або ще не активований, тоді це обов'язковий **агентський** захист, який технічно може обійти людина/admin. Не дозволяй auto-merge та не видавай `eligible: true` за право злити PR без продуктового приймання власником. Детальний цикл і Windows launcher — [feature-environments.md](docs/feature-environments.md).
+
+### Окрема review-сесія
+
+Для незалежного review запускай окремого read-only reviewer-агента після freeze коду,
+без авторського діалогу: передай exact head/base, критерії та diff. Reviewer не змінює
+код і сам формує findings/limitations/verdict. Автор виправляє зауваження; новий head
+потребує нової перевірки. Інтегратор публікує справжній звіт окремої сесії як
+`COMMENTED` review за протоколом у feature-environments; не вигадує session/report.
+Спільний GitHub акаунт — процесна довіра до інтегратора, не криптографічна незалежність.

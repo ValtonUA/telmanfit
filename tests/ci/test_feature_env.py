@@ -83,6 +83,14 @@ class FeatureTests(unittest.TestCase):
                 with self.assertRaises(ValueError): manager.start('feature/example')
             self.assertEqual(list(Path(root).iterdir()), [])
 
+    def test_bootstrap_expected_head_fails_before_resource_creation(self):
+        with tempfile.TemporaryDirectory() as root:
+            manager = feature.Manager(Path(root), ['docker'])
+            with patch.object(feature, 'prepared', return_value={'head_sha': 'b' * 40}):
+                with self.assertRaisesRegex(ValueError, 'head'):
+                    manager.start('feature/example', expected_head='a' * 40)
+            self.assertEqual(list(Path(root).iterdir()), [])
+
     def harness(self, root):
         manager = feature.Manager(Path(root), ['docker'])
         states, calls = {}, []

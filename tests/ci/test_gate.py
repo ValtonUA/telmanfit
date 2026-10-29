@@ -125,6 +125,65 @@ class GateTests(unittest.TestCase):
             s["pr"]["head"]["ref"] = branch
             self.assert_blocked(s)
 
+    def process_review(self, snapshot):
+        import json
+        data = {'version': 1, 'head': snapshot['pr']['head']['sha'], 'base': snapshot['pr']['base']['sha'],
+                'implementation_session': 'implementation-session', 'review_session': 'separate-read-only-reviewer',
+                'read_only': True, 'verdict': 'APPROVED',
+                'summary': 'Separate reviewer inspected admission, isolation and bootstrap code against the acceptance criteria.',
+                'checks': ['Read the full feature diff and negative regression cases.'],
+                'limitations': ['Shared GitHub account cannot cryptographically prove session separation.'],
+                'blocking_findings': []}
+        review = {'id': 10, 'state': 'COMMENTED', 'commit_id': data['head'],
+                  'user': {'login': 'ValtonUA', 'type': 'User'}, 'body': gate.REVIEW_PREFIX + json.dumps(data)}
+        snapshot['reviews'] = [review]
+        return data, review
+
+    def test_real_process_contract_needs_no_second_account_but_requires_report(self):
+        s = green()
+        s['pr']['user']['login'] = 'ValtonUA'
+        self.process_review(s)
+        result = gate.evaluate(s, 'preview')
+        self.assertTrue(result['eligible'], result)
+        self.assertEqual(result['review']['method'], 'session-attestation')
+        self.assertTrue(gate.evaluate(s)['eligible'])
+
+    def test_process_attestation_rejects_stale_self_missing_or_untrusted_evidence(self):
+        import json
+        for change in ('head', 'base', 'self', 'readonly', 'summary', 'checks', 'limitations', 'findings', 'verdict', 'malformed', 'foreign', 'bot', 'dismissed'):
+            s = green()
+            data, review = self.process_review(s)
+            if change in ('head', 'base'): data[change] = 'c' * 40
+            elif change == 'self': data['review_session'] = data['implementation_session']
+            elif change == 'readonly': data['read_only'] = False
+            elif change == 'summary': data['summary'] = 'PASS'
+            elif change in ('checks', 'limitations'): data[change] = []
+            elif change == 'findings': data['blocking_findings'] = ['Blocker remains']
+            elif change == 'verdict': data['verdict'] = 'CHANGES_REQUESTED'
+            elif change == 'foreign': review['user']['login'] = 'outsider'
+            elif change == 'bot': review['user']['type'] = 'Bot'
+            elif change == 'dismissed': review['state'] = 'DISMISSED'
+            review['body'] = gate.REVIEW_PREFIX + (json.dumps(data) if change != 'malformed' else '{bad')
+            with self.subTest(change=change):
+                self.assert_blocked(s)
+                self.assertFalse(gate.evaluate(s, 'preview')['eligible'])
+
+    def test_latest_process_revocation_and_formal_request_block_both_paths(self):
+        import json
+        for verdict in ('REVOKED', 'CHANGES_REQUESTED'):
+            s = green()
+            formal = s['reviews'][0]
+            data, review = self.process_review(s)
+            data['verdict'] = verdict
+            s['reviews'] += [{**review, 'id': 11, 'body': gate.REVIEW_PREFIX + json.dumps(data)}, formal]
+            self.assert_blocked(s)
+        s = green()
+        request = {**s['reviews'][0], 'state': 'CHANGES_REQUESTED'}
+        self.process_review(s)
+        s['reviews'].append(request)
+        self.assert_blocked(s)
+
+
     def test_new_commit_invalidates_old_success(self):
         s = green()
         s["pr"]["head"]["sha"] = "c" * 40

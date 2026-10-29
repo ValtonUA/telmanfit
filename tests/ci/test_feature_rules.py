@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts/ci'))
 import feature_rules
 import publish_feature_gate as publisher
+import record_review
 
 
 def current():
@@ -30,9 +31,9 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(feature_rules.plan(result), result)
         rules = {r['type']: r for r in result['rules']}
         review = rules['pull_request']['parameters']
-        self.assertEqual(review['required_approving_review_count'], 1)
+        self.assertEqual(review['required_approving_review_count'], 0)
         self.assertTrue(review['dismiss_stale_reviews_on_push'])
-        self.assertTrue(review['require_last_push_approval'])
+        self.assertNotIn('require_last_push_approval', review)
         self.assertTrue(review['required_review_thread_resolution'])
         checks = rules['required_status_checks']['parameters']
         names = {x['context'] for x in checks['required_status_checks']}
@@ -51,16 +52,28 @@ class RulesTests(unittest.TestCase):
             data[key] = value
             with self.assertRaises(ValueError): feature_rules.plan(data)
 
-    def test_real_capability_needs_distinct_identity_and_exact_head_approval(self):
-        pr = {'user': {'login': 'owner'}, 'head': {'sha': 'a' * 40}, 'merged': True}
-        owner = {'login': 'owner', 'type': 'User', 'permissions': {'push': True}}
-        reviewer = {'login': 'reviewer', 'type': 'User', 'permissions': {'push': True}}
-        approval = {'id': 1, 'user': {'login': 'reviewer'}, 'state': 'APPROVED', 'commit_id': 'a' * 40}
-        for collaborators, reviews, expected in [([owner], [], False), ([owner, reviewer], [], False),
-                                                ([owner, reviewer], [approval], True),
-                                                ([owner, reviewer], [{**approval, 'commit_id': 'b' * 40}], False)]:
-            with patch.object(feature_rules.pre_merge, 'api', side_effect=[[pr], [collaborators], [reviews]]):
-                self.assertEqual(feature_rules.review_route(117)['proven'], expected)
+    def test_route_uses_the_same_live_report_as_preview_gate(self):
+        from test_gate import green, GateTests
+        snapshot = green()
+        GateTests().process_review(snapshot)
+        snapshot['pr']['merged'] = True
+        with patch.object(feature_rules.pre_merge, 'api', side_effect=[[snapshot['pr']], [snapshot['reviews']]]):
+            result = feature_rules.review_route(117)
+        self.assertTrue(result['proven'])
+        self.assertEqual(result['review']['method'], 'session-attestation')
+
+    def test_report_publication_preserves_reviewer_content_and_rejects_stale_pair(self):
+        import json
+        from test_gate import green, GateTests
+        snapshot = green()
+        report, review = GateTests().process_review(snapshot)
+        result = record_review.payload(report, snapshot['pr'])
+        self.assertEqual(result['event'], 'COMMENT')
+        self.assertEqual(result['commit_id'], report['head'])
+        self.assertEqual(json.loads(result['body'][len(feature_rules.pre_merge.REVIEW_PREFIX):]), report)
+        for field in ('head', 'base'):
+            with self.assertRaises(ValueError):
+                record_review.payload({**report, field: 'c' * 40}, snapshot['pr'])
 
     def test_apply_never_writes_when_real_review_route_is_unavailable(self):
         with patch.object(sys, 'argv', ['feature_rules.py', '--apply', '--review-pr', '117']), patch.object(feature_rules.pre_merge, 'api', return_value=[current()]), patch.object(feature_rules, 'review_route', return_value={'proven': False, 'merged': False, 'reason': 'only owner'}), patch.object(feature_rules.subprocess, 'run') as write, patch('sys.stderr', new_callable=io.StringIO):

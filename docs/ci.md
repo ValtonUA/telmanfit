@@ -24,7 +24,7 @@ upgrade coordinator, Docker services або базу даних.
 `scripts/ci/pre_merge.py` перевіряє Fast, Docs, Targeted, обидві Windows compatibility jobs та Feature environment checks на точному PR head,
 поточну ancestry до master, найновіший run/attempt, усі jobs/steps, PR event і
 відсутність auto-merge. Він не читає змінені файли чи labels для вимоги Full.
-Після зміни head/base всі required checks мають пройти на новому стані. Незалежний людський `APPROVED` на exact head та продуктове приймання власником exact head/base також обов’язкові; `--purpose preview` перевіряє все, крім продуктового приймання/Draft. Формат рішення та Windows launcher — [feature-environments.md](feature-environments.md).
+Після зміни head/base всі required checks мають пройти на новому стані. Звіт окремої read-only review-сесії на exact head/base (або незалежний GitHub `APPROVED` на exact head) та продуктове приймання власником exact head/base також обов’язкові; `--purpose preview` перевіряє все, крім продуктового приймання/Draft. Формат рішення та Windows launcher — [feature-environments.md](feature-environments.md).
 
 PostgreSQL і browser регресії запускай локальними runner-скриптами зі своїми
 ізольованими disposable базами й guards. Їхній локальний PASS — це локальний доказ,

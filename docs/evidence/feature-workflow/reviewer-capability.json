@@ -11,5 +11,7 @@
   "exact_head_approvals": [],
   "proven": false,
   "merged": false,
-  "reason": "Потрібні окрема GitHub User-ідентичність з write-доступом та її реальне APPROVED на exact head; коментар власника або synthetic fixture цього не доводить."
+  "reason": "Потрібні окрема GitHub User-ідентичність з write-доступом та її реальне APPROVED на exact head; коментар власника або synthetic fixture цього не доводить.",
+  "evidence_kind": "historical-snapshot",
+  "scope": "Стан попереднього head d2ddecd; не є admission доказом поточного PR. Live report: feature_rules.py --review-pr 117. Протокол session-attestation доданий пізніше."
 }

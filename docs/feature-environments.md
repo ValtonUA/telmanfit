@@ -30,6 +30,34 @@ healthy. Відкрийте `http://telmanfit-feature-<id>.localhost:<порт>/
 hosts-файлу. Окремий hostname ізолює cookies, CSRF та browser storage від
 стабільного `127.0.0.1:8098` й інших ревізій. Реквізити — через `access`.
 
+## Перший запуск bootstrap PR до merge
+
+До merge launcher ще відсутній у `master`. В описі bootstrap PR агент надає **один
+готовий PowerShell-блок із конкретним reviewed SHA**, сформований із
+[`feature-bootstrap.ps1`](../scripts/feature-bootstrap.ps1). Його можна вставити
+в PowerShell з будь-якого каталогу; stable checkout не використовується.
+Це явний перегляд/запуск тексту команди, без download-and-execute та policy override.
+
+Блок створює новий GUID-каталог у `%LOCALAPPDATA%\TelmanFit\bootstrap`, клонує
+лише офіційний repository без checkout/hooks/templates, отримує точний SHA,
+робить detached checkout і перевіряє HEAD. Потім викликає `feature.ps1` з
+`-ExpectedHead <SHA>`: live admission має підтвердити той самий поточний PR head,
+CI й незалежний review report. Немає bootstrap bypass, pinned CI-success fixture
+або дозволу запустити довільну гілку. Старий блок після зміни head відмовляє до
+створення feature ресурсів; агент надає новий блок після повторних CI/review.
+
+Bootstrap виводить шлях окремих інструментів. Після запуску команди
+`& '<цей шлях>\scripts\feature.ps1' -Feature feature/isolated-feature-environments -Action list`
+і `access/stop/resume` працюють із тим самим registry. Після merge використовується
+штатний trusted checkout launcher. Bootstrap-каталоги містять тільки інструменти;
+їх видалення не видаляє feature volumes. Docker resources видаляє лише штатний
+`remove -Project <id>`.
+
+Windows CI виконує цей bootstrap через реальні Git clone/fetch/detached checkout
+зі synthetic local repository (URL rewrite), у шляхах із пробілами. Перевіряє
+передачу SHA, відмову unknown SHA, незмінність synthetic stable `.env` та policy.
+Це доказ bootstrap/tooling, не запуск Docker Desktop користувача.
+
 ## Повторне тестування та оновлення даних
 
 Повторний `start` або `update` **того самого підготовленого SHA** відновлює
@@ -97,8 +125,8 @@ Registry, export коду й Compose JSON лежать у `%LOCALAPPDATA%\Telman
 
 Перед будь-яким build/up launcher читає GitHub: один відкритий PR цієї гілки до
 master, поточний master є предком head, required checks успішні на точному SHA,
-немає auto-merge, незалежний reviewer (людина, не автор PR) має `APPROVED` на цьому
-SHA й немає чинних `CHANGES_REQUESTED`. Після build повторюється та сама перевірка.
+немає auto-merge, є незалежний review за протоколом нижче й немає чинних
+`CHANGES_REQUESTED`. Після build повторюється та сама перевірка.
 Draft PR можна запускати після review; merge Draft заборонений.
 
 Виконується лише Git-tracked export exact SHA. Робочий checkout не перемикається,
@@ -162,8 +190,10 @@ matrix перевіряє parser/BOM launcher і manager regressions. `Feature e
 вимагає PR і strict Fast/Docs/Targeted, без bypass actors. Classic protection API
 повертає 403, але сучасний Rulesets API доступний для читання. Новий план
 `feature_rules.py` зберігає ці правила й додає обидві Windows jobs, Feature environment checks, commit status
-`Feature acceptance`, один незалежний approval, dismiss stale reviews, last-push
-approval, resolution threads і merge method `merge`.
+`Feature acceptance`, dismiss stale reviews, resolution threads і merge method
+`merge`. Наявні review-count/last-push вимоги зберігаються без послаблення;
+недоступний другий акаунт не додається як нова вимога. У поточному ruleset count=0;
+новий status перевіряє session report і продуктове приймання.
 
 `feature-acceptance.yml` запускає лише код **довіреного master**, не checkout PR,
 не artifacts і не Docker. Він оновлює admission status на exact PR head після
@@ -196,32 +226,64 @@ bootstrap; read-доступ не доводить write. Якщо запис в
 серверною гарантією. Прямий push/auto-merge й обхід правил заборонені.
 Перелік required checks та деталі — [ci.md](ci.md).
 
-## Передумова незалежного review: фактична доступність
+## Незалежний review без другого GitHub акаунта
 
-Live API перевірка для PR #117 виявила лише одного collaborator — `ValtonUA`,
-який є автором PR. Формальних reviews немає. [Зафіксований API-доказ](evidence/feature-workflow/reviewer-capability.json)
-і `feature_rules.py --review-pr 117` відрізняють цю ситуацію від synthetic PASS:
-`eligible_reviewers=[]`, `exact_head_approvals=[]`, `proven=false`.
-Незалежний змістовний review у коментарі власника є корисним предметним доказом,
-але та сама GitHub-ідентичність не може видати незалежний formal approval.
-Тому новий ruleset зараз **не можна активувати**, а preview/merge gate не
-послаблюється до самосхвалення чи checkbox. Наявні правила сервера залишаються.
+Незалежність забезпечується **окремою read-only review-сесією після freeze коду**.
+Reviewer отримує exact head/base, критерії, весь diff і тести, але не авторський
+діалог; сам формує findings, перевірки, обмеження й verdict. Автор виправляє
+blockers, потім новий head перевіряється знову. Reviewer може бути окремим агентом
+або людиною. CI не замінює змістовний review.
 
-Конкретний запропонований шлях для автономного незалежного review — окрема
-GitHub machine-user ідентичність, якою користується незалежний reviewer/service.
-Її credential зберігається поза авторським агентом/сеансом; агент реалізації не
-може ним підписати власне review. Collaborator має write-role для зарахування
-review GitHub; fine-grained token сервісу обмежений contents/actions read і
-pull requests write, без administration/statuses/contents write. Сервіс читає
-exact head і base, виконує окреме предметне review та подає справжнє `APPROVED`
-або `CHANGES_REQUESTED` з commit ID через GitHub Reviews API. Продуктовий власник
-не погоджує технічні операції кожної функції: він лише приймає продукт.
+Інтегратор записує справжній звіт reviewer у GitHub Reviews API як `COMMENTED`
+review (`event=COMMENT`, exact `commit_id`). Другий GitHub акаунт не потрібен,
+продуктовий власник не створює credentials і не погоджує технічні операції.
+Це **атестація процесу**, а не GitHub formal `APPROVED` від автора самому собі.
+Опублікувати реальний JSON звіт можна з довіреного checkout:
 
-Цей шлях використовує чинний formal approval gate без ослаблення його гарантій.
-До його активації потрібен **реальний**, не mock, доказ: API показує другого
-collaborator з write-доступом, реальний незалежний approval exact head,
-відмову для старого SHA/відкликаного review, і `review_route.proven=true` на
-прийнятому merged bootstrap PR. Створення зовнішньої ідентичності та ізольованого
-credential не можна чесно підмінити доступним зараз єдиним акаунтом. Наразі це
-зовнішня незадоволена передумова, а не реалізована/доведена інтеграція. Права чи
-акаунти автоматично не створюються; нікому не надсилаються запрошення.
+```sh
+python3 scripts/ci/record_review.py 117 --report /path/to/reviewer-report.json          # read-only payload
+python3 scripts/ci/record_review.py 117 --report /path/to/reviewer-report.json --publish
+python3 scripts/ci/feature_rules.py --review-pr 117                                   # live readback
+```
+
+Тіло review має бути рівно `TelmanFit-Review: ` + JSON такого контракту:
+
+```json
+{
+  "version": 1,
+  "head": "<40 hex exact head>",
+  "base": "<40 hex exact master>",
+  "implementation_session": "<справжній ID авторської сесії>",
+  "review_session": "<справжній інший ID reviewer-сесії>",
+  "read_only": true,
+  "verdict": "APPROVED",
+  "summary": "Предметний звіт reviewer про перевірений diff та результат, мінімум 40 символів.",
+  "checks": ["Конкретні виконані перевірки або прочитані контракти."],
+  "blocking_findings": [],
+  "limitations": ["Конкретні межі перевірки; shared-account не дає криптографічної незалежності."]
+}
+```
+
+Gate довіряє лише запису GitHub repository owner типу User, з exact head/base,
+різними непорожніми session IDs, `read_only=true`, змістовними summary/checks/limitations
+і порожніми blocking findings для APPROVED. Остання атестація на поточному head
+замінює попередню: `CHANGES_REQUESTED`, `REVOKED`, malformed або dismissed record
+блокує обидва gates. Оновлення base/head анулює proof. Формальне незалежне GitHub
+APPROVED також підтримується; чинний formal CHANGES_REQUESTED блокує обидва шляхи.
+`record_review.py` не генерує звіт: публікує переданий reviewer JSON після перевірки
+live head/base, а `feature_rules.py` читає реальний запис через API.
+
+**Межа гарантій:** GitHub автентифікує publisher і commit, але не походження
+session ID або авторство тексту. Інтегратор зі спільним credential технічно може
+підробити атестацію; GitHub admin може обійти процес. Тут немає окремого IAM
+бар'єра чи криптографічно незалежного reviewer-сервісу. Це свідомо менш суворий
+GitHub admission із перевірюваним звітом/журналом окремої сесії, а не рівноцінна
+другому credential ізоляція. Owner acceptance exact head/base залишається окремим
+обов'язковим рішенням; CI, SQL20 та migration guards не послаблюються. Наявний
+master ruleset не змінюється до реального successful readback цього route,
+продуктового приймання, merged bootstrap й перевірки trusted publisher у master.
+
+[reviewer-capability.json](evidence/feature-workflow/reviewer-capability.json) —
+**історичний snapshot старого `d2ddecd`**, не exact-head evidence нового PR і не
+runtime allowlist. Поточний head, live review IDs, CI URLs та результат gate
+фіксуються в описі PR після окремого review; код гілки для цього не змінюється.

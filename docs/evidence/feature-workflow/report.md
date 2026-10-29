@@ -11,17 +11,17 @@ merge й активація ruleset — наступні контрольова�
 
 | Зауваження | Результат реалізації | Доказ / межа |
 |---|---|---|
-| Реальний незалежний reviewer | Додано live capability preflight до ruleset activation; без окремої write-ідентичності та реального exact-head APPROVED запис неможливий | API показує лише автора `ValtonUA`; [snapshot](reviewer-capability.json). Route **BLOCKED**, не підмінений synthetic PASS. Конкретна machine-user/service пропозиція — у runtime-контракті; інтеграція не активована |
+| Реальний незалежний reviewer | GitHub formal approval більше не є єдиним шляхом: exact head/base structured report окремої read-only review-сесії, опублікований owner як COMMENTED review | Реальний agent session/report та Reviews API readback фіксуються в описі PR після code freeze. Це process trust, не IAM isolation; автор зі спільним credential може підробити report. Немає фіктивного другого акаунта чи mock proof |
 | Накопичення активних previews | Одне активне preview в registry; штатні stop/resume, перевірка ownership усіх peers, rollback після невдалої збірки/запуску | Container rootfs зупинених ревізій прибираються; БД/storage/images залишаються. Непідтверджений cleanup не запускає ще один runtime |
 | Ітерації з даними | Повторний update того самого SHA відновлює ту саму ревізію; новий SHA вимагає явного fresh, старі дані доступні через resume | Немає populated DB upgrade або копіювання data/history між версіями. Digest images перевіряється перед resume |
 | Windows policy | Основна команда без override execution policy; matrix виконує launcher з observer Python і перевіряє native argv у шляху з пробілами | Жодного Docker/DB у Windows stub-тесті; policy до/після не змінюється. Повний Docker Desktop runtime на Windows залишається продуктовим прийманням |
 
 ## Перевірки
 
-- Локально `python3 -m unittest discover -s tests/ci -v`: 76 PASS, включно
+- Локально `python3 -m unittest discover -s tests/ci -v`: 81 PASS, включно
   same-SHA reuse, explicit fresh, cross-feature parking, stop/resume, immutable
   images, failed build/resume recovery, unknown ownership, reviewer capability
-  і відсутність зовнішнього PUT за недоведеної ідентичності.
+  і відсутність зовнішнього PUT за недоведеного live report.
 - Docs tests/guard, Python/PHP syntax, Pint для PHP та diff-check — у перевірках PR.
   Фінальний exact-head SHA/run URLs і результати в описі PR, а не підмінені
   зеленим CI попереднього head.
@@ -46,14 +46,24 @@ scope. Робочі БД, production, стандартний Compose, migration 
 upgrade guard не змінені. Синтетичні DB/storage marker writes виконуються лише
 в disposable тесті; немає schema/data змін робочого застосунку.
 
-Reviewer precondition — **PARTIAL/BLOCKED**: доступний лише акаунт автора.
-Підготовлено конкретний еквівалентний шлях через credential ізольованої
-machine-user/service і реальний Reviews API, але такого credential/актора зараз
-немає. Немає запрошень іншим людям, створення акаунтів, самосхвалення чи ослаблення
-formal approval. Активація ruleset/merge заборонені до доведеного route та нового
-незалежного review/продуктового приймання. Продуктовий власник не погоджує технічні
-операції кожної функції. Відкрита зовнішня передумова — саме окрема reviewer
-ідентичність; нових бізнесових рішень немає.
+Review precondition перевіряється через live API, а не fixture: підтримано окрему
+read-only review-сесію, змістовний structured report з різними session IDs, exact
+head/base, revocation/malformed/dismissed/request-changes відмовами. Новий код
+потребує справжньої окремої перевірки після freeze; її ID/verdict/live readback
+і CI URLs додаються в опис PR без наступного commit, який би анулював review.
+Власник не створює технічні акаунти й не погоджує технічні операції.
+
+Bootstrap створює pinned detached checkout поза stable у LOCALAPPDATA. Windows
+matrix перевіряє real native Git із synthetic URL rewrite, невідомий SHA,
+аргументи launcher, stable marker та execution policy. Повний Windows Docker
+Desktop на машині користувача не перевірений; Linux Docker lifecycle CI не
+підміняє його. Готовий exact-SHA PowerShell-блок для першого запуску — в PR.
+
+Застарілий reviewer-capability JSON явно позначений historical-snapshot старого
+`d2ddecd`, не exact-head proof. Server ruleset, migration allowlist/SQL20,
+production та stable дані не змінюються. Немає GitHub IAM незалежності між
+сесіями; для неї потрібен окремий зовнішній credential, який цей scope не створює.
+До приймання merge/activation не виконуються. Нових бізнесових рішень немає.
 
 ## Усі змінені файли
 
@@ -75,12 +85,15 @@ formal approval. Активація ruleset/merge заборонені до до
 - `docs/project-status.md`
 - `scripts/ci/feature_rules.py`
 - `scripts/ci/pre_merge.py`
+- `scripts/ci/record_review.py`
 - `scripts/ci/publish_feature_gate.py`
 - `scripts/feature.ps1`
+- `scripts/feature-bootstrap.ps1`
 - `scripts/feature_env.py`
 - `tests/ci/test_feature_env.py`
 - `tests/ci/test_feature_rules.py`
 - `tests/ci/test_gate.py`
 - `tests/feature-env-e2e.py`
+- `tests/feature-bootstrap.ps1`
 - `tests/feature-powershell-launch.ps1`
 - `tests/local-update-powershell-compat.ps1`

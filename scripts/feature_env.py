@@ -35,7 +35,7 @@ def needs_e2e(paths):
              'client/package.json', 'client/package-lock.json', 'tests/feature-env-e2e.py',
              '.github/workflows/feature-environments.yml'}
     prefixes = ('docker/local/', 'database/migrations/', 'database/sql/', 'scripts/feature',
-                'scripts/ci/pre_merge.py', 'scripts/ci/publish_feature_gate.py', 'scripts/ci/feature_rules.py',
+                'scripts/ci/pre_merge.py', 'scripts/ci/publish_feature_gate.py', 'scripts/ci/feature_rules.py', 'scripts/ci/record_review.py',
                 'tests/ci/test_feature')
     return any(path in exact or path.startswith(prefixes) for path in paths)
 
@@ -297,8 +297,10 @@ class Manager:
             self.recover(record, previous, retryable=True)
             raise
 
-    def start(self, feature, fresh=False):
+    def start(self, feature, fresh=False, expected_head=None):
         proof = prepared(feature)
+        if expected_head is not None and proof['head_sha'] != expected_head:
+            raise ValueError('PR head змінився: потрібна нова reviewed bootstrap команда; ресурсів не створено.')
         existing = self.records(feature)
         matching = [r for r in existing if r['head'] == proof['head_sha'] and r['status'] in ('active', 'ready', 'stopped')]
         if not fresh and matching:
@@ -360,12 +362,13 @@ def main():
     parser.add_argument('feature', type=validate_feature)
     parser.add_argument('--action', choices=('start', 'update', 'fresh', 'stop', 'resume', 'list', 'remove', 'access', 'mail', 'logs'), default='start')
     parser.add_argument('--project', help='Точний project з list; обов’язковий для stop/resume/remove/access/mail/logs')
+    parser.add_argument('--expected-head', help='Bootstrap pin: відмова, якщо поточний PR head змінився')
     args = parser.parse_args()
     root = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / '.local/share'))) / 'TelmanFit/features'
     with lock(root):
         manager = Manager(root, local_docker())
         if args.action in ('start', 'update', 'fresh'):
-            record = manager.start(args.feature, fresh=args.action == 'fresh')
+            record = manager.start(args.feature, fresh=args.action == 'fresh', expected_head=args.expected_head)
             print(json.dumps(record, ensure_ascii=False, indent=2))
             print(f"http://{record['project']}.localhost:{record['port']}/admin/login")
             print('Одне активне preview. Дані старих ревізій збережено; list/stop/resume керують станом.')

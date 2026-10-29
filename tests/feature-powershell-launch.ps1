@@ -22,6 +22,10 @@ try {
             throw 'Native argument forwarding failed.'
         }
     }
+    & $executable -NoLogo -NoProfile -File (Join-Path $root 'feature.ps1') -Feature feature/synthetic -ExpectedHead ('a' * 40)
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned launcher failed.' }
+    $arguments = [IO.File]::ReadAllText($capture) | ConvertFrom-Json
+    if ($arguments.Count -ne 9 -or $arguments[7] -cne '--expected-head' -or $arguments[8] -cne ('a' * 40)) { throw 'Bootstrap pin was not forwarded.' }
     if ((Get-ExecutionPolicy -List | ConvertTo-Json -Compress) -cne $policy) { throw 'Execution policy changed.' }
     Write-Output "Feature native launcher without policy override: PASS ($($PSVersionTable.PSVersion)); synthetic Python only, no Docker/DB."
 } finally {

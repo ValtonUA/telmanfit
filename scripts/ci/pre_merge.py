@@ -35,6 +35,69 @@ def api(path):
     return pages
 
 
+REVIEW_PREFIX = "TelmanFit-Review: "
+
+
+def review_evidence(snapshot):
+    """Process attestation, not cryptographic separation of a shared GitHub identity.
+
+    Formal independent approvals remain accepted. An owner-published COMMENTED
+    review can instead carry a separate review-session report. GitHub authenticates
+    the publisher; the session IDs/report document process independence, not IAM.
+    """
+    pr = snapshot['pr']
+    head, base = pr['head']['sha'], pr['base']['sha']
+    latest = {}
+    attestations = []
+    for review in sorted(snapshot.get('reviews', []), key=lambda r: r['id']):
+        if review['state'] != 'COMMENTED':
+            latest[review['user']['login']] = review
+        body = review.get('body') or ''
+        if (review['user']['login'] != snapshot['repository'].split('/')[0]
+                or review['user'].get('type') != 'User'
+                or not body.startswith(REVIEW_PREFIX)):
+            continue
+        # A malformed/latest owner attestation revokes the prior process proof.
+        # Old-head records are ignored; base changes always invalidate them.
+        if review.get('commit_id') != head:
+            continue
+        valid = False
+        verdict = None
+        try:
+            data = json.loads(body[len(REVIEW_PREFIX):])
+            verdict = data['verdict']
+            valid = (review['state'] == 'COMMENTED' and data['version'] == 1 and data['head'] == head and data['base'] == base
+                     and verdict in {'APPROVED', 'CHANGES_REQUESTED', 'REVOKED'}
+                     and isinstance(data['implementation_session'], str)
+                     and isinstance(data['review_session'], str)
+                     and len(data['implementation_session']) >= 8
+                     and len(data['review_session']) >= 8
+                     and data['implementation_session'] != data['review_session']
+                     and data['read_only'] is True
+                     and isinstance(data['summary'], str) and len(data['summary'].strip()) >= 40
+                     and isinstance(data['checks'], list) and bool(data['checks'])
+                     and all(isinstance(c, str) and len(c.strip()) >= 10 for c in data['checks'])
+                     and isinstance(data['limitations'], list) and bool(data['limitations'])
+                     and all(isinstance(c, str) and len(c.strip()) >= 10 for c in data['limitations'])
+                     and isinstance(data['blocking_findings'], list)
+                     and (verdict != 'APPROVED' or not data['blocking_findings']))
+        except (ValueError, KeyError, TypeError):
+            pass
+        attestations.append({'review_id': review['id'], 'valid': bool(valid), 'verdict': verdict})
+    requested = any(r['state'] == 'CHANGES_REQUESTED' for r in latest.values())
+    formal = [r['id'] for login, r in latest.items()
+              if login != pr.get('user', {}).get('login') and r['state'] == 'APPROVED'
+              and r['commit_id'] == head and r['user'].get('type') == 'User']
+    attestation = attestations[-1] if attestations else None
+    # An explicit process rejection/revocation must not fall back to an older approval.
+    rejected = attestation is not None and (not attestation['valid'] or attestation['verdict'] != 'APPROVED')
+    process = bool(attestation and attestation['valid'] and attestation['verdict'] == 'APPROVED')
+    return {'proven': bool((formal or process) and not requested and not rejected),
+            'method': 'session-attestation' if process else 'github-approval' if formal else None,
+            'formal_review_ids': formal, 'attestation': attestation,
+            'guarantee': 'Process independence; shared-account publisher can forge evidence. Not an IAM boundary.'}
+
+
 def evaluate(snapshot, purpose="merge"):
     if purpose not in {"preview", "merge"}:
         raise ValueError("Unknown gate purpose")
@@ -48,16 +111,9 @@ def evaluate(snapshot, purpose="merge"):
         errors.append("Only feature/* branches may target master")
     if not pr.get("user", {}).get("login"):
         errors.append("PR author identity is missing")
-    reviews = {}
-    for review in sorted(snapshot.get("reviews", []), key=lambda r: r["id"]):
-        if review["state"] != "COMMENTED":
-            reviews[review["user"]["login"]] = review
-    independent = [r for login, r in reviews.items()
-                   if login != pr.get("user", {}).get("login")
-                   and r["state"] == "APPROVED" and r["commit_id"] == sha
-                   and r["user"].get("type") == "User"]
-    if not independent or any(r["state"] == "CHANGES_REQUESTED" for r in reviews.values()):
-        errors.append("Independent approval on current head is required; resolve requested changes")
+    review = review_evidence(snapshot)
+    if not review['proven']:
+        errors.append("Independent review evidence on current head/base is required; resolve requested changes")
     if purpose == "merge":
         if pr.get("draft", False):
             errors.append("Draft PR cannot be merged")
@@ -121,7 +177,7 @@ def evaluate(snapshot, purpose="merge"):
                               "url": run["html_url"]}
     return {"eligible": not errors, "purpose": purpose, "repository": repo, "pr": pr["number"],
             "head_sha": sha, "base_sha": pr["base"]["sha"],
-            "evidence": evidence, "errors": errors}
+            "evidence": evidence, "review": review, "errors": errors}
 
 
 def collect(repo, number):
