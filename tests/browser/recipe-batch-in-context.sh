@@ -35,6 +35,8 @@ cleanup() {
 trap cleanup EXIT
 if [[ ${UX3_BROWSER_ONLY:-0} == 1 ]]; then
     python3 tests/browser/ux3-only.py
+elif [[ ${UX4_WEEK_BROWSER_ONLY:-0} == 1 ]]; then
+    UX4_WEEK_BROWSER_ONLY=1 python3 tests/browser/ux3-only.py
 elif [[ ${UX4_BROWSER_ONLY:-0} == 1 ]]; then
     UX4_BROWSER_ONLY=1 python3 tests/browser/ux3-only.py
 elif [[ ${ADMIN_NAV_ONLY:-0} == 1 ]]; then

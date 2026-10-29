@@ -189,7 +189,13 @@ if [[ ${DAY_BROWSER_ONLY:-0} == 1 ]]; then
     php artisan migrate --force --no-interaction
     php tests/pg/auth6b5-bootstrap.php
     php tests/pg/day-bootstrap.php
-    UX4_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    if [[ ${UX4_WEEK_BROWSER_ONLY:-0} == 1 ]]; then
+        UX4_WEEK_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    elif [[ ${UX4_BROWSER_FULL:-0} == 1 ]]; then
+        bash tests/browser/recipe-batch-in-context.sh
+    else
+        UX4_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    fi
     exit
 fi
 if [[ ${DAY_ONLY:-0} == 1 ]]; then

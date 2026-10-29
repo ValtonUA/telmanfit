@@ -60,7 +60,22 @@ with sync_playwright() as p:
     page.locator('[name=code]').fill(otp(secret))
     page.get_by_role('button', name='Підтвердити вхід').click()
     page.wait_for_url('**/admin')
-    if os.environ.get('UX4_BROWSER_ONLY') == '1':
+    if os.environ.get('UX4_WEEK_BROWSER_ONLY') == '1':
+        from meal_plans import fixture
+        from week_repetition import run_week_repetition
+
+        def submit(dialog, label):
+            with (page.expect_navigation(wait_until='load') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
+                with page.expect_response(lambda response: '/livewire/update' in response.url and response.request.method == 'POST') as response:
+                    dialog.get_by_role('button', name=label, exact=True).click()
+            assert response.value.status == 200
+            dialog.wait_for(state='hidden')
+
+        seed = json.loads(fixture('seed'))
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        run_week_repetition(page, BASE, seed, '1440-light', submit)
+        print('UX-4 week actions Chromium regression PASS', flush=True)
+    elif os.environ.get('UX4_BROWSER_ONLY') == '1':
         from meal_plans import fixture
         from day_editor import run_day_editor
 
@@ -94,12 +109,17 @@ with sync_playwright() as p:
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
             page.screenshot(path=str(Path('docs/evidence/meal-plans') / f'day-editor-{width}-dark.png'), full_page=True)
             print(f'Day editor Chromium: {width}-dark responsive PASS', flush=True)
-    if os.environ.get('UX4_BROWSER_ONLY') != '1':
+    if os.environ.get('UX4_BROWSER_ONLY') != '1' and os.environ.get('UX4_WEEK_BROWSER_ONLY') != '1':
         headers = {'X-Livewire': 'true', 'Accept': 'application/json'}
         assert context.request.post(BASE + '/admin/livewire/update', data=state['payload'], headers=headers).status == 419
         subprocess.run(['php', 'tests/browser/food-catalog-fixture.php', 'revoke'], check=True)
         verify_meal_plan_revocation(page, BASE, state)
     assert not errors, errors
-    print('UX-4 browser-only Chromium acceptance PASS' if os.environ.get('UX4_BROWSER_ONLY') == '1' else 'UX-3 standalone Chromium acceptance PASS', flush=True)
+    if os.environ.get('UX4_WEEK_BROWSER_ONLY') == '1':
+        pass
+    elif os.environ.get('UX4_BROWSER_ONLY') == '1':
+        print('UX-4 browser-only Chromium acceptance PASS', flush=True)
+    else:
+        print('UX-3 standalone Chromium acceptance PASS', flush=True)
     context.close()
     browser.close()

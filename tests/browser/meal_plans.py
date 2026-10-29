@@ -22,7 +22,8 @@ def settle_overlays(page):
 def management(page, label):
     settle_overlays(page)
     target = page.get_by_role('button', name=label, exact=True)
-    if not target.is_visible():
+    visible_target = next((target.nth(index) for index in range(target.count()) if target.nth(index).is_visible()), None)
+    if visible_target is None:
         menu = page.get_by_role('button', name='Інші дії', exact=True)
         if not menu.is_visible():
             menu = page.get_by_role('button', name='Додаткові дії', exact=True)
@@ -31,7 +32,10 @@ def management(page, label):
         menu.click()
         settle_overlays(page)
         target = page.get_by_text(label, exact=True)
-    target.click()
+        visible_target = next((target.nth(index) for index in range(target.count()) if target.nth(index).is_visible()), None)
+    if visible_target is None:
+        raise AssertionError(f'Не знайдено видиму дію: {label}')
+    visible_target.click()
 
 
 def run_meal_plans(page, base):

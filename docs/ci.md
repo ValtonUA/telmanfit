@@ -206,3 +206,8 @@ PG18-контейнер, застосовує міграції та синтет
 пропускає; для одного чи кількох розмірів задайте, наприклад,
 `UX4_BROWSER_SUFFIX=390-light,320-dark`. Це локальний режим і не змінює Targeted CI чи
 обов'язкові PR-gates.
+
+Для локального повтору змінених дій тижня без PG suite використовуйте
+`DAY_BROWSER_ONLY=1 UX4_WEEK_BROWSER_ONLY=1 bash tests/pg/run-stage1.sh`. Він запускає
+ті самі міграції та disposable fixtures, але лише Chromium regression повторення
+тижня; PostgreSQL і concurrency тести пропускаються.
