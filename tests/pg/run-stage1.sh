@@ -7,7 +7,7 @@ php scripts/check-php-runtime.php
 umask 077
 phpunit_args=()
 if [[ -n ${STAGE1_PHPUNIT_CACHE:-} ]]; then
-    [[ $STAGE1_PHPUNIT_CACHE =~ ^/tmp/telmanfit-stage1-ci\.[a-zA-Z0-9_]+/(recipe|baseline|b5|b3)/phpunit$ && -d $STAGE1_PHPUNIT_CACHE ]]
+    [[ $STAGE1_PHPUNIT_CACHE =~ ^/tmp/telmanfit-stage1-ci\.[a-zA-Z0-9_]+/(day|assignment|recipe|baseline|b5|b3)/phpunit$ && -d $STAGE1_PHPUNIT_CACHE ]]
     phpunit_args+=(--cache-directory "$STAGE1_PHPUNIT_CACHE")
 fi
 ci_labels=()
@@ -184,6 +184,23 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 stage1_mark baseline_migrations
+if [[ ${DAY_ONLY:-0} == 1 ]]; then
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'MealPlanDayEditorTest|MealItemWriterTest|MealItemSelectorsTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest' --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    php tests/pg/day-bootstrap.php
+    php tests/pg/meal-plan-day-concurrency.php
+    php tests/pg/meal-item-writer-concurrency.php
+    php tests/pg/meal-item-selector-concurrency.php
+    php tests/pg/meal-plan-structure-concurrency.php
+    php tests/pg/meal-plan-week-deletion-concurrency.php
+    php tests/pg/meal-plan-week-repetition-concurrency.php
+    php tests/pg/meal-plan-publication-concurrency.php
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    UX3_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    exit
+fi
 if [[ ${UX3_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanCreationRequestTest --display-all-issues
     php artisan migrate --force --no-interaction
@@ -201,7 +218,10 @@ if [[ ${MEAL_PLAN_COPY_ONLY:-0} == 1 ]]; then
     exit
 fi
 if [[ ${MEAL_PLAN_ASSIGNMENT_ONLY:-0} == 1 ]]; then
-    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanAssignmentTest --display-all-issues
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter MealPlanAssignmentTest --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.auth4.xml --filter ClientMealPlanTest --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
     php tests/pg/meal-plan-assignment-concurrency.php
     if [[ ${MEAL_PLAN_ASSIGNMENT_BROWSER:-0} == 1 ]]; then bash tests/browser/meal-plan-assignment-in-context.sh; fi
     exit

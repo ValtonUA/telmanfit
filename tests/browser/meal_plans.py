@@ -353,7 +353,7 @@ def run_meal_plans(page, base):
     assert page.context.request.post(base + '/admin/livewire/update', data=payload, headers=headers).status == 419
     checks.append('Missing CSRF rejects signed publication/item/week-delete/create 419; guest/MFA boundary shared with recipe browser')
     (output / 'checks.json').write_text(json.dumps({'checks': checks, 'presentation': json.loads((output / 'presentation-checks.json').read_text())}, ensure_ascii=False, indent=2) + '\n')
-    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload, 'publication_payload': publication_payload, 'publication_version': publication_guard['version'], 'publication_before': publication_before}
+    return {'payload': payload, 'csrf': csrf, 'count': count, 'version': published, 'hash': fixture('hash'), 'structure_payload': structure_payload, 'structure_hash': structure_hash, 'item_payload': item_payload, 'repeat_payload': repeat_payload, 'publication_payload': publication_payload, 'publication_version': publication_guard['version'], 'publication_day': publication_guard['day'], 'publication_before': publication_before}
 
 
 def verify_meal_plan_revocation(page, base, state):
