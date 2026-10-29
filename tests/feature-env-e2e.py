@@ -63,18 +63,30 @@ def browser_probe(record, state, expected):
     return state
 
 
+def assert_bootstrap_rejected(manager, record, reason):
+    # Перевіряємо конкретний guard, а не довільний nonzero/проблему інфраструктури.
+    code = r"""$p = proc_open([PHP_BINARY, 'docker/local/bootstrap.php'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $text = stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);
+    fclose($pipes[1]); fclose($pipes[2]);
+    echo json_encode(['status' => proc_close($p), 'message' => $text]);"""
+    result = json.loads(manager.cli(record, 'exec', '-T', 'app', 'php', '-r', code))
+    assert result['status'] == 1 and reason in result['message'], 'Expected migration guard did not reject bootstrap'
+
+
 def main():
     docker = feature.local_docker()
-    before = stable_snapshot(docker)
+    stable_before = stable_snapshot(docker)
     proof = {'head_sha': 'a' * 40, 'base_sha': 'b' * 40, 'pr': 1}
     with tempfile.TemporaryDirectory(prefix='telmanfit-feature-e2e-') as directory:
         manager = feature.Manager(Path(directory), docker)
+        projects = set()
         snapshot = Path(directory) / 'fixture'
         source_fixture(proof['head_sha'], snapshot)
         try:
             with patch.object(feature, 'prepared', return_value=proof), patch.object(feature, 'export_source', side_effect=lambda sha, destination: shutil.copytree(snapshot, destination)):
                 print('START: clean PG18/bootstrap/health', flush=True)
                 first = manager.start('feature/synthetic-e2e')
+                projects.add(first['project'])
                 print('PASS: first stack healthy', flush=True)
                 access = json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "echo file_get_contents('/tmp/telmanfit-auth4-compose/access.json');"))
                 origin = f"http://{first['project']}.localhost:{first['port']}"
@@ -91,6 +103,7 @@ def main():
                 manager.cli(first, 'down')  # Зберегти volumes/images; звільнити vfs container rootfs.
                 print('UPDATE: new revision; retain first volumes/images (sequential cloud vfs test)', flush=True)
                 second = manager.start('feature/synthetic-e2e')
+                projects.add(second['project'])
                 assert first['project'] != second['project']
                 assert len(manager.records('feature/synthetic-e2e')) == 2
                 assert access['password'] != json.loads(manager.cli(second, 'exec', '-T', 'app', 'php', '-r', "echo file_get_contents('/tmp/telmanfit-auth4-compose/access.json');"))['password']
@@ -102,22 +115,19 @@ def main():
                 manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/health.php')
                 assert access == json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "echo file_get_contents('/tmp/telmanfit-auth4-compose/access.json');"))
                 print('PASS: original revision resumes with preserved DB/secrets', flush=True)
+                manager.cli(first, 'stop', 'worker', 'scheduler')
+                before = json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/upgrade-check.php'))
                 # Pending migration навмисно лише у disposable контейнері, не source/робочій БД.
                 manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "file_put_contents('database/migrations/9999_01_01_000000_pending_probe.php', '<?php');")
-                try:
-                    manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/bootstrap.php')
-                    raise AssertionError('Pending migration was not blocked')
-                except subprocess.CalledProcessError:
-                    pass
-                print('PASS: pending migration blocks restart (no migrate/wipe)', flush=True)
-                # Частковий initial bootstrap на вже populated synthetic schema має відмовити.
+                assert_bootstrap_rejected(manager, first, 'Нові міграції потребують окремого погодженого upgrade')
+                print('PASS: exact pending-migration guard blocks restart', flush=True)
+                # Частковий initial bootstrap на populated synthetic schema має відмовити.
                 manager.cli(first, 'exec', '-T', 'app', 'php', '-r', "unlink('/tmp/telmanfit-auth4-compose/database-ready');")
-                try:
-                    manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/bootstrap.php')
-                    raise AssertionError('Nonempty schema was not blocked')
-                except subprocess.CalledProcessError:
-                    pass
-                print('PASS: populated schema blocks initial migrations', flush=True)
+                assert_bootstrap_rejected(manager, first, 'Непорожня БД: автоматичні міграції заборонені')
+                after = json.loads(manager.cli(first, 'exec', '-T', 'app', 'php', 'docker/local/upgrade-check.php'))
+                assert before['tables'] == after['tables'] and before['schema'] == after['schema']
+                assert before['migrations']['ran'] == after['migrations']['ran']
+                print('PASS: nonempty guard rejects initial migrations; all DB fingerprints/schema/history unchanged', flush=True)
                 manager.remove(first)
                 manager.cli(second, 'up', '--detach', '--wait', '--wait-timeout', '360', '--no-build')
                 manager.cli(second, 'exec', '-T', 'app', 'php', 'docker/local/health.php')
@@ -135,8 +145,15 @@ def main():
             raise
         finally:
             for record in manager.records('feature/synthetic-e2e'):
+                projects.add(record['project'])
                 manager.remove(record)
-        assert stable_snapshot(docker) == before
+        for project in projects:
+            for kind in ('container', 'volume', 'network', 'image'):
+                label = 'io.telmanfit.feature.project' if kind == 'image' else 'com.docker.compose.project'
+                args = [*docker, kind, 'ls', '-q', '--filter', f'label={label}={project}']
+                if kind == 'container': args.append('--all')
+                assert not feature.run(args, env=manager.env), f'Leftover owned {kind}'
+        assert stable_snapshot(docker) == stable_before
         print('PASS: own resources cleaned; stable Docker inventory unchanged', flush=True)
 
 
