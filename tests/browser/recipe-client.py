@@ -139,6 +139,26 @@ with sync_playwright() as p:
         release_held_routes(page, held_days, '**/api/meal-plan/days*')
         page.unroute('**/api/meal-plan/days*')
         checks.append('SPA «Сьогодні»: cached content remains visible during delayed route revalidation')
+        # Явно обраний інший тиждень не може замінити кеш сьогоднішнього меню.
+        today_menu = page.locator('.today-menu')
+        expect(today_menu.locator('.dish').first).to_be_visible()
+        today_text = today_menu.inner_text()
+        page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name='Раціон').click()
+        expect(page.get_by_role('combobox', name='Тиждень раціону')).to_be_visible()
+        with page.expect_response(lambda response: '/api/meal-plan/days?week=2' in response.url and response.status == 200):
+            page.get_by_role('combobox', name='Тиждень раціону').select_option('2')
+        expect(page.locator('.plan-days button').first).to_contain_text('День 8')
+        held_days = []
+        page.route('**/api/meal-plan/days*', lambda route: held_days.append(route))
+        page.get_by_role('navigation', name='Основна навігація').get_by_role('link', name='Сьогодні').click()
+        wait_for_held_route(page, held_days, 'повернення на сьогодні має перевіряти API')
+        expect(today_menu).to_be_visible()
+        assert today_menu.inner_text() == today_text, 'сьогоднішні страви мають залишатися незмінними'
+        for heading in ('Завантажуємо меню…', 'Поки немає призначеного раціону', 'На сьогодні меню не заплановано'):
+            assert page.get_by_role('heading', name=heading).count() == 0, heading
+        release_held_routes(page, held_days, '**/api/meal-plan/days*')
+        page.unroute('**/api/meal-plan/days*')
+        checks.append('UX-1: week 2 cannot replace the current-day cache during delayed revalidation')
         page.get_by_role('link', name='Відкрити профіль').click()
         expect(page.get_by_role('heading', name='Профіль', exact=True)).to_be_visible()
         page.get_by_role('link', name='Моя анкета').click()

@@ -1,8 +1,9 @@
 {
   "result": "PASS",
-  "browser": "151.0.7922.34",
+  "browser": "154.0.8037.57",
   "checks": [
     "SPA «Сьогодні»: cached content remains visible during delayed route revalidation",
+    "UX-1: week 2 cannot replace the current-day cache during delayed revalidation",
     "UX-1: 4 вкладки, профіль/анкета, Back/Forward, незмінна оболонка, 0 document/CSRF повторів, 1440/390/320 light/dark",
     "Бібліотека T5.6: auth, published-only, Markdown, HTTPS, reload, 1440/390/320 light/dark",
     "T5.7a: PG exact grams, week selector, deep URL/reload, 409 clears UI, retry, responsive light/dark",

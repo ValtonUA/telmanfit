@@ -51,6 +51,7 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
     if (!privateData<MealPlanResponse>(`meal:days:${week ?? 'current'}`)) setLoading(true)
     setError('')
     try {
+      let responseWeek = week
       let result = await getMealPlanDays(week)
       if (request !== generation.current) return
       const previous = current.current
@@ -60,13 +61,13 @@ export function MealPlan({ onExit }: { onExit: (message: string) => void }) {
         || baseline.assignment?.meal_plan_version.id !== result.assignment?.meal_plan_version.id)
       if (replaced) {
         forgetPrivateData('meal:'); setData(undefined); setChanged(true)
-        if (week) result = await getMealPlanDays()
+        if (week) { result = await getMealPlanDays(); responseWeek = undefined }
       }
       if (request !== generation.current) return
       current.current = result
       if (result.assignment) rememberPrivateData(`meal:days:${result.week ?? 'current'}`, result)
       else forgetPrivateData('meal:')
-      rememberPrivateData('meal:days:current', result)
+      if (responseWeek === undefined) rememberPrivateData('meal:days:current', result)
       setData(result); setLoadedWeek(requestedWeek)
 
     } catch (failure) {
