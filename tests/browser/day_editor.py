@@ -97,12 +97,12 @@ def run_day_editor(page, base, f, suffix, submit, compact_only=False):
         return add_dialog
 
     before = fixture('week-state', state['version'])
-    dialog = add_food(food, state['meals'][1])
+    dialog = add_food(food, state['meals'][1], touch_input=compact_only)
     expect(dialog.get_by_label('Споживана кількість', exact=False)).to_have_value('')
     assert fixture('week-state', state['version']) == before
     submit(dialog, 'Скасувати')
     assert fixture('week-state', state['version']) == before
-    dialog = add_food(food, state['meals'][0])
+    dialog = add_food(food, state['meals'][0], touch_input=compact_only)
     dialog.get_by_label('Споживана кількість', exact=False).fill('0.50')
     dialog.get_by_role('combobox', name='Одиниця', exact=False).click()
     with page.expect_response(lambda r: '/livewire/update' in r.url):
