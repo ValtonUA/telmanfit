@@ -28,6 +28,13 @@ class AgentHookTests(unittest.TestCase):
             "php artisan migrate:fresh --force",
             "php artisan migrate:refresh",
             "git status && php artisan db:wipe",
+            "git status\ngit reset --hard",
+            "git -C /tmp/repo push origin --force",
+            "git push origin +main:main",
+            "git clean --force -d",
+            "git reset HEAD --hard",
+            "env CI=1 php ./artisan migrate:fresh",
+            "sudo git -c color.ui=false clean -fd",
         ):
             with self.subTest(command=command):
                 result = module.decision({"tool_name": "Bash", "tool_input": {"command": command}})
@@ -36,6 +43,8 @@ class AgentHookTests(unittest.TestCase):
     def test_allows_normal_work(self) -> None:
         for command in (
             "git status --short",
+            "printf '%s' 'git reset --hard'",
+            "git -C /tmp/repo push origin feature",
             "git push origin feat/agent-policy",
             "git clean -nd",
             "git diff --check",

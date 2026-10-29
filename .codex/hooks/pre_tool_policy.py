@@ -1,38 +1,75 @@
 #!/usr/bin/env python3
-"""Best-effort local Codex safety hook for clearly destructive Bash commands.
-
-Not a security boundary: GitHub/API, non-Bash tools and untrusted hook configs
-need independent authorization and server-side controls.
-"""
+"""Best-effort guard for explicit destructive shell commands, not a security boundary."""
 from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
 
-# Narrow, explicit patterns: do not block normal test/build/development work.
-DANGEROUS = (
-    (re.compile(r"\bgit(?:\.exe)?\s+push\b[^\n;&|]*?(?:\s|^)(?:--force(?:-with-lease)?|-f)(?=\s|$|[;&|])", re.I), "force-push"),
-    (re.compile(r"\bgit(?:\.exe)?\s+reset\s+--hard\b", re.I), "git reset --hard"),
-    (re.compile(r"\bgit(?:\.exe)?\s+clean\s+-(?=[a-z]*f)[a-z]+\b", re.I), "git clean -f"),
-    (re.compile(r"\b(?:php\s+artisan|artisan)\s+(?:db:wipe|migrate:fresh|migrate:refresh)\b", re.I), "destructive database reset"),
-)
+
+def dangerous_command(command: str) -> str | None:
+    # Parse simple shell command segments. Expansions, scripts and alternate tools
+    # remain outside this guard; the sandbox and server controls are authoritative.
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|()\n')
+        lexer.whitespace = ' \t\r'
+        lexer.whitespace_split = True
+        lexer.commenters = '#'
+        tokens = list(lexer)
+    except ValueError:
+        return None
+    segments: list[list[str]] = [[]]
+    for token in tokens:
+        if re.fullmatch(r'[;&|()\n]+', token):
+            segments.append([])
+        else:
+            segments[-1].append(token)
+    for args in segments:
+        if not args:
+            continue
+        # Common wrappers and assignments; do not interpret arbitrary shell code.
+        while args and (args[0] in ('command', 'sudo', 'env') or re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*=.*', args[0])):
+            args = args[1:]
+        if not args:
+            continue
+        executable = args[0].replace('\\', '/').rsplit('/', 1)[-1].lower()
+        if executable in ('git', 'git.exe'):
+            rest = args[1:]
+            while rest and rest[0].startswith('-'):
+                option = rest.pop(0)
+                if option in ('-C', '-c', '--git-dir', '--work-tree', '--namespace') and rest:
+                    rest.pop(0)
+            if not rest:
+                continue
+            action, options = rest[0], rest[1:]
+            if action == 'push' and any(x in ('-f', '--force', '--force-with-lease') or x.startswith(('--force-with-lease=', '+')) or (x.startswith('-') and not x.startswith('--') and 'f' in x[1:]) for x in options):
+                return 'force-push'
+            if action == 'reset' and '--hard' in options:
+                return 'git reset --hard'
+            if action == 'clean' and any(x == '--force' or (x.startswith('-') and not x.startswith('--') and 'f' in x[1:]) for x in options):
+                return 'git clean --force'
+        if executable in ('php', 'php.exe') and len(args) > 2 and args[1].replace('\\', '/').rsplit('/', 1)[-1] == 'artisan':
+            args = args[1:]
+            executable = 'artisan'
+        if executable == 'artisan' and len(args) > 1 and args[1] in ('db:wipe', 'migrate:fresh', 'migrate:refresh'):
+            return 'destructive database reset'
+    return None
 
 
 def decision(payload: object) -> dict[str, object]:
-    if not isinstance(payload, dict) or payload.get("tool_name") != "Bash":
+    if not isinstance(payload, dict) or payload.get('tool_name') != 'Bash':
         return {}
-    tool_input = payload.get("tool_input")
-    if not isinstance(tool_input, dict) or not isinstance(tool_input.get("command"), str):
+    tool_input = payload.get('tool_input')
+    if not isinstance(tool_input, dict) or not isinstance(tool_input.get('command'), str):
         return {}
-    command = tool_input["command"]
-    for pattern, reason in DANGEROUS:
-        if pattern.search(command):
-            return {"hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": f"TelmanFit: {reason} заборонено в автоматичному Bash. Використайте окремий погоджений безпечний процес.",
-            }}
+    reason = dangerous_command(tool_input['command'])
+    if reason:
+        return {'hookSpecificOutput': {
+            'hookEventName': 'PreToolUse',
+            'permissionDecision': 'deny',
+            'permissionDecisionReason': f'TelmanFit: {reason} заборонено в автоматичному Bash. Використайте окремий погоджений безпечний процес.',
+        }}
     return {}
 
 
@@ -40,8 +77,7 @@ def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (ValueError, UnicodeError):
-        # Hook errors do not imply a secure denial; surface and fail visibly.
-        print("TelmanFit hook: invalid JSON input", file=sys.stderr)
+        print('TelmanFit hook: invalid JSON input', file=sys.stderr)
         return 2
     result = decision(payload)
     if result:
@@ -49,5 +85,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())
