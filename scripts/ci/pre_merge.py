@@ -146,6 +146,10 @@ def evaluate(snapshot, purpose="merge"):
             errors.append(f"{workflow}: no run on current PR head {sha}")
             continue
         run = max(runs, key=lambda r: r["id"])
+        # run.pull_requests is a live PR view: its base/head may change after the
+        # run. display_title captures run-name evaluated from the original event.
+        if run.get('display_title') != f"TelmanFit CI {sha} {pr['base']['sha']}":
+            errors.append(f"{workflow}: original CI event head/base is missing or stale")
         jobs = snapshot["jobs"].get(str(run["id"]), [])
         names = [
             "regressions / PostgreSQL and browser regressions"

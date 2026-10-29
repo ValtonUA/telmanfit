@@ -24,6 +24,7 @@ def green():
     for index, (workflow, names) in enumerate(gate.REQUIRED.items(), 1):
         snapshot["runs"][workflow] = [{
             "id": index, "head_sha": sha, "event": "pull_request",
+            "display_title": "TelmanFit CI " + sha + " " + "b" * 40,
             "path": f".github/workflows/{workflow}", "head_branch": "feature/example",
             "pull_requests": [{"number": 42}], "run_attempt": 1,
             "status": "completed", "conclusion": "success", "html_url": "https://github.com/run",
@@ -184,6 +185,23 @@ class GateTests(unittest.TestCase):
         self.assert_blocked(s)
 
 
+    def test_original_ci_base_is_immutable_and_missing_or_stale_blocks(self):
+        for title in (None, 'TelmanFit CI ' + 'a' * 40 + ' ' + 'c' * 40):
+            s = green()
+            for workflow in s['runs']:
+                s['runs'][workflow][0]['display_title'] = title
+            self.assert_blocked(s)
+        s = green()
+        # A live PR link may report the new base; the original event was old.
+        s['pr']['base']['sha'] = s['master_sha'] = 'c' * 40
+        for workflow in s['runs']:
+            s['runs'][workflow][0]['pull_requests'] = [{'number': 42, 'base': {'sha': 'c' * 40}}]
+        self.process_review(s)
+        s['comments'][0]['body'] = s['comments'][0]['body'].replace('b' * 40, 'c' * 40)
+        result = gate.evaluate(s)
+        self.assertEqual(len(result['errors']), len(gate.REQUIRED))
+        self.assertTrue(all('original CI event head/base' in e for e in result['errors']))
+
     def test_new_commit_invalidates_old_success(self):
         s = green()
         s["pr"]["head"]["sha"] = "c" * 40
@@ -292,6 +310,10 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn("  push:", self.workflows[name])
             self.assertIn("ref: ${{ inputs.head }}", self.workflows[name])
             self.assertNotRegex(self.workflows[name], r"(?m)^    if:", name)
+
+    def test_required_workflows_capture_original_event_pair_in_run_name(self):
+        for workflow in gate.REQUIRED:
+            self.assertIn('run-name: TelmanFit CI ${{ github.event.pull_request.head.sha }} ${{ github.event.pull_request.base.sha }}', self.workflows[workflow])
 
     def test_full_ci_and_manual_trigger_are_absent(self):
         self.assertNotIn("full.yml", self.workflows)

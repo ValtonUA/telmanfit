@@ -219,6 +219,13 @@ feature tooling, Docker runtime, залежностей або міграцій/
 disposable PG18 ревізій, не повернення Full CI. Admission preflight у цьому
 harness синтетичний; справжній review/CI/acceptance перевіряє live gate окремо.
 
-Reviewer capability перед ruleset activation перевіряється реальними API collaborators/reviews
-через `feature_rules.py --review-pr 117`; відсутня окрема ідентичність блокує PUT.
-Синтетичний unit PASS не є доказом доступного незалежного review.
+Reviewer evidence перед ruleset activation перевіряється реальним Reviews API
+через `feature_rules.py --review-pr 117`; відсутній exact-head/base session report
+або independent approval блокує PUT. Синтетичний unit PASS не є live доказом.
+
+Кожен required PR workflow записує початкові event head/base у `run-name`
+`TelmanFit CI <head> <base>`. Gate перевіряє API `display_title` останнього run:
+відсутній або старий head/base блокує результат без fallback на давній зелений run.
+`run.pull_requests[].base/head` не використовується як історичний proof: API
+повертає live PR refs, які можуть змінитися після запуску. Rerun зі старим event
+не оновлює пару; після зміни base потрібен новий PR event/run, а не старий attempt.

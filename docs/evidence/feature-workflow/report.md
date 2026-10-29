@@ -18,7 +18,14 @@ merge й активація ruleset — наступні контрольова�
 
 ## Перевірки
 
-- Локально `python3 -m unittest discover -s tests/ci -v`: 81 PASS, включно
+Окремий reviewer знайшов і автор виправив повторне використання CI після зміни
+base: required workflows тепер зберігають початковий event head/base у run-name,
+gate перевіряє display_title останнього run. Live PR links не є історичним proof.
+Негативний тест змінює live master/base та review/acceptance, але залишає старий
+CI event: усі workflows блокуються. Виправлено також exit з inline bootstrap,
+щоб команда не закривала інтерактивний PowerShell host.
+
+- Локально `python3 -m unittest discover -s tests/ci -v`: 83 PASS, включно
   same-SHA reuse, explicit fresh, cross-feature parking, stop/resume, immutable
   images, failed build/resume recovery, unknown ownership, reviewer capability
   і відсутність зовнішнього PUT за недоведеного live report.
@@ -68,6 +75,8 @@ production та stable дані не змінюються. Немає GitHub IAM
 ## Усі змінені файли
 
 - `.github/workflows/docs-health.yml`
+- `.github/workflows/fast.yml`
+- `.github/workflows/targeted.yml`
 - `.github/workflows/feature-acceptance.yml`
 - `.github/workflows/feature-environments.yml`
 - `.github/workflows/local-update-powershell-compat.yml`
