@@ -4,6 +4,8 @@
 Composer, Node.js і PostgreSQL у Windows/WSL встановлювати не потрібно.
 У PowerShell відкрийте каталог репозиторію. Docker Desktop має працювати.
 
+Для приймання функцій використовуйте [окремі feature-середовища](feature-environments.md): вони не оновлюють цей стабільний stack і не обходять його migration allowlist/SQL20.
+
 ## Перший запуск
 
 ```powershell

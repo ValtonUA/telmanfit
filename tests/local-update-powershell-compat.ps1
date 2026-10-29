@@ -23,3 +23,10 @@ if ($errors.Count -gt 0) {
 }
 
 Write-Output "Coordinator syntax compatibility: PASS ($($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion))"
+
+$featureScript = Join-Path $PSScriptRoot '..\scripts\feature.ps1'
+$errors = $null
+$null = [System.Management.Automation.Language.Parser]::ParseFile($featureScript, [ref] $tokens, [ref] $errors)
+if ($errors.Count -ne 0) { throw 'Feature launcher has PowerShell syntax errors.' }
+$featureBytes = [IO.File]::ReadAllBytes($featureScript)
+if ($featureBytes[0] -ne 0xEF -or $featureBytes[1] -ne 0xBB -or $featureBytes[2] -ne 0xBF) { throw 'Feature launcher requires UTF-8 BOM.' }

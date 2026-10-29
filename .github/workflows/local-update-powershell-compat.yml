@@ -29,3 +29,6 @@ jobs:
       - name: Test coordinator and native CLI handling
         shell: cmd
         run: ${{ matrix.executable }} -NoLogo -NoProfile -File tests/local-update-coordinator.ps1
+      - name: Test feature environment isolation and failure handling
+        shell: cmd
+        run: py -3 -m unittest discover -s tests/ci -p test_feature_env.py -v

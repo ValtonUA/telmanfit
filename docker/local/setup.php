@@ -34,9 +34,16 @@ $epoch = substr($uuid, 0, 8).'-'.substr($uuid, 8, 4).'-4'.substr($uuid, 13, 3).'
 $password = $random();
 $adminPassword = $random();
 $invite = $random();
+$featureProject = getenv('TELMANFIT_FEATURE_PROJECT');
+$featurePort = getenv('TELMANFIT_FEATURE_PORT');
+if (($featureProject || $featurePort) && (! preg_match('/^telmanfit-feature-[a-f0-9]{24}$/D', $featureProject ?: '')
+    || ! ctype_digit($featurePort ?: '') || (int) $featurePort < 20000 || (int) $featurePort > 59999)) {
+    throw new RuntimeException('Некоректна ідентичність feature-середовища.');
+}
+$origin = $featureProject ? 'http://'.$featureProject.'.localhost:'.$featurePort : 'http://127.0.0.1:8098';
 $values = [
     'APP_NAME' => 'TelmanFit', 'APP_ENV' => 'local', 'APP_DEBUG' => 'false',
-    'APP_KEY' => 'base64:'.base64_encode(random_bytes(32)), 'APP_URL' => 'http://127.0.0.1:8098',
+    'APP_KEY' => 'base64:'.base64_encode(random_bytes(32)), 'APP_URL' => $origin,
     'APP_MAINTENANCE_DRIVER' => 'file', 'DB_CONNECTION' => 'pgsql', 'DB_URL' => '',
     'DB_HOST' => 'database', 'DB_PORT' => '5432', 'DB_DATABASE' => 'telmanfit_local_'.$id,
     'DB_USERNAME' => 'telmanfit_local_runner', 'DB_PASSWORD' => $password,
@@ -51,13 +58,16 @@ $values = [
     'TELMANFIT_PG_TEST' => '0', 'TELMANFIT_LOCAL_DEMO' => 'false', 'TELMANFIT_LOCAL_COMPOSE' => 'true',
     'LOCAL_CLUSTER_ID' => $id,
 ];
+if ($featureProject) {
+    $values['SESSION_COOKIE'] = str_replace('-', '_', $featureProject).'_session';
+}
 $env = '';
 foreach ($values as $key => $value) {
     $env .= 'export '.$key.'='.escapeshellarg($value)."\n";
 }
 file_put_contents("$state/runtime.env", $env);
 file_put_contents("$state/access.json", json_encode(['email' => 'owner@example.invalid', 'password' => $adminPassword,
-    'invitation' => "http://127.0.0.1:8098/app/register#invite=$invite"], JSON_THROW_ON_ERROR));
+    'invitation' => "$origin/app/register#invite=$invite"], JSON_THROW_ON_ERROR));
 file_put_contents("$epochDir/epoch", $epoch);
 file_put_contents("$secrets/password", $random());
 $sql = "CREATE ROLE telmanfit_local_runner LOGIN PASSWORD '$password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;\n"

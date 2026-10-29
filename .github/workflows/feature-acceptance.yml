@@ -1,0 +1,40 @@
+name: Feature acceptance status
+
+on:
+  issue_comment:
+    types: [created, edited, deleted]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  workflow_run:
+    workflows: [Fast PR, Documentation health, Targeted PR regressions, Local update PowerShell compatibility, Feature environment acceptance]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  statuses: write
+
+concurrency:
+  group: telmanfit-feature-acceptance
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh feature admission from trusted master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: master
+          persist-credentials: false
+      - name: Publish exact-head admission status without executing PR code
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f scripts/ci/publish_feature_gate.py ]; then
+            echo "Bootstrap: trusted workflow is not installed in master yet; no admission status issued."
+            exit 0
+          fi
+          python3 scripts/ci/publish_feature_gate.py

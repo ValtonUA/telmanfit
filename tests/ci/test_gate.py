@@ -15,13 +15,16 @@ def green():
     sha = "a" * 40
     snapshot = {"repository": "ValtonUA/telmanfit", "pr": {
         "number": 42, "state": "open", "auto_merge": None, "labels": [{"name": "ci:full"}],
-        "base": {"ref": "master", "sha": "b" * 40},
-        "head": {"sha": sha, "ref": "ci/example", "repo": {"full_name": "ValtonUA/telmanfit"}},
+        "user": {"login": "author"}, "base": {"ref": "master", "sha": "b" * 40},
+        "head": {"sha": sha, "ref": "feature/example", "repo": {"full_name": "ValtonUA/telmanfit"}},
     }, "comparison": {"status": "ahead"}, "runs": {}, "jobs": {}}
+    snapshot["master_sha"] = "b" * 40
+    snapshot["reviews"] = [{"id": 1, "user": {"login": "reviewer", "type": "User"}, "state": "APPROVED", "commit_id": sha}]
+    snapshot["comments"] = [{"id": 1, "user": {"login": "ValtonUA", "type": "User"}, "body": "TelmanFit-Accept: " + sha + " " + "b" * 40, "created_at": "2026-10-29T00:00:00Z"}]
     for index, (workflow, names) in enumerate(gate.REQUIRED.items(), 1):
         snapshot["runs"][workflow] = [{
             "id": index, "head_sha": sha, "event": "pull_request",
-            "path": f".github/workflows/{workflow}", "head_branch": "ci/example",
+            "path": f".github/workflows/{workflow}", "head_branch": "feature/example",
             "pull_requests": [{"number": 42}], "run_attempt": 1,
             "status": "completed", "conclusion": "success", "html_url": "https://github.com/run",
         }]
@@ -40,7 +43,7 @@ class GateTests(unittest.TestCase):
         self.assertTrue(gate.evaluate(green())["eligible"])
 
     def test_full_label_and_critical_changes_never_add_a_gate(self):
-        self.assertEqual(set(gate.REQUIRED), {"fast.yml", "docs-health.yml", "targeted.yml"})
+        self.assertEqual(set(gate.REQUIRED), {"fast.yml", "docs-health.yml", "targeted.yml", "local-update-powershell-compat.yml", "feature-environments.yml"})
         for changed in (".github/workflows/targeted.yml", "composer.lock",
                         "database/migrations/critical.php", "app/Http/Middleware/Auth.php"):
             with self.subTest(changed=changed):
@@ -72,9 +75,55 @@ class GateTests(unittest.TestCase):
             job["name"] = name
             target_jobs.append(job)
         s["jobs"]["999999"] = target_jobs
-        self.assertTrue(gate.evaluate(s)["eligible"])
+        # Історичні CI докази самі по собі більше не дають права merge.
+        self.assertFalse(gate.evaluate(s)["eligible"])
         s["pr"]["head"]["sha"] = "0" * 40
         self.assert_blocked(s)
+
+    def test_current_master_and_draft_are_checked(self):
+        s = green()
+        s["master_sha"] = "c" * 40
+        self.assert_blocked(s)
+        s = green()
+        s["pr"]["draft"] = True
+        self.assert_blocked(s)
+        self.assertTrue(gate.evaluate(s, "preview")["eligible"])
+
+    def test_product_acceptance_is_exact_and_only_owner(self):
+        for change in ("missing", "foreign", "bot", "old_head", "old_base", "reject", "quoted"):
+            s = green()
+            c = s["comments"][0]
+            if change == "missing": s["comments"] = []
+            elif change == "foreign": c["user"]["login"] = "reviewer"
+            elif change == "bot": c["user"]["type"] = "Bot"
+            elif change == "old_head": c["body"] = c["body"].replace("a" * 40, "c" * 40)
+            elif change == "old_base": c["body"] = c["body"].replace("b" * 40, "c" * 40)
+            elif change == "reject": c["body"] = c["body"].replace("Accept", "Reject")
+            elif change == "quoted": c["body"] = "> " + c["body"]
+            with self.subTest(change=change):
+                self.assert_blocked(s)
+                self.assertTrue(gate.evaluate(s, "preview")["eligible"])
+
+    def test_latest_owner_decision_and_review_invalidation(self):
+        s = green()
+        c = copy.deepcopy(s["comments"][0])
+        c.update(id=2, created_at="2026-10-29T01:00:00Z", body=c["body"].replace("Accept", "Reject"))
+        s["comments"].append(c)
+        self.assert_blocked(s)
+        for field, value in (("state", "DISMISSED"), ("commit_id", "c" * 40)):
+            s = green()
+            s["reviews"][0][field] = value
+            self.assert_blocked(s)
+        s = green()
+        s["reviews"][0]["user"]["login"] = "author"
+        self.assert_blocked(s)
+        s = green()
+        s["reviews"].append({**s["reviews"][0], "id": 2, "state": "CHANGES_REQUESTED"})
+        self.assert_blocked(s)
+        for branch in ("dev", "master", "fix/test"):
+            s = green()
+            s["pr"]["head"]["ref"] = branch
+            self.assert_blocked(s)
 
     def test_new_commit_invalidates_old_success(self):
         s = green()
@@ -153,7 +202,7 @@ class GateTests(unittest.TestCase):
             self.assertEqual(gate.api("endpoint"), [{"page": 1}, {"page": 2}])
 
     def test_fast_docs_and_auto_merge_are_mandatory(self):
-        for workflow in ("fast.yml", "docs-health.yml", "targeted.yml"):
+        for workflow in gate.REQUIRED:
             s = green()
             s["runs"][workflow] = []
             self.assert_blocked(s)
@@ -167,7 +216,7 @@ class WorkflowTests(unittest.TestCase):
         self.workflows = {p.name: p.read_text() for p in (ROOT / ".github/workflows").glob("*.yml")}
 
     def test_triggers_permissions_and_pins(self):
-        self.assertEqual(set(self.workflows), {"fast.yml", "docs-health.yml", "targeted.yml", "stage1.yml", "php-runtime.yml", "local-compose.yml", "local-update-powershell-compat.yml"})
+        self.assertEqual(set(self.workflows), {"fast.yml", "docs-health.yml", "targeted.yml", "stage1.yml", "php-runtime.yml", "local-compose.yml", "local-update-powershell-compat.yml", "feature-acceptance.yml", "feature-environments.yml"})
         self.assertFalse((ROOT / ".github/workflows/full.yml").exists())
         self.assertFalse((ROOT / "scripts/ci/request_full.py").exists())
         for name, text in self.workflows.items():
@@ -176,7 +225,7 @@ class WorkflowTests(unittest.TestCase):
                 self.assertNotIn("pull_request_target", text)
                 self.assertNotIn("secrets:", text)
                 self.assertNotRegex(text, r"continue-on-error|if: false|paths-ignore:|(?m:^    paths:)")
-                for action in re.findall(r"uses: (\S+)", text):
+                for action in re.findall(r"(?m)^\s*(?:-\s*)?uses: (\S+)", text):
                     self.assertTrue(action.startswith("./.github/workflows/") or re.fullmatch(r"[\w/-]+@[a-f0-9]{40}", action), action)
         for name in ("stage1.yml", "php-runtime.yml", "local-compose.yml"):
             self.assertIn("  workflow_call:", self.workflows[name])
@@ -188,7 +237,7 @@ class WorkflowTests(unittest.TestCase):
     def test_full_ci_and_manual_trigger_are_absent(self):
         self.assertNotIn("full.yml", self.workflows)
         self.assertFalse((ROOT / "scripts/ci/request_full.py").exists())
-        self.assertEqual(set(gate.REQUIRED), {"fast.yml", "docs-health.yml", "targeted.yml"})
+        self.assertEqual(set(gate.REQUIRED), {"fast.yml", "docs-health.yml", "targeted.yml", "local-update-powershell-compat.yml", "feature-environments.yml"})
         for name in ("fast.yml", "docs-health.yml", "targeted.yml"):
             self.assertIn("cancel-in-progress: true", self.workflows[name])
             self.assertIn("github.event.pull_request.number", self.workflows[name])

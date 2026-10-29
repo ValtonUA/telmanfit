@@ -265,3 +265,11 @@ cd client && npm run build       # збірка SPA у public/app
 
 
 Контракт профілів: [client-profiles.md](client-profiles.md). Початкова анкета — історичний JSON-знімок; поточні характеристики зберігаються в окремих typed профілях. Час ранкового повідомлення локальний у timezone клієнта; scheduler не додано.
+
+
+## Ізоляція feature-приймання
+
+Для циклу `feature/* → master` Windows launcher створює окремий Compose project
+на кожну перевірену ревізію: власні images/volumes/network, synthetic PG18 та
+loopback web. Оновлення створює нову БД; стабільний stack не підключається.
+Runtime-контракт, міграційні межі та cleanup — [feature-environments.md](feature-environments.md).

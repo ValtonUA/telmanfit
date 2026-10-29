@@ -339,3 +339,17 @@ selectors, кількостей/UOM/грамів і порядку. Двоета
 ## UX-2 — адміністративна SPA-навігація
 
 Реалізовано штатний Filament SPA на Livewire 4, власні anchors/selector/redirects та локальний Alpine lifecycle. Cached history/BFCache проходить нове native server loading із MFA/ACL, admin HTML має no-store. Точкові auth/React/JSON exceptions — у [контракті](admin-navigation.md). Додано `tests/browser/filament_navigation.py` на справжніх MFA/Filament/API та disposable PG18; 126 Unit/Feature та 25 AUTH3 тестів PASS. Chromium 154 acceptance PASS: 1440/390/320 light/dark, 0 document navigation на звичайних переходах, recipe save/create (одна нова версія), modal/drag, Back/Forward/refresh, cached expiry 403, revoked SPA GET 403 і logout/recovery login. Додатково PASS: 231 PG/Livewire (3821 assertions), recipe/catalog/meal-plan/cooking concurrency, 40 CI-helper tests та Pint. [Review і докази](evidence/ux2-navigation/report.md); required CI на фінальному SHA перевіряється окремо; production/schema/бізнес-правила незмінні.
+
+
+## Процес feature-приймання
+
+Додано `scripts/feature.ps1` / `scripts/feature_env.py`: окремий Compose project
+на кожну ревізію, власні images/volumes/network, synthetic PG18, cookie hostname
+і loopback port. Оновлення зберігає попередній stack і створює нову БД; stable
+upgrade allowlist/SQL20 не змінено. Live pre-merge gate вимагає feature-гілку,
+незалежний review exact head, продуктове приймання exact head/base і required CI,
+включно обох Windows compatibility jobs та цільового Docker lifecycle check. Чинний серверний ruleset прочитано через Rulesets API: PR, strict Fast/Docs/Targeted,
+без bypass. Новий admission workflow і план розширення правил підготовлено;
+активація можлива лише після прийнятого bootstrap merge. Classic protection API
+повертає 403; Rulesets write до bootstrap не перевіряється.
+Контракт і спосіб перевірки — [feature-environments.md](feature-environments.md).
