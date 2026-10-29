@@ -52,8 +52,16 @@ def dangerous_command(command: str) -> str | None:
         if executable in ('php', 'php.exe') and len(args) > 2 and args[1].replace('\\', '/').rsplit('/', 1)[-1] == 'artisan':
             args = args[1:]
             executable = 'artisan'
-        if executable == 'artisan' and len(args) > 1 and args[1] in ('db:wipe', 'migrate:fresh', 'migrate:refresh'):
-            return 'destructive database reset'
+        if executable == 'artisan':
+            rest = args[1:]
+            while rest and rest[0].startswith('-'):
+                option = rest.pop(0)
+                if option == '--':
+                    break
+                if option == '--env' and rest:
+                    rest.pop(0)
+            if rest and rest[0] in ('db:wipe', 'migrate:fresh', 'migrate:refresh'):
+                return 'destructive database reset'
     return None
 
 
