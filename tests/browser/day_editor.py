@@ -5,7 +5,7 @@ from playwright.sync_api import expect
 from meal_plans import fixture
 
 
-def run_day_editor(page, base, f, suffix, submit):
+def run_day_editor(page, base, f, suffix, submit, compact_only=False):
     output = Path('docs/evidence/meal-plans')
     state = json.loads(fixture('editor-seed', f['type'], f['extra_type'], f['food']))
     overview = base + '/admin/meal-plan-versions/' + str(state['version'])
@@ -40,33 +40,69 @@ def run_day_editor(page, base, f, suffix, submit):
     page.get_by_role('link', name='Редагувати день', exact=True).first.click()
     expect(page.get_by_role('heading', name='Каталог страв і продуктів', exact=True)).to_be_visible()
     day_url = page.url
+    columns = page.locator('.plan-catalog-list').evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ').length")
+    assert columns == (3 if suffix.startswith('1440') else 1)
+    if suffix.startswith('1440'):
+        expect(page.get_by_role('button', name='Далі', exact=True)).to_be_enabled()
+        assert page.locator('.plan-catalog').evaluate('(e) => e.scrollHeight > e.clientHeight')
+        assert page.locator('.plan-meals-panel').evaluate('(e) => e.scrollHeight > e.clientHeight')
+        document_y = page.evaluate('scrollY')
+        catalog_panel = page.locator('.plan-catalog')
+        catalog_panel.hover()
+        page.mouse.wheel(0, 350)
+        page.wait_for_function("document.querySelector('.plan-catalog').scrollTop > 0")
+        assert page.locator('.plan-meals-panel').evaluate('(e) => e.scrollTop === 0')
+        assert page.evaluate('scrollY') == document_y
+        catalog_panel.evaluate('(e) => e.scrollTop = 0')
+        meals_panel = page.locator('.plan-meals-panel')
+        meals_panel.hover()
+        page.mouse.wheel(0, 350)
+        page.wait_for_function("document.querySelector('.plan-meals-panel').scrollTop > 0")
+        assert catalog_panel.evaluate('(e) => e.scrollTop === 0')
+        assert page.evaluate('scrollY') == document_y
+        meals_panel.evaluate('(e) => e.scrollTop = 0')
+        page.set_viewport_size({'width': 1024, 'height': 1000})
+        columns = page.locator('.plan-catalog-list').evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ').length")
+        assert columns == 2
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        page.set_viewport_size({'width': 1440, 'height': 1000})
     source = page.locator('[data-drop-meal="' + str(state['meals'][0]) + '"].plan-meal')
     target = page.locator('[data-drop-meal="' + str(state['meals'][1]) + '"].plan-meal')
     expect(source.locator('[data-item]')).to_have_count(3)
     search = page.get_by_label('Пошук каталогу', exact=False)
     search.fill('nothing-synthetic-UX-4E')
     expect(page.get_by_text('Нічого не знайдено.', exact=False)).to_be_visible()
-    search.fill('Синтетичний інгредієнт')
-    food = page.locator('[data-food="' + str(f['food']) + '"]')
+    search.fill('Синтетична страва UX-4')
+    expect(search).to_be_focused()
+    food = page.locator('[data-food="' + str(state['food']) + '"]')
     expect(food).to_be_visible()
-    def add_food(card):
-        card.locator('.plan-catalog-add').click()
-        page.get_by_role('dialog').get_by_role('button', name='Прийом їжі', exact=False).click()
-        page.get_by_role('option', name='День 1 (Пн) · Синтетичний прийом', exact=True).click()
+    def add_food(card, meal, touch_input=True):
+        page.get_by_label('Додати до прийому', exact=True).select_option(str(meal))
+        button = card.locator('.plan-catalog-add')
+        with page.expect_response(lambda r: '/livewire/update' in r.url and r.request.method == 'POST') as response:
+            if suffix.startswith('320'):
+                button.focus()
+                page.keyboard.press('Enter')
+            elif suffix.startswith('390') and touch_input:
+                button.scroll_into_view_if_needed()
+                box = button.bounding_box()
+                page.touchscreen.tap(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+            else:
+                button.click()
+        add_dialog = page.get_by_role('dialog').filter(has=page.get_by_role('heading', name='Додати позицію', exact=True))
+        assert response.value.status == 200
+        expect(add_dialog.get_by_role('heading', name='Додати позицію', exact=True)).to_be_visible()
+        meal_name = 'Синтетичний прийом' if meal == state['meals'][0] else 'Синтетичний додатковий тип'
+        expect(add_dialog.get_by_role('button', name='Прийом їжі', exact=False)).to_contain_text(meal_name)
+        return add_dialog
 
     before = fixture('week-state', state['version'])
-    if suffix.startswith('1440'):
-        food.locator('.plan-drag-handle').drag_to(source.locator('h3'))
-    else:
-        # Той самий accessible fallback працює touch та клавіатурою.
-        add_food(food)
-    dialog = page.get_by_role('dialog').filter(has=page.get_by_role('heading', name='Додати позицію', exact=True))
+    dialog = add_food(food, state['meals'][1], touch_input=compact_only)
     expect(dialog.get_by_label('Споживана кількість', exact=False)).to_have_value('')
     assert fixture('week-state', state['version']) == before
     submit(dialog, 'Скасувати')
     assert fixture('week-state', state['version']) == before
-    add_food(food)
-    expect(dialog.get_by_role('heading', name='Додати позицію', exact=True)).to_be_visible()
+    dialog = add_food(food, state['meals'][0], touch_input=compact_only)
     dialog.get_by_label('Споживана кількість', exact=False).fill('0.50')
     dialog.get_by_role('combobox', name='Одиниця', exact=False).click()
     with page.expect_response(lambda r: '/livewire/update' in r.url):
@@ -123,13 +159,17 @@ def run_day_editor(page, base, f, suffix, submit):
         assert toast.bounding_box()['y'] >= page.locator('.fi-topbar').bounding_box()['height']
     page.evaluate('scrollTo(0,0)')
     page.screenshot(path=str(output / f'day-editor-{suffix}.png'), full_page=True)
+    if compact_only:
+        page.get_by_role('link', name='До огляду тижня', exact=True).click()
+        expect(page.get_by_text('Тиждень 1 / 2', exact=True)).to_be_visible()
+        print('UX-4 compact browser path ' + suffix + ': find, target, touch/keyboard/mouse add, persist, return to week PASS', flush=True)
+        return
     page.get_by_label('Тип каталогу', exact=False).select_option('recipe_version')
     page.get_by_label('Пошук каталогу', exact=False).fill('Синтетичний batch writer')
     batch_food = page.locator('.plan-catalog-item').filter(has_text='Синтетичний batch writer').first
     expect(batch_food).to_be_visible()
     for fmt, divisor, label in [('A — одна порція', 'A/1 — ціла одна порція', 'A/1'), ('B — партія на 7 порцій', 'B/7 — одна сьома партії', 'B/7'), ('C — половина тижневої партії', 'C/3 — одна третина половини партії', 'C/3'), ('C — половина тижневої партії', 'C/4 — одна четверта половини партії', 'C/4')]:
-        add_food(batch_food)
-        expect(dialog.get_by_role('heading', name='Додати позицію', exact=True)).to_be_visible()
+        dialog = add_food(batch_food, state['meals'][0], touch_input=False)
         dialog.get_by_role('combobox', name='Формат фізичної партії', exact=False).click()
         with page.expect_response(lambda r: '/livewire/update' in r.url):
             page.get_by_role('option', name=fmt, exact=True).click()

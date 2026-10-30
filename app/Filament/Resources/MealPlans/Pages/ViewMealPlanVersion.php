@@ -96,7 +96,17 @@ class ViewMealPlanVersion extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [ActionGroup::make($this->managementActions())->label('Керування')->button()->color('gray')];
+        $actions = $this->managementActions();
+        $primaryNames = ['publishPlan', 'repeatWeek', 'replaceWeeks', 'generateWeek'];
+        $primary = array_values(array_filter($actions, fn ($action) => $action instanceof Action && in_array($action->getName(), $primaryNames, true)));
+        $positions = array_values(array_filter($actions, fn ($action) => $action instanceof ActionGroup &&
+            collect($action->getActions())->contains(fn ($child) => $child instanceof Action && $child->getName() === 'addItem')
+        ));
+        $other = array_values(array_filter($actions, fn ($action) => ! in_array($action, $positions, true) &&
+            ! ($action instanceof Action && in_array($action->getName(), $primaryNames, true))
+        ));
+
+        return [...$primary, ...$positions, ...$this->weekDeletionActions(), ActionGroup::make($other)->label('Інші дії')->button()->color('gray')];
     }
 
     public function createFirstWeekAction(): Action
@@ -130,7 +140,6 @@ class ViewMealPlanVersion extends ViewRecord
                 }),
             ...$this->itemActions(),
             ...$this->weekRepetitionActions(),
-            ...$this->weekDeletionActions(),
             Action::make('generateWeek')->label('Додати 7 днів')->modalSubmitActionLabel('Додати тиждень')->authorize(fn () => $this->editable())
                 ->modalHeading('Додати наступний семиденний тиждень')
                 ->modalDescription('Створюються лише дні й обрані прийоми. Позицій немає; перед публікацією заповніть усі прийоми. Повторний запит того самого тижня не дублює дані.')

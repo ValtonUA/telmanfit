@@ -84,7 +84,8 @@ def run_week_repetition(page, base, f, suffix, submit):
     page.screenshot(path=str(Path('docs/evidence/meal-plans') / f'repeat-confirm-{suffix}.png'), full_page=True)
     submit(confirm, 'Скасувати')
     assert json.loads(fixture('week-state', version)) == changed
-    page.goto(url + '/days/' + str(days[15]))
+    # Тижневі дії тепер розміщені на огляді тижня, а не в редакторі дня.
+    page.goto(url)
     management(page, 'Повторити тиждень')
     with page.expect_response(lambda r: '/livewire/update' in r.url):
         dialog.get_by_role('button', name='Повторити', exact=True).click()

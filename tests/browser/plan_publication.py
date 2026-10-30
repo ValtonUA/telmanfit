@@ -12,6 +12,9 @@ def run_plan_publication(page, base, f, suffix, submit, from_day=False):
     url = base + '/admin/meal-plan-versions/' + str(version)
     entry = url + '/days/' + str(state['day']) if from_day else url
     page.goto(entry)
+    if from_day:
+        expect(page.get_by_role('button', name='Опублікувати', exact=True)).to_have_count(0)
+        page.get_by_role('link', name='До огляду тижня', exact=True).click()
     before = fixture('week-state', version)
     management(page, 'Опублікувати')
     expect(page.get_by_text('День 8', exact=False).first).to_be_visible()

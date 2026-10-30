@@ -1,5 +1,6 @@
 """T4.1/T4.2: штатний Filament, точна версія, readonly history, responsive та CSRF/revocation."""
 import json
+import os
 import re
 from contextlib import nullcontext
 import subprocess
@@ -21,10 +22,23 @@ def settle_overlays(page):
 
 def management(page, label):
     settle_overlays(page)
-    if not page.get_by_text(label, exact=True).is_visible():
-        page.get_by_role('button', name='Керування', exact=True).click()
+    target = page.get_by_role('button', name=label, exact=True)
+    visible_target = next((target.nth(index) for index in range(target.count()) if target.nth(index).is_visible()), None)
+    if visible_target is None:
+        menu = page.get_by_role('button', name='Інші дії', exact=True)
+        if not menu.is_visible():
+            menu = page.get_by_role('button', name='Додаткові дії', exact=True)
+            if not menu.is_visible():
+                menu = page.get_by_role('button', name='Керування', exact=True)
+        menu.click()
         settle_overlays(page)
-    page.get_by_text(label, exact=True).click()
+        target = page.get_by_role('menuitem', name=label, exact=True)
+        if target.count() == 0:
+            target = page.get_by_text(label, exact=True)
+        visible_target = next((target.nth(index) for index in range(target.count()) if target.nth(index).is_visible()), None)
+    if visible_target is None:
+        raise AssertionError(f'Не знайдено видиму дію: {label}\n'+page.locator('body').aria_snapshot()[-8000:])
+    visible_target.click()
 
 
 def run_meal_plans(page, base):
@@ -34,6 +48,7 @@ def run_meal_plans(page, base):
     output.mkdir(parents=True, exist_ok=True)
     published = base + '/admin/meal-plan-versions/' + str(f['version'])
     history = fixture('hash')
+    only_suffixes = set(filter(None, os.environ.get('UX4_BROWSER_SUFFIX', '').split(',')))
 
     def submit(dialog, label):
         with (page.expect_navigation(wait_until='load') if label != 'Скасувати' and '/days/' not in page.url else nullcontext()):
@@ -46,11 +61,13 @@ def run_meal_plans(page, base):
     for width in (1440, 390, 320):
         for theme in ('light', 'dark'):
             suffix = f'{width}-{theme}'
+            if only_suffixes and suffix not in only_suffixes:
+                continue
             page.set_viewport_size({'width': width, 'height': 1000})
             page.evaluate('(theme) => localStorage.setItem("filament:theme:mode", theme)', theme)
             if theme == 'dark':
-                # Повні mutation-сценарії проходять у light для кожної ширини.
-                # Dark перевіряє опублікований read-only вигляд і форму створення.
+                # Повні тижневі сценарії проходять у light; day acceptance також
+                # повторюється в dark, щоб перевірити пошук і додавання в обох темах.
                 page.goto(published)
                 expect(page.get_by_text('Опубліковано · лише перегляд', exact=True)).to_be_visible()
                 expect(page.get_by_text('100.1', exact=True).first).to_be_visible()
@@ -81,6 +98,8 @@ def run_meal_plans(page, base):
                 expect(page.get_by_text('Синтетичний прийом', exact=True).first).to_be_visible()
                 page.go_back()
                 expect(page).to_have_url(created_dark)
+                from day_editor import run_day_editor
+                run_day_editor(page, base, f, suffix, submit)
                 page.goto(base + '/admin/meal-plans')
                 page.get_by_role('link', name='Synthetic dark plan ' + suffix, exact=True).click()
                 expect(page).to_have_url(re.compile(r'/admin/meal-plans/\d+$'))
@@ -199,7 +218,9 @@ def run_meal_plans(page, base):
             expect(page.get_by_text('Меню ' + suffix, exact=True)).to_have_count(0)
             management(page, 'Додати 7 днів')
             dialog = page.get_by_role('dialog').filter(has=page.get_by_text('Додати наступний семиденний тиждень', exact=True))
-            dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]').check()
+            type_choice = dialog.locator('input[type=checkbox][value="' + str(f['type']) + '"]')
+            expect(type_choice).to_have_count(1)
+            type_choice.check()
             submit(dialog, 'Додати тиждень')
             expect(page.locator('.plan-day-cta')).to_have_count(7)
             expect(page.get_by_text('Синтетичний прийом', exact=True)).to_have_count(0)
@@ -309,6 +330,8 @@ def run_meal_plans(page, base):
     publication_guard = json.loads(fixture('repeat-single-seed', f['type'], f['extra_type'], f['food']))
     fixture('publication-fill', publication_guard['version'])
     page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']) + '/days/' + str(publication_guard['day']))
+    expect(page.get_by_role('button', name='Опублікувати', exact=True)).to_have_count(0)
+    page.goto(base + '/admin/meal-plan-versions/' + str(publication_guard['version']))
     management(page, 'Опублікувати')
     expect(page.get_by_role('heading', name='Опублікувати версію раціону', exact=True)).to_be_visible()
     publication_raw = next(e.get_attribute('wire:snapshot') for e in page.locator('[wire\\:snapshot]').all()

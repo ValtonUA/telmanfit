@@ -12,7 +12,7 @@ use App\Services\MealPlans\MealItemResolver;
 use App\Services\MealPlans\MealItemWriter;
 use App\Services\MealPlans\MealPlanPublisher;
 use App\Services\MealPlans\MealPlanStructure;
-use Filament\Actions\ActionGroup;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -261,44 +261,48 @@ class MealPlanPublicationTest extends PostgresTestCase
             'day' => $this->version->days()->where('day_number', 1)->sole()->id]);
     }
 
-    public function test_day_header_exposes_shared_publish_confirmation_cancel_and_readonly_redirect(): void
+    public function test_publish_action_is_in_week_overview_with_confirmation_and_readonly_redirect(): void
     {
         $editor = $this->dayEditor();
-        $menu = collect($editor->instance()->getCachedHeaderActions())->first(fn ($action) => $action instanceof ActionGroup);
-        $this->assertArrayHasKey('publishPlan', $menu->getFlatActions());
-        $this->assertSame('Опублікувати', $menu->getFlatActions()['publishPlan']->getLabel());
-        $this->assertTrue($menu->getFlatActions()['publishPlan']->isVisible());
+        $this->assertFalse(collect($editor->instance()->getCachedHeaderActions())
+            ->contains(fn ($action) => $action instanceof Action && $action->getName() === 'publishPlan'));
+        $overview = Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id]);
+        $publish = collect($overview->instance()->getCachedHeaderActions())
+            ->first(fn ($action) => $action instanceof Action && $action->getName() === 'publishPlan');
+        $this->assertNotNull($publish);
+        $this->assertSame('Опублікувати', $publish->getLabel());
+        $this->assertTrue($publish->isVisible());
         $before = $this->protectedState();
         $root = $this->version->fresh()->getAttributes();
-        $editor->mountAction('publishPlan')->assertActionMounted('publishPlan');
-        $this->assertSame('Опублікувати версію раціону', $editor->instance()->getMountedAction()->getModalHeading());
-        $this->assertStringContainsString('Після публікації ця версія незмінна.', $editor->instance()->getMountedAction()->getModalDescription());
-        $editor->call('unmountAction')->assertNoRedirect();
+        $overview->mountAction('publishPlan')->assertActionMounted('publishPlan');
+        $this->assertSame('Опублікувати версію раціону', $overview->instance()->getMountedAction()->getModalHeading());
+        $this->assertStringContainsString('Після публікації ця версія незмінна.', $overview->instance()->getMountedAction()->getModalDescription());
+        $overview->call('unmountAction')->assertNoRedirect();
         $this->assertSame($before, $this->protectedState());
         $this->assertSame($root, $this->version->fresh()->getAttributes());
-        $editor->mountAction('publishPlan')->callMountedAction()->assertHasNoActionErrors()
+        $overview->mountAction('publishPlan')->callMountedAction()->assertHasNoActionErrors()
             ->assertRedirect(MealPlanVersionResource::getUrl('view', ['record' => $this->version]));
         $this->assertSame('published', $this->version->fresh()->status);
         $this->assertSame($before, $this->protectedState());
-        $this->dayEditor()->assertActionHidden('publishPlan')->assertDontSee('Каталог страв і продуктів')
-            ->call('mountAction', 'publishPlan')->assertForbidden();
+        $this->assertFalse(collect($this->dayEditor()->instance()->getCachedHeaderActions())
+            ->contains(fn ($action) => $action instanceof Action && $action->getName() === 'publishPlan'));
     }
 
-    public function test_day_publish_rechecks_entire_version_and_rejects_stale_confirmation(): void
+    public function test_week_publish_rechecks_entire_version_and_rejects_stale_confirmation(): void
     {
-        $editor = $this->dayEditor()->mountAction('publishPlan')->assertActionMounted('publishPlan');
+        $editor = Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id])->mountAction('publishPlan')->assertActionMounted('publishPlan');
         $this->generate(8);
         $before = $this->protectedState();
         $editor->callMountedAction()->assertHasActionErrors(['publication']);
         $this->assertSame($before, $this->protectedState());
         $this->assertSame('draft', $this->version->fresh()->status);
-        $this->dayEditor()->mountAction('publishPlan')->assertNotified('Структуру не збережено');
+        Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id])->mountAction('publishPlan')->assertNotified('Структуру не збережено');
     }
 
     public function test_day_publish_rejects_unauthorized_actor_and_revocation_after_confirmation(): void
     {
         foreach (['role', 'fence'] as $case) {
-            $editor = $this->dayEditor()->mountAction('publishPlan')->assertActionMounted('publishPlan');
+            $editor = Livewire::test(ViewMealPlanVersion::class, ['record' => $this->version->id])->mountAction('publishPlan')->assertActionMounted('publishPlan');
             if ($case === 'role') {
                 DB::table('users')->where('id', $this->actor->id)->update(['role' => 'coach']);
             } else {

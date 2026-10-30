@@ -63,6 +63,19 @@ if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed', 'repe
 
         return $food;
     });
+    $catalogFood = $denseFood;
+    if ($argv[1] === 'editor-seed') {
+        $catalogFood = DB::transaction(function (): int {
+            for ($index = 1; $index <= 36; $index++) {
+                $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
+                DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'UX-4 тестовий каталог · страва '.$index, 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
+            }
+            $food = DB::table('foods')->insertGetId(['food_type' => 'ingredient']);
+            DB::table('ingredients')->insert(['food_id' => $food, 'name' => 'Синтетична страва UX-4 для довгого каталогу', 'kcal_per_100g' => '100.00', 'protein_per_100g' => '10.00', 'fat_per_100g' => '1.00', 'carbs_per_100g' => '2.00']);
+
+            return $food;
+        });
+    }
     $brokenFood = null;
     if ($polish) {
         DB::table('ingredients')->where('food_id', $denseFood)->update(['image_url' => 'https://images.example.com/cover.png']);
@@ -85,7 +98,7 @@ if (in_array($argv[1] ?? '', ['editor-seed', 'polish-seed', 'repeat-seed', 'repe
     }
     $days = $version->days()->orderBy('day_number')->get();
     $day = $days->first();
-    echo json_encode(['photo_food' => $denseFood, 'broken_food' => $brokenFood, 'version' => $version->id, 'day' => $day->id, 'day8' => $days->get(7)?->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
+    echo json_encode(['photo_food' => $denseFood, 'broken_food' => $brokenFood, 'food' => $catalogFood, 'version' => $version->id, 'day' => $day->id, 'day8' => $days->get(7)?->id, 'meals' => $day->meals()->orderBy('id')->pluck('id')->all()]);
     exit;
 }
 if (($argv[1] ?? '') === 'publication-fill') {

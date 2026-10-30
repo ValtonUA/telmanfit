@@ -195,3 +195,19 @@ Job-min = сума тривалостей **усіх** jobs; паралеліз�
 `recipe` збережено як широкий fallback для спільних залежностей; точні day та assignment набори виконують власні сценарії на незалежних кластерах. Докази й обмеження порівняння — у [CI-SLICE-1](evidence/ci-slice-1/report.md). Кожен вибраний worker має завершитись успішно; відсутні, пропущені або невдалі набори блокують gate.
 
 Full GitHub Actions workflow і його ручний тригер видалені. Усі критичні шляхи, `ci:full` label, ручні події, push та schedule не запускають Full; merge gate не вимагає Full. Повний PostgreSQL/browser, PHP 8.4/8.5, AUTH-1 upstream, security та cold Compose залишаються лише локальними наборами/раннерами; для локального запуску див. `tests/pg/README.md`, `tests/pg/run-stage1.sh`, `tests/pg/test-runner.sh`, `tests/pg/run-isolated-pg.sh` та відповідні предметні документи. Targeted PR workflow лишається required status, але для diff без релевантної PG/browser області завершується легким scope/gate шляхом без reusable Stage1 runner; для релевантних diff кожна вибрана група мусить успішно пройти.
+
+### Інкрементальна локальна перевірка UX-4
+
+`DAY_ONLY=1 bash tests/pg/run-stage1.sh` запускає цільові PG-тести дня, усі залежні
+concurrency сценарії, а потім Chromium. Для повторів лише UI використовуйте
+`DAY_BROWSER_ONLY=1 bash tests/pg/run-stage1.sh`: він створює той самий новий ізольований
+PG18-контейнер, застосовує міграції та синтетичні bootstrap-фікстури, після чого запускає
+тільки Chromium UX-4 на 1440/390/320 px у light/dark. PG і concurrency набори цей режим
+пропускає; для одного чи кількох розмірів задайте, наприклад,
+`UX4_BROWSER_SUFFIX=390-light,320-dark`. Це локальний режим і не змінює Targeted CI чи
+обов'язкові PR-gates.
+
+Для локального повтору змінених дій тижня без PG suite використовуйте
+`DAY_BROWSER_ONLY=1 UX4_WEEK_BROWSER_ONLY=1 bash tests/pg/run-stage1.sh`. Він запускає
+ті самі міграції та disposable fixtures, але лише Chromium regression повторення
+тижня; PostgreSQL і concurrency тести пропускаються.

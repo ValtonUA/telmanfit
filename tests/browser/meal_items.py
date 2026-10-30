@@ -16,6 +16,7 @@ def run_meal_items(page, base, version_url, f, suffix, submit):
 
     def open_action(label, danger=False):
         from meal_plans import management
+        page.locator('.fi-no-notification').last.wait_for(state='hidden') if page.locator('.fi-no-notification').count() else None
         management(page, 'Позиції')
         page.get_by_text(label, exact=True).click()
         dialog = page.get_by_role('alertdialog' if danger else 'dialog').filter(has=page.get_by_text(label, exact=True))

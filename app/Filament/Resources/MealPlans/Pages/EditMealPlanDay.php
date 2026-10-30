@@ -108,13 +108,26 @@ class EditMealPlanDay extends ViewMealPlanVersion
     protected function getHeaderActions(): array
     {
         $actions = $this->managementActions();
+        $addMeal = array_values(array_filter($actions, fn ($action) => $action instanceof Action && $action->getName() === 'addMeal'));
+        $positions = array_values(array_filter($actions, fn ($action) => $action instanceof ActionGroup &&
+            collect($action->getActions())->contains(fn ($child) => $child instanceof Action && $child->getName() === 'addItem')
+        ));
+        $positionActions = $positions[0]?->getActions() ?? [];
+        $addPosition = array_values(array_filter($positionActions, fn ($action) => $action instanceof Action && $action->getName() === 'addItem'));
+        $positionManagement = array_values(array_filter($positionActions, fn ($action) => ! ($action instanceof Action && $action->getName() === 'addItem')));
+        $weekOnly = ['personalCopy', 'publishPlan', 'repeatWeek', 'replaceWeeks', 'generateWeek'];
+        $other = array_values(array_filter($actions, fn ($action) => ! in_array($action, $positions, true) &&
+            ! ($action instanceof Action && ($action->getName() === 'addMeal' || in_array($action->getName(), $weekOnly, true)))
+        ));
+        $other[] = RecipeCoverAction::make()->visible(fn () => $this->editable())->authorize(fn () => $this->editable() && CatalogWriter::allowed(auth()->user()));
 
-        return [Action::make('overview')->label('До огляду тижня')->url(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => intdiv($this->day()->day_number - 1, 7) + 1])),
-            ActionGroup::make([
-                ...array_values(array_filter($actions, fn ($a) => $a instanceof Action && in_array($a->getName(), ['publishPlan', 'repeatWeek', 'replaceWeeks', 'addMeal', 'editMeal', 'deleteMeal'], true))),
-                ...$this->itemActions(),
-                RecipeCoverAction::make()->visible(fn () => $this->editable())->authorize(fn () => $this->editable() && CatalogWriter::allowed(auth()->user())),
-            ])->label('Керування')->button()->color('gray')];
+        return [
+            Action::make('overview')->label('До огляду тижня')->url(MealPlanVersionResource::getUrl('view', ['record' => $this->getRecord(), 'week' => intdiv($this->day()->day_number - 1, 7) + 1])),
+            ...$addMeal,
+            ...$addPosition,
+            ActionGroup::make($positionManagement)->label('Позиції')->button()->color('gray'),
+            ActionGroup::make($other)->label('Додаткові дії')->button()->color('gray'),
+        ];
     }
 
     protected function catalogForm(array $arguments): array

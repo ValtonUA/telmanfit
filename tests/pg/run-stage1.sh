@@ -184,6 +184,20 @@ for file in database/migrations/0001_*.php database/migrations/2026_10_21_*.php;
 done
 php artisan migrate --force --no-interaction "${baseline_paths[@]}"
 stage1_mark baseline_migrations
+if [[ ${DAY_BROWSER_ONLY:-0} == 1 ]]; then
+    # UI-only iteration reuses the disposable PG fixture but skips unchanged PG/concurrency suites.
+    php artisan migrate --force --no-interaction
+    php tests/pg/auth6b5-bootstrap.php
+    php tests/pg/day-bootstrap.php
+    if [[ ${UX4_WEEK_BROWSER_ONLY:-0} == 1 ]]; then
+        UX4_WEEK_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    elif [[ ${UX4_BROWSER_FULL:-0} == 1 ]]; then
+        UX3_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    else
+        UX4_BROWSER_ONLY=1 bash tests/browser/recipe-batch-in-context.sh
+    fi
+    exit
+fi
 if [[ ${DAY_ONLY:-0} == 1 ]]; then
     vendor/bin/phpunit "${phpunit_args[@]}" -c phpunit.pgsql.xml --filter 'MealPlanDayEditorTest|MealItemWriterTest|MealItemSelectorsTest|MealPlanStructureTest|MealPlanWeekDeletionTest|MealPlanWeekRepetitionTest|MealPlanPublicationTest' --fail-on-empty-test-suite --fail-on-skipped --fail-on-incomplete --display-all-issues
     php artisan migrate --force --no-interaction
