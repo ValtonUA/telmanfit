@@ -83,8 +83,17 @@ function New-Snapshot {
 }
 
 $allowlist = Get-Allowlist -Root $root
-Assert-True ($allowlist.migrations.Count -eq 3) 'allowlist contains only the three explicitly approved migrations'
-Assert-True (($allowlist.migrations.name -join ',') -eq '2026_10_28_000000_create_cooking_templates,2026_10_28_010000_add_cooking_selection,2026_10_28_020000_add_cooking_session_equipment') 'allowlist contains the reviewed cooking migration names only'
+$expectedNames = @(
+    '2026_10_28_000000_create_cooking_templates'
+    '2026_10_28_010000_add_cooking_selection'
+    '2026_10_28_020000_add_cooking_session_equipment'
+    '2026_10_29_000000_create_meal_plan_creation_requests'
+)
+$orderedAllowlist = @($allowlist.migrations | Sort-Object { [int] $_.order })
+Assert-True ($allowlist.migrations.Count -eq 4) 'allowlist contains only the four explicitly approved migrations'
+Assert-True (($orderedAllowlist.name -join ',') -eq ($expectedNames -join ',')) 'allowlist contains the exact four approved migrations in order'
+Assert-True (($orderedAllowlist.sha256 -join ',') -eq '33F96460ECB19EA9381FA4E0D20B3AC0D6E5273782687DE4E1D3F411812EC6A6,675FE26B27E852207E8E68AF459CF30A33952DBF0B7DD1E1C2BD960F185AF739,86F927DA509CECBC6BE3B47B0F750E7BA8A64BFF48A1D3B6475D133A59B994B8,1C3CDCE42CFC01A3B8A99D739A08FF349980586ECC70466392CECCE68671C13D') 'allowlist migration SHA256 values match all four reviewed files'
+Assert-True ((@($orderedAllowlist | ForEach-Object { $_.sources[0].sha256 }) -join ',') -eq '3BC0DC3FE4FC9E42EB545F9BC9CA6B39254E51706AD6D47D16B376987182C089,14817AF572E22FEF32B1F0F652657A60432809C58EC5520BD3D19D2FF97461BF,750B2DB985AD3881DC00F33BDD1F9C35EAD26971077A3D7792781B559AD74106,AC4D1FFF58D6F7761834A571F715BF0D545A60F516A049F1C6E075EDBE5D5229') 'allowlist dependency SHA256 values match all four reviewed SQL files'
 $empty = New-Snapshot
 $emptyPlan = Get-PendingPlan -Snapshot $empty -Allowlist $allowlist -Root $root
 Assert-True ($emptyPlan.Count -eq 0) 'no pending migrations produce an empty plan'
@@ -92,7 +101,7 @@ Assert-True ($emptyPlan.Count -eq 0) 'no pending migrations produce an empty pla
 $names = @($allowlist.migrations | Sort-Object order | ForEach-Object { $_.name })
 $pendingSnapshot = New-Snapshot -Pending $names
 $plan = Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $allowlist -Root $root
-Assert-True ($plan.Count -eq 3 -and $plan[0].order -eq 1 -and $plan[1].order -eq 2 -and $plan[2].order -eq 3) 'approved migrations are planned in declared order'
+Assert-True ($plan.Count -eq 4 -and $plan[0].order -eq 1 -and $plan[1].order -eq 2 -and $plan[2].order -eq 3 -and $plan[3].order -eq 4) 'approved migrations are planned in declared order'
 
 $unknownSnapshot = New-Snapshot -Pending @($names + '2026_10_29_000000_unknown_change')
 Assert-Throws { Get-PendingPlan -Snapshot $unknownSnapshot -Allowlist $allowlist -Root $root } 'unknown migration is refused'
@@ -104,6 +113,12 @@ Assert-Throws { Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $changedFi
 $changedSqlAllowlist = $allowlist | ConvertTo-Json -Depth 20 | ConvertFrom-Json
 $changedSqlAllowlist.migrations[0].sources[0].sha256 = ('0' * 64)
 Assert-Throws { Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $changedSqlAllowlist -Root $root } 'changed SQL dependency is refused'
+$changedMealPlanAllowlist = $allowlist | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+$changedMealPlanAllowlist.migrations[3].sha256 = ('0' * 64)
+Assert-Throws { Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $changedMealPlanAllowlist -Root $root } 'changed meal plan creation migration file is refused'
+$changedMealPlanSqlAllowlist = $allowlist | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+$changedMealPlanSqlAllowlist.migrations[3].sources[0].sha256 = ('0' * 64)
+Assert-Throws { Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $changedMealPlanSqlAllowlist -Root $root } 'changed meal plan creation SQL dependency is refused'
 
 $first = $allowlist.migrations[0]
 Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $first
@@ -116,6 +131,11 @@ Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $second -Pla
 $third = $allowlist.migrations[2]
 Assert-Throws { Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $third -PlannedTables $first.postconditions.required_tables } 'Міграція обладнання потребує попередньої таблиці вибору'
 Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $third -PlannedTables @($first.postconditions.required_tables + $second.postconditions.required_tables)
+$fourth = $allowlist.migrations[3]
+Assert-MigrationPreconditions -Snapshot $pendingSnapshot -Migration $fourth
+$missingMealPlan = New-Snapshot -Pending $names
+$missingMealPlan.schema.tables = @($pendingSnapshot.schema.tables | Where-Object { $_ -ne 'meal_plans' })
+Assert-Throws { Assert-MigrationPreconditions -Snapshot $missingMealPlan -Migration $fourth } 'meal plan creation migration refuses a missing prerequisite table'
 $changedEquipmentAllowlist = $allowlist | ConvertTo-Json -Depth 20 | ConvertFrom-Json
 $changedEquipmentAllowlist.migrations[2].sources[0].sha256 = ('0' * 64)
 Assert-Throws { Get-PendingPlan -Snapshot $pendingSnapshot -Allowlist $changedEquipmentAllowlist -Root $root } 'Змінений SQL обладнання відхиляється'
@@ -127,6 +147,10 @@ $post.schema.views = @()
 Assert-Throws { Assert-MigrationPostconditions -Snapshot $post -Migration $viewRequirement } 'missing view is refused'
 $optionalPostcondition = [pscustomobject]@{ name = 'test'; postconditions = [pscustomobject]@{ required_tables = @('cooking_templates') } }
 Assert-MigrationPostconditions -Snapshot $post -Migration $optionalPostcondition
+$mealPlanPost = [pscustomobject]@{ schema = [pscustomobject]@{ tables = @('meal_plan_creation_requests'); functions = @(); triggers = @(); views = @() } }
+Assert-MigrationPostconditions -Snapshot $mealPlanPost -Migration $fourth
+$mealPlanPost.schema.tables = @()
+Assert-Throws { Assert-MigrationPostconditions -Snapshot $mealPlanPost -Migration $fourth } 'meal plan creation migration requires its declared postcondition table'
 
 $before = New-Snapshot
 $same = New-Snapshot
